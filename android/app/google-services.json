@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "993248877411",
+    "project_id": "more-than-fitness-f6adb",
+    "storage_bucket": "more-than-fitness-f6adb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993248877411:android:799cd556b1752f83bcd156",
+        "android_client_info": {
+          "package_name": "com.example.mtf_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1xUukUI0Yqs1TJDzys4qwA_HL0O8xksc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

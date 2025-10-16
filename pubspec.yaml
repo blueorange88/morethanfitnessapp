@@ -1,0 +1,29 @@
+name: mtf_app
+description: A new Flutter project.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 상태관리/유틸
+  flutter_riverpod: ^2.5.1
+  shared_preferences: ^2.2.2
+  intl: ^0.20.2
+  animations: ^2.0.11
+
+  # FlutterFire (서로 호환되는 조합)
+  firebase_core: ^4.2.0
+  firebase_auth: ^6.1.1
+  cloud_firestore: ^6.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
