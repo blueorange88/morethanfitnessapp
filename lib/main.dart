@@ -9,6 +9,7 @@ import 'providers/theme_provider.dart';
 import 'pages/home_page.dart';
 import 'pages/client_card_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/test_hub_pages.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,16 +36,23 @@ class MyApp extends ConsumerWidget {
   }
 }
 
+/// 🔹 빠졌던 RootPage 선언 추가
 class RootPage extends StatefulWidget {
   const RootPage({super.key});
+
   @override
   State<RootPage> createState() => _RootPageState();
 }
 
 class _RootPageState extends State<RootPage> {
   int _index = 1; // 홈 기본
-  static const _titles = ['고객카드', '홈', '설정'];
-  final _pages = const [ClientCardPage(), HomePage(), SettingsPage()];
+  static const _titles = ['고객카드', '홈', '테스트', '설정'];
+  final _pages = const [
+    ClientCardPage(),
+    HomePage(),
+    TestHubPage(),   // ← 새 탭
+    SettingsPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +72,11 @@ class _RootPageState extends State<RootPage> {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: '홈',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.construction_outlined),
+            selectedIcon: Icon(Icons.construction),
+            label: '테스트', // ← 새 탭
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
