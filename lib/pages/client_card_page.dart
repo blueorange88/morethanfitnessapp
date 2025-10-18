@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+// import 'package:animations/animations.dart'; // 사용 안 함
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fa;
 import 'package:firebase_core/firebase_core.dart';
@@ -44,7 +45,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Future<void> _ensureFirebaseAndAuth() async {
     try {
-      try { Firebase.app(); } catch (_) { await Firebase.initializeApp(); }
+      try {
+        Firebase.app();
+      } catch (_) {
+        await Firebase.initializeApp();
+      }
       final auth = fa.FirebaseAuth.instance;
       _authSub = auth.authStateChanges().listen((u) async {
         if (u == null) {
@@ -57,7 +62,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Firebase 초기화 실패: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Firebase 초기화 실패: $e')));
     }
   }
 
@@ -96,15 +102,22 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       prefixIcon: Icon(Icons.search),
                       hintText: '이름 / 담당 / 등급 검색',
                       isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12))),
                     ),
-                    onChanged: (_) { _savePrefs(); setState(() {}); },
+                    onChanged: (_) {
+                      _savePrefs();
+                      setState(() {});
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
                 PopupMenuButton<String>(
                   tooltip: '정렬',
-                  onSelected: (v) { setState(() => _sortBy = v); _savePrefs(); },
+                  onSelected: (v) {
+                    setState(() => _sortBy = v);
+                    _savePrefs();
+                  },
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'name', child: Text('이름')),
                     PopupMenuItem(value: 'recent', child: Text('최근 작성')),
@@ -112,18 +125,27 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     PopupMenuItem(value: 'first', child: Text('최초 등록일')),
                     PopupMenuItem(value: 'expire', child: Text('만료일')),
                   ],
-                  child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.tune), label: Text('정렬: $_sortBy')),
+                  child: OutlinedButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.tune),
+                      label: Text('정렬: $_sortBy')),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton(
-                  onPressed: () { setState(() => _orderAsc = !_orderAsc); _savePrefs(); },
+                  onPressed: () {
+                    setState(() => _orderAsc = !_orderAsc);
+                    _savePrefs();
+                  },
                   child: Text(_orderAsc ? '오름차순 ↑' : '내림차순 ↓'),
                 ),
                 const SizedBox(width: 8),
                 FilterChip(
                   label: const Text('만료만'),
                   selected: _expiredOnly,
-                  onSelected: (v) { setState(() => _expiredOnly = v); _savePrefs(); },
+                  onSelected: (v) {
+                    setState(() => _expiredOnly = v);
+                    _savePrefs();
+                  },
                 ),
               ],
             ),
@@ -135,28 +157,37 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 stream: _memberStream,
                 builder: (context, snap) {
                   if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                        child: CircularProgressIndicator());
                   }
                   if (snap.hasError) {
-                    return Center(child: Text('불러오기 실패: ${snap.error}'));
+                    return Center(
+                        child: Text('불러오기 실패: ${snap.error}'));
                   }
-                  final members = snap.data!.docs.map((d) => Member.fromFirestore(d.id, d.data())).toList();
+                  final members = snap.data!.docs
+                      .map((d) =>
+                      Member.fromFirestore(d.id, d.data()))
+                      .toList();
                   final list = _applyFilterSort(members);
-                  if (list.isEmpty) return const Center(child: Text('검색 결과가 없어요.'));
+                  if (list.isEmpty) {
+                    return const Center(child: Text('검색 결과가 없어요.'));
+                  }
 
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
                     itemCount: list.length,
                     itemBuilder: (context, i) {
                       final m = list[i];
                       return Padding(
-                        padding: EdgeInsets.only(right: i == list.length - 1 ? 0 : 16),
+                        padding: EdgeInsets.only(
+                            right: i == list.length - 1 ? 0 : 12),
                         child: BinderCard(
                           key: ValueKey('binder_${m.id}'),
                           member: m,
-                          onTapOpenDetail: () => _openDetail(m),
+                          onTapOpen: () => _openDetail(m),
                           onLongPress: () => _showClassifySheet(m),
                         ),
                       );
@@ -189,19 +220,24 @@ class _ClientCardPageState extends State<ClientCardPage> {
       int cmp = 0;
       switch (_sortBy) {
         case 'name':
-          cmp = (a.name ?? '').toLowerCase().compareTo((b.name ?? '').toLowerCase());
+          cmp = (a.name ?? '')
+              .toLowerCase()
+              .compareTo((b.name ?? '').toLowerCase());
           break;
         case 'recent':
-          cmp = (a.lastLogAt ?? DateTime(1970)).compareTo(b.lastLogAt ?? DateTime(1970));
+          cmp = (a.lastLogAt ?? DateTime(1970))
+              .compareTo(b.lastLogAt ?? DateTime(1970));
           break;
         case 'remain':
           cmp = a.remainingSessions.compareTo(b.remainingSessions);
           break;
         case 'first':
-          cmp = (a.firstDate ?? DateTime(1970)).compareTo(b.firstDate ?? DateTime(1970));
+          cmp = (a.firstDate ?? DateTime(1970))
+              .compareTo(b.firstDate ?? DateTime(1970));
           break;
         case 'expire':
-          cmp = (a.expireAt ?? DateTime(2500)).compareTo(b.expireAt ?? DateTime(2500));
+          cmp = (a.expireAt ?? DateTime(2500))
+              .compareTo(b.expireAt ?? DateTime(2500));
           break;
       }
       return cmp * dir;
@@ -209,10 +245,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return out;
   }
 
+  // 상세로 이동: Future 반환(푸시가 완료되고 팝될 때까지 기다릴 수 있게)
   Future<void> _openDetail(Member m) {
     return Navigator.of(context).push(PageRouteBuilder(
-      transitionDuration: const Duration(milliseconds: 380),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: const Duration(milliseconds: 420),
+      reverseTransitionDuration: const Duration(milliseconds: 320),
       pageBuilder: (_, __, ___) => MemberDetailPage(member: m),
     ));
   }
@@ -234,7 +271,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
               leading: const Icon(Icons.person_off_outlined),
               title: const Text('만료회원으로 분류'),
               onTap: () async {
-                await FirebaseFirestore.instance.collection('members').doc(m.id).update({'expiredFlag': true});
+                await FirebaseFirestore.instance
+                    .collection('members')
+                    .doc(m.id)
+                    .update({'expiredFlag': true});
                 if (ctx.mounted) Navigator.pop(ctx);
               },
             ),
@@ -242,7 +282,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
               leading: const Icon(Icons.free_cancellation_outlined),
               title: const Text('휴강회원으로 분류'),
               onTap: () async {
-                await FirebaseFirestore.instance.collection('members').doc(m.id).update({'pausedFlag': true});
+                await FirebaseFirestore.instance
+                    .collection('members')
+                    .doc(m.id)
+                    .update({'pausedFlag': true});
                 if (ctx.mounted) Navigator.pop(ctx);
               },
             ),
@@ -265,7 +308,8 @@ class MemberDetailPage extends StatelessWidget {
     final theme = Theme.of(context);
     final fmt = DateFormat('yyyy-MM-dd');
     final double pct = member.totalSessions > 0
-        ? (member.remainingSessions / member.totalSessions).clamp(0.0, 1.0)
+        ? (member.remainingSessions / member.totalSessions)
+        .clamp(0.0, 1.0)
         : 0.0;
     final low = member.remainingSessions <= 3;
 
@@ -279,9 +323,12 @@ class MemberDetailPage extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 26,
-                  backgroundColor: _genderColor(member.gender).withOpacity(.15),
+                  backgroundColor:
+                  _genderColor(member.gender).withOpacity(.15),
                   child: Icon(
-                    member.gender == Gender.female ? Icons.female : Icons.male,
+                    member.gender == Gender.female
+                        ? Icons.female
+                        : Icons.male,
                     color: _genderColor(member.gender),
                   ),
                 ),
@@ -289,20 +336,26 @@ class MemberDetailPage extends StatelessWidget {
                 Expanded(
                   child: Text(
                     '${member.name ?? member.id} 고객님\n담당: ${member.trainer ?? '-'} · 등급: ${member.level ?? member.grade ?? '-'}',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
                 _ProgressRing(
                   progress: pct,
-                  color: low ? Colors.redAccent : theme.colorScheme.primary,
-                  label: '${member.remainingSessions}/${member.totalSessions}',
+                  color:
+                  low ? Colors.redAccent : theme.colorScheme.primary,
+                  label:
+                  '${member.remainingSessions}/${member.totalSessions}',
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _InfoRow('최근등록', member.recentReg != null ? fmt.format(member.recentReg!) : '-'),
-            _InfoRow('만료일', member.expireAt != null ? fmt.format(member.expireAt!) : '-'),
-            _InfoRow('최근 작성', member.lastLogAt != null ? fmt.format(member.lastLogAt!) : '-'),
+            _InfoRow('최근등록',
+                member.recentReg != null ? fmt.format(member.recentReg!) : '-'),
+            _InfoRow('만료일',
+                member.expireAt != null ? fmt.format(member.expireAt!) : '-'),
+            _InfoRow('최근 작성',
+                member.lastLogAt != null ? fmt.format(member.lastLogAt!) : '-'),
             const SizedBox(height: 12),
             FilledButton.icon(
               icon: const Icon(Icons.menu_book_outlined),
@@ -321,18 +374,21 @@ class MemberDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              style:
+              FilledButton.styleFrom(backgroundColor: Colors.redAccent),
               icon: const Icon(Icons.remove_circle_outline),
               label: const Text('–1 소진'),
               onPressed: () async {
                 if (member.remainingSessions <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('잔여 세션이 없습니다')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('잔여 세션이 없습니다')));
                   return;
                 }
                 await FirebaseFirestore.instance
                     .collection('members')
                     .doc(member.id)
-                    .update({'remainingSessions': FieldValue.increment(-1)});
+                    .update(
+                    {'remainingSessions': FieldValue.increment(-1)});
               },
             ),
           ],
@@ -382,14 +438,19 @@ class Member {
     if (expireAt == null) return false;
     final today = DateTime.now();
     final d = DateTime(today.year, today.month, today.day);
-    final x = DateTime(expireAt!.year, expireAt!.month, expireAt!.day);
+    final x =
+    DateTime(expireAt!.year, expireAt!.month, expireAt!.day);
     return x.isBefore(d);
   }
 
   static Gender _normGender(String? g) {
     final s = (g ?? '').toLowerCase().trim();
-    if (RegExp(r'^(f|여|female|woman|girl)').hasMatch(s)) return Gender.female;
-    if (RegExp(r'^(m|남|male|man|boy)').hasMatch(s)) return Gender.male;
+    if (RegExp(r'^(f|여|female|woman|girl)').hasMatch(s)) {
+      return Gender.female;
+    }
+    if (RegExp(r'^(m|남|male|man|boy)').hasMatch(s)) {
+      return Gender.male;
+    }
     return Gender.unknown;
   }
 
@@ -397,7 +458,9 @@ class Member {
     if (v == null) return null;
     if (v is Timestamp) return v.toDate();
     if (v is String && v.isNotEmpty) {
-      try { return DateTime.parse(v); } catch (_) {}
+      try {
+        return DateTime.parse(v);
+      } catch (_) {}
     }
     return null;
   }
@@ -409,16 +472,21 @@ class Member {
       trainer: d['trainer'] as String?,
       grade: (d['level'] as String?) ?? d['grade'] as String?,
       level: d['level'] as String?,
-      remainingSessions: (d['remainingSessions'] as num?)?.toInt() ?? 0,
+      remainingSessions:
+      (d['remainingSessions'] as num?)?.toInt() ?? 0,
       totalSessions: (d['totalSessionsPurchased'] as num?)?.toInt() ??
-          (d['totalSessions'] as num?)?.toInt() ?? 0,
-      firstDate: d['startDate'] != null ? _toDate(d['startDate']) : _toDate(d['createdAt']),
+          (d['totalSessions'] as num?)?.toInt() ??
+          0,
+      firstDate: d['startDate'] != null
+          ? _toDate(d['startDate'])
+          : _toDate(d['createdAt']),
       recentReg: _toDate(d['recentRegistrationAt']) ??
           _toDate(d['lastRegisterAt']) ??
           _toDate(d['lastReenrollAt']) ??
           _toDate(d['lastPurchaseAt']),
       expireAt: _toDate(d['expireAt']),
-      lastLogAt: _toDate(d['lastLogAt']) ?? _toDate(d['lastPurchaseAt']),
+      lastLogAt:
+      _toDate(d['lastLogAt']) ?? _toDate(d['lastPurchaseAt']),
       expiredFlag: (d['expiredFlag'] as bool?) ?? false,
       gender: _normGender(d['gender'] as String?),
     );
@@ -431,13 +499,13 @@ class BinderCard extends StatefulWidget {
   const BinderCard({
     super.key,
     required this.member,
-    required this.onTapOpenDetail,
+    required this.onTapOpen,
     required this.onLongPress,
     this.query = '',
   });
 
   final Member member;
-  final Future<void> Function() onTapOpenDetail; // 두 번째 탭 시 상세 이동
+  final Future<void> Function() onTapOpen; // ← Future 콜백
   final VoidCallback onLongPress;
   final String query;
 
@@ -445,18 +513,17 @@ class BinderCard extends StatefulWidget {
   State<BinderCard> createState() => _BinderCardState();
 }
 
-enum _BinderState { closed, preview }
-
-class _BinderCardState extends State<BinderCard> with SingleTickerProviderStateMixin {
+class _BinderCardState extends State<BinderCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _t; // 0~1
-  _BinderState _state = _BinderState.closed;
-  bool _busy = false;
+  bool _isAnimating = false;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 260));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 280));
     _t = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
   }
 
@@ -467,38 +534,24 @@ class _BinderCardState extends State<BinderCard> with SingleTickerProviderStateM
   }
 
   Future<void> _handleTap() async {
-    if (_busy) return;
-    _busy = true;
+    if (_isAnimating) return;
+    _isAnimating = true;
+    HapticFeedback.selectionClick();
 
-    if (_state == _BinderState.closed) {
-      HapticFeedback.selectionClick();
-      // 1) 미리보기 열림
-      await _ctrl.forward();
-      if (mounted) setState(() => _state = _BinderState.preview);
-      _busy = false;
-      return;
-    }
-
-    // _state == preview → 상세로
     try {
-      HapticFeedback.lightImpact();
-      await widget.onTapOpenDetail(); // pop될 때까지 대기
+      // 1) 열리며 내부 콘텐츠 등장
+      await _ctrl.forward();
+
+      // 2) 상세로 이동 — pop될 때까지 대기
+      if (mounted) {
+        await widget.onTapOpen();
+      }
     } finally {
-      // 상세에서 돌아오면 닫기
+      // 3) 돌아오면 닫힘 모션
       if (mounted) {
         await _ctrl.reverse();
-        setState(() => _state = _BinderState.closed);
       }
-      _busy = false;
-    }
-  }
-
-  Future<void> _closeIfOpen() async {
-    if (_state == _BinderState.preview && !_busy) {
-      _busy = true;
-      await _ctrl.reverse();
-      if (mounted) setState(() => _state = _BinderState.closed);
-      _busy = false;
+      _isAnimating = false;
     }
   }
 
@@ -506,35 +559,46 @@ class _BinderCardState extends State<BinderCard> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final m = widget.member;
 
-    // ▶ 바인더 크기 2/3
-    final baseW = math.min(MediaQuery.sizeOf(context).width * .86, 420.0);
-    final w = baseW * (2 / 3);
-    final hitWidth = w; // 히트영역=보이는 폭 (오동작 방지)
-    final overlap = -(w * 0.50); // 겹침 완화
+    final w = math.min(MediaQuery.sizeOf(context).width * .86, 420.0);
+    final hitWidth = w + 28; // 터치 여유
+    final overlap = -(w * 0.70);
     final baseColor = _genderColor(m.gender);
     final isExpired = m.isExpired;
 
     final gradient = isExpired
-        ? const LinearGradient(colors: [Color(0xFFE6E7EA), Color(0xFFCfd2D6), Color(0xFFA8ACB1)])
+        ? const LinearGradient(colors: [
+      Color(0xFFE6E7EA),
+      Color(0xFFCfd2D6),
+      Color(0xFFA8ACB1)
+    ])
         : (m.gender == Gender.female
-        ? const LinearGradient(colors: [Color(0xFFFFE0EE), Color(0xFFFFC2DA), Color(0xFFFF97BD)])
-        : const LinearGradient(colors: [Color(0xFFD9ECFF), Color(0xFFBFE0FF), Color(0xFF8CC4FF)]));
+        ? const LinearGradient(colors: [
+      Color(0xFFFFE0EE),
+      Color(0xFFFFC2DA),
+      Color(0xFFFF97BD)
+    ])
+        : const LinearGradient(colors: [
+      Color(0xFFD9ECFF),
+      Color(0xFFBFE0FF),
+      Color(0xFF8CC4FF)
+    ]));
 
-    // 책 전체 약간 기울임
+    // 전체 책이 살짝 기울어진 느낌
     final bookTilt = Matrix4.identity()
       ..setEntry(3, 2, 0.0012)
-      ..rotateY(-10 * math.pi / 180)
-      ..translate(0.0, 4.0);
+      ..rotateY(-12 * math.pi / 180)
+      ..translate(0.0, 6.0);
 
-    final coverAngle = Tween(begin: 0.0, end: -110 * math.pi / 180).animate(_t);
+    // 커버 각도: 0 → -115deg (Visual과 통일)
+    final coverAngle =
+    Tween(begin: 0.0, end: -115 * math.pi / 180).animate(_t);
 
     return SizedBox(
       width: hitWidth,
       child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+        behavior: HitTestBehavior.opaque, // 투명 영역도 터치 허용
         onTap: _handleTap,
         onLongPress: widget.onLongPress,
-        onDoubleTap: _closeIfOpen, // 미리보기 상태에서 더블탭으로 닫기
         child: Align(
           alignment: Alignment.centerLeft,
           child: Transform(
@@ -549,8 +613,6 @@ class _BinderCardState extends State<BinderCard> with SingleTickerProviderStateM
                 isExpired: isExpired,
                 member: m,
                 coverAngle: coverAngle,
-                previewProgress: _t,           // 인라인 패널 노출
-                onInlineTap: _handleTap,       // 오버레이 탭도 동일 로직
               ),
             ),
           ),
@@ -568,8 +630,6 @@ class _BinderVisual extends StatelessWidget {
     required this.isExpired,
     required this.member,
     required this.coverAngle,
-    required this.previewProgress,
-    required this.onInlineTap,
   });
 
   final double width;
@@ -578,25 +638,22 @@ class _BinderVisual extends StatelessWidget {
   final bool isExpired;
   final Member member;
   final Animation<double> coverAngle;
-  final Animation<double> previewProgress;
-  final VoidCallback onInlineTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const endAngle = -115 * math.pi / 180; // coverAngle과 동일
 
     return AnimatedBuilder(
-      animation: Listenable.merge([coverAngle, previewProgress]),
+      animation: coverAngle,
       builder: (context, _) {
-        // 내부 콘텐츠 등장(커버 열림에 동기화)
-        final t = previewProgress.value; // 0~1
-        final contentOpacity = Curves.easeOut.transform(t);
-        final contentDx = (1 - contentOpacity) * 14;
-        final contentScale = 0.985 + 0.015 * contentOpacity;
+        // 0(닫힘) → 1(완전 개방)
+        final t = (coverAngle.value / endAngle).clamp(0.0, 1.0).abs();
 
-        // 인라인 미리보기 패널(오버레이)
-        final panelOpacity = Curves.easeOutQuart.transform(t);
-        final panelDy = (1 - panelOpacity) * 10;
+        final contentOpacity =
+        Curves.easeOut.transform(t.clamp(0.0, 1.0));
+        final contentDx = (1 - contentOpacity) * 16;
+        final contentScale = 0.98 + 0.02 * contentOpacity;
 
         return Container(
           width: width,
@@ -607,8 +664,8 @@ class _BinderVisual extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(isExpired ? .25 : .08),
-                blurRadius: isExpired ? 24 : 18,
-                offset: const Offset(0, 7),
+                blurRadius: isExpired ? 28 : 20,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -616,7 +673,7 @@ class _BinderVisual extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // 하이라이트
+              // 유광 하이라이트
               Positioned.fill(
                 child: IgnorePointer(
                   child: DecoratedBox(
@@ -624,7 +681,11 @@ class _BinderVisual extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topRight,
                         end: Alignment.centerLeft,
-                        colors: [Colors.white.withOpacity(.0), Colors.white.withOpacity(.16), Colors.white.withOpacity(.0)],
+                        colors: [
+                          Colors.white.withOpacity(.0),
+                          Colors.white.withOpacity(.16),
+                          Colors.white.withOpacity(.0)
+                        ],
                         stops: const [0.0, 0.3, 0.6],
                       ),
                     ),
@@ -632,66 +693,95 @@ class _BinderVisual extends StatelessWidget {
                 ),
               ),
 
-              // 바인더 등(spine)
+              // 바인더 등(Spine)
               Positioned(
-                left: 6, top: 40,
+                left: 6,
+                top: 46,
                 child: Container(
-                  width: 20, height: 92, alignment: Alignment.center,
+                  width: 22,
+                  height: 100,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                      colors: [spineColor.withOpacity(.55), spineColor.withOpacity(.85)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        spineColor.withOpacity(.55),
+                        spineColor.withOpacity(.85)
+                      ],
                     ),
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
-                    border: Border.all(color: spineColor.withOpacity(.85), width: 2),
+                    borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(10)),
+                    border: Border.all(
+                        color: spineColor.withOpacity(.85), width: 2),
                   ),
                   child: RotatedBox(
                     quarterTurns: 3,
-                    child: Text('${member.name ?? member.id} 고객님',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10),
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      '${member.name ?? member.id} 고객님',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ),
 
-              // 내부 기본 텍스트
+              // 내부 콘텐츠: 커버가 열리면서 등장
               Transform.translate(
-                offset: Offset(32 + contentDx, 0),
+                offset: Offset(36 + contentDx, 0),
                 child: Transform.scale(
                   scale: contentScale,
                   alignment: Alignment.centerLeft,
                   child: Opacity(
                     opacity: contentOpacity,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 10, 10, 10),
+                      padding:
+                      const EdgeInsets.fromLTRB(0, 10, 10, 10),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
                         children: [
                           Text(
                             '${member.name ?? member.id} 고객님',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: isExpired ? Colors.black87 : const Color(0xFF0B1220),
+                              color: isExpired
+                                  ? Colors.black87
+                                  : const Color(0xFF0B1220),
                               fontWeight: FontWeight.w900,
                             ),
                           ),
                           const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(.86),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: theme.colorScheme.outlineVariant),
+                              border: Border.all(
+                                  color: theme
+                                      .colorScheme.outlineVariant),
                             ),
                             child: Row(
                               children: [
-                                Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                                Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                        color: Colors.green,
+                                        shape: BoxShape.circle)),
                                 const SizedBox(width: 6),
                                 Text(
                                   '최근 등록: ${_fmt(member.recentReg) ?? _fmt(member.firstDate) ?? '-'}',
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800),
                                 ),
                               ],
                             ),
@@ -707,65 +797,7 @@ class _BinderVisual extends StatelessWidget {
               Positioned.fill(
                 child: _BinderCover(
                   angle: coverAngle.value,
-                  hingeX: 32,
-                ),
-              ),
-
-              // ===== 인라인 미리보기 패널 (첫 탭 시 떠오름, 두번째 탭으로 상세 이동) =====
-              Positioned(
-                left: 32, right: 10, bottom: 10,
-                child: Opacity(
-                  opacity: panelOpacity,
-                  child: Transform.translate(
-                    offset: Offset(0, panelDy),
-                    child: IgnorePointer(
-                      ignoring: panelOpacity < 0.01,
-                      child: Material(
-                        elevation: 6,
-                        borderRadius: BorderRadius.circular(12),
-                        clipBehavior: Clip.antiAlias,
-                        color: Colors.white.withOpacity(.95),
-                        child: InkWell(
-                          onTap: onInlineTap, // 상위와 동일 동작
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: _genderColor(member.gender).withOpacity(.15),
-                                  child: Icon(
-                                    member.gender == Gender.female ? Icons.female : Icons.male,
-                                    size: 18,
-                                    color: _genderColor(member.gender),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('${member.name ?? member.id}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                                      const SizedBox(height: 2),
-                                      Text('담당: ${member.trainer ?? '-'} · 등급: ${member.level ?? member.grade ?? '-'}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(fontSize: 12, color: Colors.black.withOpacity(.7))),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                const Icon(Icons.arrow_forward_rounded, size: 18),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  hingeX: 36,
                 ),
               ),
             ],
@@ -784,13 +816,18 @@ class _BinderCover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cover = Container(
-      margin: EdgeInsets.only(left: hingeX - 2, right: 8, top: 6, bottom: 6),
+      margin:
+      EdgeInsets.only(left: hingeX - 2, right: 8, top: 6, bottom: 6),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(.55),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.black.withOpacity(.06)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.12), blurRadius: 14, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: Colors.black.withOpacity(.12),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
     );
@@ -801,19 +838,27 @@ class _BinderCover extends StatelessWidget {
       ..rotateY(angle)
       ..translate(-hingeX, 0.0);
 
-    return Transform(transform: m, alignment: Alignment.centerLeft, child: cover);
+    return Transform(
+      transform: m,
+      alignment: Alignment.centerLeft,
+      child: cover,
+    );
   }
 }
 
 /* ─────────────  공용 위젯  ───────────── */
 
-String? _fmt(DateTime? d) => d == null ? null : DateFormat('yyyy-MM-dd').format(d);
+String? _fmt(DateTime? d) =>
+    d == null ? null : DateFormat('yyyy-MM-dd').format(d);
 
 Color _genderColor(Gender g) {
   switch (g) {
-    case Gender.female: return const Color(0xFFFF6FA4);
-    case Gender.male:   return const Color(0xFF2E6DD8);
-    case Gender.unknown:return Colors.teal;
+    case Gender.female:
+      return const Color(0xFFFF6FA4);
+    case Gender.male:
+      return const Color(0xFF2E6DD8);
+    case Gender.unknown:
+      return Colors.teal;
   }
 }
 
@@ -827,7 +872,8 @@ class _InfoRow extends StatelessWidget {
     final c = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: c.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(10),
@@ -835,7 +881,10 @@ class _InfoRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: 80, child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
+          SizedBox(
+              width: 80,
+              child: Text(label,
+                  style: const TextStyle(fontWeight: FontWeight.w700))),
           const SizedBox(width: 8),
           Expanded(child: Text(value)),
         ],
@@ -845,7 +894,10 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _ProgressRing extends StatelessWidget {
-  const _ProgressRing({required this.progress, required this.color, required this.label});
+  const _ProgressRing(
+      {required this.progress,
+        required this.color,
+        required this.label});
   final double progress;
   final Color color;
   final String label;
@@ -859,7 +911,12 @@ class _ProgressRing extends StatelessWidget {
           painter: _RingPainter(progress: progress, color: color),
           child: const SizedBox(width: 66, height: 66),
         ),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center),
+        Text(
+          label,
+          style: const TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w900),
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
@@ -885,12 +942,25 @@ class _RingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = stroke
-      ..shader = SweepGradient(colors: [color, color.withOpacity(.85)]).createShader(rect);
+      ..shader = SweepGradient(
+          colors: [color, color.withOpacity(.85)])
+          .createShader(rect);
 
-    canvas.drawArc(Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke), -math.pi / 2, math.pi * 2, false, bg);
-    canvas.drawArc(Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke), -math.pi / 2, math.pi * 2 * progress, false, fg);
+    canvas.drawArc(
+        Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke),
+        -math.pi / 2,
+        math.pi * 2,
+        false,
+        bg);
+    canvas.drawArc(
+        Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke),
+        -math.pi / 2,
+        math.pi * 2 * progress,
+        false,
+        fg);
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainter old) => old.progress != progress || old.color != color;
+  bool shouldRepaint(covariant _RingPainter old) =>
+      old.progress != progress || old.color != color;
 }
