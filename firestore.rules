@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isStaff() {
+      return request.auth != null &&
+             (request.auth.token.role in ['admin','staff','manager']);
+    }
+
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+
+      // 일반 사용자: 제한된 필드만 수정
+      allow update: if isSignedIn() && !isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name','phone','address','detailAddress','trainer','note','health']);
+
+      // 스태프: 생성/수정 가능 + 세션/멤버쉽 유효성 검사
+      allow create, update: if isStaff() && validSessions() && validMembership() && serverTimestampsOK();
+
+      function validSessions() {
+        let old = resource.data.sessions;
+        let neu = request.resource.data.sessions;
+        return neu == null || (
+          (neu.total is int) && (neu.remain is int) && (neu.done is int) &&
+          (neu.total >= 0) &&
+          (0 <= neu.remain && neu.remain <= neu.total) &&
+          (neu.done == (neu.total - neu.remain))
+        );
+      }
+
+      function validMembership() {
+        let m = request.resource.data.membership;
+        return m == null || (
+          (m.notRegistered is bool) &&
+          (m.termMonths == null || m.termMonths is int) &&
+          (m.customDays == null || m.customDays is int)
+        );
+      }
+
+      function serverTimestampsOK() {
+        // 필요 시 createdAt/updatedAt 검사 추가
+        return true;
+      }
+
+      // 이벤트 로그 (차감 등): 생성만 허용
+      match /events/{eventId} {
+        allow read: if isStaff();
+        allow create: if isStaff();
+        allow update, delete: if false;
+      }
+    }
+  }
+}

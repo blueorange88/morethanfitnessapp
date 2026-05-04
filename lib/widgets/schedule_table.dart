@@ -147,7 +147,8 @@ class _ScheduleTableState extends State<ScheduleTable> {
 
   Future<void> _saveRange() async {
     final sp = await SharedPreferences.getInstance();
-    await sp.setString(_spRangeKey, jsonEncode({'start': _startHour, 'end': _endHour}));
+    await sp.setString(
+        _spRangeKey, jsonEncode({'start': _startHour, 'end': _endHour}));
   }
 
   Future<void> _saveMinuteMap() async {
@@ -167,7 +168,8 @@ class _ScheduleTableState extends State<ScheduleTable> {
     return out;
   }
 
-  String _weekdayLabel(int di) => const ['월', '화', '수', '목', '금', '토', '일'][di - 1];
+  String _weekdayLabel(int di) =>
+      const ['월', '화', '수', '목', '금', '토', '일'][di - 1];
 
   Color _colorFor(String name) {
     if (name.isEmpty) return Colors.transparent;
@@ -244,12 +246,17 @@ class _ScheduleTableState extends State<ScheduleTable> {
               ),
             ]),
             const SizedBox(height: 8),
-            const Text('※ 최소 3시간, 시작 < 종료 (같은 날 기준)', style: TextStyle(fontSize: 12)),
+            const Text('※ 최소 3시간, 시작 < 종료 (같은 날 기준)',
+                style: TextStyle(fontSize: 12)),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('적용')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('적용')),
         ],
       ),
     );
@@ -293,7 +300,8 @@ class _ScheduleTableState extends State<ScheduleTable> {
 
     if (res == null) return;
 
-    final oldTime = '$hh:${(_minuteByHour[hh] ?? 0).toString().padLeft(2, '0')}';
+    final oldTime =
+        '$hh:${(_minuteByHour[hh] ?? 0).toString().padLeft(2, '0')}';
     final newTime = '$hh:${res.toString().padLeft(2, '0')}';
 
     // 시간 문자열 치환
@@ -420,7 +428,8 @@ class _ScheduleTableState extends State<ScheduleTable> {
                       readOnly: true,
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('회원 검색/선택 기능은 추가 예정입니다.')),
+                          const SnackBar(
+                              content: Text('회원 검색/선택 기능은 추가 예정입니다.')),
                         );
                       },
                       decoration: const InputDecoration(
@@ -436,11 +445,13 @@ class _ScheduleTableState extends State<ScheduleTable> {
               actions: [
                 if (prev != null)
                   OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx, const _EditResult.delete()),
+                    onPressed: () =>
+                        Navigator.pop(ctx, const _EditResult.delete()),
                     child: const Text('삭제'),
                   ),
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx, const _EditResult.cancel()),
+                  onPressed: () =>
+                      Navigator.pop(ctx, const _EditResult.cancel()),
                   child: const Text('취소'),
                 ),
                 FilledButton(
@@ -498,11 +509,10 @@ class _ScheduleTableState extends State<ScheduleTable> {
         final key = '$d|$time';
         final existed = _cells[key];
 
-        final isOverwrite = existed != null && (
-            existed.name != data.name ||
+        final isOverwrite = existed != null &&
+            (existed.name != data.name ||
                 existed.enrolled != data.enrolled ||
-                existed.cap != data.cap
-        );
+                existed.cap != data.cap);
 
         final logicalError = (data.cap > 0 && data.enrolled > data.cap);
 
@@ -525,7 +535,8 @@ class _ScheduleTableState extends State<ScheduleTable> {
 
     if (newlyConflicted.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('일부 칸이 충돌 상태입니다(빨간 테두리). 확인해주세요.')),
+        const SnackBar(
+            content: Text('일부 칸이 충돌 상태입니다(빨간 테두리). 확인해주세요.')),
       );
     }
 
@@ -557,7 +568,9 @@ class _ScheduleTableState extends State<ScheduleTable> {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('소진 처리 예정: ${_weekdayLabel(di)} $time$who')),
+                    SnackBar(
+                        content: Text(
+                            '소진 처리 예정: ${_weekdayLabel(di)} $time$who')),
                   );
                 },
               ),
@@ -567,7 +580,9 @@ class _ScheduleTableState extends State<ScheduleTable> {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('소진 취소 예정: ${_weekdayLabel(di)} $time$who')),
+                    SnackBar(
+                        content: Text(
+                            '소진 취소 예정: ${_weekdayLabel(di)} $time$who')),
                   );
                 },
               ),
@@ -577,7 +592,9 @@ class _ScheduleTableState extends State<ScheduleTable> {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('노쇼 차감 예정: ${_weekdayLabel(di)} $time$who')),
+                    SnackBar(
+                        content: Text(
+                            '노쇼 차감 예정: ${_weekdayLabel(di)} $time$who')),
                   );
                 },
               ),
@@ -609,24 +626,33 @@ class _ScheduleTableState extends State<ScheduleTable> {
                   onTap: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('프로필 열기(추가 예정): ${data!.name}')),
+                      SnackBar(
+                          content:
+                          Text('프로필 열기(추가 예정): ${data!.name}')),
                     );
                   },
                 ),
               const Divider(height: 8),
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                title: const Text('삭제', style: TextStyle(color: Colors.redAccent)),
+                leading: const Icon(Icons.delete_outline,
+                    color: Colors.redAccent),
+                title: const Text('삭제',
+                    style: TextStyle(color: Colors.redAccent)),
                 onTap: () async {
                   Navigator.pop(context);
                   final ok = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: const Text('삭제 확인'),
-                      content: Text('${_weekdayLabel(di)} $time 스케줄을 삭제할까요?$who'),
+                      content: Text(
+                          '${_weekdayLabel(di)} $time 스케줄을 삭제할까요?$who'),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('삭제')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('취소')),
+                        FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('삭제')),
                       ],
                     ),
                   );
@@ -688,22 +714,32 @@ class _ScheduleTableState extends State<ScheduleTable> {
                     final availableH = c.maxHeight;
                     final colW = totalW / 8.0;
                     final rows = hours.length;
-                    final rowH = rows == 0 ? 0.0 : (availableH - headerH) / rows;
+                    final rowH =
+                    rows == 0 ? 0.0 : (availableH - headerH) / rows;
 
                     return Table(
                       border: TableBorder.all(color: gridColor, width: 1),
-                      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                      columnWidths: { for (int i = 0; i < 8; i++) i: FixedColumnWidth(colW) },
+                      defaultVerticalAlignment:
+                      TableCellVerticalAlignment.middle,
+                      columnWidths: {
+                        for (int i = 0; i < 8; i++)
+                          i: FixedColumnWidth(colW)
+                      },
                       children: [
                         // 헤더
                         TableRow(
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
                           ),
                           children: [
-                            _th('시간', height: headerH, onTap: _openRangeDialog),
+                            _th('시간',
+                                height: headerH, onTap: _openRangeDialog),
                             for (int di = 1; di <= 7; di++)
-                              _th(_weekdayLabel(di), height: headerH, highlight: _isTodayColumn(di)),
+                              _th(_weekdayLabel(di),
+                                  height: headerH,
+                                  highlight: _isTodayColumn(di)),
                           ],
                         ),
                         // 데이터
@@ -711,7 +747,8 @@ class _ScheduleTableState extends State<ScheduleTable> {
                           TableRow(
                             children: [
                               _tdTime(t, rowH),
-                              for (int di = 1; di <= 7; di++) _buildCell(t, di, rowH),
+                              for (int di = 1; di <= 7; di++)
+                                _buildCell(t, di, rowH),
                             ],
                           ),
                       ],
@@ -726,7 +763,10 @@ class _ScheduleTableState extends State<ScheduleTable> {
     );
   }
 
-  Widget _th(String text, {bool highlight = false, double height = 36, VoidCallback? onTap}) {
+  Widget _th(String text,
+      {bool highlight = false,
+        double height = 36,
+        VoidCallback? onTap}) {
     final style = TextStyle(
       fontWeight: FontWeight.w700,
       color: highlight ? Theme.of(context).colorScheme.primary : null,
@@ -775,44 +815,26 @@ class _ScheduleTableState extends State<ScheduleTable> {
 
     final isConflict = _conflicts.contains(key);
 
-    final content = has
-        ? Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          data!.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        if (data.cap > 0)
-          Text(
-            '${data.enrolled}/${data.cap}',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-      ],
-    )
-        : const SizedBox.shrink();
-
     return InkWell(
       onTap: () => _openCellEditor(time, di),
-      onLongPress: () => _openQuickActions(time, di, data), // 롱프레스 퀵액션
+      onLongPress: () => _openQuickActions(time, di, data),
       child: Stack(
         children: [
+          // 셀 전체 영역
           Container(
             height: height,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            decoration: BoxDecoration(
-              color: bg == Colors.transparent ? null : bg,
-              border: isConflict ? Border.all(color: Colors.redAccent, width: 2) : null,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: content,
+            child: has
+                ? _LessonChip(
+              cell: data!,
+              color: bg,
+              isConflict: isConflict,
+              maxHeight: height - 4, // 셀보다 조금 작게
+            )
+                : const SizedBox.shrink(),
           ),
+          // 현재시간 라인
           if (showLine)
             Positioned(
               top: lineTop.clamp(1.0, height - 2.0),
@@ -824,6 +846,73 @@ class _ScheduleTableState extends State<ScheduleTable> {
               ),
             ),
         ],
+      ),
+    );
+  }
+} // ← 여기까지가 _ScheduleTableState 클래스
+
+/// 레슨 칩(버튼) 위젯
+class _LessonChip extends StatelessWidget {
+  final ScheduleCellData cell;
+  final Color color;
+  final bool isConflict;
+  final double maxHeight;
+
+  const _LessonChip({
+    required this.cell,
+    required this.color,
+    required this.isConflict,
+    required this.maxHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 셀 높이에 맞춰서 18~26px 사이로 자동 조절
+    final num clamped = maxHeight.clamp(18.0, 26.0);
+    final double chipHeight = clamped.toDouble();
+
+    return SizedBox(
+      height: chipHeight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(8),
+          border: isConflict
+              ? Border.all(color: Colors.redAccent, width: 2)
+              : null,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                cell.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                  height: 1.1,
+                ),
+              ),
+              if (cell.cap > 0) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '${cell.enrolled}/${cell.cap}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

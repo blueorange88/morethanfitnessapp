@@ -1,0 +1,1462 @@
+// lib/pages/personal_training_log_page.dart
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui show ImageByteFormat;
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:ui' show Offset;
+
+/* ===== Firebase ===== */
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fa;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:mtf_app/firebase_options.dart';
+
+/* ───────── 설정 ───────── */
+const bool kAutoDecrementOnNoshow = true;
+
+/* ==============================
+ * 데이터 모델
+ * ============================ */
+class SigCell {
+  final String type; // '' | 'typed' | 'drawn'
+  final String value;
+  const SigCell({required this.type, required this.value});
+  factory SigCell.empty() => const SigCell(type: '', value: '');
+  Map<String, dynamic> toJson() => {'type': type, 'value': value};
+  factory SigCell.fromJson(Map<String, dynamic> j) =>
+      SigCell(type: (j['type'] ?? '') as String, value: (j['value'] ?? '') as String);
+  bool get isSigned => type.isNotEmpty && value.isNotEmpty;
+}
+
+extension SigCellCopy on SigCell {
+  SigCell copyWith({String? type, String? value}) =>
+      SigCell(type: type ?? this.type, value: value ?? this.value);
+}
+
+class LogRow {
+  final int n;
+  String date; // YYYY-MM-DD
+  String time; // HH:MM
+  String note;
+  SigCell trainer;
+  SigCell customer;
+  bool locked;
+  String? noShowType; // 'deduct' | 'undeduct' | null
+
+  LogRow({
+    required this.n,
+    this.date = '',
+    this.time = '08:00',
+    this.note = '',
+    SigCell? trainer,
+    SigCell? customer,
+    this.locked = false,
+    this.noShowType,
+  })  : trainer = trainer ?? SigCell.empty(),
+        customer = customer ?? SigCell.empty();
+
+  Map<String, dynamic> toJson() => {
+    'n': n,
+    'date': date,
+    'time': time,
+    'note': note,
+    'trainer': trainer.toJson(),
+    'customer': customer.toJson(),
+    'locked': locked,
+    'nsType': noShowType ?? '',
+  };
+
+  factory LogRow.fromJson(Map<String, dynamic> j) => LogRow(
+    n: (j['n'] as num).toInt(),
+    date: (j['date'] ?? '') as String,
+    time: (j['time'] ?? '08:00') as String,
+    note: (j['note'] ?? '') as String,
+    trainer: SigCell.fromJson((j['trainer'] as Map?)?.cast<String, dynamic>() ?? const {}),
+    customer: SigCell.fromJson((j['customer'] as Map?)?.cast<String, dynamic>() ?? const {}),
+    locked: j['locked'] == true,
+    noShowType: (() {
+      final s = (j['nsType'] ?? '') as String;
+      return s.isEmpty ? null : s;
+    })(),
+  );
+}
+
+class Consent {
+  Consent();
+  bool risk = false;
+  bool privacy = false;
+  bool photo = false;
+  bool policy = false;
+  SigCell trainer = SigCell.empty();
+  SigCell customer = SigCell.empty();
+  String date = '';
+  String time = '09:00';
+  bool locked = false;
+
+  Map<String, dynamic> toJson() => {
+    'checks': {'risk': risk, 'privacy': privacy, 'photo': photo, 'policy': policy},
+    'trainer': trainer.toJson(),
+    'customer': customer.toJson(),
+    'date': date,
+    'time': time,
+    'locked': locked,
+  };
+
+  factory Consent.fromJson(Map<String, dynamic> j) {
+    final c = Consent();
+    final checks = (j['checks'] as Map?)?.cast<String, dynamic>() ?? const {};
+    c
+      ..risk = checks['risk'] == true
+      ..privacy = checks['privacy'] == true
+      ..photo = checks['photo'] == true
+      ..policy = checks['policy'] == true
+      ..trainer = SigCell.fromJson((j['trainer'] as Map?)?.cast<String, dynamic>() ?? const {})
+      ..customer = SigCell.fromJson((j['customer'] as Map?)?.cast<String, dynamic>() ?? const {})
+      ..date = (j['date'] ?? '') as String
+      ..time = (j['time'] ?? '09:00') as String
+      ..locked = j['locked'] == true;
+    return c;
+  }
+}
+
+class PageData {
+  PageData();
+  String name = '';
+  String birth = '';
+  String phone = '';
+  String lesson = '';
+  String trainer = '';
+  String start = '';
+  String page = '1';
+  List<LogRow> rows = List.generate(30, (i) => LogRow(n: i + 1));
+  Consent consent = Consent();
+
+  Map<String, dynamic> toJson() => {
+    'meta': {
+      'name': name,
+      'birth': birth,
+      'phone': phone,
+      'lesson': lesson,
+      'trainer': trainer,
+      'start': start,
+      'page': page,
+    },
+    'rows': rows.map((e) => e.toJson()).toList(),
+    'consent': consent.toJson(),
+  };
+
+  factory PageData.fromJson(Map<String, dynamic> j) {
+    final p = PageData();
+    final m = (j['meta'] as Map?)?.cast<String, dynamic>() ?? const {};
+    p
+      ..name = (m['name'] ?? '') as String
+      ..birth = (m['birth'] ?? '') as String
+      ..phone = (m['phone'] ?? '') as String
+      ..lesson = (m['lesson'] ?? '') as String
+      ..trainer = (m['trainer'] ?? '') as String
+      ..start = (m['start'] ?? '') as String
+      ..page = (m['page']?.toString() ?? '1');
+
+    final rowsJson = (j['rows'] as List?)?.cast<Map>() ?? const [];
+    if (rowsJson.isNotEmpty) {
+      p.rows = rowsJson.map((e) => LogRow.fromJson(e.cast<String, dynamic>())).toList();
+      if (p.rows.length < 30) {
+        final base = p.rows.length;
+        p.rows.addAll(List.generate(30 - base, (i) => LogRow(n: base + i + 1)));
+      }
+    }
+    if (j['consent'] != null) {
+      p.consent = Consent.fromJson((j['consent'] as Map).cast<String, dynamic>());
+    }
+    return p;
+  }
+}
+
+/* ==============================
+ * 페이지
+ * ============================ */
+class TrainingLogConsentPage extends StatefulWidget {
+  const TrainingLogConsentPage({
+    super.key,
+    this.memberId,
+    this.memberName,
+    this.trainerName,
+    this.memberPhone,
+  });
+
+  final String? memberId;
+  final String? memberName;
+  final String? trainerName;
+  final String? memberPhone;
+
+  @override
+  State<TrainingLogConsentPage> createState() => _TrainingLogConsentPageState();
+}
+
+class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
+  static const resetPin = '0000';
+  static const storePrefix = 'mtf_pt_log_v6';
+
+  final _name = TextEditingController();
+  final _birth = TextEditingController();
+  final _phone = TextEditingController();
+  final _lesson = TextEditingController();
+  final _trainer = TextEditingController();
+  final _start = TextEditingController();
+  final _page = TextEditingController(text: '1');
+
+  final _consentDateC = TextEditingController();
+  final _consentTimeC = TextEditingController();
+
+  final Map<int, TextEditingController> _dateCtrls = {};
+  final Map<int, TextEditingController> _timeCtrls = {};
+
+  /* Firebase */
+  StreamSubscription<fa.User?>? _authSub;
+  bool _firebaseReady = false;
+
+  TextEditingController _ctrlFor(Map<int, TextEditingController> map, int key, String init) {
+    return map.putIfAbsent(key, () => TextEditingController(text: init));
+  }
+
+  String get _storeKey {
+    final idPart = (widget.memberId ?? _digits(_phone.text));
+    final page = _page.text.isEmpty ? '1' : _page.text;
+    return '$storePrefix::${idPart.isEmpty ? 'anon' : idPart}::p$page';
+  }
+
+  DocumentReference<Map<String, dynamic>>? get _cloudDoc {
+    final id = widget.memberId;
+    if (id == null || id.isEmpty) return null;
+    final page = _page.text.isEmpty ? '1' : _page.text;
+    return FirebaseFirestore.instance
+        .collection('members')
+        .doc(id)
+        .collection('training_logs')
+        .doc('p$page');
+  }
+
+  PageData data = PageData();
+
+  String lastTrainerTyped = '';
+  String lastCustomerTyped = '';
+
+  @override
+  void initState() {
+    super.initState();
+    if ((widget.memberName ?? '').isNotEmpty) _name.text = widget.memberName!;
+    if ((widget.trainerName ?? '').isNotEmpty) _trainer.text = widget.trainerName!;
+    if ((widget.memberPhone ?? '').isNotEmpty) _phone.text = _formatPhone(widget.memberPhone!);
+
+    for (final c in [_name, _birth, _phone, _lesson, _trainer, _start, _page]) {
+      c.addListener(_autoSave);
+    }
+    _consentDateC.addListener(() {
+      data.consent.date = _consentDateC.text;
+      _autoSave();
+    });
+    _consentTimeC.addListener(() {
+      data.consent.time = _consentTimeC.text;
+      _autoSave();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _ensureFirebaseAndAuth();
+      await _loadFromLocal();
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    for (final c in [_name, _birth, _phone, _lesson, _trainer, _start, _page]) {
+      c.dispose();
+    }
+    _consentDateC.dispose();
+    _consentTimeC.dispose();
+    super.dispose();
+  }
+
+  /* Firebase Init/Auth */
+  Future<void> _ensureFirebaseAndAuth() async {
+    try {
+      try {
+        Firebase.app();
+      } catch (_) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
+      final auth = fa.FirebaseAuth.instance;
+      _authSub = auth.authStateChanges().listen((u) async {
+        if (u == null) {
+          try {
+            await auth.signInAnonymously();
+          } catch (e) {
+            if (!mounted) return;
+            _toast(context, '익명 로그인 실패: $e');
+          }
+        }
+        if (!mounted) return;
+        setState(() => _firebaseReady = true);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _toast(context, 'Firebase 초기화 실패: $e');
+    }
+  }
+
+  /* 저장/복원 */
+  Future<void> _autoSave() async {
+    data
+      ..name = _name.text
+      ..birth = _formatBirth(_birth.text)
+      ..phone = _formatPhone(_phone.text)
+      ..lesson = _lesson.text
+      ..trainer = _trainer.text
+      ..start = _start.text
+      ..page = _page.text.isEmpty ? '1' : _page.text;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_storeKey, jsonEncode(data.toJson()));
+  }
+
+  Future<void> _loadFromLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? raw = prefs.getString(_storeKey);
+    raw ??= prefs.getString(storePrefix); // 구버전 호환
+
+    if (raw != null) {
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      data = PageData.fromJson(j);
+      _applyMetaToControllers();
+      _syncConsentControllers();
+      setState(() {});
+    } else {
+      if (data.consent.date.isEmpty) data.consent.date = _todayIso();
+      _syncConsentControllers();
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadFromCloud() async {
+    if (!_firebaseReady || _cloudDoc == null) {
+      _toast(context, '클라우드 준비 중이거나 회원ID가 없습니다');
+      return;
+    }
+    try {
+      final snap = await _cloudDoc!.get();
+      if (!snap.exists) {
+        _toast(context, '클라우드에 저장된 내용이 없습니다');
+        return;
+      }
+      final j = snap.data()!;
+      final payload = (j['data'] is Map) ? (j['data'] as Map).cast<String, dynamic>() : j;
+      data = PageData.fromJson(payload);
+      _applyMetaToControllers();
+      _syncConsentControllers();
+      await _autoSave();
+      if (mounted) setState(() {});
+      _toast(context, '클라우드에서 불러왔습니다');
+    } catch (e) {
+      _toast(context, '클라우드 불러오기 실패: $e');
+    }
+  }
+
+  Future<void> _saveToCloud() async {
+    if (!_firebaseReady || _cloudDoc == null) {
+      _toast(context, '클라우드 준비 중이거나 회원ID가 없습니다');
+      return;
+    }
+    try {
+      final db = FirebaseFirestore.instance;
+      final now = FieldValue.serverTimestamp();
+      final docRef = _cloudDoc!;
+      final membersRef = db.collection('members').doc(widget.memberId);
+      final cardRef = membersRef.collection('client_card').doc('v1');
+
+      final batch = db.batch();
+      batch.set(
+        docRef,
+        {
+          'data': data.toJson(),
+          'memberId': widget.memberId,
+          'page': data.page,
+          'updatedAt': now,
+        },
+        SetOptions(merge: true),
+      );
+      batch.set(membersRef, {'lastLogAt': now}, SetOptions(merge: true));
+      batch.set(cardRef, {'lastLogAt': now}, SetOptions(merge: true));
+
+      await batch.commit();
+      _toast(context, '클라우드 저장 완료');
+    } catch (e) {
+      _toast(context, '클라우드 저장 실패: $e');
+    }
+  }
+
+  Future<void> _applyNoshowDeductToSessions() async {
+    if (!kAutoDecrementOnNoshow || !_firebaseReady || widget.memberId == null) return;
+    try {
+      final db = FirebaseFirestore.instance;
+      final ref = db.collection('members').doc(widget.memberId);
+      final cardRef = ref.collection('client_card').doc('v1');
+      await db.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        final d = snap.data() as Map<String, dynamic>? ?? {};
+        final sessions = (d['sessions'] as Map<String, dynamic>?) ?? {};
+        final remain = (sessions['remain'] as num?)?.toInt() ?? 0;
+        final total = (sessions['total'] as num?)?.toInt() ?? 0;
+        final newRemain = (remain - 1) < 0 ? 0 : (remain - 1);
+
+        tx.set(
+          ref,
+          {
+            'sessions': {
+              'total': total,
+              'remain': newRemain,
+              'done': (total - newRemain).clamp(0, total),
+              'notRegistered': false,
+            }
+          },
+          SetOptions(merge: true),
+        );
+        tx.set(
+          cardRef,
+          {
+            'sessions': {
+              'total': total,
+              'remain': newRemain,
+              'done': (total - newRemain).clamp(0, total),
+            },
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      });
+    } catch (_) {}
+  }
+
+  void _applyMetaToControllers() {
+    _name.text = data.name;
+    _birth.text = data.birth;
+    _phone.text = data.phone;
+    _lesson.text = data.lesson;
+    _trainer.text = data.trainer;
+    _start.text = data.start;
+    _page.text = data.page.isEmpty ? '1' : data.page;
+  }
+
+  void _syncConsentControllers() {
+    _consentDateC.text = data.consent.date;
+    _consentTimeC.text = data.consent.time;
+  }
+
+  /* 유틸 */
+  String _digits(String s) => s.replaceAll(RegExp(r'\D'), '');
+  String _todayIso() {
+    final now = DateTime.now();
+    final d = DateTime(now.year, now.month, now.day);
+    return d.toIso8601String().substring(0, 10);
+  }
+
+  String _formatPhone(String raw) {
+    final v = _digits(raw);
+    if (v.length <= 3) return v;
+    if (v.length <= 7) return '${v.substring(0, 3)}-${v.substring(3)}';
+    return '${v.substring(0, 3)}-${v.substring(3, 7)}-${v.substring(7, math.min(11, v.length))}';
+  }
+
+  String _formatBirth(String raw) {
+    final only = _digits(raw);
+    final v = only.substring(0, math.min(8, only.length));
+    if (v.length <= 4) return v;
+    if (v.length <= 6) return '${v.substring(0, 4)}-${v.substring(4)}';
+    return '${v.substring(0, 4)}-${v.substring(4, 6)}-${v.substring(6, 8)}';
+  }
+
+  void _toast(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(milliseconds: 1400)),
+    );
+  }
+
+  /* 서명/노쇼 */
+  Future<void> _openSignatureSheet({
+    required BuildContext context,
+    required String role, // 'trainer' | 'customer'
+    required void Function(SigCell) onApply,
+    SigCell? initial,
+    bool isConsent = false,
+  }) async {
+    final typedController =
+    TextEditingController(text: role == 'trainer' ? lastTrainerTyped : lastCustomerTyped);
+
+    final result = await showModalBottomSheet<SigCell>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => SignatureSheet(
+        title: '${isConsent ? "사인지 - " : ""}${role == "trainer" ? "트레이너" : "고객"} 서명',
+        initial: initial,
+        typedController: typedController,
+      ),
+    );
+
+    if (result != null) {
+      if (result.type == 'typed') {
+        if (role == 'trainer') {
+          lastTrainerTyped = result.value;
+        } else {
+          lastCustomerTyped = result.value;
+        }
+      }
+      onApply(result);
+      await _autoSave();
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _openNoShowSheet(LogRow row) async {
+    final res = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('노쇼 / 기타')),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.remove_circle_outline),
+              title: const Text('노쇼(차감) 처리'),
+              onTap: () => Navigator.pop(context, 'deduct'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.do_not_disturb_on_outlined),
+              title: const Text('노쇼(미차감) 처리'),
+              onTap: () => Navigator.pop(context, 'undeduct'),
+            ),
+            if (row.noShowType != null)
+              ListTile(
+                leading: const Icon(Icons.lock_open),
+                title: const Text('노쇼 취소 (PIN)'),
+                onTap: () => Navigator.pop(context, 'cancel'),
+              ),
+            const SizedBox(height: 6),
+          ],
+        ),
+      ),
+    );
+
+    if (res == null) return;
+
+    if (res == 'cancel') {
+      final pin = await _askPin();
+      if (pin != resetPin) {
+        _toast(context, 'PIN이 올바르지 않습니다');
+        return;
+      }
+      row.noShowType = null;
+      final bothSigned = row.trainer.isSigned && row.customer.isSigned;
+      row.locked = bothSigned;
+      _toast(context, '노쇼 취소 완료');
+    } else {
+      row.noShowType = res; // deduct | undeduct
+      row.locked = true;
+      if (res == 'deduct') {
+        await _applyNoshowDeductToSessions();
+      }
+      _toast(context, '노쇼 처리 완료');
+    }
+    await _autoSave();
+    if (mounted) setState(() {});
+  }
+
+  Future<String?> _askPin() async {
+    final c = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('PIN 입력'),
+        content: TextField(
+          controller: c,
+          obscureText: true,
+          decoration: const InputDecoration(hintText: '기본 0000'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, c.text), child: const Text('확인')),
+        ],
+      ),
+    );
+  }
+
+  /* 위젯 */
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]);
+
+    return WillPopScope(
+      onWillPop: () async {
+        // 뒤로가기 시 포커스 해제 + 안전 종료
+        FocusScope.of(context).unfocus();
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('개인 / 트레이닝 일지 (통합)'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.maybePop(context),
+          ),
+          actions: [
+            IconButton(
+              tooltip: '클라우드 불러오기',
+              icon: const Icon(Icons.cloud_download_outlined),
+              onPressed: _loadFromCloud,
+            ),
+            IconButton(
+              tooltip: '클라우드 저장',
+              icon: const Icon(Icons.cloud_upload_outlined),
+              onPressed: _saveToCloud,
+            ),
+            IconButton(
+              tooltip: '전체 초기화',
+              icon: const Icon(Icons.restart_alt),
+              onPressed: () async {
+                final pin = await _askPin();
+                if (pin != resetPin) {
+                  _toast(context, '비밀번호가 일치하지 않습니다');
+                  return;
+                }
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('전체 초기화'),
+                    content: const Text('모든 내용을 초기화할까요? (되돌릴 수 없음)'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+                      ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('초기화')),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+
+                final prefs = await SharedPreferences.getInstance();
+                final keys =
+                prefs.getKeys().where((k) => k == storePrefix || k.startsWith('$storePrefix::')).toList();
+                for (final k in keys) {
+                  await prefs.remove(k);
+                }
+                data = PageData();
+                _name.clear();
+                _birth.clear();
+                _phone.clear();
+                _lesson.clear();
+                _trainer.clear();
+                _start.clear();
+                _page.text = '1';
+                _syncConsentControllers();
+                if (mounted) setState(() {});
+                _autoSave();
+                _toast(context, '초기화 완료');
+              },
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _metaSection(muted),
+              const SizedBox(height: 8),
+              Expanded(child: _tableSection()),
+              const SizedBox(height: 8),
+              _consentSection(),
+              const SizedBox(height: 8),
+              _footerButtons(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _metaSection(TextStyle? muted) {
+    InputDecoration deco(String label) => InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      isDense: true,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            runSpacing: 8,
+            spacing: 8,
+            children: [
+              _w(260, TextField(controller: _name, decoration: deco('이름'))),
+              _w(
+                160,
+                TextField(
+                  controller: _birth,
+                  decoration: deco('생년월일 (YYYY-MM-DD)'),
+                  keyboardType: TextInputType.number,
+                  onChanged: (s) => setState(() => _birth.text = _formatBirth(s)),
+                ),
+              ),
+              _w(
+                200,
+                TextField(
+                  controller: _phone,
+                  decoration: deco('연락처'),
+                  keyboardType: TextInputType.phone,
+                  onChanged: (s) => setState(() => _phone.text = _formatPhone(s)),
+                ),
+              ),
+              _w(180, TextField(controller: _lesson, decoration: deco('레슨종류'))),
+              _w(160, TextField(controller: _trainer, decoration: deco('담당자'))),
+              _w(
+                160,
+                TextField(
+                    controller: _start,
+                    decoration: deco('시작일 (YYYY-MM-DD)'),
+                    keyboardType: TextInputType.datetime),
+              ),
+              _w(
+                100,
+                TextField(
+                  controller: _page,
+                  decoration: deco('페이지'),
+                  keyboardType: TextInputType.number,
+                  onSubmitted: (_) async => _loadFromLocal(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('* 서명 후 수정 불가', style: muted?.copyWith(color: Colors.red[700], fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _tableSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Scrollbar(
+          child: ListView.separated(
+            padding: const EdgeInsets.only(bottom: 8),
+            itemCount: data.rows.length + 1,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              if (index == 0) return _tableHeader(context);
+              final row = data.rows[index - 1];
+              return _tableRow(context, row);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tableHeader(BuildContext context) {
+    final head = (String s, {double? w, TextAlign? align}) => Container(
+      height: 44,
+      color: Colors.grey.shade100,
+      width: w,
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Text(
+          s,
+          textAlign: align ?? TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+
+    return Container(
+      height: 44,
+      color: Colors.grey.shade100,
+      child: Row(
+        children: [
+          head('No', w: 52),
+          head('레슨일자', w: 120),
+          head('시간', w: 110),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+              child: Row(
+                children: const [
+                  Text('Teaching Point & Check List', style: TextStyle(fontWeight: FontWeight.w700)),
+                  Spacer(),
+                ],
+              ),
+            ),
+          ),
+          head('트레이너 서명', w: 124),
+          head('고객 서명', w: 124),
+        ],
+      ),
+    );
+  }
+
+  Widget _tableRow(BuildContext context, LogRow row) {
+    final isNoshow = row.noShowType != null;
+    final bg = isNoshow ? const Color(0xFFFFF2F2) : (row.locked ? const Color(0xFFFFF3E0) : null);
+
+    final dateC = _ctrlFor(_dateCtrls, row.n, row.date);
+    final timeC = _ctrlFor(_timeCtrls, row.n, row.time);
+
+    final rowWidget = Container(
+      color: bg,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cell(context, '${row.n}', w: 52, align: TextAlign.center),
+          _cell(
+            context,
+            null,
+            w: 120,
+            child: _dateFieldCtrl(
+              controller: dateC,
+              enabled: !row.locked,
+              onChanged: (v) {
+                row.date = v;
+                dateC.value = dateC.value.copyWith(text: v, selection: TextSelection.collapsed(offset: v.length));
+                _autoSave();
+              },
+            ),
+          ),
+          _cell(
+            context,
+            null,
+            w: 110,
+            child: _timeFieldCtrl(
+              controller: timeC,
+              enabled: !row.locked,
+              onChanged: (v) {
+                row.time = v;
+                timeC.value = timeC.value.copyWith(text: v, selection: TextSelection.collapsed(offset: v.length));
+                _autoSave();
+              },
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: TextFormField(
+                initialValue: row.note,
+                enabled: !row.locked,
+                maxLines: null,
+                decoration: _inputDeco('운동내용 / Teaching points'),
+                onChanged: (v) {
+                  row.note = v;
+                  _autoSave();
+                },
+              ),
+            ),
+          ),
+          _cell(
+            context,
+            null,
+            w: 124,
+            child: _signatureCell(
+              cell: row.trainer,
+              role: 'trainer',
+              locked: row.locked,
+              onTap: () async {
+                if (row.locked) return;
+                await _openSignatureSheet(
+                  context: context,
+                  role: 'trainer',
+                  initial: row.trainer,
+                  onApply: (sig) {
+                    row.trainer = sig;
+                    if (row.trainer.isSigned && row.customer.isSigned) row.locked = true;
+                  },
+                );
+              },
+            ),
+          ),
+          _cell(
+            context,
+            null,
+            w: 124,
+            child: GestureDetector(
+              onLongPress: () => _openNoShowSheet(row),
+              child: _signatureCell(
+                cell: row.customer,
+                role: 'customer',
+                locked: row.locked,
+                onTap: () async {
+                  if (row.locked) return;
+                  await _openSignatureSheet(
+                    context: context,
+                    role: 'customer',
+                    initial: row.customer,
+                    onApply: (sig) {
+                      row.customer = sig;
+                      if (row.trainer.isSigned && row.customer.isSigned) row.locked = true;
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (row.n == 10 || row.n == 20) {
+      return Column(children: [rowWidget, Container(height: 2, color: Colors.orange)]);
+    }
+    return rowWidget;
+  }
+
+  // 동의서
+  Widget _consentSection() {
+    final c = data.consent;
+    final locked = c.locked;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: locked ? const Color(0xFFF9FAFB) : Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: const [
+                Text('사인지 / 동의 항목', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Spacer(),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // ── 여기서부터 레이아웃 분기 ──
+            LayoutBuilder(
+              builder: (context, bc) {
+                final twoCols = bc.maxWidth > 900;
+
+                // 왼쪽(체크박스)
+                Widget leftPane = SizedBox(
+                  width: twoCols ? bc.maxWidth * 0.45 : bc.maxWidth,
+                  child: Column(
+                    children: [
+                      _consentCheck(
+                        value: c.risk,
+                        enabled: !locked,
+                        text: '운동 중 발생할 수 있는 위험과 건강상태에 대해 충분히 설명·고지 받았음',
+                        onChanged: (v) { c.risk = v; _autoSave(); setState(() {}); },
+                      ),
+                      _consentCheck(
+                        value: c.privacy,
+                        enabled: !locked,
+                        text: '개인정보 수집·이용(서비스 제공 목적)에 동의함',
+                        onChanged: (v) { c.privacy = v; _autoSave(); setState(() {}); },
+                      ),
+                      _consentCheck(
+                        value: c.photo,
+                        enabled: !locked,
+                        text: '(선택) 운동기록 목적의 사진/영상 촬영 및 내부 활용에 동의함',
+                        onChanged: (v) { c.photo = v; _autoSave(); setState(() {}); },
+                      ),
+                      _consentCheck(
+                        value: c.policy,
+                        enabled: !locked,
+                        text: '지각/노쇼/환불 등 스튜디오 정책을 안내받고 확인함',
+                        onChanged: (v) { c.policy = v; _autoSave(); setState(() {}); },
+                      ),
+                    ],
+                  ),
+                );
+
+                // 오른쪽(서명/날짜/버튼)
+                Widget rightPane = Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _consentSignRow(
+                        title: '트레이너 서명',
+                        view: _sigView(c.trainer),
+                        buttonText: '서명하기',
+                        onPressed: locked ? null : () => _openSignatureSheet(
+                          context: context,
+                          role: 'trainer',
+                          initial: c.trainer,
+                          isConsent: true,
+                          onApply: (sig) async { c.trainer = sig; await _autoSave(); setState(() {}); },
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _consentSignRow(
+                        title: '고객 서명',
+                        view: _sigView(c.customer),
+                        buttonText: '서명하기',
+                        onPressed: locked ? null : () => _openSignatureSheet(
+                          context: context,
+                          role: 'customer',
+                          initial: c.customer,
+                          isConsent: true,
+                          onApply: (sig) async { c.customer = sig; await _autoSave(); setState(() {}); },
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 180,
+                            child: TextField(
+                              enabled: !locked,
+                              controller: _consentDateC,
+                              decoration: _inputDeco('서명일 (YYYY-MM-DD)'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 140,
+                            child: TextField(
+                              enabled: !locked,
+                              controller: _consentTimeC,
+                              decoration: _inputDeco('서명시간 (HH:MM)'),
+                            ),
+                          ),
+                          const Spacer(),
+                          OutlinedButton(
+                            onPressed: locked ? null : () async {
+                              if (!(c.risk && c.privacy && c.policy)) {
+                                _toast(context, '필수 동의 항목(위험/개인정보/정책)을 확인해주세요');
+                                return;
+                              }
+                              if (!(c.trainer.isSigned && c.customer.isSigned)) {
+                                _toast(context, '트레이너/고객 서명을 완료하세요');
+                                return;
+                              }
+                              if (c.date.isEmpty) c.date = _todayIso();
+                              if (c.time.isEmpty) c.time = '09:00';
+                              _syncConsentControllers();
+                              c.locked = true;
+                              await _autoSave();
+                              if (mounted) setState(() {});
+                              _toast(context, '사인지 잠금 완료');
+                            },
+                            child: const Text('동의 완료(잠금)'),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: () async {
+                              final pin = await _askPin();
+                              if (pin != resetPin) { _toast(context, 'PIN 불일치'); return; }
+                              c.locked = false;
+                              await _autoSave();
+                              if (mounted) setState(() {});
+                              _toast(context, '사인지 잠금 해제');
+                            },
+                            child: const Text('잠금 해제(PIN)'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+
+                // 분기
+                if (twoCols) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      leftPane,
+                      const SizedBox(width: 12),
+                      Expanded(child: rightPane),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      leftPane,
+                      const SizedBox(height: 12),
+                      rightPane,
+                    ],
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _footerButtons() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Row(
+        children: [
+          OutlinedButton(
+            onPressed: () => Navigator.maybePop(context),
+            child: const Text('뒤로가기'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+            child: const Text('홈으로'),
+          ),
+          const Spacer(),
+          OutlinedButton(
+            onPressed: () async {
+              await _autoSave();
+              _toast(context, '로컬 저장 완료');
+            },
+            child: const Text('로컬 저장'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(onPressed: _saveToCloud, child: const Text('클라우드 저장')),
+        ],
+      ),
+    );
+  }
+
+  // ── 작은 위젯들 ──
+  Widget _w(double width, Widget child) => SizedBox(width: width, child: child);
+
+  Widget _cell(BuildContext context, String? text,
+      {double? w, Widget? child, TextAlign align = TextAlign.left, bool bold = false, Color? bg}) {
+    return Container(
+      color: bg,
+      width: w,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      child: child ??
+          Text(text ?? '', textAlign: align, style: TextStyle(fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+    );
+  }
+
+  InputDecoration _inputDeco(String hint) => InputDecoration(
+    hintText: hint,
+    isDense: true,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+  );
+
+  Widget _dateFieldCtrl(
+      {required TextEditingController controller,
+        required bool enabled,
+        required ValueChanged<String> onChanged}) =>
+      TextField(
+        controller: controller,
+        enabled: enabled,
+        decoration: _inputDeco('YYYY-MM-DD'),
+        keyboardType: TextInputType.datetime,
+        onChanged: onChanged,
+      );
+
+  Widget _timeFieldCtrl(
+      {required TextEditingController controller,
+        required bool enabled,
+        required ValueChanged<String> onChanged}) =>
+      TextField(
+        controller: controller,
+        enabled: enabled,
+        decoration: _inputDeco('HH:MM'),
+        keyboardType: TextInputType.datetime,
+        onChanged: onChanged,
+      );
+
+  Widget _signatureCell(
+      {required SigCell cell, required String role, required bool locked, required VoidCallback onTap}) {
+    final content = cell.type == 'drawn' && cell.value.isNotEmpty
+        ? Image.memory(_dataUrlToBytes(cell.value), height: 48, width: 120, fit: BoxFit.contain)
+        : (cell.type == 'typed' && cell.value.isNotEmpty)
+        ? Row(mainAxisSize: MainAxisSize.min, children: [
+      const Text('✍ ', style: TextStyle(fontSize: 14)),
+      Flexible(child: Text(cell.value, overflow: TextOverflow.ellipsis)),
+    ])
+        : const Text('서명', textAlign: TextAlign.center);
+
+    return InkWell(
+        onTap: locked ? null : onTap,
+        child:
+        Container(alignment: Alignment.center, padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8), child: content));
+  }
+
+  Widget _consentCheck(
+      {required bool value, required String text, required bool enabled, required ValueChanged<bool> onChanged}) =>
+      Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(8),
+        decoration:
+        BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+        child: Row(children: [
+          Checkbox(value: value, onChanged: enabled ? (v) => onChanged(v ?? false) : null),
+          Expanded(child: Text(text))
+        ]),
+      );
+
+  Widget _consentSignRow(
+      {required String title, required Widget view, required String buttonText, required VoidCallback? onPressed}) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w600)), const Spacer(), OutlinedButton(onPressed: onPressed, child: Text(buttonText))]),
+        const SizedBox(height: 6),
+        Align(alignment: Alignment.centerLeft, child: view),
+      ]);
+
+  Widget _sigView(SigCell cell) {
+    if (cell.type == 'drawn' && cell.value.isNotEmpty) {
+      return Image.memory(_dataUrlToBytes(cell.value), height: 56, fit: BoxFit.contain);
+    }
+    if (cell.type == 'typed' && cell.value.isNotEmpty) {
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        const Text('✍ ', style: TextStyle(fontSize: 16)),
+        Text(cell.value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      ]);
+    }
+    return const Text('아직 서명이 없습니다', style: TextStyle(color: Colors.grey));
+  }
+
+  Uint8List _dataUrlToBytes(String dataUrl) {
+    final comma = dataUrl.indexOf(',');
+    final base64Part = (comma >= 0) ? dataUrl.substring(comma + 1) : dataUrl;
+    return Uint8List.fromList(base64Decode(base64Part));
+  }
+}
+
+/* ==============================
+ * 서명 바텀시트
+ * ============================ */
+class SignatureSheet extends StatefulWidget {
+  final String title;
+  final SigCell? initial;
+  final TextEditingController typedController;
+
+  const SignatureSheet({super.key, required this.title, this.initial, required this.typedController});
+
+  @override
+  State<SignatureSheet> createState() => _SignatureSheetState();
+}
+
+class _SignatureSheetState extends State<SignatureSheet> with SingleTickerProviderStateMixin {
+  late TabController tab;
+  final repaintKey = GlobalKey();
+  final canvasKey = GlobalKey<_SimpleSignatureCanvasState>();
+
+  @override
+  void initState() {
+    super.initState();
+    tab = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    tab.dispose();
+    super.dispose();
+  }
+
+  Future<String?> _exportPngDataUrl() async {
+    final boundary = repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) return null;
+    final img = await boundary.toImage(pixelRatio: 2.0);
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    if (bytes == null) return null;
+    final b64 = base64Encode(bytes.buffer.asUint8List());
+    return 'data:image/png;base64,$b64';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          builder: (context, controller) {
+            return Material(
+              elevation: 8,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Column(
+                children: [
+                  ListTile(
+                    title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    trailing: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ),
+                  TabBar(controller: tab, tabs: const [Tab(text: '타이핑'), Tab(text: '손글씨')]),
+                  Expanded(
+                    child: TabBarView(
+                      controller: tab,
+                      children: [
+                        // 타이핑 탭
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: widget.typedController,
+                                decoration: const InputDecoration(hintText: '이름(서명 표기)', border: OutlineInputBorder()),
+                              ),
+                              const SizedBox(height: 12),
+                              const Align(alignment: Alignment.centerLeft, child: Text('미리보기:', style: TextStyle(color: Colors.grey))),
+                              const SizedBox(height: 6),
+                              ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: widget.typedController,
+                                builder: (_, v, __) {
+                                  return Container(
+                                    alignment: Alignment.centerLeft,
+                                    padding: const EdgeInsets.all(12),
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
+                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      const Text('✍ ', style: TextStyle(fontSize: 16)),
+                                      Flexible(child: Text(v.text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+                                    ]),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        // 손글씨 탭
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            children: [
+                              RepaintBoundary(
+                                key: repaintKey,
+                                child: Container(
+                                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(10)),
+                                  child: SimpleSignatureCanvas(key: canvasKey, height: 180, strokeWidth: 2.5),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(children: [const Spacer(), OutlinedButton(onPressed: () => canvasKey.currentState?.clear(), child: const Text('지우기'))]),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+                        const Spacer(),
+                        ElevatedButton(
+                          onPressed: () async {
+                            if (tab.index == 0) {
+                              final name = widget.typedController.text.trim();
+                              if (name.isEmpty) return;
+                              Navigator.pop(context, SigCell(type: 'typed', value: name));
+                            } else {
+                              final drift = canvasKey.currentState?.hasStroke == true;
+                              if (!drift) return;
+                              final dataUrl = await _exportPngDataUrl();
+                              if (dataUrl == null) return;
+                              Navigator.pop(context, SigCell(type: 'drawn', value: dataUrl));
+                            }
+                          },
+                          child: const Text('적용'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/* ==============================
+ * 아주 단순한 서명 캔버스
+ * ============================ */
+class SimpleSignatureCanvas extends StatefulWidget {
+  final double height;
+  final double strokeWidth;
+  const SimpleSignatureCanvas({super.key, required this.height, required this.strokeWidth});
+
+  @override
+  State<SimpleSignatureCanvas> createState() => _SimpleSignatureCanvasState();
+}
+
+class _SimpleSignatureCanvasState extends State<SimpleSignatureCanvas> {
+  final List<List<Offset>> _paths = [];
+  bool get hasStroke => _paths.any((p) => p.length > 1);
+
+  void clear() => setState(() => _paths.clear());
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: widget.height,
+      width: double.infinity, // 부모가 준 가로 제약 안에서만 확장
+      child: GestureDetector(
+        onPanStart: (d) => setState(() => _paths.add([d.localPosition])),
+        onPanUpdate: (d) => setState(() => _paths.last.add(d.localPosition)),
+        child: CustomPaint(
+          painter: _SigPainter(paths: _paths, stroke: widget.strokeWidth),
+          // ✅ size 지정하지 않음: SizedBox가 크기를 정해줍니다.
+        ),
+      ),
+    );
+  }
+}
+
+class _SigPainter extends CustomPainter {
+  final List<List<Offset>> paths;
+  final double stroke;
+  _SigPainter({required this.paths, required this.stroke});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bg = Paint()..color = Colors.white;
+    canvas.drawRect(Offset.zero & size, bg);
+
+    final p = Paint()
+      ..color = Colors.black
+      ..strokeWidth = stroke
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (final path in paths) {
+      if (path.length < 2) continue;
+      final dp = Path()..moveTo(path.first.dx, path.first.dy);
+      for (int i = 1; i < path.length; i++) {
+        dp.lineTo(path[i].dx, path[i].dy);
+      }
+      canvas.drawPath(dp, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SigPainter old) => old.paths != paths || old.stroke != stroke;
+}
