@@ -1507,3 +1507,15 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 등급 로그: Home, MyPage, tierGuide가 `PersonalTierProgress.debugLog()`를 공통 사용한다. 서버 raw 필드는 `rawScheduleCount/rawScheduleComplete/rawTeacherInfoComplete/rawCompleted`로 보존하고, Beginner는 `displayCompleted=rawCompleted`, Amateur 이상은 `displayCompleted=2`, `displayTotal=2`, `earned=true`로 별도 기록한다. UI와 서버 상태는 변경하지 않았다.
 - 검증: 관련 테스트 18개 통과, 최종 전체 `flutter test --no-pub -r expanded` 373개 모두 통과. 변경 범위 analyze에 새 compile error는 없었으나 기존 Home/MyPage 등의 warning/info 137건으로 종료 코드 1을 유지했다. DEV Debug `app-dev-debug.apk`, PROD 공통 코드 회귀 `app-prod-debug.apk` 빌드 성공. `git diff --check` whitespace 오류 없음.
 - 보호: Firebase Functions, Firestore/Storage Rules, index를 변경하지 않았고 Firebase CLI·배포를 실행하지 않았다. PROD `more-than-fitness-f6adb` 데이터에 조회·수정·삭제·초기화를 하지 않았으며 다음 백로그로 이동하지 않았다.
+
+## 2026-07-22 — PROD 카나리 재개 전 보호 점검 및 안전 중단
+
+- 기기: `adb devices -l`에서 `R3CX40M6EEM`이 `device` 상태임을 재확인했다. 다만 설치 전 기존 앱 화면을 확인하려는 시점에는 Keyguard가 활성화되고 화면이 OFF인 상태였다. 화면을 깨운 뒤에도 잠금이 유지되어 기존 닉네임과 일정의 시각적 기준값을 확보하지 못했다.
+- 저장소 위생: 미추적 대량 파일의 실제 위치는 루트 `node_modules`와 `functions/node_modules`였다. `.gitignore`에 루트/하위 `node_modules`, Android/Flutter 빌드 산출물, 로컬 artifact·backup·logs·Codex 캐시, APK/AAB, DEV/PROD Firebase 앱 설정과 로컬 credential 패턴을 추가했다. 파일은 삭제하지 않았다.
+- Firebase 설정 보호: `android/app/google-services.json`은 기존 추적 파일이며 변경하지 않았다. `android/app/src/dev/google-services.json`은 로컬 미추적·ignore 상태로 유지했다. `android/app/src/prod/google-services.json`과 iOS `GoogleService-Info.plist`는 존재하지 않았다. 어떤 Firebase 설정 JSON도 checkpoint에 새로 포함하지 않았다.
+- checkpoint: `git add .` 없이 allowlist로 366개 소스·테스트·문서·안전한 설정 파일만 stage했고, staged 금지 경로 0개와 `git diff --cached --check` 통과를 확인했다. `codex/prod-canary-checkpoint-2026-07-22` 브랜치의 `a479b91` (`chore: checkpoint before prod canary`)로 저장했다. node_modules/build/APK/Firebase 설정/로컬 artifact는 포함하지 않았다.
+- 기존 PROD 앱: `com.example.mtf_app` 설치를 확인했고 versionName `1.0`, versionCode `1`, signer SHA-256 `a922c098c2dc3d7052895e8ad836b95cf08b9e12f39acd9e6df9d189abb74489`였다. 설치 APK를 `artifacts/prod_before_canary/base.apk`에 rollback 용도로 보관했다. 앱 삭제와 데이터 초기화는 하지 않았다.
+- 신규 후보 APK: PROD Debug APK를 `versionName=1.0.1`, `versionCode=2`, packageName `com.example.mtf_app`, projectId `more-than-fitness-f6adb`로 빌드했다. signer SHA-256은 기존 설치본과 동일했다. merged PROD Debug manifest에서 기존 주간/다음 레슨과 신규 오늘 레슨 receiver 세 개가 함께 존재함을 확인했다. APK는 아직 설치하지 않았다.
+- 자동 검증: Functions lint/build 통과. Auth/Firestore/Functions Emulator의 profile 30개, member/tier 38개, nickname/profile 22개, personal schedule Rules 26개, personal training log 38개 등 154개 시나리오가 통과했다. 전체 Flutter 테스트 373개가 통과했다.
+- PROD 읽기 전용 감사: 현재 ACTIVE Functions 10개와 기존 schedules/training_logs index를 조회했다. 로컬 monthly training_logs composite index가 PROD에 없는 상태를 확인했다. 이 조회 외 PROD 데이터 문서 작업은 하지 않았다.
+- 중단: 잠금 상태 때문에 설치 전 기존 nickname·일정 기준값을 확인할 수 없어 안전 조건을 충족하지 못했다. 따라서 PROD Functions/Rules/index 배포, `adb install -r`, 위젯 실기기 검증을 모두 실행하지 않았다. Play Store 배포도 실행하지 않았으며 다음 백로그로 이동하지 않았다.
