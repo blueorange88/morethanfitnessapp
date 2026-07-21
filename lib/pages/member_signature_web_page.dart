@@ -5,7 +5,6 @@ const Color kMemberSignPrimaryColor = Color(0xFF4F46E5);
 const Color kMemberSignPrimaryColor2 = Color(0xFF9333EA);
 const Color kMemberSignBgColor = Color(0xFFF3F4F6);
 
-
 class MemberSignatureWebPage extends StatefulWidget {
   final String token;
 
@@ -17,8 +16,6 @@ class MemberSignatureWebPage extends StatefulWidget {
   @override
   State<MemberSignatureWebPage> createState() => _MemberSignatureWebPageState();
 }
-
-
 
 class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
   final List<Offset?> _signaturePoints = [];
@@ -91,15 +88,15 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     final remain = _safeRemainingSessions;
 
     if (remain <= 0) {
-      return '현재 잔여 수업이 없어요. 다음 수업 전 강사와 등록 상태를 확인해 주세요.';
+      return '현재 잔여 레슨이 없어요. 다음 레슨 전 강사와 등록 상태를 확인해 주세요.';
     }
 
     if (remain <= 5) {
-      return '곧 마지막 회차에 가까워져요. 수업 흐름이 끊기지 않게 다음 등록을 준비해 주세요.';
+      return '곧 마지막 회차에 가까워져요.  레슨 흐름이 끊기지 않게 다음 등록을 준비해 주세요.';
     }
 
     if (remain <= 10) {
-      return '수업 흐름이 잘 이어지고 있어요. 재등록 시점을 미리 확인해두면 좋아요.';
+      return '레슨 흐름이 잘 이어지고 있어요. 재등록 시점을 미리 확인해두면 좋아요.';
     }
 
     return '꾸준히 잘 이어가고 있어요. 오늘의 한 걸음이 다음 변화를 만듭니다.';
@@ -115,7 +112,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
       '오늘의 한 걸음이 다음 변화를 만듭니다.',
       '흔들려도 이어가면 기록이 됩니다.',
       '벽은 넘으면 디딤돌이 됩니다.',
-      '좋은 수업은 오늘의 체크에서 시작돼요.',
+      '좋은 레슨은 오늘의 체크에서 시작돼요.',
     ];
 
     final seed = _safeDoneSessions % messages.length;
@@ -162,8 +159,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         expiresAt = DateTime.tryParse(expiresAtRaw);
       }
 
-      final isExpired =
-          expiresAt != null && DateTime.now().isAfter(expiresAt);
+      final isExpired = expiresAt != null && DateTime.now().isAfter(expiresAt);
 
       if (!mounted) return;
 
@@ -213,9 +209,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           data['remainingPt'] ??
           data['ptRemaining'];
 
-      final totalRaw = data['totalSessions'] ??
-          sessions['total'] ??
-          data['sessionTotal'];
+      final totalRaw =
+          data['totalSessions'] ?? sessions['total'] ?? data['sessionTotal'];
 
       final doneRaw = data['doneSessions'] ?? sessions['done'];
 
@@ -285,8 +280,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           'id': doc.id,
           'signedAt': signedAt,
           'startAt': startAt,
-          'title': (data['title'] ?? data['logTitle'] ?? '수업 서명').toString(),
-          'lessonType': (data['lessonType'] ?? data['type'] ?? '수업').toString(),
+          'title': (data['title'] ?? data['logTitle'] ?? '레슨 서명').toString(),
+          'lessonType': (data['lessonType'] ?? data['type'] ?? '레슨').toString(),
           'sessionStatus': (data['sessionStatus'] ?? 'completed').toString(),
         });
       }
@@ -427,9 +422,10 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
 
     final now = DateTime.now();
     final requestRef =
-    FirebaseFirestore.instance.collection('sign_requests').doc(token);
-    final logRef =
-    FirebaseFirestore.instance.collection('training_logs').doc(trainingLogId);
+        FirebaseFirestore.instance.collection('sign_requests').doc(token);
+    final logRef = FirebaseFirestore.instance
+        .collection('training_logs')
+        .doc(trainingLogId);
 
     final signaturePayload = {
       'type': 'drawing',
@@ -479,8 +475,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         final existingMemberSigned = logData['memberSigned'] == true;
 
         final sessionStatus = (logData['sessionStatus'] ??
-            requestData['sessionStatus'] ??
-            'completed')
+                requestData['sessionStatus'] ??
+                'completed')
             .toString();
 
         transaction.set(
@@ -509,8 +505,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           'inputMethod': 'quick_sign',
           'title': '빠른 서명',
           'logTitle': '빠른 서명',
-          'type': (requestData['lessonType'] ?? 'PT수업').toString(),
-          'lessonType': (requestData['lessonType'] ?? 'PT수업').toString(),
+          'type': (requestData['lessonType'] ?? 'PT').toString(),
+          'lessonType': (requestData['lessonType'] ?? 'PT').toString(),
           'sessionStatus': sessionStatus,
           'sessionStatusLabel': sessionStatus == 'completed'
               ? '출석완료'
@@ -549,7 +545,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
       if (alreadySigned) {
         _showToast('이미 완료된 서명 요청이에요.');
       } else {
-        _showToast('서명이 완료되었어요. 강사 확인 후 수업에 반영됩니다.');
+        _showToast('서명이 완료되었어요. 강사 확인 후 레슨에 반영됩니다.');
       }
     } catch (e) {
       debugPrint('회원 웹서명 저장 실패: $e');
@@ -619,7 +615,9 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     }
 
     try {
-      await FirebaseFirestore.instance.collection('re_registration_requests').add({
+      await FirebaseFirestore.instance
+          .collection('re_registration_requests')
+          .add({
         'memberId': memberId,
         'memberName': memberName.isEmpty ? '회원' : memberName,
         if ((data['memberPhone'] ?? '').toString().trim().isNotEmpty)
@@ -724,7 +722,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
 
   Widget _buildHeader(Map<String, dynamic> data) {
     final memberName = (data['memberName'] ?? '회원').toString();
-    final lessonType = (data['lessonType'] ?? '수업').toString();
+    final lessonType = (data['lessonType'] ?? '레슨').toString();
     final startLabel = _formatDateTime(data['startAt']);
 
     final total = _safeTotalSessions;
@@ -733,13 +731,15 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
 
     final summaryText = total > 0
         ? '$lessonType 총 ${total}회 중 ${done}회 진행'
-        : '$lessonType 수업 진행 중';
+        : '$lessonType 레슨 진행 중';
 
     final remainText = total > 0 ? '잔여 ${remain}회' : '회차정보 확인 중';
 
+    final topInset = MediaQuery.of(context).padding.top;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      padding: EdgeInsets.fromLTRB(20, topInset + 10, 20, 18),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [kMemberSignPrimaryColor, kMemberSignPrimaryColor2],
@@ -754,7 +754,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'More Than Fitness',
+            'MORE THAN',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 12,
@@ -942,15 +942,15 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
             child: _hasSignature
                 ? const SizedBox.expand()
                 : const Center(
-              child: Text(
-                '여기에 손서명해주세요',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF9CA3AF),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+                    child: Text(
+                      '여기에 손서명해주세요',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9CA3AF),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
           ),
         ),
       ),
@@ -1020,8 +1020,9 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed:
-              _reRegistrationRequested ? null : _requestReRegistrationConsult,
+              onPressed: _reRegistrationRequested
+                  ? null
+                  : _requestReRegistrationConsult,
               style: FilledButton.styleFrom(
                 backgroundColor: _remainingAccentColor,
                 foregroundColor: Colors.white,
@@ -1133,7 +1134,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
             children: [
               const Expanded(
                 child: Text(
-                  '지난 수업',
+                  '지난 레슨',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -1261,20 +1262,20 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         ),
         child: _submitting
             ? const SizedBox(
-          width: 19,
-          height: 19,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white,
-          ),
-        )
+                width: 19,
+                height: 19,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
             : const Text(
-          '서명 제출하기',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+                '서명 제출하기',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
       ),
     );
   }
@@ -1300,7 +1301,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     if (_submitted) {
       return _buildInvalid(
         title: '서명이 완료되었어요',
-        body: '수업 확인 서명이 정상적으로 저장되었습니다.',
+        body: '레슨 확인 서명이 정상적으로 저장되었습니다.',
       );
     }
 
@@ -1330,9 +1331,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
                         _buildReRegistrationGuideCard(),
                         if (_shouldShowReRegistrationButton)
                           const SizedBox(height: 14),
-
                         Text(
-                          '${_currentSignNumber}회차 수업 확인',
+                          '${_currentSignNumber}회차 레슨 확인',
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
@@ -1341,7 +1341,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          '수업 내용을 확인했다면 아래 칸에 손으로 서명해주세요.',
+                          '레슨 내용을 확인했다면 아래 칸에 손으로 서명해주세요.',
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.4,
@@ -1350,9 +1350,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
                           ),
                         ),
                         const SizedBox(height: 14),
-
                         _buildSignatureBox(),
-
                         const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
@@ -1360,24 +1358,21 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
                             onPressed: _signaturePoints.isEmpty
                                 ? null
                                 : () {
-                              setState(() {
-                                _signaturePoints.clear();
-                                _isSigning = false;
-                              });
-                            },
+                                    setState(() {
+                                      _signaturePoints.clear();
+                                      _isSigning = false;
+                                    });
+                                  },
                             child: const Text(
                               '지우기',
                               style: TextStyle(fontWeight: FontWeight.w800),
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 12),
                         _buildSubmitButton(),
-
                         const SizedBox(height: 18),
                         _buildSignatureHistorySection(),
-
                         const SizedBox(height: 30),
                       ],
                     ),

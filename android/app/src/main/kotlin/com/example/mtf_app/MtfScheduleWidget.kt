@@ -120,18 +120,24 @@ class MtfScheduleWidget : GlanceAppWidget() {
 
         val todayDay = if (activeOffset == 0) getTodayDayLabel() else null
         val visibleRange = readVisibleHourRange(prefs)
-        val currentMarkerRatio = readCurrentMarkerRatio(prefs, activeOffset)
 
         val savedRows = readPackedRows(prefs, activeOffset)
-        val rows = if (savedRows.isNotEmpty()) {
+
+        val baseRows = if (savedRows.isNotEmpty()) {
             savedRows
         } else {
             buildDisplayRows(
                 startHour = visibleRange.startHour,
                 endHour = visibleRange.endHour,
-                currentMarkerRatio = currentMarkerRatio,
+                currentMarkerRatio = null,
             )
         }
+
+        val rows = applyCurrentRowFromDeviceClock(
+            rows = baseRows,
+            prefs = prefs,
+            activeOffset = activeOffset,
+        )
 
         val blocks = readPackedBlocks(
             prefs = prefs,
@@ -960,6 +966,46 @@ class MtfScheduleWidget : GlanceAppWidget() {
             .split("§§ROW§§")
             .filter { it.isNotBlank() }
             .mapNotNull { parseBlock(it, safeRowCount) }
+    }
+
+    private fun applyCurrentRowFromDeviceClock(
+        rows: List<WidgetRow>,
+        prefs: SharedPreferences,
+        activeOffset: Int,
+    ): List<WidgetRow> {
+        if (rows.isEmpty()) return rows
+
+        // 현재 시간 강조는 이번 주 화면에서만 표시합니다.
+        // 다음 주/다른 offset에서는 저장된 isCurrent도 모두 제거합니다.
+        if (activeOffset != 0) {
+            return rows.map { it.copy(isCurrent = false) }
+        }
+
+        val visibleRange = readVisibleHourRange(prefs)
+
+        val now = Calendar.getInstance()
+        val nowMinutes =
+            now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+
+        val rangeStartMinutes = visibleRange.startHour * 60
+        val rangeEndMinutes = visibleRange.endHour * 60
+
+        if (nowMinutes < rangeStartMinutes || nowMinutes >= rangeEndMinutes) {
+            return rows.map { it.copy(isCurrent = false) }
+        }
+
+        return rows.mapIndexed { index, row ->
+            val rowStartMinutes = row.hour * 60 + row.minute
+
+            val nextRowStartMinutes = rows.getOrNull(index + 1)?.let {
+                it.hour * 60 + it.minute
+            } ?: rangeEndMinutes
+
+            row.copy(
+                isCurrent = nowMinutes >= rowStartMinutes &&
+                        nowMinutes < nextRowStartMinutes,
+            )
+        }
     }
 
     private fun readCurrentMarkerRatio(

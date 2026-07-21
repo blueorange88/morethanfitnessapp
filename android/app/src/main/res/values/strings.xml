@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="weekly_schedule_widget_name">모어댄 주간 일정</string>
+    <string name="next_lesson_widget_name">모어댄 다음 레슨</string>
+    <string name="today_lesson_rollup_widget_name">모어댄 오늘 레슨</string>
+</resources>

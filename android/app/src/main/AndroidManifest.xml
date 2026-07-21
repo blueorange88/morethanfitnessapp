@@ -1,6 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
-        android:label="More Than Fitness"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
@@ -24,11 +32,11 @@
 
         <receiver
             android:name=".MtfScheduleWidgetReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/weekly_schedule_widget_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/mtf_schedule_widget_info" />
@@ -36,14 +44,40 @@
 
         <receiver
             android:name=".MtfNextLessonWidgetReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/next_lesson_widget_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
-
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/mtf_next_lesson_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".MtfTodayLessonRollupWidgetReceiver"
+            android:exported="true"
+            android:label="@string/today_lesson_rollup_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mtf_today_lesson_rollup_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".MtfWidgetWeekRolloverReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.mtf_app.action.WEEK_ROLLOVER" />
+                <action android:name="com.example.mtf_app.action.WIDGET_TIME_REFRESH" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
         </receiver>
 
         <receiver
@@ -58,6 +92,23 @@
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="true" />
+
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+
 
         <meta-data
             android:name="flutterEmbedding"

@@ -1,0 +1,53 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isLegacyAdmin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.auth.token.keys().hasAny(['platformAdmin'])
+        && request.auth.token.platformAdmin == true
+        && request.auth.token.keys().hasAny(['legacyDataAccessApproved'])
+        && request.auth.token.legacyDataAccessApproved == true
+        && firestore.exists(
+          /databases/(default)/documents/trainer_profiles/$(request.auth.uid)
+        )
+        && firestore.get(
+          /databases/(default)/documents/trainer_profiles/$(request.auth.uid)
+        ).data.mustChangePassword != true;
+    }
+
+    function isAllowedImage(maxBytes, contentType) {
+      return request.resource != null
+        && request.resource.size <= maxBytes
+        && request.resource.contentType == contentType;
+    }
+
+    match /member_profiles/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('profile_[0-9]+[.]jpg')
+        && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
+    }
+
+    match /member_inbody/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('inbody_[0-9]+[.]jpg')
+        && isAllowedImage(15 * 1024 * 1024, 'image/jpeg');
+    }
+
+    match /membership_contract_signatures/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('signature_[0-9]+[.]png')
+        && isAllowedImage(10 * 1024 * 1024, 'image/png');
+    }
+
+    match /membership_contract_images/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('contract_[0-9]+[.]png')
+        && isAllowedImage(10 * 1024 * 1024, 'image/png');
+    }
+  }
+}

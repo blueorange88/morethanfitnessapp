@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/aifc_interaction.dart';
 
 class PersonalTrainingLogTextVoicePage extends StatefulWidget {
   final String? initialName;
@@ -528,8 +529,10 @@ class _PersonalTrainingLogTextVoicePageState
     final memo = _memoC.text.trim();
 
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('기록 제목을 입력해주세요.')),
+      AifcInteraction.toast(
+        context: context,
+        message: '기록 제목을 입력해주세요.',
+        bottomOffset: 110,
       );
       return;
     }

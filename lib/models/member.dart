@@ -13,6 +13,17 @@ class Member {
   final DateTime? firstDate;
   final DateTime? recentReg;
   final DateTime? expireAt;
+  final DateTime? birthDate;
+  final DateTime? anniversaryDate;
+  final String? anniversaryLabel;
+  final String? specialEvent;
+  final DateTime? nextMoreDayAt;
+  final String? nextMoreDayLabel;
+  final String? nextMoreDaySource;
+  final bool femaleConditionEnabled;
+  final DateTime? femaleConditionLastStartAt;
+  final int femaleConditionCycleDays;
+  final String? femaleConditionMemo;
   final DateTime? lastLogAt;
   final DateTime? nextLessonAt;
   final String memberStatus;
@@ -30,6 +41,17 @@ class Member {
     this.firstDate,
     this.recentReg,
     this.expireAt,
+    this.birthDate,
+    this.anniversaryDate,
+    this.anniversaryLabel,
+    this.specialEvent,
+    this.nextMoreDayAt,
+    this.nextMoreDayLabel,
+    this.nextMoreDaySource,
+    this.femaleConditionEnabled = false,
+    this.femaleConditionLastStartAt,
+    this.femaleConditionCycleDays = 28,
+    this.femaleConditionMemo,
     this.lastLogAt,
     this.nextLessonAt,
     this.groupId,
@@ -70,20 +92,48 @@ class Member {
         ? Map<String, dynamic>.from(d['membership'] as Map)
         : <String, dynamic>{};
 
+    final health = (d['health'] is Map)
+        ? Map<String, dynamic>.from(d['health'] as Map)
+        : <String, dynamic>{};
+
+    final femaleCondition = (health['femaleCondition'] is Map)
+        ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
+        : <String, dynamic>{};
+
     return Member(
       id: id,
       name: d['name'] as String?,
       phone: d['phone'] as String?,
       trainer: d['trainer'] as String?,
       grade: d['membershipGrade'] as String?,
-      remainingSessions: (sessions['remain'] as num?)?.toInt() ?? 0,
-      totalSessions: (sessions['total'] as num?)?.toInt() ?? 0,
+      remainingSessions: (sessions['remain'] as num?)?.toInt() ??
+          (d['remainSessions'] as num?)?.toInt() ??
+          (d['remainingSessions'] as num?)?.toInt() ??
+          0,
+      totalSessions: (sessions['total'] as num?)?.toInt() ??
+          (d['totalSessions'] as num?)?.toInt() ??
+          0,
       firstDate: _toDate(membership['startAt']) ?? _toDate(d['createdAt']),
       recentReg: _toDate(membership['lastRegisteredAt']),
       expireAt: _toDate(
         membership['endAt'] ?? membership['passEnd'] ?? d['expireAt'],
       ),
-      lastLogAt: _toDate(d['lastLogAt']),
+      birthDate: _toDate(d['birth'] ?? d['birthDate'] ?? d['birthday']),
+      anniversaryDate: _toDate(d['anniversaryDate']),
+      anniversaryLabel: (d['anniversaryLabel'] as String?)?.trim(),
+      specialEvent: (d['specialEvent'] as String?)?.trim(),
+      nextMoreDayAt: _toDate(d['nextMoreDayAt']),
+      nextMoreDayLabel: (d['nextMoreDayLabel'] as String?)?.trim(),
+      nextMoreDaySource: (d['nextMoreDaySource'] as String?)?.trim(),
+      femaleConditionEnabled:
+      (femaleCondition['enabled'] as bool?) ?? false,
+      femaleConditionLastStartAt:
+      _toDate(femaleCondition['lastStartAt']),
+      femaleConditionCycleDays:
+      (femaleCondition['cycleDays'] as num?)?.toInt() ?? 28,
+      femaleConditionMemo:
+      (femaleCondition['memo'] as String?)?.trim(),
+      lastLogAt: _toDate(d['lastLessonAt'] ?? d['lastLogAt']),
       nextLessonAt: _toDate(d['nextLessonAt']) ?? _toDate(d['nextReservationAt']),
       memberStatus: (d['memberStatus'] as String?) ?? '활성',
       gender: _normGender(d['gender'] as String?),

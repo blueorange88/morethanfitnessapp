@@ -1,0 +1,26 @@
+{
+  "name": "mtf-firebase-local-tests",
+  "private": true,
+  "scripts": {
+    "test:profile-rules": "node firebase-emulator-tests/auth_profile_bootstrap.test.cjs",
+    "test:anonymous-identity": "node firebase-emulator-tests/anonymous_identity_foundation.test.cjs",
+    "test:member-rules": "node firebase-emulator-tests/managed_members_limit.test.cjs",
+    "test:member-emulators": "firebase emulators:exec --project demo-mtf-anonymous-members-tier --only auth,firestore,functions \"npm run test:member-rules\"",
+    "test:personal-schedule-rules": "node firebase-emulator-tests/personal_schedules.test.cjs",
+    "test:personal-schedule-emulators": "firebase emulators:exec --project demo-mtf-personal-schedules --only firestore \"npm run test:personal-schedule-rules\"",
+    "test:personal-training-log-rules": "node firebase-emulator-tests/personal_training_logs.test.cjs",
+    "test:personal-training-log-emulators": "firebase emulators:exec --project demo-mtf-personal-training-logs --only auth,firestore,functions \"npm run test:personal-training-log-rules\"",
+    "test:platform-admin-unit": "node firebase-emulator-tests/platform_admin_provisioning.test.mjs",
+    "test:platform-admin-emulator": "node firebase-emulator-tests/platform_admin_password_change.test.cjs",
+    "test:legacy-workspace": "node firebase-emulator-tests/legacy_admin_workspace_access.test.cjs",
+    "test:legacy-emulators": "firebase emulators:exec --project demo-mtf-legacy-admin --only auth,firestore,functions,storage \"npm run test:legacy-workspace\"",
+    "test:profile-emulators": "firebase emulators:exec --project demo-mtf-auth-profile --only auth,firestore,functions \"npm run test:profile-rules\"",
+    "test:anonymous-emulators": "firebase emulators:exec --project demo-mtf-anonymous-identity --only auth,firestore,functions \"npm run test:anonymous-identity\"",
+    "test:nickname-onboarding": "node firebase-emulator-tests/nickname_onboarding.test.cjs",
+    "test:nickname-onboarding-emulators": "firebase emulators:exec --project demo-mtf-nickname-onboarding --only auth,firestore,functions \"npm run test:nickname-onboarding\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "firebase-tools": "^15.23.0"
+  }
+}

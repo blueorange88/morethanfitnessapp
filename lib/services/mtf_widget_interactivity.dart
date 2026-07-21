@@ -24,6 +24,11 @@ FutureOr<void> mtfWidgetBackgroundCallback(Uri? uri) async {
     await MtfHomeWidgetService.shiftWeek(1);
     return;
   }
+
+  if (path == '/rollover') {
+    await MtfHomeWidgetService.rolloverCachedNextWeekToCurrentWeek();
+    return;
+  }
 }
 
 Future<void> registerMtfWidgetInteractivity() async {

@@ -1,30 +1,36 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:mtf_app/main.dart';
+import 'package:mtf_app/utils/korean_search_utils.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('matchesSmartMemberSearch', () {
+    const targets = ['김민수', '010-1234-5678'];
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('이름의 일부로 회원을 찾는다', () {
+      expect(
+        matchesSmartMemberSearch(rawQuery: '민수', targets: targets),
+        isTrue,
+      );
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('한글 초성으로 회원을 찾는다', () {
+      expect(
+        matchesSmartMemberSearch(rawQuery: 'ㄱㅁㅅ', targets: targets),
+        isTrue,
+      );
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('구분자를 제외한 전화번호 숫자로 회원을 찾는다', () {
+      expect(
+        matchesSmartMemberSearch(rawQuery: '12345678', targets: targets),
+        isTrue,
+      );
+    });
+
+    test('일치하지 않는 검색어는 회원을 찾지 않는다', () {
+      expect(
+        matchesSmartMemberSearch(rawQuery: '이영희', targets: targets),
+        isFalse,
+      );
+    });
   });
 }

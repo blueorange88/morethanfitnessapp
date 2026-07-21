@@ -2,9 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mtf_app/pages/notification_settings_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/home_repeat_lesson_grouping_mode.dart';
+import '../services/app_account_service.dart';
+import 'password_change_page.dart';
+import '../widgets/home/schedule/home_repeat_lesson_grouping_sheet.dart';
 
 import '../providers/theme_provider.dart';
 import 'widget_settings_page.dart';
+import '../widgets/aifc_interaction.dart';
 
 const Color kSettingsPrimary = Color(0xFF4F46E5);
 const Color kSettingsPrimary2 = Color(0xFF9333EA);
@@ -16,109 +24,42 @@ const Color kSettingsMuted = Color(0xFF6B7280);
 const double kSettingsMaxContentWidth = 480;
 
 class SettingsPage extends ConsumerStatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, this.personalOwnerUid});
+
+  final String? personalOwnerUid;
 
   @override
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  OverlayEntry? _actionToastEntry;
-  Timer? _actionToastTimer;
+  bool _notificationSettingsChanged = false;
+  bool _signingOut = false;
+  HomeRepeatLessonGroupingMode _repeatLessonGroupingMode =
+      HomeRepeatLessonGroupingMode.none;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadRepeatLessonGroupingMode());
+  }
 
   @override
   void dispose() {
-    _hideActionToast();
     super.dispose();
   }
 
-  void _hideActionToast() {
-    _actionToastTimer?.cancel();
-    _actionToastTimer = null;
-    _actionToastEntry?.remove();
-    _actionToastEntry = null;
-  }
-
   void _showActionToast(
-      String message, {
-        double bottomOffset = 76,
-        Duration duration = const Duration(milliseconds: 1400),
-      }) {
-    final overlay = Overlay.of(context);
-    if (overlay == null) return;
-
-    _hideActionToast();
-
-    _actionToastEntry = OverlayEntry(
-      builder: (context) {
-        return Positioned.fill(
-          child: IgnorePointer(
-            child: SafeArea(
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: 24,
-                    right: 24,
-                    bottom: bottomOffset,
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 320),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF111827).withOpacity(0.94),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.16),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.info_outline_rounded,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    message,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    String message, {
+    double bottomOffset = 76,
+    Duration duration = const Duration(milliseconds: 1400),
+  }) {
+    AifcInteraction.toast(
+      context: context,
+      message: message,
+      bottomOffset: bottomOffset,
+      duration: duration,
     );
-
-    overlay.insert(_actionToastEntry!);
-
-    _actionToastTimer = Timer(duration, _hideActionToast);
   }
 
   void _showPreparingToast(String label) {
@@ -133,15 +74,93 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Future<void> _loadRepeatLessonGroupingMode() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!mounted) return;
+
+    setState(() {
+      _repeatLessonGroupingMode = homeRepeatLessonGroupingModeFromString(
+        prefs.getString(kHomeRepeatLessonGroupingModePrefsKey),
+      );
+    });
+  }
+
+  Future<void> _openRepeatLessonGroupingSheet() async {
+    final picked = await HomeRepeatLessonGroupingSheet.show(
+      context: context,
+      currentMode: _repeatLessonGroupingMode,
+      primaryColor: kSettingsPrimary,
+    );
+
+    if (!mounted || picked == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      kHomeRepeatLessonGroupingModePrefsKey,
+      picked.storageValue,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _repeatLessonGroupingMode = picked;
+      _notificationSettingsChanged = true;
+    });
+
+    _showActionToast('반복 레슨 묶기 방식을 ${picked.shortLabel}으로 변경했어요.');
+  }
+
+  void _handleBackTap() {
+    Navigator.of(context).pop(_notificationSettingsChanged ? true : null);
+  }
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('로그아웃할까요?'),
+        content: const Text('로그아웃하면 실제 회원 화면을 닫고 Guest 시작 화면으로 이동합니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('로그아웃'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _signingOut = true);
+    try {
+      await AppAccountService.instance.signOut();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+        '/',
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _signingOut = false);
+      _showActionToast(appAccountErrorMessage(error));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = ref.watch(darkModeProvider);
+    final account = AppAccountService.instance.currentSnapshot;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isTablet = constraints.maxWidth >= 600;
         final double width =
-        isTablet ? kSettingsMaxContentWidth : constraints.maxWidth;
+            isTablet ? kSettingsMaxContentWidth : constraints.maxWidth;
 
         return Scaffold(
           backgroundColor: kSettingsBg,
@@ -151,13 +170,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: Column(
                 children: [
                   _SettingsHeader(
-                    onBackTap: () => Navigator.of(context).maybePop(),
+                    onBackTap: _handleBackTap,
                   ),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                       child: Column(
                         children: [
+                          // ── 화면 설정 ──────────────────────────────
                           _SettingsSectionCard(
                             title: '화면 설정',
                             subtitle: '앱 화면과 홈 위젯 표시 방식을 맞춰보세요',
@@ -166,7 +186,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               _SettingsSwitchTile(
                                 icon: Icons.dark_mode_outlined,
                                 title: '다크 모드',
-                                subtitle: dark ? '어두운 화면으로 사용 중' : '밝은 화면으로 사용 중',
+                                subtitle:
+                                    dark ? '어두운 화면으로 사용 중' : '밝은 화면으로 사용 중',
                                 value: dark,
                                 onChanged: (_) {
                                   ref.read(darkModeProvider.notifier).toggle();
@@ -185,73 +206,88 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             ],
                           ),
                           const SizedBox(height: 14),
-                          _SettingsSectionCard(
-                            title: '운영 설정',
-                            subtitle: '수업, 수업일정, 알림 방식을 내 운영에 맞게 설정해요',
-                            icon: Icons.tune_rounded,
-                            children: [
-                              _SettingsMenuTile(
-                                icon: Icons.category_outlined,
-                                title: '수업 유형 관리',
-                                subtitle: 'PT수업, 필라테스, 그룹수업 등 수업 타입 설정',
-                                onTap: () => _showPreparingToast('수업 유형 관리'),
-                              ),
-                              const _SettingsDivider(),
-                              _SettingsMenuTile(
-                                icon: Icons.schedule_rounded,
-                                title: '기본 수업 시간 설정',
-                                subtitle: '30분, 50분, 60분 등 기본 수업 시간 설정',
-                                onTap: () => _showPreparingToast('기본 수업 시간 설정'),
-                              ),
-                              const _SettingsDivider(),
-                              _SettingsMenuTile(
-                                icon: Icons.access_time_rounded,
-                                title: '수업 시간 범위 설정',
-                                subtitle: '홈 수업일정의 시작/종료 시간을 관리해요',
-                                onTap: () => _showPreparingToast('일정 시간 범위 설정'),
-                              ),
-                              const _SettingsDivider(),
-                              _SettingsMenuTile(
-                                icon: Icons.notifications_outlined,
-                                title: '알림 설정',
-                                subtitle: '수업, 만료, 체크 필요 알림 관리',
-                                onTap: () => _showPreparingToast('알림 설정'),
-                              ),
-                            ],
+
+                          // ── 운영 설정 ──────────────────────────────
+                          _SettingsMenuTile(
+                            icon: Icons.category_outlined,
+                            title: '수업 유형 관리',
+                            subtitle: 'PT수업, 필라테스, 그룹수업 등 수업 타입 설정',
+                            onTap: () => _showPreparingToast('수업 유형 관리'),
+                          ),
+                          const _SettingsDivider(),
+                          _SettingsMenuTile(
+                            icon: Icons.event_repeat_rounded,
+                            title: '반복 레슨 묶기 방식',
+                            subtitle: '레슨 수정 시 여러 요일을 자동 체크하는 기준',
+                            trailingText: _repeatLessonGroupingMode.shortLabel,
+                            onTap: _openRepeatLessonGroupingSheet,
+                          ),
+                          const _SettingsDivider(),
+                          _SettingsMenuTile(
+                            icon: Icons.notifications_outlined,
+                            title: '알림 설정',
+                            subtitle: '레슨 시작 전 알림 시간을 설정해요',
+                            onTap: () async {
+                              final changed =
+                                  await Navigator.of(context).push<bool>(
+                                MaterialPageRoute(
+                                  builder: (_) => NotificationSettingsPage(
+                                    personalOwnerUid: widget.personalOwnerUid,
+                                  ),
+                                ),
+                              );
+
+                              if (!mounted) return;
+
+                              if (changed == true) {
+                                setState(() {
+                                  _notificationSettingsChanged = true;
+                                });
+
+                                _showActionToast('알림 설정을 저장했어요.');
+                              }
+                            },
                           ),
                           const SizedBox(height: 14),
-                          _SettingsSectionCard(
-                            title: '회원 / 문서 관리',
-                            subtitle: '계약서, 동의서, 삭제 대기 회원을 한 곳에서 확인해요',
-                            icon: Icons.folder_copy_outlined,
-                            children: [
-                              _SettingsMenuTile(
-                                icon: Icons.description_outlined,
-                                title: '계약서 관리',
-                                subtitle: '내 수업 회원의 계약서와 지난 계약서를 확인해요',
-                                onTap: () => _showPreparingToast('계약서 관리'),
-                              ),
-                              const _SettingsDivider(),
-                              _SettingsMenuTile(
-                                icon: Icons.privacy_tip_outlined,
-                                title: '개인정보동의서 관리',
-                                subtitle: '수업일지 사용 동의서를 확인하고 정리해요',
-                                onTap: () => _showPreparingToast('개인정보동의서 관리'),
-                              ),
-                              const _SettingsDivider(),
-                              _SettingsMenuTile(
-                                icon: Icons.restore_from_trash_rounded,
-                                title: '삭제 대기 회원 복구',
-                                subtitle: '내 수업에서 삭제 처리한 회원을 다시 확인해요',
-                                onTap: () => _showPreparingToast('삭제 대기 회원 복구'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
+
+                          // ── 프리미엄 배너 ──────────────────────────
                           _SettingsPremiumBanner(
                             onTap: () => _showPreparingToast('프리미엄 업그레이드'),
                           ),
                           const SizedBox(height: 14),
+
+                          if (!account.isGuest) ...[
+                            _SettingsSectionCard(
+                              title: '계정',
+                              subtitle: account.user?.email.isNotEmpty == true
+                                  ? account.user!.email
+                                  : 'Firebase 계정 연결됨',
+                              icon: Icons.account_circle_outlined,
+                              children: [
+                                _SettingsMenuTile(
+                                  icon: Icons.password_rounded,
+                                  title: '비밀번호 변경',
+                                  subtitle: '현재 비밀번호를 확인하고 안전하게 변경합니다',
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PasswordChangePage(),
+                                    ),
+                                  ),
+                                ),
+                                const _SettingsDivider(),
+                                _SettingsMenuTile(
+                                  icon: Icons.logout_rounded,
+                                  title: _signingOut ? '로그아웃 중...' : '로그아웃',
+                                  subtitle: 'Guest 시작 화면으로 안전하게 이동합니다',
+                                  onTap: _signOut,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+
+                          // ── 앱 정보 ────────────────────────────────
                           _SettingsSectionCard(
                             title: '앱 정보',
                             subtitle: '고객센터, 버전, 앱 정보를 확인합니다',
@@ -274,9 +310,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               _SettingsMenuTile(
                                 icon: Icons.mobile_friendly_rounded,
                                 title: '버전 정보',
-                                subtitle: 'More Than Fitness',
+                                subtitle: '모어댄 · MORE THAN',
                                 trailingText: 'v1.0.0',
-                                onTap: () => _showActionToast('현재 버전은 v1.0.0 입니다.'),
+                                onTap: () =>
+                                    _showActionToast('현재 버전은 v1.0.0 입니다.'),
                               ),
                             ],
                           ),
@@ -294,10 +331,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
+// ── 헤더 ────────────────────────────────────────────────────────────────────
+
 class _SettingsHeader extends StatelessWidget {
-  const _SettingsHeader({
-    required this.onBackTap,
-  });
+  const _SettingsHeader({required this.onBackTap});
 
   final VoidCallback onBackTap;
 
@@ -391,7 +428,7 @@ class _SettingsHeader extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '앱 운영 설정',
+                        '앱 설정',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 15.5,
@@ -400,7 +437,7 @@ class _SettingsHeader extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '수업, 위젯, 문서, 앱 정보를 한 곳에서 살펴볼 수 있어요.',
+                        '화면, 위젯, 수업 유형, 알림, 앱 정보를 한 곳에서 관리해요.',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 11.5,
@@ -419,6 +456,8 @@ class _SettingsHeader extends StatelessWidget {
     );
   }
 }
+
+// ── 섹션 카드 ────────────────────────────────────────────────────────────────
 
 class _SettingsSectionCard extends StatelessWidget {
   const _SettingsSectionCard({
@@ -462,11 +501,7 @@ class _SettingsSectionCard extends StatelessWidget {
                     color: const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: Icon(
-                    icon,
-                    size: 19,
-                    color: kSettingsPrimary,
-                  ),
+                  child: Icon(icon, size: 19, color: kSettingsPrimary),
                 ),
                 const SizedBox(width: 10),
               ],
@@ -507,6 +542,8 @@ class _SettingsSectionCard extends StatelessWidget {
   }
 }
 
+// ── 메뉴 타일 ────────────────────────────────────────────────────────────────
+
 class _SettingsMenuTile extends StatelessWidget {
   const _SettingsMenuTile({
     required this.icon,
@@ -543,11 +580,7 @@ class _SettingsMenuTile extends StatelessWidget {
                 color: color.withOpacity(0.09),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: color,
-              ),
+              child: Icon(icon, size: 20, color: color),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -597,6 +630,8 @@ class _SettingsMenuTile extends StatelessWidget {
   }
 }
 
+// ── 스위치 타일 ──────────────────────────────────────────────────────────────
+
 class _SettingsSwitchTile extends StatelessWidget {
   const _SettingsSwitchTile({
     required this.icon,
@@ -625,11 +660,7 @@ class _SettingsSwitchTile extends StatelessWidget {
               color: kSettingsPrimary.withOpacity(0.09),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: kSettingsPrimary,
-            ),
+            child: Icon(icon, size: 20, color: kSettingsPrimary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -669,22 +700,21 @@ class _SettingsSwitchTile extends StatelessWidget {
   }
 }
 
+// ── 구분선 ────────────────────────────────────────────────────────────────────
+
 class _SettingsDivider extends StatelessWidget {
   const _SettingsDivider();
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(
-      height: 1,
-      color: kSettingsBorder,
-    );
+    return const Divider(height: 1, color: kSettingsBorder);
   }
 }
 
+// ── 프리미엄 배너 ─────────────────────────────────────────────────────────────
+
 class _SettingsPremiumBanner extends StatelessWidget {
-  const _SettingsPremiumBanner({
-    required this.onTap,
-  });
+  const _SettingsPremiumBanner({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -745,7 +775,7 @@ class _SettingsPremiumBanner extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'AI 인사이트, 운영통계, 계약 관리 기능을 준비중이에요.',
+                    'AI 인사이트, 인사이트, 계약 관리 기능을 준비중이에요.',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 11.5,
@@ -756,11 +786,8 @@ class _SettingsPremiumBanner extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(width: 8),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.white,
-            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white),
           ],
         ),
       ),

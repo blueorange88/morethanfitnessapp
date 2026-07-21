@@ -6,11 +6,15 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../services/member_smart_alarm_context_service.dart';
+import '../services/more_care_slot_service.dart';
+
 const Color kQuickSignPrimaryColor = Color(0xFF4F46E5);
 const Color kQuickSignPrimaryColor2 = Color(0xFF9333EA);
 const Color kQuickSignBgColor = Color(0xFFF3F4F6);
 
-const String kMemberSignBaseUrl = 'https://more-than-fitness-f6adb.web.app/sign';
+const String kMemberSignBaseUrl =
+    'https://more-than-fitness-f6adb.web.app/sign';
 
 enum _QuickLogMode {
   normalDeduct,
@@ -27,6 +31,7 @@ class PersonalTrainingQuickLogSignPage extends StatefulWidget {
   final String lessonType;
   final DateTime? startAt;
   final DateTime? endAt;
+  final String? personalOwnerUid;
 
   const PersonalTrainingQuickLogSignPage({
     super.key,
@@ -34,9 +39,10 @@ class PersonalTrainingQuickLogSignPage extends StatefulWidget {
     required this.memberName,
     this.memberPhone,
     this.scheduleDocId,
-    this.lessonType = 'PT수업',
+    this.lessonType = 'PT',
     this.startAt,
     this.endAt,
+    this.personalOwnerUid,
   });
 
   @override
@@ -44,7 +50,8 @@ class PersonalTrainingQuickLogSignPage extends StatefulWidget {
       _PersonalTrainingQuickLogSignPageState();
 }
 
-class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuickLogSignPage> {
+class _PersonalTrainingQuickLogSignPageState
+    extends State<PersonalTrainingQuickLogSignPage> {
   final TextEditingController _memoC = TextEditingController();
 
   final List<Offset?> _trainerSignaturePoints = [];
@@ -70,6 +77,9 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
   int? _totalSessions;
   int? _doneSessions;
 
+  bool _hasContractLinked = false;
+  String? _contractId;
+
   _QuickLogMode _mode = _QuickLogMode.normalDeduct;
 
   @override
@@ -87,6 +97,8 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
   }
 
   String get _cleanMemberId => widget.memberId.trim();
+
+  String get _personalOwnerUid => widget.personalOwnerUid?.trim() ?? '';
 
   String get _cleanMemberName {
     final value = widget.memberName.trim();
@@ -117,7 +129,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       '오늘의 한 걸음이 다음 변화를 만듭니다.',
       '흔들려도 이어가면 기록이 됩니다.',
       '벽은 넘으면 디딤돌이 됩니다.',
-      '좋은 수업은 오늘의 체크에서 시작돼요.',
+      '좋은 레슨은 오늘의 체크에서 시작돼요.',
     ];
 
     final seed = _safeDoneSessions % messages.length;
@@ -159,7 +171,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       case _QuickLogMode.normalDeduct:
         return '출석완료';
       case _QuickLogMode.serviceNoDeduct:
-        return '서비스 수업';
+        return '서비스 레슨';
       case _QuickLogMode.noShowDeduct:
         return '노쇼(차감)';
       case _QuickLogMode.noShowNoDeduct:
@@ -170,9 +182,9 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
   String get _modeHelperLabel {
     switch (_mode) {
       case _QuickLogMode.normalDeduct:
-        return '저장 시 잔여 수업 차감';
+        return '저장 시 잔여 레슨 소진';
       case _QuickLogMode.serviceNoDeduct:
-        return '저장 시 잔여 수업 유지';
+        return '저장 시 잔여 레슨 유지';
       case _QuickLogMode.noShowDeduct:
         return '강사 서명만으로 차감';
       case _QuickLogMode.noShowNoDeduct:
@@ -205,8 +217,21 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
     }
   }
 
+  bool get _isQuickLogConfirmed {
+    return _quickLogLocked || _quickLogDeductionApplied;
+  }
+
+  bool get _isModeLockedBySignature {
+    return _trainerSigned ||
+        _memberSigned ||
+        _memberSignedFromWeb ||
+        _waitingTrainerConfirm ||
+        _isQuickLogConfirmed;
+  }
+
   bool get _canSave {
     if (_saving) return false;
+    if (_isQuickLogConfirmed) return false;
     if (!_trainerSigned) return false;
     if (_requiresMemberSignature && !_memberSigned) return false;
     return true;
@@ -241,15 +266,24 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           ? Map<String, dynamic>.from(data['sessions'] as Map)
           : <String, dynamic>{};
 
+      final lessonSync = data['lessonSync'] is Map
+          ? Map<String, dynamic>.from(data['lessonSync'] as Map)
+          : <String, dynamic>{};
+
+      final loadedContractId =
+          (lessonSync['contractId'] ?? '').toString().trim();
+
+      final loadedHasContract =
+          data['contractSigned'] == true || loadedContractId.isNotEmpty;
+
       final remainRaw = data['remainSessions'] ??
           data['remainingSessions'] ??
           sessions['remain'] ??
           data['remainingPt'] ??
           data['ptRemaining'];
 
-      final totalRaw = data['totalSessions'] ??
-          sessions['total'] ??
-          data['sessionTotal'];
+      final totalRaw =
+          data['totalSessions'] ?? sessions['total'] ?? data['sessionTotal'];
 
       final doneRaw = data['doneSessions'] ?? sessions['done'];
 
@@ -267,6 +301,9 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
         _doneSessions = doneRaw is num
             ? doneRaw.toInt()
             : int.tryParse((doneRaw ?? '').toString());
+
+        _hasContractLinked = loadedHasContract;
+        _contractId = loadedContractId.isEmpty ? null : loadedContractId;
       });
     } catch (e) {
       debugPrint('빠른 서명 회원 회차 불러오기 실패: $e');
@@ -353,9 +390,8 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           ..addAll(memberPoints);
         _memberSigned = data['memberSigned'] == true;
         _memberSignedAt = memberSignedAt;
-        _memberSignedFromWeb =
-            memberSignature is Map &&
-                (memberSignature['signedBy'] ?? '').toString() == 'member_web';
+        _memberSignedFromWeb = memberSignature is Map &&
+            (memberSignature['signedBy'] ?? '').toString() == 'member_web';
       }
 
       _waitingTrainerConfirm = data['waitingTrainerConfirm'] == true;
@@ -380,7 +416,6 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           _mode = _QuickLogMode.normalDeduct;
       }
     });
-
   }
 
   void _bindQuickLogStream() {
@@ -526,7 +561,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
 
     return List.generate(
       32,
-          (_) => chars[random.nextInt(chars.length)],
+      (_) => chars[random.nextInt(chars.length)],
     ).join();
   }
 
@@ -535,6 +570,11 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
   }
 
   Future<Map<String, String>?> _createMemberSignRequest() async {
+    if (_isQuickLogConfirmed) {
+      _showToast('이미 확정했습니다');
+      return null;
+    }
+
     final cleanMemberId = _cleanMemberId;
     if (cleanMemberId.isEmpty) {
       _showToast('연결된 회원이 없어 서명 요청을 만들 수 없어요.');
@@ -545,22 +585,22 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
     final link = _buildMemberSignUrl(token);
     final logId = _buildLogId();
 
-    await FirebaseFirestore.instance.collection('sign_requests').doc(token).set({
+    await FirebaseFirestore.instance
+        .collection('sign_requests')
+        .doc(token)
+        .set({
       'token': token,
       'status': 'waiting_member_signature',
       'used': false,
-
       'memberId': cleanMemberId,
       'memberName': _cleanMemberName,
       if (_cleanPhone.isNotEmpty) 'memberPhone': _cleanPhone,
       if ((widget.scheduleDocId ?? '').trim().isNotEmpty)
         'scheduleDocId': widget.scheduleDocId!.trim(),
-
       'trainingLogId': logId,
       'lessonType': widget.lessonType,
       'startAt': Timestamp.fromDate(_effectiveStartAt),
       'endAt': Timestamp.fromDate(_effectiveEndAt),
-
       'requestType': 'member_signature',
       'source': 'quick_sign_page',
       'createdAt': FieldValue.serverTimestamp(),
@@ -745,8 +785,10 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       final x = item['x'];
       final y = item['y'];
 
-      final dx = x is num ? x.toDouble() : double.tryParse((x ?? '').toString());
-      final dy = y is num ? y.toDouble() : double.tryParse((y ?? '').toString());
+      final dx =
+          x is num ? x.toDouble() : double.tryParse((x ?? '').toString());
+      final dy =
+          y is num ? y.toDouble() : double.tryParse((y ?? '').toString());
 
       if (dx == null || dy == null) return null;
       return Offset(dx, dy);
@@ -768,6 +810,37 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
     if (value is DateTime) return value;
     if (value is String) return DateTime.tryParse(value);
     return null;
+  }
+
+  Future<void> _requestMoreCareSlotAfterQuickSignSaved() async {
+    final memberId = _cleanMemberId.trim();
+
+    if (memberId.isEmpty) return;
+
+    try {
+      final decision = await MoreCareSlotService.requestTemporarySlotForMember(
+        memberId: memberId,
+        reason: 'quick_sign_log_saved',
+      );
+
+      if (!mounted) return;
+
+      if (decision.canUseAdvancedMoreCare &&
+          decision.status == MoreCareSlotStatus.temporary) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text(
+                'MORE 관리도 잠시 열어두었어요. 관리자에게 승인 요청을 보내둘게요.',
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+      }
+    } catch (e) {
+      debugPrint('[MTF_MORE_SLOT] quick sign slot request failed: $e');
+    }
   }
 
   Future<void> _saveQuickSignedLog() async {
@@ -803,10 +876,10 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
     final deductionKey = _buildDeductionKey(logId);
 
     final memberRef =
-    FirebaseFirestore.instance.collection('members').doc(_cleanMemberId);
+        FirebaseFirestore.instance.collection('members').doc(_cleanMemberId);
 
     final logRef =
-    FirebaseFirestore.instance.collection('training_logs').doc(logId);
+        FirebaseFirestore.instance.collection('training_logs').doc(logId);
 
     final scheduleDocId = (widget.scheduleDocId ?? '').trim();
     final scheduleRef = scheduleDocId.isEmpty
@@ -853,6 +926,9 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
             memberData['ptRemaining'];
 
         final rawDone = memberData['doneSessions'] ?? sessions['done'];
+        final rawTotal = memberData['totalSessions'] ??
+            sessions['total'] ??
+            memberData['sessionTotal'];
 
         final currentRemain = rawRemain is num
             ? rawRemain.toInt()
@@ -861,6 +937,9 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
         final currentDone = rawDone is num
             ? rawDone.toInt()
             : int.tryParse((rawDone ?? '').toString()) ?? 0;
+        final currentTotal = rawTotal is num
+            ? rawTotal.toInt()
+            : int.tryParse((rawTotal ?? '').toString()) ?? 0;
 
         int nextRemain = currentRemain;
         int nextDone = currentDone;
@@ -879,14 +958,25 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
 
         final logPayload = <String, dynamic>{
           'id': logId,
+          if (_personalOwnerUid.isNotEmpty) ...{
+            'lessonLogId': logId,
+            'trainerId': _personalOwnerUid,
+            'workspaceType': 'personal',
+          },
           'memberId': _cleanMemberId,
           'memberName': _cleanMemberName,
+          'memberNameSnapshot': _cleanMemberName,
           if (_cleanPhone.isNotEmpty) 'memberPhone': _cleanPhone,
           if (scheduleDocId.isNotEmpty) 'scheduleDocId': scheduleDocId,
-
           'source': 'personal_training_quick_sign_page',
           'quickSignedOnly': true,
-
+          'basis': _hasContractLinked ? 'contract' : 'manual',
+          'contractLinked': _hasContractLinked,
+          if (_contractId != null && _contractId!.isNotEmpty)
+            'contractId': _contractId,
+          if (_hasContractLinked) 'cancelLockedByContract': true,
+          if (_hasContractLinked)
+            'cancelLockContractReason': 'contract_linked_lesson_confirm',
           'title': _mode == _QuickLogMode.normalDeduct
               ? '빠른 서명'
               : '빠른 서명 · $_modeLabel',
@@ -899,15 +989,14 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           'inputMethod': 'quick_sign',
           'isQuickSignLog': true,
           'sessionStatus': _modeStatusCode,
+          'status': _modeStatusCode,
           'sessionStatusLabel': _modeLabel,
           'memo': memoText,
           'publicMemo': '',
-
           'date': _dateLabel(_effectiveStartAt),
           'time': _timeLabel(_effectiveStartAt),
           'startAt': Timestamp.fromDate(_effectiveStartAt),
           'endAt': Timestamp.fromDate(_effectiveEndAt),
-
           'trainerSignature': {
             'type': 'drawing',
             'points': _signaturePointsToJson(trainerSignaturePoints),
@@ -915,25 +1004,29 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           },
           'memberSignature': _requiresMemberSignature
               ? {
-            'type': 'drawing',
-            'points': _signaturePointsToJson(memberSignaturePoints),
-            'signedAt': Timestamp.fromDate(_memberSignedAt ?? now),
-          }
+                  'type': 'drawing',
+                  'points': _signaturePointsToJson(memberSignaturePoints),
+                  'signedAt': Timestamp.fromDate(_memberSignedAt ?? now),
+                  'signedBy':
+                      _memberSignedFromWeb ? 'member_web' : 'member_app',
+                }
               : null,
-
           'trainerSig': '[drawing]',
           if (_requiresMemberSignature) 'memberSig': '[drawing]',
           if (_requiresMemberSignature) 'customerSig': '[drawing]',
-
           'trainerSigned': true,
           'memberSigned': _requiresMemberSignature,
+          if (_requiresMemberSignature)
+            'memberSignedAt': Timestamp.fromDate(_memberSignedAt ?? now),
+          if (_requiresMemberSignature) 'cancelLockedByMemberSignature': true,
+          if (_requiresMemberSignature)
+            'cancelLockReason': 'member_signed_lesson_confirm',
           'waitingTrainerConfirm': false,
           'confirmedByTrainer': true,
           'confirmedAt': Timestamp.fromDate(now),
           'locked': true,
           'lockedAt': Timestamp.fromDate(now),
           'signedAt': Timestamp.fromDate(now),
-
           'deductionKey': deductionKey,
           'deductionTarget': _shouldDeduct,
           'deductionApplied': actuallyDeducted || alreadyDeducted,
@@ -941,7 +1034,13 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           'deductionSkippedReason': noRemaining
               ? 'no_remaining_sessions'
               : (!_shouldDeduct ? 'not_deduction_mode' : null),
-
+          'sessionSnapshotTotal': currentTotal,
+          'sessionSnapshotRemainBefore': currentRemain,
+          'sessionSnapshotRemainAfter': nextRemain,
+          'sessionSnapshotDoneBefore': currentDone,
+          'sessionSnapshotDoneAfter': nextDone,
+          'sessionSnapshotLessonNumber': nextDone,
+          'sessionSnapshotLabel': '$nextDone/$currentTotal',
           'updatedAt': FieldValue.serverTimestamp(),
           if (!logSnap.exists) 'createdAt': FieldValue.serverTimestamp(),
         };
@@ -952,17 +1051,52 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           SetOptions(merge: true),
         );
 
+        final memberBaseUpdate = <String, dynamic>{
+          'lastLogAt': Timestamp.fromDate(_effectiveStartAt),
+          'lastLessonAt': Timestamp.fromDate(_effectiveStartAt),
+          'lastLessonType': widget.lessonType,
+          'lastLessonStatus': _modeStatusCode,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'lessonStats.confirmedCount': FieldValue.increment(1),
+          'lessonStats.lastConfirmStatus': _modeStatusCode,
+          'lessonStats.lastConfirmedAt': Timestamp.fromDate(_effectiveStartAt),
+          'lessonStats.lastLessonType': widget.lessonType,
+          'lessonStats.lastBasis': _hasContractLinked ? 'contract' : 'manual',
+        };
+
+        if (_mode == _QuickLogMode.noShowDeduct) {
+          memberBaseUpdate['noShowDeductedCount'] = FieldValue.increment(1);
+          memberBaseUpdate['sessions.noShowDeductedCount'] =
+              FieldValue.increment(1);
+          memberBaseUpdate['lessonStats.noShowDeductedCount'] =
+              FieldValue.increment(1);
+        } else if (_mode == _QuickLogMode.noShowNoDeduct) {
+          memberBaseUpdate['noShowUndeductedCount'] = FieldValue.increment(1);
+          memberBaseUpdate['sessions.noShowUndeductedCount'] =
+              FieldValue.increment(1);
+          memberBaseUpdate['lessonStats.noShowUndeductedCount'] =
+              FieldValue.increment(1);
+        } else if (_mode == _QuickLogMode.serviceNoDeduct) {
+          memberBaseUpdate['serviceSessionCount'] = FieldValue.increment(1);
+          memberBaseUpdate['sessions.serviceSessionCount'] =
+              FieldValue.increment(1);
+          memberBaseUpdate['lessonStats.serviceSessionCount'] =
+              FieldValue.increment(1);
+        } else if (_mode == _QuickLogMode.normalDeduct) {
+          memberBaseUpdate['lessonStats.completedCount'] =
+              FieldValue.increment(1);
+        }
+
         if (_shouldDeduct && !alreadyDeducted && actuallyDeducted) {
           transaction.set(
             memberRef,
             {
+              ...memberBaseUpdate,
               'remainSessions': nextRemain,
               'remainingSessions': nextRemain,
               'doneSessions': nextDone,
               'sessions.remain': nextRemain,
               'sessions.done': nextDone,
-              'lastLogAt': Timestamp.fromDate(now),
-              'updatedAt': FieldValue.serverTimestamp(),
               'deductedTrainingLogIds': FieldValue.arrayUnion([deductionKey]),
             },
             SetOptions(merge: true),
@@ -970,10 +1104,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
         } else {
           transaction.set(
             memberRef,
-            {
-              'lastLogAt': Timestamp.fromDate(now),
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
+            memberBaseUpdate,
             SetOptions(merge: true),
           );
         }
@@ -983,6 +1114,24 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
             'quickTrainingLogId': logId,
             'lastTrainingLogId': logId,
             'lastSignedAt': Timestamp.fromDate(now),
+            'lessonConfirmed': true,
+            'lessonConfirmedAt': FieldValue.serverTimestamp(),
+            'lessonConfirmStatus': _modeStatusCode,
+            'lessonConfirmLabel': _modeLabel,
+            'trainingLogId': logId,
+            'basis': _hasContractLinked ? 'contract' : 'manual',
+            'contractLinked': _hasContractLinked,
+            if (_contractId != null && _contractId!.isNotEmpty)
+              'contractId': _contractId,
+            if (_hasContractLinked) 'cancelLockedByContract': true,
+            if (_hasContractLinked)
+              'cancelLockContractReason': 'contract_linked_lesson_confirm',
+            if (_requiresMemberSignature) 'memberSigned': true,
+            if (_requiresMemberSignature)
+              'memberSignedAt': Timestamp.fromDate(_memberSignedAt ?? now),
+            if (_requiresMemberSignature) 'cancelLockedByMemberSignature': true,
+            if (_requiresMemberSignature)
+              'cancelLockReason': 'member_signed_lesson_confirm',
             'updatedAt': FieldValue.serverTimestamp(),
           };
 
@@ -1015,11 +1164,47 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       await _loadMemberSummary();
 
       if (alreadyDeducted) {
-        _showToast('이미 잔여 수업에 반영된 서명이에요.');
+        _showToast('이미 잔여 레슨에 반영된 서명이에요.');
       } else if (actuallyDeducted) {
-        _showToast('서명이 저장되고 잔여 수업 1회가 차감되었어요.');
+        _showToast('서명이 저장되고 레슨 1회가 진행되었어요.');
       } else if (noRemaining) {
-        _showToast('서명은 저장됐지만 잔여 수업이 0회라 차감되지 않았어요.');
+        _showToast('서명은 저장됐지만 잔여 레슨이 0회라 소진되지 않았어요.');
+      } else {
+        _showToast('서명이 저장되었어요.');
+      }
+
+      if (!mounted) return;
+
+      await _loadMemberSummary();
+
+      await MemberSmartAlarmContextService.updateFromLessonLog(
+        memberId: _cleanMemberId,
+        trainingLogId: logId,
+        lessonAt: _effectiveStartAt,
+        summary: _mode == _QuickLogMode.normalDeduct
+            ? '빠른 서명 · ${widget.lessonType}'
+            : '빠른 서명 · $_modeLabel · ${widget.lessonType}',
+        memo: memoText,
+        conditionText: _modeStatusCode,
+        painText: '',
+        nextLessonHint: memoText.isNotEmpty
+            ? memoText
+            : (_mode == _QuickLogMode.noShowDeduct ||
+                    _mode == _QuickLogMode.noShowNoDeduct
+                ? '다음 레슨 일정과 노쇼 사유를 확인해 주세요.'
+                : ''),
+      );
+
+      await _requestMoreCareSlotAfterQuickSignSaved();
+
+      if (!mounted) return;
+
+      if (alreadyDeducted) {
+        _showToast('이미 잔여 레슨에 반영된 서명이에요.');
+      } else if (actuallyDeducted) {
+        _showToast('서명이 저장되고 레슨 1회가 진행되었어요.');
+      } else if (noRemaining) {
+        _showToast('서명은 저장됐지만 잔여 레슨이 0회라 소진되지 않았어요.');
       } else {
         _showToast('서명이 저장되었어요.');
       }
@@ -1029,7 +1214,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
-      debugPrint('빠른 서명 수업일지 저장 실패: $e');
+      debugPrint('빠른 서명 레슨일지 저장 실패: $e');
 
       if (!mounted) return;
       _showToast('빠른 서명 저장에 실패했어요.');
@@ -1054,22 +1239,24 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       onTap: _saving
           ? null
           : () {
-        setState(() {
-          _mode = mode;
+              setState(() {
+                _mode = mode;
 
-          if (!_requiresMemberSignature) {
-            _memberSigned = false;
-            _memberSignedAt = null;
-          }
-        });
-      },
+                if (!_requiresMemberSignature) {
+                  _memberSigned = false;
+                  _memberSignedAt = null;
+                }
+              });
+            },
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
         decoration: BoxDecoration(
-          color: selected ? kQuickSignPrimaryColor.withOpacity(0.08) : Colors.white,
+          color: selected
+              ? kQuickSignPrimaryColor.withOpacity(0.08)
+              : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? kQuickSignPrimaryColor : const Color(0xFFE5E7EB),
@@ -1083,13 +1270,15 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                   ? Icons.radio_button_checked_rounded
                   : Icons.radio_button_unchecked_rounded,
               size: 19,
-              color: selected ? kQuickSignPrimaryColor : const Color(0xFF9CA3AF),
+              color:
+                  selected ? kQuickSignPrimaryColor : const Color(0xFF9CA3AF),
             ),
             const SizedBox(width: 8),
             Icon(
               icon,
               size: 18,
-              color: selected ? kQuickSignPrimaryColor : const Color(0xFF6B7280),
+              color:
+                  selected ? kQuickSignPrimaryColor : const Color(0xFF6B7280),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1101,7 +1290,9 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w900,
-                      color: selected ? kQuickSignPrimaryColor : const Color(0xFF111827),
+                      color: selected
+                          ? kQuickSignPrimaryColor
+                          : const Color(0xFF111827),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1172,7 +1363,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      _shouldDeduct ? '저장 시 잔여 수업 차감' : '저장 시 잔여 수업 유지',
+                      _shouldDeduct ? '저장 시 잔여 레슨 소진' : '저장 시 잔여 레슨 유지',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1206,29 +1397,29 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                     const SizedBox(height: 12),
                     _buildModeChip(
                       mode: _QuickLogMode.normalDeduct,
-                      label: '수업 완료',
-                      helper: '강사/회원 서명 후 잔여 수업 1회 차감',
+                      label: '레슨 완료',
+                      helper: '강사/회원 서명 후 잔여 레슨 1회 소진',
                       icon: Icons.check_circle_outline_rounded,
                     ),
                     const SizedBox(height: 8),
                     _buildModeChip(
                       mode: _QuickLogMode.serviceNoDeduct,
-                      label: '서비스 수업',
-                      helper: '서명은 저장하지만 잔여 수업은 차감하지 않음',
+                      label: '서비스 레슨',
+                      helper: '서명은 저장하지만 잔여 레슨은 소진하지 않음',
                       icon: Icons.volunteer_activism_outlined,
                     ),
                     const SizedBox(height: 8),
                     _buildModeChip(
                       mode: _QuickLogMode.noShowDeduct,
                       label: '노쇼(차감)',
-                      helper: '강사 서명만으로 저장하고 잔여 수업 1회 차감',
+                      helper: '강사 서명만으로 저장하고 잔여 레슨 1회 차감',
                       icon: Icons.person_off_outlined,
                     ),
                     const SizedBox(height: 8),
                     _buildModeChip(
                       mode: _QuickLogMode.noShowNoDeduct,
                       label: '노쇼(미차감)',
-                      helper: '강사 서명만으로 저장하고 잔여 수업은 유지',
+                      helper: '강사 서명만으로 저장하고 잔여 레슨은 유지',
                       icon: Icons.undo_rounded,
                     ),
                   ],
@@ -1291,7 +1482,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                         Expanded(
                           child: Text(
                             _waitingTrainerConfirm
-                                ? '회원 웹서명 완료 · 강사 확인 후 수업에 반영돼요'
+                                ? '회원 웹서명 완료 · 강사 확인 후 레슨에 반영돼요'
                                 : '회원 서명 완료',
                             style: const TextStyle(
                               color: Colors.white,
@@ -1417,54 +1608,55 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                         onPointerDown: signed
                             ? null
                             : (event) {
-                          setState(() {
-                            _isSigning = true;
-                          });
+                                setState(() {
+                                  _isSigning = true;
+                                });
 
-                          final pos = event.localPosition;
-                          onPointAdded(pos);
-                        },
+                                final pos = event.localPosition;
+                                onPointAdded(pos);
+                              },
                         onPointerMove: signed
                             ? null
                             : (event) {
-                          final pos = event.localPosition;
-                          onPointAdded(pos);
-                        },
+                                final pos = event.localPosition;
+                                onPointAdded(pos);
+                              },
                         onPointerUp: signed
                             ? null
                             : (_) {
-                          onPointAdded(null);
-                          setState(() {
-                            _isSigning = false;
-                          });
-                        },
+                                onPointAdded(null);
+                                setState(() {
+                                  _isSigning = false;
+                                });
+                              },
                         onPointerCancel: signed
                             ? null
                             : (_) {
-                          onPointAdded(null);
-                          setState(() {
-                            _isSigning = false;
-                          });
-                        },
+                                onPointAdded(null);
+                                setState(() {
+                                  _isSigning = false;
+                                });
+                              },
                         child: RepaintBoundary(
                           child: CustomPaint(
                             painter: _QuickSignaturePainter(points),
                             child: points.whereType<Offset>().isEmpty
                                 ? const Center(
-                              child: Text(
-                                '여기에 손서명해주세요',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF9CA3AF),
-                                ),
-                              ),
-                            )
+                                    child: Text(
+                                      '여기에 손서명해주세요',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF9CA3AF),
+                                      ),
+                                    ),
+                                  )
                                 : const SizedBox.expand(),
                           ),
                         ),
                       ),
-                      if ((_quickLogLocked || _quickLogDeductionApplied) && signed)
+                      if ((_quickLogLocked || _quickLogDeductionApplied) &&
+                          signed)
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
@@ -1478,7 +1670,8 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                                   vertical: 7,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF111827).withOpacity(0.72),
+                                  color:
+                                      const Color(0xFF111827).withOpacity(0.72),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: const Row(
@@ -1513,7 +1706,9 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: signed || points.isNotEmpty ? onClear : null,
+                      onPressed: _isQuickLogConfirmed
+                          ? null
+                          : (signed || points.isNotEmpty ? onClear : null),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF374151),
                         side: const BorderSide(color: Color(0xFFD1D5DB)),
@@ -1534,12 +1729,12 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
                       onPressed: signed
                           ? null
                           : () {
-                        if (points.whereType<Offset>().isEmpty) {
-                          _showToast('서명을 먼저 입력해주세요.');
-                          return;
-                        }
-                        onSign();
-                      },
+                              if (points.whereType<Offset>().isEmpty) {
+                                _showToast('서명을 먼저 입력해주세요.');
+                                return;
+                              }
+                              onSign();
+                            },
                       style: FilledButton.styleFrom(
                         backgroundColor: kQuickSignPrimaryColor,
                         foregroundColor: Colors.white,
@@ -1572,15 +1767,15 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
     final countLabel = remain == null && total == null
         ? '회차정보 없음'
         : total == null
-        ? '잔여 ${remain ?? 0}회'
-        : '잔여 ${remain ?? 0}/$total';
+            ? '잔여 ${remain ?? 0}회'
+            : '잔여 ${remain ?? 0}/$total';
 
     final topInset = MediaQuery.of(context).padding.top;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(18, topInset + 14, 18, 16),
+      padding: EdgeInsets.fromLTRB(18, topInset + 6, 18, 14),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [kQuickSignPrimaryColor, kQuickSignPrimaryColor2],
@@ -1652,204 +1847,191 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
           const SizedBox(height: 16),
 
           // 하나의 헤더 블럭
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.14),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.16),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.16),
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: const Icon(
-                        Icons.person_outline_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$_cleanMemberName 님',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '${_displayDateLabel(_effectiveStartAt)} · ${_displayTimeRangeLabel()} · ${widget.lessonType}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_loadingMember)
-                      const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.16),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          countLabel,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _modeExpanded = !_modeExpanded;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.12),
-                      ),
+                      color: Colors.white.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(13),
                     ),
-                    child: Row(
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.fact_check_outlined,
-                          color: Colors.white,
-                          size: 17,
-                        ),
-                        const SizedBox(width: 8),
                         Text(
-                          _modeLabel,
+                          '$_cleanMemberName 님',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12.5,
+                            fontSize: 14,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _modeHelperLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        AnimatedRotation(
-                          turns: _modeExpanded ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 180),
-                          child: const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: Colors.white,
-                            size: 22,
+                        const SizedBox(height: 3),
+                        Text(
+                          '${_displayDateLabel(_effectiveStartAt)} · ${_displayTimeRangeLabel()} · ${widget.lessonType}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                ClipRect(
-                  child: AnimatedAlign(
-                    alignment: Alignment.topCenter,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    heightFactor: _modeExpanded ? 1 : 0,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Column(
-                        children: [
-                          _buildHeaderModeChip(
-                            mode: _QuickLogMode.normalDeduct,
-                            label: '출석완료',
-                            helper: '강사/회원 서명 후 잔여 수업 1회 차감',
-                            icon: Icons.check_circle_outline_rounded,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildHeaderModeChip(
-                            mode: _QuickLogMode.serviceNoDeduct,
-                            label: '서비스 수업',
-                            helper: '서명은 저장하지만 잔여 수업은 차감하지 않음',
-                            icon: Icons.volunteer_activism_outlined,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildHeaderModeChip(
-                            mode: _QuickLogMode.noShowDeduct,
-                            label: '노쇼(차감)',
-                            helper: '강사 서명만으로 저장하고 잔여 수업 1회 차감',
-                            icon: Icons.person_off_outlined,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildHeaderModeChip(
-                            mode: _QuickLogMode.noShowNoDeduct,
-                            label: '노쇼(미차감)',
-                            helper: '강사 서명만으로 저장하고 잔여 수업은 유지',
-                            icon: Icons.undo_rounded,
-                          ),
-                        ],
+                  const SizedBox(width: 8),
+                  if (_loadingMember)
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        countLabel,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () {
+                  if (_isModeLockedBySignature) {
+                    _showToast('서명 완료 후에는 처리방식을 변경할 수 없어요.');
+                    return;
+                  }
+
+                  setState(() {
+                    _modeExpanded = !_modeExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.12),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.fact_check_outlined,
+                        color: Colors.white,
+                        size: 17,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _modeLabel,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _modeHelperLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      AnimatedRotation(
+                        turns: _modeExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              ClipRect(
+                child: AnimatedAlign(
+                  alignment: Alignment.topCenter,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  heightFactor: _modeExpanded ? 1 : 0,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Column(
+                      children: [
+                        _buildHeaderModeChip(
+                          mode: _QuickLogMode.normalDeduct,
+                          label: '출석완료',
+                          helper: '강사/회원 서명 후 잔여 레슨 1회 소진',
+                          icon: Icons.check_circle_outline_rounded,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildHeaderModeChip(
+                          mode: _QuickLogMode.serviceNoDeduct,
+                          label: '서비스 레슨',
+                          helper: '서명은 저장 후 잔여 레슨은 소진하지 않음',
+                          icon: Icons.volunteer_activism_outlined,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildHeaderModeChip(
+                          mode: _QuickLogMode.noShowDeduct,
+                          label: '노쇼(차감)',
+                          helper: '강사 서명 후 저장하고 잔여 레슨 1회 차감',
+                          icon: Icons.person_off_outlined,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildHeaderModeChip(
+                          mode: _QuickLogMode.noShowNoDeduct,
+                          label: '노쇼(미차감)',
+                          helper: '강사 서명 후 저장하고 잔여 레슨은 유지',
+                          icon: Icons.undo_rounded,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1868,17 +2050,17 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       onTap: _saving
           ? null
           : () {
-        setState(() {
-          _mode = mode;
+              setState(() {
+                _mode = mode;
 
-          if (!_requiresMemberSignature) {
-            _memberSigned = false;
-            _memberSignedAt = null;
-          }
+                if (!_requiresMemberSignature) {
+                  _memberSigned = false;
+                  _memberSignedAt = null;
+                }
 
-          _modeExpanded = false;
-        });
-      },
+                _modeExpanded = false;
+              });
+            },
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
@@ -1950,7 +2132,7 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
       textInputAction: TextInputAction.done,
       decoration: InputDecoration(
         labelText: '간단 메모',
-        hintText: '예: 컨디션 확인, 다음 수업 참고사항',
+        hintText: '예: 컨디션 확인, 다음 레슨 참고사항',
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
@@ -1972,21 +2154,19 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
 
   Widget _buildNoticeCard() {
     final text = _shouldDeduct
-        ? '저장하면 수업이 잠기고 잔여 수업이 1회 차감돼요.'
-        : '저장하면 수업은 기록되지만 잔여 수업은 차감되지 않아요.';
+        ? '저장하면 레슨이 잠기고 잔여 레슨이 1회 차감돼요.'
+        : '저장하면 레슨은 기록되지만 잔여 레슨은 차감되지 않아요.';
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
       decoration: BoxDecoration(
-        color: _shouldDeduct
-            ? const Color(0xFFFFFBEB)
-            : const Color(0xFFECFDF5),
+        color:
+            _shouldDeduct ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: _shouldDeduct
-              ? const Color(0xFFFDE68A)
-              : const Color(0xFFBBF7D0),
+          color:
+              _shouldDeduct ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
         ),
       ),
       child: Row(
@@ -2024,138 +2204,157 @@ class _PersonalTrainingQuickLogSignPageState extends State<PersonalTrainingQuick
   Widget build(BuildContext context) {
     final memberSignatureEnabled = _requiresMemberSignature;
 
-    return Scaffold(
-      backgroundColor: kQuickSignBgColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: _isSigning
-              ? const NeverScrollableScrollPhysics()
-              : const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 110),
-          child: Column(
-            children: [
-              _buildInfoCard(),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _buildSignatureBox(
-                      title: '강사 서명',
-                      helper: '강사가 수업 진행 또는 노쇼 처리를 확인합니다.',
-                      points: _trainerSignaturePoints,
-                      signed: _trainerSigned,
-                      signedAt: _trainerSignedAt,
-                      onPointAdded: (point) {
-                        if (_trainerSigned) return;
-                        setState(() {
-                          _trainerSignaturePoints.add(point);
-                        });
-                      },
-                      onSign: () {
-                        setState(() {
-                          _trainerSigned = true;
-                          _trainerSignedAt = DateTime.now();
-                        });
-                      },
-                      onClear: () {
-                        setState(() {
-                          _trainerSigned = false;
-                          _trainerSignedAt = null;
-                          _trainerSignaturePoints.clear();
-                          _isSigning = false;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSignatureBox(
-                      title: '회원 서명',
-                      helper: !memberSignatureEnabled
-                          ? '노쇼 처리에서는 회원 서명을 받지 않아도 저장할 수 있어요.'
-                          : _memberSignedFromWeb
-                          ? '회원이 링크로 서명을 완료했어요. 강사 서명 후 저장하면 수업에 반영됩니다.'
-                          : '회원이 수업 참여를 확인합니다.',
-                      points: _memberSignaturePoints,
-                      signed: _memberSigned,
-                      signedAt: _memberSignedAt,
-                      enabled: memberSignatureEnabled,
-                      onPointAdded: (point) {
-                        if (_memberSigned) return;
-                        setState(() {
-                          _memberSignaturePoints.add(point);
-                        });
-                      },
-                      onSign: () {
-                        setState(() {
-                          _memberSigned = true;
-                          _memberSignedAt = DateTime.now();
-                        });
-                      },
-                      onClear: () {
-                        setState(() {
-                          _memberSigned = false;
-                          _memberSignedAt = null;
-                          _memberSignaturePoints.clear();
-                          _isSigning = false;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMemoSection(),
-                    const SizedBox(height: 14),
-                    _buildNoticeCard(),
-                  ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        backgroundColor: kQuickSignBgColor,
+        body: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            physics: _isSigning
+                ? const NeverScrollableScrollPhysics()
+                : const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 110),
+            child: Column(
+              children: [
+                _buildInfoCard(),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildSignatureBox(
+                        title: '강사 서명',
+                        helper: '강사가 레슨 진행 또는 노쇼 처리를 확인합니다.',
+                        points: _trainerSignaturePoints,
+                        signed: _trainerSigned,
+                        signedAt: _trainerSignedAt,
+                        onPointAdded: (point) {
+                          if (_trainerSigned) return;
+                          setState(() {
+                            _trainerSignaturePoints.add(point);
+                          });
+                        },
+                        onSign: () {
+                          setState(() {
+                            _trainerSigned = true;
+                            _trainerSignedAt = DateTime.now();
+                          });
+                        },
+                        onClear: () {
+                          setState(() {
+                            _trainerSigned = false;
+                            _trainerSignedAt = null;
+                            _trainerSignaturePoints.clear();
+                            _isSigning = false;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSignatureBox(
+                        title: '회원 서명',
+                        helper: !memberSignatureEnabled
+                            ? '노쇼 처리에서는 회원 서명을 받지 않아도 저장할 수 있어요.'
+                            : _memberSignedFromWeb
+                                ? '회원이 링크로 서명을 완료했어요. 강사 서명 후 저장하면 레슨에 반영됩니다.'
+                                : '회원이 레슨 참여를 확인합니다.',
+                        points: _memberSignaturePoints,
+                        signed: _memberSigned,
+                        signedAt: _memberSignedAt,
+                        enabled: memberSignatureEnabled,
+                        onPointAdded: (point) {
+                          if (_memberSigned) return;
+                          setState(() {
+                            _memberSignaturePoints.add(point);
+                          });
+                        },
+                        onSign: () {
+                          setState(() {
+                            _memberSigned = true;
+                            _memberSignedAt = DateTime.now();
+                          });
+                        },
+                        onClear: () {
+                          setState(() {
+                            _memberSigned = false;
+                            _memberSignedAt = null;
+                            _memberSignaturePoints.clear();
+                            _isSigning = false;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildMemoSection(),
+                      const SizedBox(height: 14),
+                      _buildNoticeCard(),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 14,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: FilledButton(
-            onPressed: _canSave ? _saveQuickSignedLog : null,
-            style: FilledButton.styleFrom(
-              backgroundColor: kQuickSignPrimaryColor,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFFE5E7EB),
-              disabledForegroundColor: const Color(0xFF9CA3AF),
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 14,
+                  offset: const Offset(0, -4),
+                ),
+              ],
             ),
-            child: _saving
-                ? const SizedBox(
-              width: 19,
-              height: 19,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
+            child: FilledButton(
+              onPressed: _isQuickLogConfirmed
+                  ? () {
+                      _showToast('이미 확정했습니다');
+                    }
+                  : (_canSave ? _saveQuickSignedLog : null),
+              style: FilledButton.styleFrom(
+                backgroundColor: _isQuickLogConfirmed
+                    ? const Color(0xFFE5E7EB)
+                    : kQuickSignPrimaryColor,
+                foregroundColor: _isQuickLogConfirmed
+                    ? const Color(0xFF9CA3AF)
+                    : Colors.white,
+                disabledBackgroundColor: const Color(0xFFE5E7EB),
+                disabledForegroundColor: const Color(0xFF9CA3AF),
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
               ),
-            )
-                : Text(
-              (_quickLogLocked || _quickLogDeductionApplied)
-                  ? '수업 확정 완료'
-                  : _waitingTrainerConfirm
-                  ? '강사 확인 후 수업 반영'
-                  : (_shouldDeduct ? '수업 완료 저장' : '서명 저장하기'),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-              ),
+              child: _saving
+                  ? const SizedBox(
+                      width: 19,
+                      height: 19,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      _isQuickLogConfirmed
+                          ? '레슨 확정'
+                          : _waitingTrainerConfirm
+                              ? '강사 확인 후 레슨 반영'
+                              : (_shouldDeduct ? '레슨 완료 저장' : '서명 저장하기'),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
             ),
           ),
         ),

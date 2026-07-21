@@ -10,13 +10,25 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'personal_training_log_text_voice_page.dart';
 import 'personal_training_log_category_page.dart';
 import 'personal_training_log_pdf_page.dart';
-import 'personal_training_log_anatomy_dummy_page.dart';
+import 'personal_training_log_anatomy/anatomy_page.dart';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/inbody_camera_permission_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+
+import '../services/member_smart_alarm_context_service.dart';
+import '../services/more_care_slot_service.dart';
+import '../services/app_tier_access_service.dart';
+
+import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
+
+import '../aifc/core/aifc_chat_sheet.dart';
+import '../aifc/widget/aifc_log_manage_chat_sheet.dart';
 
 const Color kLogBgColor = Color(0xFFF3F4F6);
 const Color kLogCardColor = Colors.white;
@@ -24,7 +36,8 @@ const Color kLogBorderColor = Color(0xFFE5E7EB);
 const double kLogPageHorizontalPadding = 16;
 const double kLogMaxContentWidth = 520;
 
-const String kMemberSignBaseUrl = 'https://more-than-fitness-f6adb.web.app/sign';
+const String kMemberSignBaseUrl =
+    'https://more-than-fitness-f6adb.web.app/sign';
 
 class PersonalTrainingLogPage extends StatefulWidget {
   final String? memberId;
@@ -61,6 +74,18 @@ class PersonalTrainingLogPage extends StatefulWidget {
       _PersonalTrainingLogPageState();
 }
 
+enum AchievementBadgeCode {
+  lesson100,
+  bodyProfileDone,
+  competitionDone,
+  weddingDone,
+  ddayDone,
+  reregister10,
+  longTerm,
+  attendance,
+  manual,
+}
+
 class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   static const String kResetPin = '0000';
 
@@ -69,7 +94,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   String _lastTrainerTyped = '';
   String _lastCustomerTyped = '';
   bool _isHeaderInfoExpanded = false;
-  String _logFilter = 'all';
+  String _logFilter = 'locked';
+  bool _showMoreLogFilters = false;
   String _searchQuery = '';
   String? _highlightDraftId;
   String? _expandedLogId;
@@ -87,6 +113,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   final ScrollController _logScrollController = ScrollController();
   final Map<String, GlobalKey> _logCardKeys = {};
   final List<_GoalDdayItem> _goalDdays = [];
+
+  AppTierAccessSnapshot? _tierAccess;
+  bool _isTierAccessLoaded = false;
+  bool _femaleConditionEnabled = false;
+  DateTime? _femaleConditionLastStartAt;
+  int _femaleConditionCycleDays = 28;
 
   String _latestInbodyDate = '';
   String _latestWeight = '';
@@ -115,23 +147,620 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     });
   }
 
-    _GoalDdayItem? _nearestGoalDday() {
-      if (_goalDdays.isEmpty) return null;
+  ({AchievementBadgeCode code, String title}) _resolveBadgeFromGoalName(
+    String goalName,
+  ) {
+    final value = goalName.trim().toLowerCase();
 
-      final now = DateTime.now();
-      final sorted = [..._goalDdays]
-        ..sort((a, b) => a.date.compareTo(b.date));
+    if (value.contains('바디프로필') ||
+        value.contains('바프') ||
+        value.contains('body')) {
+      return (
+        code: AchievementBadgeCode.bodyProfileDone,
+        title: '바디프로필 완료',
+      );
+    }
 
-      for (final goal in sorted) {
-        final goalDate = DateTime(goal.date.year, goal.date.month, goal.date.day);
-        final today = DateTime(now.year, now.month, now.day);
-        if (!goalDate.isBefore(today)) {
-          return goal;
-        }
+    if (value.contains('대회') ||
+        value.contains('시합') ||
+        value.contains('competition')) {
+      return (
+        code: AchievementBadgeCode.competitionDone,
+        title: '대회 완료',
+      );
+    }
+
+    if (value.contains('웨딩') || value.contains('결혼') || value.contains('촬영')) {
+      return (
+        code: AchievementBadgeCode.weddingDone,
+        title: '웨딩촬영 완료',
+      );
+    }
+
+    return (
+      code: AchievementBadgeCode.ddayDone,
+      title: goalName.trim().isEmpty ? 'D-DAY 목표 완료' : '${goalName.trim()} 완료',
+    );
+  }
+
+  bool _isBodyProfileGoalName(String goalName) {
+    final value = goalName.trim().toLowerCase();
+
+    return value.contains('바디프로필') ||
+        value.contains('바프') ||
+        value.contains('body');
+  }
+
+  bool _isCompetitionGoalName(String goalName) {
+    final value = goalName.trim().toLowerCase();
+
+    return value.contains('대회') ||
+        value.contains('시합') ||
+        value.contains('competition');
+  }
+
+  bool _isWeddingGoalName(String goalName) {
+    final value = goalName.trim().toLowerCase();
+
+    return value.contains('웨딩') ||
+        value.contains('웨딩촬영') ||
+        value.contains('결혼') ||
+        value.contains('촬영');
+  }
+
+  List<({String suffix, String title, int dayOffset})>
+      _followUpSpecsForGoalName(String goalName) {
+    final cleanName = goalName.trim().isEmpty ? 'D-DAY' : goalName.trim();
+
+    if (_isBodyProfileGoalName(goalName)) {
+      return [
+        (
+          suffix: '14',
+          title: '$cleanName 후 14일 컨디션 체크',
+          dayOffset: 14,
+        ),
+        (
+          suffix: '50',
+          title: '$cleanName 후 50일 루틴 재정비',
+          dayOffset: 50,
+        ),
+        (
+          suffix: '100',
+          title: '$cleanName 후 100일 리텐션 체크',
+          dayOffset: 100,
+        ),
+      ];
+    }
+
+    if (_isCompetitionGoalName(goalName)) {
+      return [
+        (
+          suffix: '14',
+          title: '$cleanName 후 14일 회복 체크',
+          dayOffset: 14,
+        ),
+      ];
+    }
+
+    if (_isWeddingGoalName(goalName)) {
+      return [
+        (
+          suffix: '14',
+          title: '$cleanName 후 14일 컨디션 체크',
+          dayOffset: 14,
+        ),
+      ];
+    }
+
+    // 생일, 결혼기념일, 자녀 수능, 가족 행사 같은 개인 일정은
+    // 자동 후속 MORE 포커스를 만들지 않습니다.
+    return [];
+  }
+
+  Future<void> _createAchievementBadgeFromGoal({
+    required _GoalDdayItem goal,
+    required DateTime completedAt,
+  }) async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return;
+
+    final resolved = _resolveBadgeFromGoalName(goal.name);
+
+    final ref = FirebaseFirestore.instance
+        .collection('members')
+        .doc(memberId)
+        .collection('achievement_badges');
+
+    try {
+      final existing = await ref
+          .where('source', isEqualTo: 'goal_dday')
+          .where('sourceGoalId', isEqualTo: goal.id)
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) return;
+
+      await ref.add({
+        'title': resolved.title,
+        'code': resolved.code.name,
+        'type': 'auto',
+        'source': 'goal_dday',
+        'sourceGoalId': goal.id,
+        'isRepresentative': false,
+        'earnedAt': Timestamp.fromDate(completedAt),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadGoalDdaysFromFirestore() async {
+    final ref = _goalDdaysRef();
+    if (ref == null) return;
+
+    try {
+      final snapshot = await ref.orderBy('targetDate').get();
+
+      final items = snapshot.docs
+          .map((doc) => _GoalDdayItem.fromFirestore(doc.id, doc.data()))
+          .where((item) => item.name.trim().isNotEmpty)
+          .toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        _goalDdays
+          ..clear()
+          ..addAll(items);
+      });
+    } catch (e) {
+      debugPrint('D-DAY 목표 로드 실패: $e');
+    }
+  }
+
+  Future<void> _loadFemaleConditionFromMember() async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return;
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('members')
+          .doc(memberId)
+          .get();
+
+      final data = snap.data();
+      if (data == null) return;
+
+      final health = data['health'] is Map
+          ? Map<String, dynamic>.from(data['health'] as Map)
+          : <String, dynamic>{};
+
+      final femaleCondition = health['femaleCondition'] is Map
+          ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
+          : <String, dynamic>{};
+
+      DateTime? toDate(dynamic value) {
+        if (value is Timestamp) return value.toDate();
+        if (value is DateTime) return value;
+        if (value is String && value.isNotEmpty)
+          return DateTime.tryParse(value);
+        return null;
       }
 
-      return sorted.first;
+      if (!mounted) return;
+
+      setState(() {
+        _femaleConditionEnabled = femaleCondition['enabled'] == true;
+        _femaleConditionLastStartAt = toDate(femaleCondition['lastStartAt']);
+        _femaleConditionCycleDays =
+            (femaleCondition['cycleDays'] as num?)?.toInt() ?? 28;
+      });
+    } catch (e) {
+      debugPrint('컨디션주기 정보 로드 실패: $e');
     }
+  }
+
+  Future<void> _upsertGoalDday(_GoalDdayItem item) async {
+    final ref = _goalDdaysRef();
+    if (ref == null) {
+      _showSnack('회원 연결이 없어 D-DAY를 저장할 수 없어요.');
+      return;
+    }
+
+    final docId = item.id.trim().isEmpty ? _goalDdayDocId() : item.id;
+    item.id = docId;
+
+    await ref.doc(docId).set(
+      {
+        ...item.toFirestorePayload(),
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    await _loadGoalDdaysFromFirestore();
+    await _syncNextMoreDaySummaryToMember();
+  }
+
+  Future<void> _deleteGoalDday(_GoalDdayItem item) async {
+    final ref = _goalDdaysRef();
+    if (ref == null) return;
+
+    await ref.doc(item.id).delete();
+    await _loadGoalDdaysFromFirestore();
+    await _syncNextMoreDaySummaryToMember();
+  }
+
+  Future<void> _completeGoalDday(_GoalDdayItem item) async {
+    final ref = _goalDdaysRef();
+
+    if (ref == null) {
+      _showSnack('회원 연결이 없어 D-DAY를 완료할 수 없어요.');
+      return;
+    }
+
+    final completedAt = DateTime.now();
+
+    await ref.doc(item.id).set(
+      {
+        'isCompleted': true,
+        'status': 'completed',
+        'completedAt': Timestamp.fromDate(completedAt),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    await _createAchievementBadgeFromGoal(
+      goal: item,
+      completedAt: completedAt,
+    );
+
+    final followUpEnabled = await _isDdayFollowUpEnabled();
+    int createdFollowUpCount = 0;
+
+    if (followUpEnabled && !item.followUpCreated) {
+      createdFollowUpCount = await _createFollowUpCareMilestones(
+        item,
+        completedAt,
+      );
+
+      if (createdFollowUpCount > 0) {
+        await ref.doc(item.id).set(
+          {
+            'followUpCreated': true,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+    }
+
+    await _loadGoalDdaysFromFirestore();
+    await _syncNextMoreDaySummaryToMember();
+
+    if (!mounted) return;
+
+    _showSnack(
+      createdFollowUpCount > 0
+          ? '${item.name} 완료 · 메달과 후속 MORE 포커스 $createdFollowUpCount개를 생성했어요.'
+          : '${item.name} 완료 · 메달을 생성했어요.',
+    );
+  }
+
+  Future<void> _updateGoalDdayStatus(
+    _GoalDdayItem item,
+    String status,
+  ) async {
+    final ref = _goalDdaysRef();
+
+    if (ref == null) {
+      _showSnack('회원 연결이 없어 D-DAY 상태를 변경할 수 없어요.');
+      return;
+    }
+
+    final payload = <String, dynamic>{
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (status == 'active') {
+      payload['isCompleted'] = false;
+      payload['completedAt'] = FieldValue.delete();
+    }
+
+    if (status == 'paused') {
+      payload['isCompleted'] = false;
+    }
+
+    if (status == 'stopped') {
+      payload['isCompleted'] = false;
+      payload['stoppedAt'] = FieldValue.serverTimestamp();
+    }
+
+    await ref.doc(item.id).set(payload, SetOptions(merge: true));
+
+    await _loadGoalDdaysFromFirestore();
+    await _syncNextMoreDaySummaryToMember();
+
+    if (!mounted) return;
+
+    switch (status) {
+      case 'active':
+        _showSnack('${item.name} D-DAY를 다시 진행으로 바꿨어요.');
+        break;
+      case 'paused':
+        _showSnack('${item.name} D-DAY를 보류했어요.');
+        break;
+      case 'stopped':
+        _showSnack('${item.name} D-DAY를 중단했어요.');
+        break;
+    }
+  }
+
+  Future<void> _pauseGoalDday(_GoalDdayItem item) async {
+    await _updateGoalDdayStatus(item, 'paused');
+  }
+
+  Future<void> _stopGoalDday(_GoalDdayItem item) async {
+    await _updateGoalDdayStatus(item, 'stopped');
+  }
+
+  Future<void> _resumeGoalDday(_GoalDdayItem item) async {
+    await _updateGoalDdayStatus(item, 'active');
+  }
+
+  Future<int> _createFollowUpCareMilestones(
+    _GoalDdayItem goal,
+    DateTime completedAt,
+  ) async {
+    final ref = _careMilestonesRef();
+    if (ref == null) return 0;
+
+    final goalName = goal.name.trim().isEmpty ? 'D-DAY' : goal.name.trim();
+    final completedDate = _dateOnly(completedAt);
+
+    final followUps = _followUpSpecsForGoalName(goalName);
+
+    if (followUps.isEmpty) {
+      return 0;
+    }
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (final item in followUps) {
+      final dueDate = completedDate.add(Duration(days: item.dayOffset));
+
+      batch.set(
+        ref.doc('follow_${goal.id}_${item.suffix}'),
+        {
+          'source': 'goal_dday_follow_up',
+          'sourceGoalId': goal.id,
+          'sourceGoalName': goalName,
+          'title': item.title,
+          'type': 'auto',
+          'status': 'active',
+          'dueDate': Timestamp.fromDate(dueDate),
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    await batch.commit();
+    return followUps.length;
+  }
+
+  CollectionReference<Map<String, dynamic>>? _goalDdaysRef() {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return null;
+
+    return FirebaseFirestore.instance
+        .collection('members')
+        .doc(memberId)
+        .collection('goal_ddays');
+  }
+
+  DocumentReference<Map<String, dynamic>>? _memberDocRef() {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return null;
+
+    return FirebaseFirestore.instance.collection('members').doc(memberId);
+  }
+
+  _GoalDdayItem? _nearestActiveGoalDdayForSummary() {
+    final activeGoals = _goalDdays.where((goal) {
+      if (goal.isCompleted) return false;
+      if (goal.status == 'paused') return false;
+      if (goal.status == 'stopped') return false;
+      return goal.name.trim().isNotEmpty;
+    }).toList();
+
+    if (activeGoals.isEmpty) return null;
+
+    final today = _dateOnly(DateTime.now());
+
+    final futureGoals = activeGoals.where((goal) {
+      final goalDate = _dateOnly(goal.date);
+      return !goalDate.isBefore(today);
+    }).toList()
+      ..sort((a, b) => _dateOnly(a.date).compareTo(_dateOnly(b.date)));
+
+    if (futureGoals.isNotEmpty) {
+      return futureGoals.first;
+    }
+
+    final pastGoals = activeGoals.toList()
+      ..sort((a, b) => _dateOnly(b.date).compareTo(_dateOnly(a.date)));
+
+    return pastGoals.first;
+  }
+
+  Future<void> _syncNextMoreDaySummaryToMember() async {
+    final memberRef = _memberDocRef();
+    if (memberRef == null) return;
+
+    final nextGoal = _nearestActiveGoalDdayForSummary();
+
+    try {
+      if (nextGoal == null) {
+        await memberRef.set({
+          'nextMoreDayAt': FieldValue.delete(),
+          'nextMoreDayLabel': FieldValue.delete(),
+          'nextMoreDaySource': FieldValue.delete(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        return;
+      }
+
+      await memberRef.set({
+        'nextMoreDayAt': Timestamp.fromDate(_dateOnly(nextGoal.date)),
+        'nextMoreDayLabel': nextGoal.name.trim(),
+        'nextMoreDaySource': 'goal_dday',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('MORE 데이 요약 저장 실패: $e');
+    }
+  }
+
+  CollectionReference<Map<String, dynamic>>? _careMilestonesRef() {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return null;
+
+    return FirebaseFirestore.instance
+        .collection('members')
+        .doc(memberId)
+        .collection('care_milestones');
+  }
+
+  Future<bool> _isDdayFollowUpEnabled() async {
+    final memberId = (widget.memberId ?? '').trim();
+
+    if (memberId.isEmpty) return true;
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('members')
+          .doc(memberId)
+          .get();
+
+      final data = snap.data();
+      final settings = (data?['milestoneSettings'] is Map)
+          ? Map<String, dynamic>.from(data!['milestoneSettings'] as Map)
+          : <String, dynamic>{};
+
+      return (settings['ddayFollowUpEnabled'] as bool?) ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  int? _femaleConditionDaysLeftForDate(DateTime date) {
+    if (!_femaleConditionEnabled) return null;
+
+    final lastStart = _femaleConditionLastStartAt;
+    if (lastStart == null) return null;
+
+    final cycleDays = _femaleConditionCycleDays.clamp(20, 45);
+    final targetDate = _dateOnly(date);
+
+    var expectedDate = _dateOnly(lastStart);
+
+    while (
+        expectedDate.isBefore(targetDate.subtract(const Duration(days: 2)))) {
+      expectedDate = expectedDate.add(Duration(days: cycleDays));
+    }
+
+    return expectedDate.difference(targetDate).inDays;
+  }
+
+  bool _shouldShowFemaleConditionChip(DateTime date) {
+    final daysLeft = _femaleConditionDaysLeftForDate(date);
+    if (daysLeft == null) return false;
+
+    // 추천 기준: D-3 ~ D+2
+    return daysLeft >= -2 && daysLeft <= 3;
+  }
+
+  void _showFemaleConditionHint() {
+    _showSnack(
+      '컨디션주기를 가볍게 확인해보세요.\n'
+      '오늘은 강도, 통증, 컨디션을 한 번 더 체크하면 좋아요.',
+    );
+  }
+
+  DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  String _goalDdayDocId() {
+    return 'goal_${DateTime.now().microsecondsSinceEpoch}';
+  }
+
+  String _goalDateText(DateTime value) {
+    return '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
+  }
+
+  DateTime? _parseGoalDateText(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+
+    final normalized = trimmed
+        .replaceAll('.', '-')
+        .replaceAll('/', '-')
+        .replaceAll(RegExp(r'\s+'), '');
+
+    final match =
+        RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$').firstMatch(normalized);
+    if (match == null) return null;
+
+    final y = int.tryParse(match.group(1)!);
+    final m = int.tryParse(match.group(2)!);
+    final d = int.tryParse(match.group(3)!);
+
+    if (y == null || m == null || d == null) return null;
+
+    try {
+      final parsed = DateTime(y, m, d);
+
+      if (parsed.year != y || parsed.month != m || parsed.day != d) {
+        return null;
+      }
+
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  _GoalDdayItem? _nearestGoalDday() {
+    final activeGoals = _goalDdays.where((goal) {
+      if (goal.isCompleted) return false;
+      if (goal.status == 'paused') return false;
+      if (goal.status == 'stopped') return false;
+      return true;
+    }).toList();
+
+    if (activeGoals.isEmpty) return null;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final sorted = [...activeGoals]..sort((a, b) => a.date.compareTo(b.date));
+
+    for (final goal in sorted) {
+      final goalDate = DateTime(goal.date.year, goal.date.month, goal.date.day);
+      if (!goalDate.isBefore(today)) {
+        return goal;
+      }
+    }
+
+    return sorted.first;
+  }
 
   String _goalDdayLabel() {
     final goal = _nearestGoalDday();
@@ -142,9 +771,14 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final goalDate = DateTime(goal.date.year, goal.date.month, goal.date.day);
     final diff = goalDate.difference(today).inDays;
 
-    if (diff >= 0) {
+    if (diff == 0) {
+      return '${goal.name} D-DAY';
+    }
+
+    if (diff > 0) {
       return '${goal.name} D-$diff';
     }
+
     return '${goal.name} D+${diff.abs()}';
   }
 
@@ -176,6 +810,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   @override
   void initState() {
     super.initState();
+
+    _loadTierAccess();
 
     final now = DateTime.now();
     final d1 = now.subtract(const Duration(days: 18));
@@ -262,11 +898,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         performanceScore: 7.1,
         inputMethod: 'text',
       ),
-
     ]);
 
     _loadQuickSignedLogsFromFirestore();
-
+    _loadAnatomyLogsFromFirestore();
+    _loadGoalDdaysFromFirestore().then((_) {
+      if (!mounted) return;
+      _syncNextMoreDaySummaryToMember();
+    });
+    _loadFemaleConditionFromMember();
   }
 
   DateTime? _quickLogDateFromAny(dynamic value) {
@@ -295,6 +935,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         return 'no_show';
       case 'no_show_not_deducted':
         return 'no_show_no_deduct';
+      case 'confirm_cancelled':
+        return 'normal';
       case 'completed':
       default:
         return 'normal';
@@ -328,7 +970,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         final title = (data['title'] ?? '빠른 서명').toString();
         final memo = (data['memo'] ?? '').toString();
         final type = (data['lessonType'] ?? data['type'] ?? '개인PT').toString();
-        final name = (data['memberName'] ?? widget.memberName ?? '회원').toString();
+        final name =
+            (data['memberName'] ?? widget.memberName ?? '회원').toString();
 
         final trainerSignature = data['trainerSignature'];
         final memberSignature = data['memberSignature'];
@@ -341,19 +984,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             ? _quickLogDateFromAny(memberSignature['signedAt'])
             : null;
 
-        final trainerSignedDate = trainerSignedAt == null
-            ? ''
-            : _quickLogDateText(trainerSignedAt);
-        final trainerSignedTime = trainerSignedAt == null
-            ? ''
-            : _quickLogTimeText(trainerSignedAt);
+        final trainerSignedDate =
+            trainerSignedAt == null ? '' : _quickLogDateText(trainerSignedAt);
+        final trainerSignedTime =
+            trainerSignedAt == null ? '' : _quickLogTimeText(trainerSignedAt);
 
-        final memberSignedDate = memberSignedAt == null
-            ? ''
-            : _quickLogDateText(memberSignedAt);
-        final memberSignedTime = memberSignedAt == null
-            ? ''
-            : _quickLogTimeText(memberSignedAt);
+        final memberSignedDate =
+            memberSignedAt == null ? '' : _quickLogDateText(memberSignedAt);
+        final memberSignedTime =
+            memberSignedAt == null ? '' : _quickLogTimeText(memberSignedAt);
 
         final trainerSigned = data['trainerSigned'] == true;
         final memberSigned = data['memberSigned'] == true;
@@ -361,11 +1000,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         nextLogs.add(
           _TrainingLogItem(
             id: 'quick_${doc.id}',
+            trainingLogDocId: doc.id,
+            scheduleDocId: (data['scheduleDocId'] ?? '').toString().trim(),
+            confirmCancelled:
+                data['confirmCancelled'] == true || data['voided'] == true,
             title: title,
             name: name,
             time: _quickLogTimeText(startAt),
             type: type,
-            memo: memo.isEmpty ? '빠른 서명으로 저장된 수업일지입니다.' : memo,
+            memo: memo.isEmpty ? '빠른 서명으로 저장된 레슨일지입니다.' : memo,
             date: DateTime(startAt.year, startAt.month, startAt.day),
             performanceScore: 0,
             inputMethod: 'quick_sign',
@@ -381,7 +1024,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             customerSig: memberSigned
                 ? const SigCell(type: 'typed', value: '서명 완료')
                 : SigCell.empty(),
-            locked: data['locked'] == true,
+            locked: data['locked'] == true &&
+                data['confirmCancelled'] != true &&
+                data['voided'] != true,
             trainerSignedDate: trainerSignedDate,
             trainerSignedTime: trainerSignedTime,
             customerSignedDate: memberSignedDate,
@@ -408,6 +1053,62 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       });
     } catch (e) {
       debugPrint('빠른 서명 로그 불러오기 실패: $e');
+    }
+  }
+
+  Future<void> _loadAnatomyLogsFromFirestore() async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('training_logs')
+          .where('memberId', isEqualTo: memberId)
+          .get();
+      if (!mounted) return;
+
+      final nextLogs = <_TrainingLogItem>[];
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['hasAnatomyRecords'] != true ||
+            data['quickSignedOnly'] == true) {
+          continue;
+        }
+        final records = data['anatomyRecords'];
+        final count = records is List ? records.length : 0;
+        final startAt = _quickLogDateFromAny(data['startAt']) ?? DateTime.now();
+        nextLogs.add(
+          _TrainingLogItem(
+            id: 'anatomy_${doc.id}',
+            trainingLogDocId: doc.id,
+            scheduleDocId: (data['scheduleDocId'] ?? '').toString().trim(),
+            title: (data['title'] ?? '해부학 레슨일지').toString(),
+            name: (data['memberName'] ?? widget.memberName ?? '회원').toString(),
+            time: _quickLogTimeText(startAt),
+            type: (data['lessonType'] ?? data['type'] ?? '개인PT').toString(),
+            memo: '신체 부위 기록 $count개',
+            date: DateTime(startAt.year, startAt.month, startAt.day),
+            performanceScore: 0,
+            inputMethod: 'anatomy',
+            isDraft: false,
+          ),
+        );
+      }
+      if (nextLogs.isEmpty || !mounted) return;
+
+      setState(() {
+        final existingDocIds = _logs
+            .map((log) => log.trainingLogDocId.trim())
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        for (final log in nextLogs) {
+          if (existingDocIds.add(log.trainingLogDocId)) {
+            _logs.add(log);
+          }
+        }
+      });
+    } catch (error) {
+      debugPrint('해부학 레슨일지 불러오기 실패: $error');
     }
   }
 
@@ -458,6 +1159,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     return items;
   }
 
+  bool _sameLog(_TrainingLogItem a, _TrainingLogItem b) {
+    final aId = a.id.trim();
+    final bId = b.id.trim();
+
+    if (aId.isNotEmpty && bId.isNotEmpty) {
+      return aId == bId;
+    }
+
+    return identical(a, b);
+  }
+
   int _sessionNumberOf(_TrainingLogItem item) {
     final asc = _logsOldestFirst();
     int count = 0;
@@ -483,8 +1195,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     int count = 0;
 
     for (final log in asc) {
-      final isServiceLike =
-          log.sessionStatus == 'service' || log.sessionStatus == 'no_show_no_deduct';
+      final isServiceLike = log.sessionStatus == 'service' ||
+          log.sessionStatus == 'no_show_no_deduct';
 
       if (isServiceLike) {
         count += 1;
@@ -537,19 +1249,48 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     switch (_logFilter) {
       case 'unsigned':
         items = items.where((e) {
+          if (e.confirmCancelled) return false;
+
           final trainerOk = e.trainerSig.isSigned;
           final customerOk = e.customerSig.isSigned;
+
           return !(trainerOk && customerOk);
         }).toList();
         break;
+
       case 'locked':
-        items = items.where((e) => e.locked).toList();
+        items = items.where((e) {
+          return e.locked && !e.confirmCancelled;
+        }).toList();
         break;
-      case 'rehab':
-        items = items.where((e) => e.type == '재활').toList();
+
+      case 'no_show':
+        items = items.where((e) {
+          return e.sessionStatus == 'no_show' && !e.confirmCancelled;
+        }).toList();
         break;
+
+      case 'no_show_no_deduct':
+        items = items.where((e) {
+          return e.sessionStatus == 'no_show_no_deduct' && !e.confirmCancelled;
+        }).toList();
+        break;
+
+      case 'service':
+        items = items.where((e) {
+          return e.sessionStatus == 'service' && !e.confirmCancelled;
+        }).toList();
+        break;
+
+      case 'cancelled':
+        items = items.where((e) {
+          return e.confirmCancelled;
+        }).toList();
+        break;
+
       case 'all':
       default:
+        // 전체는 진짜 전체: 확정취소까지 포함
         break;
     }
 
@@ -571,7 +1312,6 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     return items;
   }
-
 
   List<_TrainingLogItem> _chartLogs() {
     final asc = _logsOldestFirst();
@@ -625,275 +1365,248 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     });
   }
 
-  Future<void> _openGoalDdayManager() async {
-    await showModalBottomSheet(
+  Future<void> _loadTierAccess() async {
+    try {
+      final access = await AppTierAccessService.loadTrainerAccess();
+
+      if (!mounted) return;
+
+      setState(() {
+        _tierAccess = access;
+        _isTierAccessLoaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _tierAccess = null;
+        _isTierAccessLoaded = true;
+      });
+    }
+  }
+
+  Future<bool> _guardDdayFeature() async {
+    return AifcTierFeatureGateSheet.guard(
+      context: context,
+      access: _tierAccess,
+      feature: AppTierFeatureKey.dday,
+      loadAccess: AppTierAccessService.loadTrainerAccess,
+      onShowTierGuide: (info) async {
+        _showSnack(
+            '${info.requiredTierLabel} 안내는 마이페이지의 등급 안내에서 다시 확인할 수 있어요.');
+      },
+    );
+  }
+
+  Future<bool> _openGoalDdayAifcFlow({
+    required _GoalDdayItem? editing,
+  }) async {
+    if (!await _guardDdayFeature()) return false;
+
+    if (editing == null &&
+        _goalDdays.where((goal) => !goal.isCompleted).length >= 3) {
+      _showSnack('진행 중인 D-DAY는 최대 3개까지 등록할 수 있어요.');
+      return false;
+    }
+
+    final goalName = await AifcChatSheet.show(
+      context: context,
+      question: editing == null
+          ? '어떤 D-DAY 목표를 등록할까요?\n\n바디프로필, 대회, 웨딩촬영처럼 날짜가 정해진 목표를 등록할 수 있어요.'
+          : '수정할 D-DAY 목표 이름을 알려주세요.',
+      inputLabel: '예: 바디프로필 / 대회 / 웨딩촬영',
+      initialValue: editing?.name ?? '',
+      autoCompleteHints: const [
+        '바디프로필',
+        '대회',
+        '웨딩촬영',
+        '결혼식',
+        '생일',
+      ],
+      skipLabel: '취소할게요',
+      onSkip: () {},
+      onSave: (value) async {
+        final name = value.trim();
+        if (name.isEmpty) {
+          return '목표 이름을 입력해야 D-DAY로 관리할 수 있어요.';
+        }
+
+        return '$name 목표로 등록해볼게요.\n이제 목표 날짜를 알려주세요.';
+      },
+    );
+
+    if (!mounted || goalName == null || goalName.trim().isEmpty) {
+      return false;
+    }
+
+    final defaultGoalDate = editing?.date ?? DateTime.now();
+
+    final dateText = await AifcChatSheet.show(
+      context: context,
+      question: '${goalName.trim()} 목표 날짜는 언제인가요?',
+      inputLabel: 'YYYY-MM-DD',
+      initialValue: _goalDateText(defaultGoalDate),
+      keyboardType: TextInputType.datetime,
+      autoCompleteHints: [
+        _goalDateText(DateTime.now()),
+        _goalDateText(DateTime.now().add(const Duration(days: 30))),
+        _goalDateText(DateTime.now().add(const Duration(days: 60))),
+        _goalDateText(DateTime.now().add(const Duration(days: 100))),
+      ],
+      skipLabel: '취소할게요',
+      onSkip: () {},
+      onSave: (value) async {
+        final rawDate = value.trim().isEmpty
+            ? _goalDateText(defaultGoalDate)
+            : value.trim();
+
+        final parsed = _parseGoalDateText(rawDate);
+
+        if (parsed == null) {
+          return '날짜 형식이 맞지 않아요.\n예: 2026-08-20 형식으로 입력해주세요.';
+        }
+
+        final today = _dateOnly(DateTime.now());
+        final target = _dateOnly(parsed);
+
+        if (target.isBefore(today)) {
+          return 'D-DAY는 오늘 이후 날짜만 등록할 수 있어요.\n오늘 날짜 또는 앞으로의 날짜로 다시 입력해주세요.';
+        }
+
+        final diff = target.difference(today).inDays;
+
+        final ddayText = diff == 0
+            ? 'D-DAY'
+            : diff > 0
+                ? 'D-$diff'
+                : 'D+${diff.abs()}';
+
+        return '${goalName.trim()} · $ddayText로 저장할게요.\n고객리스트의 MORE 데이에도 함께 반영돼요.';
+      },
+    );
+
+    if (!mounted || dateText == null) {
+      return false;
+    }
+
+    final safeDateText = dateText.trim().isEmpty
+        ? _goalDateText(defaultGoalDate)
+        : dateText.trim();
+
+    final parsedDate = _parseGoalDateText(safeDateText);
+
+    if (parsedDate == null) {
+      _showSnack('D-DAY 날짜를 YYYY-MM-DD 형식으로 입력해주세요.');
+      return false;
+    }
+
+    final today = _dateOnly(DateTime.now());
+    final targetDate = _dateOnly(parsedDate);
+
+    if (targetDate.isBefore(today)) {
+      _showSnack('D-DAY는 오늘 이후 날짜만 등록할 수 있어요.');
+      return false;
+    }
+
+    final next = editing ??
+        _GoalDdayItem(
+          id: _goalDdayDocId(),
+          name: goalName.trim(),
+          date: parsedDate,
+        );
+
+    next.name = goalName.trim();
+    next.date = parsedDate;
+
+    await _upsertGoalDday(next);
+
+    if (!mounted) return false;
+
+    _showSnack(
+      editing == null
+          ? '${next.name} D-DAY를 추가했어요.'
+          : '${next.name} D-DAY를 수정했어요.',
+    );
+
+    return true;
+  }
+
+  Future<void> _openGoalDdayManageSheet() async {
+    if (!await _guardDdayFeature()) return;
+
+    await _loadGoalDdaysFromFirestore();
+
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (sheetContext, setModalState) {
-            Future<void> saveGoal({required _GoalDdayItem? editing}) async {
-              final nameController = TextEditingController(
-                text: editing?.name ?? '',
-              );
-              DateTime selectedDate = editing?.date ?? DateTime.now();
+      builder: (_) => _GoalDdayManageSheet(
+        goals: List<_GoalDdayItem>.from(_goalDdays),
+        onAdd: () async {
+          Navigator.of(context).pop();
+          await Future.delayed(const Duration(milliseconds: 160));
+          if (!mounted) return;
+          await _openGoalDdayAifcFlow(editing: null);
+        },
+        onEdit: (goal) async {
+          Navigator.of(context).pop();
+          await Future.delayed(const Duration(milliseconds: 160));
+          if (!mounted) return;
+          await _openGoalDdayAifcFlow(editing: goal);
+        },
+        onComplete: (goal) async {
+          Navigator.of(context).pop();
+          await _completeGoalDday(goal);
+        },
+        onPause: (goal) async {
+          Navigator.of(context).pop();
+          await _pauseGoalDday(goal);
+        },
+        onStop: (goal) async {
+          Navigator.of(context).pop();
+          await _stopGoalDday(goal);
+        },
+        onResume: (goal) async {
+          Navigator.of(context).pop();
+          await _resumeGoalDday(goal);
+        },
+        onDelete: (goal) async {
+          Navigator.of(context).pop();
 
-              final result = await showModalBottomSheet<bool>(
-                context: sheetContext,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (innerContext) {
-                  return StatefulBuilder(
-                    builder: (innerContext, setInnerState) {
-                      return Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            left: 16,
-                            right: 16,
-                            top: 16,
-                            bottom: MediaQuery.of(innerContext).viewInsets.bottom + 20,
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                editing == null ? '목표 D-DAY 추가' : '목표 D-DAY 수정',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: nameController,
-                                decoration: InputDecoration(
-                                  labelText: '목표 이름',
-                                  hintText: '예: 바디프로필 / 결혼식 / 촬영',
-                                  filled: true,
-                                  fillColor: const Color(0xFFF8FAFC),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              InkWell(
-                                onTap: () async {
-                                  final picked = await showDatePicker(
-                                    context: innerContext,
-                                    initialDate: selectedDate,
-                                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                                    lastDate: DateTime.now().add(const Duration(days: 3650)),
-                                  );
-                                  if (picked != null) {
-                                    setInnerState(() {
-                                      selectedDate = picked;
-                                    });
-                                  }
-                                },
-                                borderRadius: BorderRadius.circular(14),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                                  ),
-                                  child: Text(
-                                    '${selectedDate.year}.${selectedDate.month.toString().padLeft(2, '0')}.${selectedDate.day.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton(
-                                  onPressed: () {
-                                    if (nameController.text.trim().isEmpty) return;
-                                    if (editing == null && _goalDdays.length >= 3) return;
-
-                                    setState(() {
-                                      if (editing == null) {
-                                        _goalDdays.add(
-                                          _GoalDdayItem(
-                                            id: DateTime.now().microsecondsSinceEpoch.toString(),
-                                            name: nameController.text.trim(),
-                                            date: selectedDate,
-                                          ),
-                                        );
-                                      } else {
-                                        editing.name = nameController.text.trim();
-                                        editing.date = selectedDate;
-                                      }
-                                    });
-
-                                    Navigator.pop(innerContext, true);
-                                  },
-                                  child: Text(editing == null ? '추가' : '수정 저장'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              );
-
-              if (result == true) {
-                setModalState(() {});
-              }
-            }
-
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            '목표 D-DAY 관리',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (_goalDdays.length < 3)
-                            TextButton.icon(
-                              onPressed: () => saveGoal(editing: null),
-                              icon: const Icon(Icons.add_rounded),
-                              label: const Text('추가'),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (_goalDdays.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: const Text(
-                            '등록된 목표가 없어요. 최대 3개까지 추가할 수 있어요.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ..._goalDdays.map((goal) {
-                        final now = DateTime.now();
-                        final today = DateTime(now.year, now.month, now.day);
-                        final dateOnly = DateTime(goal.date.year, goal.date.month, goal.date.day);
-                        final diff = dateOnly.difference(today).inDays;
-                        final ddayText = diff >= 0 ? 'D-$diff' : 'D+${diff.abs()}';
-
-                        return Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      goal.name,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${goal.date.year}.${goal.date.month.toString().padLeft(2, '0')}.${goal.date.day.toString().padLeft(2, '0')} · $ddayText',
-                                      style: const TextStyle(
-                                        fontSize: 11.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => saveGoal(editing: goal),
-                                icon: const Icon(Icons.edit_outlined),
-                              ),
-                              IconButton(
-                                onPressed: () async {
-                                  final confirm = await showDialog<bool>(
-                                    context: sheetContext,
-                                    builder: (dialogContext) {
-                                      return AlertDialog(
-                                        title: const Text('목표 삭제'),
-                                        content: Text('${goal.name} 목표를 삭제하시겠습니까?'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(dialogContext, false),
-                                            child: const Text('취소'),
-                                          ),
-                                          FilledButton(
-                                            onPressed: () => Navigator.pop(dialogContext, true),
-                                            child: const Text('삭제'),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-
-                                  if (confirm == true) {
-                                    setState(() {
-                                      _goalDdays.removeWhere((e) => e.id == goal.id);
-                                    });
-                                    setModalState(() {});
-                                  }
-                                },
-                                icon: const Icon(Icons.delete_outline),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
+          final ok = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ),
-            );
-          },
-        );
-      },
+                title: const Text('D-DAY를 삭제할까요?'),
+                content: Text(
+                  '${goal.name} D-DAY를 삭제합니다.\n삭제 후에는 되돌릴 수 없어요.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                    child: const Text('취소'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    child: const Text('삭제'),
+                  ),
+                ],
+              );
+            },
+          );
+
+          if (ok == true) {
+            await _deleteGoalDday(goal);
+            if (!mounted) return;
+            _showSnack('${goal.name} D-DAY를 삭제했어요.');
+          }
+        },
+      ),
     );
   }
 
@@ -912,7 +1625,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.calendar_month_rounded),
-                  title: const Text('수업 달력 보기'),
+                  title: const Text('레슨 달력 보기'),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _openLessonCalendar();
@@ -920,10 +1633,28 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.flag_outlined),
-                  title: const Text('목표 D-DAY 관리'),
-                  onTap: () {
+                  title: const Text('목표 D-DAY 추가'),
+                  onTap: () async {
                     Navigator.pop(sheetContext);
-                    _openGoalDdayManager();
+
+                    await Future.delayed(const Duration(milliseconds: 180));
+
+                    if (!mounted) return;
+
+                    await _openGoalDdayAifcFlow(editing: null);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.tune_rounded),
+                  title: const Text('목표 D-DAY 관리'),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+
+                    await Future.delayed(const Duration(milliseconds: 180));
+
+                    if (!mounted) return;
+
+                    await _openGoalDdayManageSheet();
                   },
                 ),
               ],
@@ -952,6 +1683,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                   title: const Text('카메라로 촬영'),
                   onTap: () async {
                     Navigator.pop(sheetContext);
+                    if (!await prepareInbodyCameraUse(context)) return;
+                    if (!mounted) return;
                     await _pickAndScanInbody(ImageSource.camera);
                   },
                 ),
@@ -1013,20 +1746,21 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       for (int i = 0; i < lines.length; i++) {
         final compact = lines[i].replaceAll(' ', '').toLowerCase();
         final hasKeyword = keywords.any(
-              (keyword) => compact.contains(keyword.replaceAll(' ', '').toLowerCase()),
+          (keyword) =>
+              compact.contains(keyword.replaceAll(' ', '').toLowerCase()),
         );
 
         if (!hasKeyword) continue;
 
         final currentMatch =
-        RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i]);
+            RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i]);
         if (currentMatch != null) {
           return currentMatch.group(1)!.replaceAll(',', '.');
         }
 
         if (i + 1 < lines.length) {
           final nextMatch =
-          RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i + 1]);
+              RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i + 1]);
           if (nextMatch != null) {
             return nextMatch.group(1)!.replaceAll(',', '.');
           }
@@ -1037,7 +1771,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     }
 
     final dateMatch =
-    RegExp(r'(20\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2})').firstMatch(raw);
+        RegExp(r'(20\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2})').firstMatch(raw);
 
     return _ExtractedInbodyData(
       date: dateMatch?.group(1)?.replaceAll('/', '.') ?? '',
@@ -1070,155 +1804,108 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(24),
             ),
-            child: StatefulBuilder(
-              builder: (sheetContext, setModalState) {
-                return SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            '인바디 자동입력',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: () => Navigator.pop(sheetContext),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          imageFile,
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        '자동 인식된 값이에요. 틀린 값만 수정하고 저장하세요.',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: dateC,
-                        decoration: InputDecoration(
-                          labelText: '측정일',
-                          hintText: '예: 2026.03.21',
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: weightC,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: '체중(kg)',
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: skeletalC,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: '골격근량',
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: bodyFatC,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: '체지방률(%)',
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF4F46E5),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          onPressed: () {
-                            final skeletalValue =
-                            _tryParseDouble(skeletalC.text.trim());
-
-                            setState(() {
-                              _latestInbodyDate = dateC.text.trim();
-                              _latestWeight = weightC.text.trim();
-                              _latestBodyFatPercent = bodyFatC.text.trim();
-
-                              if (skeletalValue != null) {
-                                _inbodyTrend.add(skeletalValue);
-                              }
-                            });
-
-                            Navigator.pop(sheetContext);
-                            _showSnack('인바디 수치를 적용했어요.');
-                          },
-                          child: const Text(
-                            '인바디 적용',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '인바디 인식 결과 확인',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                );
-              },
+                  const SizedBox(height: 6),
+                  const Text(
+                    '자동 인식된 값이 맞는지 확인하고 필요하면 수정해주세요.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.35,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      imageFile,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: dateC,
+                    decoration: const InputDecoration(
+                      labelText: '측정일',
+                      hintText: '예: 2026.06.01',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: weightC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '체중',
+                      suffixText: 'kg',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: skeletalC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '골격근량',
+                      suffixText: 'kg',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: bodyFatC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '체지방률',
+                      suffixText: '%',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        setState(() {
+                          _latestInbodyDate = dateC.text.trim();
+                          _latestWeight = weightC.text.trim();
+                          _latestBodyFatPercent = bodyFatC.text.trim();
+                        });
+
+                        Navigator.pop(sheetContext);
+                        _showSnack('인바디 값을 반영했어요.');
+                      },
+                      child: const Text('반영하기'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -1236,25 +1923,24 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final headerName = (widget.memberName ?? '').trim();
     final headerTrainer = (widget.trainerName ?? '').trim();
 
-    final headerTitle =
-    headerName.isNotEmpty ? '$headerName 님 수업일지' : '수업일지';
+    final headerTitle = headerName.isNotEmpty ? '$headerName 님 레슨일지' : '레슨일지';
 
     final latestLessonDate = widget.lastLogAt ?? _latestLogDate();
     final lastLessonText =
-    latestLessonDate == null ? '기록없음' : _fmtDotYmd(latestLessonDate);
+        latestLessonDate == null ? '기록없음' : _fmtDotYmd(latestLessonDate);
 
     final recentIssue = (widget.recentIssue ?? '').trim().isNotEmpty
         ? widget.recentIssue!.trim()
         : '최근 이슈 · 무릎 통증 호소';
 
     final reRegistrationLabel =
-    (widget.reRegistrationLabel ?? '').trim().isNotEmpty
-        ? widget.reRegistrationLabel!.trim()
-        : '3회차';
+        (widget.reRegistrationLabel ?? '').trim().isNotEmpty
+            ? widget.reRegistrationLabel!.trim()
+            : '3회차';
 
     final openingMent = (widget.openingMent ?? '').trim().isNotEmpty
         ? widget.openingMent!.trim()
-        : '지난수업에 상체근력 트레이닝 진행하여, 오늘은 하체근력 트레이닝을 진행해볼게요.';
+        : '지난레슨에 상체근력 트레이닝 진행하여, 오늘은 하체근력 트레이닝을 진행해볼게요.';
     final headerInitialGoal = _initialGoalLabel();
     final headerGoalDday = _goalDdayLabel();
 
@@ -1262,7 +1948,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       builder: (context, constraints) {
         final bool isTablet = constraints.maxWidth >= 600;
         final double width =
-        isTablet ? kLogMaxContentWidth : constraints.maxWidth;
+            isTablet ? kLogMaxContentWidth : constraints.maxWidth;
 
         return Scaffold(
           backgroundColor: kLogBgColor,
@@ -1319,8 +2005,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                           const SizedBox(height: 90),
                         ],
                       ),
-                      ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -1338,8 +2024,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final changeLabel = change == 0
         ? '변화 없음'
         : change > 0
-        ? '+${change.toStringAsFixed(1)}'
-        : change.toStringAsFixed(1);
+            ? '+${change.toStringAsFixed(1)}'
+            : change.toStringAsFixed(1);
 
     final latestInbodySummary = <String>[
       if (_latestInbodyDate.isNotEmpty) '최근 인바디 $_latestInbodyDate',
@@ -1377,7 +2063,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(999),
@@ -1425,15 +2112,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             ),
             child: chartLogs.isEmpty
                 ? const Center(
-              child: Text(
-                '아직 표시할 운동성과 기록이 없어요.',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black45,
-                ),
-              ),
-            )
+                    child: Text(
+                      '아직 표시할 운동성과 기록이 없어요.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black45,
+                      ),
+                    ),
+                  )
                 : _PerformanceLineChart(logs: chartLogs),
           ),
           const SizedBox(height: 14),
@@ -1444,18 +2131,33 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Widget _buildLogFilterBar() {
+    final chips = <Widget>[
+      _buildFilterChip('확정완료', 'locked'),
+      const SizedBox(width: 8),
+      _buildMoreFilterToggleChip(),
+    ];
+
+    if (_showMoreLogFilters) {
+      chips.addAll([
+        const SizedBox(width: 8),
+        _buildFilterChip('전체', 'all'),
+        const SizedBox(width: 8),
+        _buildFilterChip('서비스', 'service'),
+        const SizedBox(width: 8),
+        _buildFilterChip('미서명', 'unsigned'),
+        const SizedBox(width: 8),
+        _buildFilterChip('노쇼', 'no_show'),
+        const SizedBox(width: 8),
+        _buildFilterChip('미차감 노쇼', 'no_show_no_deduct'),
+        const SizedBox(width: 8),
+        _buildFilterChip('확정취소', 'cancelled'),
+      ]);
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: [
-          _buildFilterChip('전체', 'all'),
-          const SizedBox(width: 8),
-          _buildFilterChip('미서명', 'unsigned'),
-          const SizedBox(width: 8),
-          _buildFilterChip('잠금완료', 'locked'),
-          const SizedBox(width: 8),
-          _buildFilterChip('재활수업', 'rehab'),
-        ],
+        children: chips,
       ),
     );
   }
@@ -1514,6 +2216,48 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMoreFilterToggleChip() {
+    final opened = _showMoreLogFilters;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _showMoreLogFilters = !_showMoreLogFilters;
+        });
+      },
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: opened ? const Color(0xFFF3F4F6) : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: const Color(0xFFE5E7EB),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              opened ? Icons.keyboard_arrow_up_rounded : Icons.add_rounded,
+              size: 15,
+              color: Colors.black54,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              opened ? '접기' : '더보기',
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1591,7 +2335,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             ),
             icon: const Icon(Icons.add_rounded),
             label: const Text(
-              '오늘 수업일지 작성',
+              '오늘 레슨일지 작성',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
@@ -1647,10 +2391,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           SizedBox(width: 8),
           Expanded(
             child: Text(
-              "• 달력에서 표시된 날만 수업 기록이 있어요\n"
-                  "• 날짜를 누르면 당일의 수업일지만 바로 볼 수 있어요\n"
-                  "• 전체 기록으로 다시 흐름을 확인할 수 있어요\n"
-                  "• 카드에는 핵심만, 자세한 내용은 탭해서 확인해요",
+              "• 달력에서 표시된 날만 레슨 기록이 있어요\n"
+              "• 날짜를 누르면 당일의 레슨일지만 바로 볼 수 있어요\n"
+              "• 전체 기록으로 다시 흐름을 확인할 수 있어요\n"
+              "• 카드에는 핵심만, 자세한 내용은 탭해서 확인해요",
               style: TextStyle(
                 fontSize: 11.5,
                 color: Color(0xFF1F2937),
@@ -1695,7 +2439,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               child: Text(
                 _searchQuery.isNotEmpty
                     ? "검색 결과가 없어요.\n다른 키워드로 다시 검색해보세요."
-                    : "조건에 맞는 수업일지가 없어요.\n필터를 바꾸거나 새 기록을 작성해보세요.",
+                    : "조건에 맞는 레슨일지가 없어요.\n필터를 바꾸거나 새 기록을 작성해보세요.",
                 style: const TextStyle(
                   fontSize: 11.5,
                   color: Colors.black54,
@@ -1716,7 +2460,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       final currentDate = DateTime(log.date.year, log.date.month, log.date.day);
 
       if (_isMonthChanged(currentDate, previousDate)) {
-        children.add(_buildTimelineSectionHeader(_monthSectionLabel(currentDate)));
+        children
+            .add(_buildTimelineSectionHeader(_monthSectionLabel(currentDate)));
       }
 
       children.add(
@@ -1730,6 +2475,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             isHighlighted: _highlightDraftId == log.id,
             isExpanded: _expandedLogId == log.id,
             goalDdayLabel: _goalDdayLabel(),
+            femaleConditionVisible: _shouldShowFemaleConditionChip(log.date),
+            onFemaleConditionTap: _showFemaleConditionHint,
             draftEntryMode: log.draftEntryMode,
             onTap: () {
               if (log.isDraft) {
@@ -1744,7 +2491,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                   return;
                 }
 
+                if (log.draftEntryMode == 'anatomy') {
+                  _openAnatomyLogPage(log);
+                  return;
+                }
+
                 _openDraftEntryPicker(log);
+                return;
+              }
+
+              if (log.inputMethod == 'anatomy') {
+                _openAnatomyLogPage(log);
                 return;
               }
 
@@ -1834,14 +2591,527 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     );
   }
 
+  int _intFromAny(dynamic value) {
+    if (value is num) return value.toInt();
+    return int.tryParse((value ?? '').toString()) ?? 0;
+  }
+
+  int _minusOneFloorZero(dynamic value) {
+    final current = _intFromAny(value);
+    return current > 0 ? current - 1 : 0;
+  }
+
+  String _firestoreLogDocIdFromLog(_TrainingLogItem log) {
+    final explicit = log.trainingLogDocId.trim();
+    if (explicit.isNotEmpty) return explicit;
+
+    final id = log.id.trim();
+
+    if (id.startsWith('quick_')) {
+      return id.replaceFirst('quick_', '');
+    }
+
+    return id;
+  }
+
+  String _firestoreStatusFromLocalStatus(String status) {
+    switch (status) {
+      case 'service':
+        return 'service';
+      case 'no_show':
+        return 'no_show_deducted';
+      case 'no_show_no_deduct':
+        return 'no_show_not_deducted';
+      case 'normal':
+      default:
+        return 'completed';
+    }
+  }
+
+  List<String> _deductionKeysForCancel({
+    required _TrainingLogItem log,
+    required String logDocId,
+    required Map<String, dynamic> logData,
+  }) {
+    final keys = <String>{
+      if ((logData['deductionKey'] ?? '').toString().trim().isNotEmpty)
+        (logData['deductionKey'] ?? '').toString().trim(),
+
+      // 빠른서명 페이지에서 쓰는 키
+      'personal_training_quick_log:$logDocId',
+
+      // 레슨일지 페이지에서 쓰는 키
+      'training_log_${log.id.trim()}',
+      'training_log_$logDocId',
+    };
+
+    keys.removeWhere((e) => e.trim().isEmpty);
+    return keys.toList();
+  }
+
+  DateTime _dateFromAnyOrLog(dynamic value, _TrainingLogItem log) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String && value.isNotEmpty) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) return parsed;
+    }
+
+    return _actualLessonDateTime(log);
+  }
+
+  String _normalizePhone(String value) {
+    return value.replaceAll(RegExp(r'\D'), '');
+  }
+
+  String _koreanLessonDateTimeText(DateTime value) {
+    const weekdays = [
+      '월요일',
+      '화요일',
+      '수요일',
+      '목요일',
+      '금요일',
+      '토요일',
+      '일요일',
+    ];
+
+    final weekday = weekdays[value.weekday - 1];
+    final isPm = value.hour >= 12;
+    final ampm = isPm ? '오후' : '오전';
+
+    var hour = value.hour % 12;
+    if (hour == 0) hour = 12;
+
+    final minute = value.minute.toString().padLeft(2, '0');
+
+    return '${value.year}년 ${value.month}월 ${value.day}일 $weekday $ampm $hour:$minute';
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>?> _findScheduleRefForLog({
+    required String logDocId,
+    required String scheduleDocId,
+  }) async {
+    final db = FirebaseFirestore.instance;
+
+    final cleanScheduleId = scheduleDocId.trim();
+    if (cleanScheduleId.isNotEmpty) {
+      return db.collection('schedules').doc(cleanScheduleId);
+    }
+
+    final fields = [
+      'trainingLogId',
+      'quickTrainingLogId',
+      'lastTrainingLogId',
+    ];
+
+    for (final field in fields) {
+      final snap = await db
+          .collection('schedules')
+          .where(field, isEqualTo: logDocId)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isNotEmpty) {
+        return snap.docs.first.reference;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _queueLessonConfirmCancelledTalkNotice({
+    required String memberId,
+    required String memberName,
+    required String memberPhone,
+    required String scheduleDocId,
+    required String trainingLogId,
+    required String lessonType,
+    required DateTime startAt,
+  }) async {
+    final cleanMemberId = memberId.trim();
+    if (cleanMemberId.isEmpty) return;
+
+    String resolvedName = memberName.trim().isEmpty ? '회원' : memberName.trim();
+    String resolvedPhone = _normalizePhone(memberPhone);
+
+    try {
+      final memberSnap = await FirebaseFirestore.instance
+          .collection('members')
+          .doc(cleanMemberId)
+          .get();
+
+      final data = memberSnap.data();
+
+      if (data != null) {
+        final loadedName = (data['name'] ?? '').toString().trim();
+        final loadedPhone = _normalizePhone((data['phone'] ?? '').toString());
+
+        if (loadedName.isNotEmpty) resolvedName = loadedName;
+        if (resolvedPhone.isEmpty && loadedPhone.isNotEmpty) {
+          resolvedPhone = loadedPhone;
+        }
+      }
+    } catch (_) {}
+
+    final dateText = _koreanLessonDateTimeText(startAt);
+
+    await FirebaseFirestore.instance.collection('talk_notification_queue').add({
+      'type': 'lesson_confirm_cancelled',
+      'channel': 'kakao_alimtalk',
+      'templateCode': 'lesson_confirm_cancelled_v1',
+
+      // 실제 카카오 API 연결 전까지 대기 상태
+      'status': resolvedPhone.isEmpty
+          ? 'pending_missing_phone'
+          : 'pending_integration',
+
+      // 확정취소는 설정과 무관하게 필수 발송 대상
+      'sendRequired': true,
+      'canBeDisabledByMemberSetting': false,
+
+      'memberId': cleanMemberId,
+      'memberName': resolvedName,
+      'memberPhone': resolvedPhone,
+
+      'scheduleDocId': scheduleDocId,
+      'trainingLogId': trainingLogId,
+
+      'lessonType': lessonType,
+      'startAt': Timestamp.fromDate(startAt),
+      'cancelReason': '강사 확정 취소',
+
+      'messagePreview':
+          '$resolvedName 님, $dateText $lessonType 레슨 확정이 취소되었습니다.',
+
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  void _applyConfirmCancelToLocalLog(_TrainingLogItem log) {
+    setState(() {
+      log.locked = false;
+      log.deductionApplied = false;
+      log.confirmCancelled = true;
+      log.waitingTrainerConfirm = false;
+
+      log.trainerSig = SigCell.empty();
+      log.customerSig = SigCell.empty();
+
+      log.trainerSignedDate = '';
+      log.trainerSignedTime = '';
+      log.customerSignedDate = '';
+      log.customerSignedTime = '';
+      log.lockedAtDate = '';
+      log.lockedAtTime = '';
+    });
+  }
+
+  Future<bool> _confirmCancelLogWithPin(
+    _TrainingLogItem log,
+    String pin,
+  ) async {
+    if (pin.trim() != kResetPin) {
+      return false;
+    }
+
+    if (!log.locked) {
+      return true;
+    }
+
+    final memberId = (widget.memberId ?? '').trim();
+    final logDocId = _firestoreLogDocIdFromLog(log);
+
+    if (logDocId.isEmpty) {
+      _applyConfirmCancelToLocalLog(log);
+      return true;
+    }
+
+    final db = FirebaseFirestore.instance;
+
+    final logRef = db.collection('training_logs').doc(logDocId);
+
+    final scheduleRef = await _findScheduleRefForLog(
+      logDocId: logDocId,
+      scheduleDocId: log.scheduleDocId,
+    );
+
+    final memberRef =
+        memberId.isEmpty ? null : db.collection('members').doc(memberId);
+
+    String resolvedScheduleDocId = log.scheduleDocId.trim();
+    String resolvedMemberPhone = (widget.memberPhone ?? '').toString();
+    String resolvedMemberName = log.name.trim().isEmpty
+        ? ((widget.memberName ?? '').trim().isEmpty
+            ? '회원'
+            : widget.memberName!.trim())
+        : log.name.trim();
+
+    DateTime resolvedStartAt = _actualLessonDateTime(log);
+    String resolvedLessonType = log.type;
+
+    await db.runTransaction((tx) async {
+      final logSnap = await tx.get(logRef);
+      final logData = logSnap.data() ?? <String, dynamic>{};
+
+      DocumentSnapshot<Map<String, dynamic>>? scheduleSnap;
+      Map<String, dynamic> scheduleData = <String, dynamic>{};
+
+      if (scheduleRef != null) {
+        scheduleSnap = await tx.get(scheduleRef);
+        scheduleData = scheduleSnap.data() ?? <String, dynamic>{};
+
+        resolvedScheduleDocId = scheduleRef.id;
+
+        final scheduleStartAt = scheduleData['startAt'];
+        resolvedStartAt = _dateFromAnyOrLog(scheduleStartAt, log);
+
+        final scheduleName = (scheduleData['name'] ?? '').toString().trim();
+        if (scheduleName.isNotEmpty) resolvedMemberName = scheduleName;
+
+        final schedulePhone = (scheduleData['phone'] ?? '').toString().trim();
+        if (schedulePhone.isNotEmpty) resolvedMemberPhone = schedulePhone;
+
+        final scheduleType =
+            (scheduleData['type'] ?? scheduleData['lessonType'] ?? '')
+                .toString()
+                .trim();
+
+        if (scheduleType.isNotEmpty) resolvedLessonType = scheduleType;
+      }
+
+      Map<String, dynamic> memberData = <String, dynamic>{};
+
+      if (memberRef != null) {
+        final memberSnap = await tx.get(memberRef);
+        memberData = memberSnap.data() ?? <String, dynamic>{};
+
+        final memberName = (memberData['name'] ?? '').toString().trim();
+        if (memberName.isNotEmpty) resolvedMemberName = memberName;
+
+        final memberPhone = (memberData['phone'] ?? '').toString().trim();
+        if (memberPhone.isNotEmpty) resolvedMemberPhone = memberPhone;
+      }
+
+      final sessions = memberData['sessions'] is Map
+          ? Map<String, dynamic>.from(memberData['sessions'] as Map)
+          : <String, dynamic>{};
+
+      final lessonStats = memberData['lessonStats'] is Map
+          ? Map<String, dynamic>.from(memberData['lessonStats'] as Map)
+          : <String, dynamic>{};
+
+      final currentRemain = _intFromAny(
+        memberData['remainSessions'] ??
+            memberData['remainingSessions'] ??
+            sessions['remain'] ??
+            memberData['remainingPt'] ??
+            memberData['ptRemaining'],
+      );
+
+      final currentTotal = _intFromAny(
+        memberData['totalSessions'] ??
+            sessions['total'] ??
+            memberData['sessionTotal'],
+      );
+
+      final rawDone = memberData['doneSessions'] ?? sessions['done'];
+      final currentDone = rawDone == null
+          ? (currentTotal - currentRemain).clamp(0, currentTotal)
+          : _intFromAny(rawDone);
+
+      final logDeductionApplied =
+          logData['deductionApplied'] == true || log.deductionApplied;
+
+      final snapshotBefore =
+          _intFromAny(scheduleData['sessionSnapshotRemainBefore']);
+      final snapshotAfter =
+          _intFromAny(scheduleData['sessionSnapshotRemainAfter']);
+
+      final looksDeductedBySnapshot =
+          snapshotBefore > 0 && snapshotBefore > snapshotAfter;
+
+      final shouldRestoreOne = logDeductionApplied || looksDeductedBySnapshot;
+
+      final restoredRemain =
+          shouldRestoreOne ? currentRemain + 1 : currentRemain;
+
+      final restoredDone = shouldRestoreOne
+          ? (currentDone > 0 ? currentDone - 1 : 0)
+          : currentDone;
+
+      final firestoreStatus = (logData['sessionStatus'] ??
+              scheduleData['lessonConfirmStatus'] ??
+              _firestoreStatusFromLocalStatus(log.sessionStatus))
+          .toString();
+
+      final deductionKeys = _deductionKeysForCancel(
+        log: log,
+        logDocId: logDocId,
+        logData: logData,
+      );
+
+      if (memberRef != null) {
+        final memberUpdate = <String, dynamic>{
+          'updatedAt': FieldValue.serverTimestamp(),
+          'lastLessonStatus': 'confirm_cancelled',
+          'lessonStats.lastConfirmStatus': 'confirm_cancelled',
+          'lessonStats.lastCancelledAt': FieldValue.serverTimestamp(),
+          'confirmedTrainingLogIds': FieldValue.arrayRemove([logDocId]),
+          'deductedTrainingLogIds': FieldValue.arrayRemove(deductionKeys),
+        };
+
+        if (shouldRestoreOne) {
+          memberUpdate.addAll({
+            'remainSessions': restoredRemain,
+            'remainingSessions': restoredRemain,
+            'doneSessions': restoredDone,
+            'sessions.remain': restoredRemain,
+            'sessions.done': restoredDone,
+            'lessonSync.cancelledLogId': logDocId,
+            'lessonSync.cancelledAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        if (firestoreStatus == 'no_show_deducted') {
+          memberUpdate['noShowDeductedCount'] =
+              _minusOneFloorZero(memberData['noShowDeductedCount']);
+          memberUpdate['sessions.noShowDeductedCount'] =
+              _minusOneFloorZero(sessions['noShowDeductedCount']);
+          memberUpdate['lessonStats.noShowDeductedCount'] =
+              _minusOneFloorZero(lessonStats['noShowDeductedCount']);
+        } else if (firestoreStatus == 'no_show_not_deducted') {
+          memberUpdate['noShowUndeductedCount'] =
+              _minusOneFloorZero(memberData['noShowUndeductedCount']);
+          memberUpdate['sessions.noShowUndeductedCount'] =
+              _minusOneFloorZero(sessions['noShowUndeductedCount']);
+          memberUpdate['lessonStats.noShowUndeductedCount'] =
+              _minusOneFloorZero(lessonStats['noShowUndeductedCount']);
+        } else if (firestoreStatus == 'service') {
+          memberUpdate['serviceSessionCount'] =
+              _minusOneFloorZero(memberData['serviceSessionCount']);
+          memberUpdate['sessions.serviceSessionCount'] =
+              _minusOneFloorZero(sessions['serviceSessionCount']);
+          memberUpdate['lessonStats.serviceSessionCount'] =
+              _minusOneFloorZero(lessonStats['serviceSessionCount']);
+        } else if (firestoreStatus == 'completed') {
+          memberUpdate['lessonStats.completedCount'] =
+              _minusOneFloorZero(lessonStats['completedCount']);
+        }
+
+        memberUpdate['lessonStats.confirmedCount'] =
+            _minusOneFloorZero(lessonStats['confirmedCount']);
+
+        tx.set(memberRef, memberUpdate, SetOptions(merge: true));
+
+        final reverseLedgerRef =
+            memberRef.collection('lesson_ledger').doc('${logDocId}_reverse');
+
+        tx.set(
+          reverseLedgerRef,
+          {
+            'type': 'reverse',
+            'source': 'confirm_cancel',
+            'scheduleId': resolvedScheduleDocId,
+            'logId': logDocId,
+            'status': firestoreStatus,
+            'restoredSessions': shouldRestoreOne ? 1 : 0,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+
+      tx.set(
+        logRef,
+        {
+          'voided': true,
+          'voidedAt': FieldValue.serverTimestamp(),
+          'voidReason': 'trainer_cancel_confirm',
+          'voidSource': 'training_log_page',
+          'locked': false,
+          'lessonConfirmed': false,
+          'deductionApplied': false,
+          'confirmCancelled': true,
+          'confirmCancelledAt': FieldValue.serverTimestamp(),
+          'sessionStatusBeforeCancel': firestoreStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+
+          // 기존 문서가 없던 수기 로그도 최소 식별 가능하게 보강
+          'memberId': memberId.isEmpty ? null : memberId,
+          'memberName': resolvedMemberName,
+          'lessonType': resolvedLessonType,
+          'startAt': Timestamp.fromDate(resolvedStartAt),
+        },
+        SetOptions(merge: true),
+      );
+
+      if (scheduleRef != null) {
+        final scheduleCancelUpdate = <String, dynamic>{
+          'lessonConfirmed': FieldValue.delete(),
+          'lessonConfirmedAt': FieldValue.delete(),
+          'lessonConfirmStatus': FieldValue.delete(),
+          'lessonConfirmLabel': FieldValue.delete(),
+          'trainingLogId': FieldValue.delete(),
+          'quickTrainingLogId': FieldValue.delete(),
+          'lastTrainingLogId': FieldValue.delete(),
+          'lastSignedAt': FieldValue.delete(),
+          'attendanceOverride': FieldValue.delete(),
+          'memberSigned': FieldValue.delete(),
+          'customerSigned': FieldValue.delete(),
+          'memberSignedAt': FieldValue.delete(),
+          'customerSignedAt': FieldValue.delete(),
+          'memberSignature': FieldValue.delete(),
+          'customerSignature': FieldValue.delete(),
+          'cancelLockedByMemberSignature': FieldValue.delete(),
+          'cancelLockReason': FieldValue.delete(),
+          'sessionSnapshotTotal': FieldValue.delete(),
+          'sessionSnapshotRemainBefore': FieldValue.delete(),
+          'sessionSnapshotRemainAfter': FieldValue.delete(),
+          'sessionSnapshotDoneBefore': FieldValue.delete(),
+          'sessionSnapshotDoneAfter': FieldValue.delete(),
+          'sessionSnapshotLessonNumber': FieldValue.delete(),
+          'sessionSnapshotLabel': FieldValue.delete(),
+          'attended': false,
+          'confirmCancelledAt': FieldValue.serverTimestamp(),
+          'confirmCancelledLogId': logDocId,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        if (currentTotal > 0) {
+          scheduleCancelUpdate['totalSessions'] = currentTotal.toString();
+        }
+
+        scheduleCancelUpdate['remainingSessions'] = restoredRemain.toString();
+        scheduleCancelUpdate['remainSessions'] = restoredRemain.toString();
+
+        tx.set(
+          scheduleRef,
+          scheduleCancelUpdate,
+          SetOptions(merge: true),
+        );
+      }
+    });
+
+    await _queueLessonConfirmCancelledTalkNotice(
+      memberId: memberId,
+      memberName: resolvedMemberName,
+      memberPhone: resolvedMemberPhone,
+      scheduleDocId: resolvedScheduleDocId,
+      trainingLogId: logDocId,
+      lessonType: resolvedLessonType,
+      startAt: resolvedStartAt,
+    );
+
+    _applyConfirmCancelToLocalLog(log);
+
+    return true;
+  }
+
   Future<void> _tryUnlockLog(_TrainingLogItem log) async {
     if (!log.locked) return;
-
-    final pin = await _askPin(context);
-    if (pin != kResetPin) {
-      _showSnack('PIN 불일치');
-      return;
-    }
+    _openLogMoreMenu(log);
 
     setState(() {
       log.locked = false;
@@ -1855,12 +3125,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       log.lockedAtTime = '';
     });
 
-    _showSnack('잠금 해제 완료 · 서명/시간이 초기화되었어요.');
+    _showSnack('확정 취소 완료 · 서명/시간이 초기화되었어요.');
   }
 
   Future<void> _tapSig(_TrainingLogItem log, String role) async {
+    if (log.confirmCancelled) {
+      _showSnack('확정취소된 레슨일지는 확인만 가능해요.');
+      return;
+    }
+
     if (log.locked) {
-      _showSnack('이미 잠긴 기록입니다. 길게 눌러 PIN으로 잠금 해제하세요.');
+      _showSnack('이미 확정된 레슨입니다. 길게 눌러 확정 취소를 진행할 수 있어요.');
       return;
     }
 
@@ -1922,7 +3197,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           log.lockedAtTime = nowT;
         }
       } else {
-        // 일반 수업은 강사 + 회원 서명 모두 완료되어야 확정
+        // 일반 레슨은 강사 + 회원 서명 모두 완료되어야 확정
         if (log.trainerSig.isSigned && log.customerSig.isSigned) {
           log.locked = true;
           log.lockedAtDate = nowD;
@@ -1930,12 +3205,13 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         }
       }
 
-      shouldApplyDeduction =
-          !wasLocked && log.locked && !log.deductionApplied;
+      shouldApplyDeduction = !wasLocked && log.locked && !log.deductionApplied;
     });
 
     if (shouldApplyDeduction) {
       await _applyRemainingSessionDeductionIfNeeded(log);
+    } else if (log.locked) {
+      await _updateMemberLastLessonOnly(log);
     }
   }
 
@@ -1947,7 +3223,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         _highlightDraftId = existingDraft.id;
       });
       _scrollToLog(existingDraft.id);
-      _showSnack('오늘 작성 중인 수업일지가 있어요. 먼저 확인해 주세요.');
+      _showSnack('오늘 작성 중인 레슨일지가 있어요. 먼저 확인해 주세요.');
       return;
     }
 
@@ -1978,7 +3254,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     });
 
     _scrollToLog(_logs.first.id);
-    _showSnack('새로운 수업일지를 작성해 보세요.');
+    _showSnack('새로운 레슨일지를 작성해 보세요.');
   }
 
   String _generateMemberSignToken() {
@@ -1988,7 +3264,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     return List.generate(
       32,
-          (_) => chars[random.nextInt(chars.length)],
+      (_) => chars[random.nextInt(chars.length)],
     ).join();
   }
 
@@ -1998,15 +3274,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   String _quickSignLogIdForCurrentLogPage() {
     final memberId = (widget.memberId ?? '').trim();
-    final now = DateTime.now();
+    final unique = DateTime.now().microsecondsSinceEpoch;
 
-    final y = now.year.toString().padLeft(4, '0');
-    final m = now.month.toString().padLeft(2, '0');
-    final d = now.day.toString().padLeft(2, '0');
-    final h = now.hour.toString().padLeft(2, '0');
-    final min = now.minute.toString().padLeft(2, '0');
-
-    return 'quick_sign_${memberId}_${y}${m}${d}_$h$min';
+    return 'quick_sign_${memberId}_$unique';
   }
 
   Future<Map<String, String>?> _createMemberSignRequestFromLogPage() async {
@@ -2023,21 +3293,21 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final now = DateTime.now();
     final trainingLogId = _quickSignLogIdForCurrentLogPage();
 
-    await FirebaseFirestore.instance.collection('sign_requests').doc(token).set({
+    await FirebaseFirestore.instance
+        .collection('sign_requests')
+        .doc(token)
+        .set({
       'token': token,
       'status': 'waiting_member_signature',
       'used': false,
-
       'memberId': memberId,
       'memberName': memberName.isEmpty ? '회원' : memberName,
       if ((widget.memberPhone ?? '').trim().isNotEmpty)
         'memberPhone': widget.memberPhone!.replaceAll(RegExp(r'\D'), ''),
-
       'trainingLogId': trainingLogId,
       'lessonType': _lastSelectedSessionType,
       'startAt': Timestamp.fromDate(now),
       'endAt': Timestamp.fromDate(now.add(const Duration(minutes: 50))),
-
       'requestType': 'member_signature',
       'source': 'training_log_page',
       'createdAt': FieldValue.serverTimestamp(),
@@ -2210,66 +3480,55 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(24),
+            ),
           ),
           child: SafeArea(
             top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _BlueSheetHeader(
-                  title: '작성방법 변경',
-                  subtitle: '현재 작성 중인 내용이 삭제될 수 있어요.',
-                  icon: Icons.swap_horiz_rounded,
-                  onClose: () => Navigator.pop(sheetContext, false),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '작성 방식을 다시 선택할까요?',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${log.title} 기록의 작성 내용을 초기화하고 작성 방식을 다시 선택합니다.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.45,
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
                     children: [
-                      const Text(
-                        '작성방법을 변경하시겠습니까?',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.black87,
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(sheetContext, false),
+                          child: const Text('취소'),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        log.title.trim().isEmpty
-                            ? '기존 입력 내용은 초기화될 수 있습니다.'
-                            : '"${log.title}"의 기존 입력 내용은 초기화될 수 있습니다.',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.45,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black54,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(sheetContext, true),
+                          child: const Text('다시 선택'),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(sheetContext, false),
-                              child: const Text('취소'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: () => Navigator.pop(sheetContext, true),
-                              child: const Text('변경하기'),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -2277,6 +3536,83 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     );
 
     return result == true;
+  }
+
+  Future<void> _openAnatomyProAifcSheet() async {
+    final result = await AifcChatSheet.show(
+      context: context,
+      question: '아나토미 기록은 부위 선택 기반으로 레슨 내용을 더 체계적으로 정리하는 PRO 기능이에요.\n\n'
+          '지금은 텍스트, 카테고리, PDF 방식은 사용할 수 있고,\n'
+          '아나토미는 PRO에서 열어둘게요.',
+      inputLabel: '예: PRO 보기 / 나중에',
+      autoCompleteHints: const [
+        'PRO 보기',
+        '나중에',
+      ],
+      skipLabel: '나중에 볼게요',
+      onSkip: () {},
+      onSave: (value) async {
+        final v = value.trim();
+
+        if (v.contains('PRO') || v.contains('프로') || v.contains('보기')) {
+          return '좋아요. PRO 안내로 연결해드릴게요.\n아나토미 기록은 부위 선택형 레슨일지로 준비해둘게요.';
+        }
+
+        return '좋아요. 지금은 기존 작성 방식으로 진행할게요.\n필요할 때 아나토미 기록을 다시 열어볼 수 있어요.';
+      },
+    );
+
+    if (!mounted || result == null) return;
+
+    final v = result.trim();
+
+    if (v.contains('PRO') || v.contains('프로') || v.contains('보기')) {
+      // TODO: 나중에 실제 PRO/업그레이드 페이지 연결
+      _showSnack('PRO 안내 화면 연결 예정입니다.');
+    }
+  }
+
+  Future<void> _openAnatomyLogPage(_TrainingLogItem log) async {
+    final lessonLogId = _firestoreLogDocIdFromLog(log).trim();
+    final scheduleDocId = log.scheduleDocId.trim();
+    final memberId = (widget.memberId ?? '').trim();
+    final trainerId = (FirebaseAuth.instance.currentUser?.uid ?? '').trim();
+    final missing = <String>[
+      if (lessonLogId.isEmpty) 'lessonLogId',
+      if (memberId.isEmpty) 'memberId',
+      if (trainerId.isEmpty) 'trainerId',
+    ];
+    if (missing.isNotEmpty) {
+      debugPrint(
+        '[MTF_ANATOMY_IDENTITY] caller=_openAnatomyLogPage '
+        'logId=${log.id} missing=${missing.join(',')}',
+      );
+      _showSnack('연결된 레슨일지·회원·트레이너 정보가 없어 해부학 기록을 저장할 수 없어요.');
+      return;
+    }
+
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PersonalTrainingLogAnatomyPage(
+          lessonLogId: lessonLogId,
+          recordedAt: _actualLessonDateTime(log),
+          memberId: memberId,
+          memberName: log.name,
+          lessonType: log.type,
+          trainerId: trainerId,
+          scheduleDocId: scheduleDocId,
+        ),
+      ),
+    );
+
+    if (!mounted || saved != true) return;
+    setState(() {
+      log.isDraft = false;
+      log.draftEntryMode = 'anatomy';
+      log.inputMethod = 'anatomy';
+      log.title = '해부학 레슨일지';
+      _highlightDraftId = null;
+    });
   }
 
   Future<void> _openDraftEntryPicker(_TrainingLogItem log) async {
@@ -2297,8 +3633,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _BlueSheetHeader(
-                  title: '수업일지 작성 방식 선택',
-                  subtitle: '수업 스타일에 맞는 방식으로 빠르게 기록해요.',
+                  title: '레슨일지 작성 방식 선택',
+                  subtitle: '레슨 스타일에 맞는 방식으로 빠르게 기록해요.',
                   icon: Icons.edit_note_rounded,
                   onClose: () => Navigator.pop(sheetContext),
                 ),
@@ -2334,11 +3670,19 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                         title: '아나토미',
                         subtitle: '부위 선택 기반 기록',
                         icon: Icons.accessibility_new_rounded,
-                        locked: true,
-                        lockText: 'PRO 업데이트 필요',
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          _showSnack('아나토미버전 작성은 PRO 프리미엄 결제 해주세요.');
+                        locked: _tierAccess?.canUseAnatomy != true,
+                        lockText: 'PRO 기능',
+                        onTap: () async {
+                          if (_tierAccess?.canUseAnatomy == true) {
+                            Navigator.pop(sheetContext, 'anatomy');
+                          } else {
+                            Navigator.pop(sheetContext);
+                            await Future.delayed(
+                              const Duration(milliseconds: 180),
+                            );
+                            if (!mounted) return;
+                            await _openAnatomyProAifcSheet();
+                          }
                         },
                       ),
                     ],
@@ -2366,7 +3710,13 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       await _openPdfDraftPage(log);
       return;
     }
+
+    if (selected == 'anatomy') {
+      await _openAnatomyLogPage(log);
+      return;
+    }
   }
+
   Future<void> _openPdfDraftPage(_TrainingLogItem log) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -2377,10 +3727,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       ),
     );
   }
+
   void _applyDraftEditorResult(
-      _TrainingLogItem log,
-      Map<String, dynamic> map,
-      ) {
+    _TrainingLogItem log,
+    Map<String, dynamic> map,
+  ) {
     final String title = (map['title'] ?? '').toString().trim();
     final String memo = (map['memo'] ?? '').toString().trim();
     final String type = (map['type'] ?? '개인PT').toString();
@@ -2389,16 +3740,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       log.title = title.isEmpty ? '레슨일지' : title;
       log.name = (map['name'] ?? '').toString().trim().isEmpty
           ? ((widget.memberName ?? '').trim().isEmpty
-          ? '회원 미지정'
-          : (widget.memberName ?? '').trim())
+              ? '회원 미지정'
+              : (widget.memberName ?? '').trim())
           : (map['name'] ?? '').toString().trim();
       log.memo = memo;
       log.type = type;
       log.time = _nowHm();
       log.inputMethod = (map['inputMethod'] ?? 'text').toString();
       log.rawVoiceText = (map['rawVoiceText'] ?? '').toString();
-      log.issueChips =
-          ((map['issueChips'] as List?) ?? []).map((e) => e.toString()).toList();
+      log.issueChips = ((map['issueChips'] as List?) ?? [])
+          .map((e) => e.toString())
+          .toList();
       log.homeworkStatus = (map['homeworkStatus'] ?? '없음').toString();
       log.nextLessonCheckpoint =
           (map['nextLessonCheckpoint'] ?? '').toString().trim();
@@ -2410,12 +3762,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       log.prePainDetail = (map['prePainDetail'] ?? '').toString().trim();
       log.preStretching = (map['preStretching'] ?? '안 함').toString();
 
-      log.duringGoals =
-          ((map['duringGoals'] as List?) ?? []).map((e) => e.toString()).toList();
-      log.duringFocusParts =
-          ((map['duringFocusParts'] as List?) ?? []).map((e) => e.toString()).toList();
-      log.duringReactions =
-          ((map['duringReactions'] as List?) ?? []).map((e) => e.toString()).toList();
+      log.duringGoals = ((map['duringGoals'] as List?) ?? [])
+          .map((e) => e.toString())
+          .toList();
+      log.duringFocusParts = ((map['duringFocusParts'] as List?) ?? [])
+          .map((e) => e.toString())
+          .toList();
+      log.duringReactions = ((map['duringReactions'] as List?) ?? [])
+          .map((e) => e.toString())
+          .toList();
       log.duringPainDetail = (map['duringPainDetail'] ?? '').toString().trim();
 
       log.postPainChange = (map['postPainChange'] ?? '없음').toString();
@@ -2437,6 +3792,74 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     });
   }
 
+  Future<void> _syncSmartAlarmContextFromLog(_TrainingLogItem log) async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return;
+
+    final trainingLogId = _firestoreLogDocIdFromLog(log);
+    final lessonAt = _actualLessonDateTime(log);
+
+    final conditionText = [
+      if (log.preCondition.trim().isNotEmpty) '컨디션 ${log.preCondition}',
+      if (log.preSleep.trim().isNotEmpty) '수면 ${log.preSleep}',
+      if (log.prePain.trim().isNotEmpty) '통증 ${log.prePain}',
+      if (log.prePainDetail.trim().isNotEmpty) log.prePainDetail.trim(),
+      if (log.duringPainDetail.trim().isNotEmpty) log.duringPainDetail.trim(),
+      if (log.postPainDetail.trim().isNotEmpty) log.postPainDetail.trim(),
+    ].join(' · ');
+
+    final summaryText = [
+      if (log.title.trim().isNotEmpty) log.title.trim(),
+      if (log.issueChips.isNotEmpty) log.issueChips.join(' · '),
+      if (log.duringFocusParts.isNotEmpty) log.duringFocusParts.join(' · '),
+      if (log.duringGoals.isNotEmpty) log.duringGoals.join(' · '),
+      if (log.publicSummary.trim().isNotEmpty) log.publicSummary.trim(),
+      if (log.publicCaution.trim().isNotEmpty) log.publicCaution.trim(),
+    ].join(' · ');
+
+    final nextHint = [
+      if (log.nextLessonCheckpoint.trim().isNotEmpty)
+        log.nextLessonCheckpoint.trim(),
+      if (log.postNextAction.trim().isNotEmpty)
+        '다음 진행: ${log.postNextAction.trim()}',
+      if (log.publicHomeworkNote.trim().isNotEmpty)
+        log.publicHomeworkNote.trim(),
+    ].join(' · ');
+
+    await MemberSmartAlarmContextService.updateFromLessonLog(
+      memberId: memberId,
+      trainingLogId: trainingLogId,
+      lessonAt: lessonAt,
+      summary: summaryText,
+      memo: log.memo,
+      conditionText: conditionText,
+      painText: [
+        log.prePainDetail,
+        log.duringPainDetail,
+        log.postPainDetail,
+      ].where((e) => e.trim().isNotEmpty).join(' · '),
+      nextLessonHint: nextHint,
+    );
+  }
+
+  Future<void> _requestMoreCareSlotAfterLogSaved() async {
+    final memberId = (widget.memberId ?? '').trim();
+
+    if (memberId.isEmpty) return;
+
+    final decision = await MoreCareSlotService.requestTemporarySlotForMember(
+      memberId: memberId,
+      reason: 'lesson_log_saved',
+    );
+
+    if (!mounted) return;
+
+    if (decision.canUseAdvancedMoreCare &&
+        decision.status == MoreCareSlotStatus.temporary) {
+      _showSnack('MORE 관리도 잠시 열어두었어요. 관리자에게 승인 요청을 보내둘게요.');
+    }
+  }
+
   Future<void> _openTextVoiceDraftPage(_TrainingLogItem log) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
@@ -2449,22 +3872,18 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           initialIssueChips: log.issueChips,
           initialHomeworkStatus: log.homeworkStatus,
           initialNextLessonCheckpoint: log.nextLessonCheckpoint,
-
           initialPreCondition: log.preCondition,
           initialPreMeal: log.preMeal,
           initialPreSleep: log.preSleep,
           initialPrePain: log.prePain,
           initialPreStretching: log.preStretching,
-
           initialDuringGoals: log.duringGoals,
           initialDuringFocusParts: log.duringFocusParts,
           initialDuringReactions: log.duringReactions,
-
           initialPostPainChange: log.postPainChange,
           initialPostPerformance: log.postPerformance,
           initialPostNextAction: log.postNextAction,
           initialPostHomework: log.postHomework,
-
           initialInternalMemo: log.internalMemo,
           initialPublicSummary: log.publicSummary,
           initialPublicGood: log.publicGood,
@@ -2475,56 +3894,60 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     );
 
     if (result == null || !mounted) return;
+
     _applyDraftEditorResult(log, result as Map<String, dynamic>);
-    _showSnack('텍스트 수업일지가 저장되었어요.');
+    await _syncSmartAlarmContextFromLog(log);
+    await _requestMoreCareSlotAfterLogSaved();
+
+    if (!mounted) return;
+    _showSnack('텍스트 레슨일지가 저장되었어요.');
   }
 
-    Future<void> _openCategoryDraftPage(_TrainingLogItem log) async {
-      final result = await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PersonalTrainingLogCategoryPage(
-            initialName: log.name,
-            initialSessionLabel: _sessionDisplayText(log),
-            initialTitle: log.title == '레슨일지 작성 전' ? '' : log.title,
-            initialMemo: log.memo,
-            initialType: log.type,
-            initialIssueChips: log.issueChips,
-            initialHomeworkStatus: log.homeworkStatus,
-            initialNextLessonCheckpoint: log.nextLessonCheckpoint,
-
-            initialPreCondition: log.preCondition,
-            initialPreMeal: log.preMeal,
-            initialPreSleep: log.preSleep,
-            initialPrePain: log.prePain,
-            initialPreStretching: log.preStretching,
-
-            initialDuringGoals: log.duringGoals,
-            initialDuringFocusParts: log.duringFocusParts,
-            initialDuringReactions: log.duringReactions,
-
-            initialPostPainChange: log.postPainChange,
-            initialPostPerformance: log.postPerformance,
-            initialPostNextAction: log.postNextAction,
-            initialPostHomework: log.postHomework,
-
-            initialInternalMemo: log.internalMemo,
-            initialPublicSummary: log.publicSummary,
-            initialPublicGood: log.publicGood,
-            initialPublicHomeworkNote: log.publicHomeworkNote,
-            initialPublicCaution: log.publicCaution,
-          ),
+  Future<void> _openCategoryDraftPage(_TrainingLogItem log) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PersonalTrainingLogCategoryPage(
+          initialName: log.name,
+          initialSessionLabel: _sessionDisplayText(log),
+          initialTitle: log.title == '레슨일지 작성 전' ? '' : log.title,
+          initialMemo: log.memo,
+          initialType: log.type,
+          initialIssueChips: log.issueChips,
+          initialHomeworkStatus: log.homeworkStatus,
+          initialNextLessonCheckpoint: log.nextLessonCheckpoint,
+          initialPreCondition: log.preCondition,
+          initialPreMeal: log.preMeal,
+          initialPreSleep: log.preSleep,
+          initialPrePain: log.prePain,
+          initialPreStretching: log.preStretching,
+          initialDuringGoals: log.duringGoals,
+          initialDuringFocusParts: log.duringFocusParts,
+          initialDuringReactions: log.duringReactions,
+          initialPostPainChange: log.postPainChange,
+          initialPostPerformance: log.postPerformance,
+          initialPostNextAction: log.postNextAction,
+          initialPostHomework: log.postHomework,
+          initialInternalMemo: log.internalMemo,
+          initialPublicSummary: log.publicSummary,
+          initialPublicGood: log.publicGood,
+          initialPublicHomeworkNote: log.publicHomeworkNote,
+          initialPublicCaution: log.publicCaution,
         ),
-      );
+      ),
+    );
 
-      if (result == null || !mounted) return;
-      _applyDraftEditorResult(log, result as Map<String, dynamic>);
-      _showSnack('카테고리 운동일지가 저장되었어요.');
-    }
+    _applyDraftEditorResult(log, result as Map<String, dynamic>);
+    await _syncSmartAlarmContextFromLog(log);
+    await _requestMoreCareSlotAfterLogSaved();
+
+    if (!mounted) return;
+    _showSnack('카테고리 레슨일지가 저장되었어요.');
+  }
 
   Future<void> _openEditorForDraft(
-      _TrainingLogItem log, {
-        String? forcedMode,
-      }) async {
+    _TrainingLogItem log, {
+    String? forcedMode,
+  }) async {
     final mode = forcedMode ?? log.draftEntryMode;
 
     if (mode == 'category') {
@@ -2558,6 +3981,39 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 8),
+                if (log.confirmCancelled)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.history_rounded,
+                          size: 16,
+                          color: Color(0xFF6B7280),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '확정취소된 레슨일지입니다. 이 화면은 확인용이며, 서명이나 확정 상태를 다시 변경할 수 없어요.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              height: 1.4,
+                              color: Color(0xFF6B7280),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (log.confirmCancelled) const SizedBox(height: 10),
                 if (log.sessionStatus != 'normal')
                   SizedBox(
                     width: 96,
@@ -2568,23 +4024,23 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                         color: log.sessionStatus == 'service'
                             ? const Color(0xFFF0FDFA)
                             : log.sessionStatus == 'no_show'
-                            ? const Color(0xFFFEF2F2)
-                            : const Color(0xFFFFF7ED),
+                                ? const Color(0xFFFEF2F2)
+                                : const Color(0xFFFFF7ED),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
                           color: log.sessionStatus == 'service'
                               ? const Color(0xFF99F6E4)
                               : log.sessionStatus == 'no_show'
-                              ? const Color(0xFFFECACA)
-                              : const Color(0xFFFED7AA),
+                                  ? const Color(0xFFFECACA)
+                                  : const Color(0xFFFED7AA),
                         ),
                       ),
                       child: Text(
                         log.sessionStatus == 'service'
                             ? '서비스'
                             : log.sessionStatus == 'no_show'
-                            ? 'NO SHOW'
-                            : '미차감 노쇼',
+                                ? 'NO SHOW'
+                                : '미차감 노쇼',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
@@ -2594,8 +4050,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                           color: log.sessionStatus == 'service'
                               ? const Color(0xFF0F766E)
                               : log.sessionStatus == 'no_show'
-                              ? const Color(0xFFB91C1C)
-                              : const Color(0xFFEA580C),
+                                  ? const Color(0xFFB91C1C)
+                                  : const Color(0xFFEA580C),
                         ),
                       ),
                     ),
@@ -2614,8 +4070,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                     ),
                     child: Text(
                       log.lockedAtDate.isNotEmpty
-                          ? '이 기록은 잠겼어요 · ${log.lockedAtDate} ${log.lockedAtTime}'
-                          : '이 기록은 잠겼어요',
+                          ? '이 기록은 확정되었어요 · ${log.lockedAtDate} ${log.lockedAtTime}'
+                          : '이 기록은 확정되었어요',
                       style: const TextStyle(
                         fontSize: 11.5,
                         color: Color(0xFF9A3412),
@@ -2624,6 +4080,21 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                     ),
                   ),
                 const SizedBox(height: 12),
+                if (_tierAccess?.canUseAnatomy == true &&
+                    log.scheduleDocId.trim().isNotEmpty) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _openAnatomyLogPage(log);
+                      },
+                      icon: const Icon(Icons.accessibility_new_rounded),
+                      label: const Text('해부학 기록 열기'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Text(
                   log.memo.isEmpty ? '(메모 없음)' : log.memo,
                   style: const TextStyle(
@@ -2678,7 +4149,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                           log.trainerSignedDate,
                           log.trainerSignedTime,
                         ),
-                        locked: log.locked,
+                        locked: log.locked || log.confirmCancelled,
                         onTap: () async {
                           Navigator.of(sheetContext).pop();
                           await _tapSig(log, 'trainer');
@@ -2694,7 +4165,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                           log.customerSignedDate,
                           log.customerSignedTime,
                         ),
-                        locked: log.locked,
+                        locked: log.locked || log.confirmCancelled,
                         onTap: () async {
                           Navigator.of(sheetContext).pop();
                           await _tapSig(log, 'customer');
@@ -2714,7 +4185,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                       },
                       icon: const Icon(Icons.lock_open_rounded, size: 18),
                       label: const Text(
-                        '잠금 해제(PIN)',
+                        '확정 취소(PIN)',
                         style: TextStyle(fontSize: 13),
                       ),
                     ),
@@ -2774,7 +4245,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               ),
             if (signedAt.isEmpty)
               Text(
-                locked ? '잠김' : '탭하여 서명',
+                locked ? '확정' : '탭하여 서명',
                 style: TextStyle(
                   fontSize: 10,
                   color: locked ? Colors.black38 : const Color(0xFF4F46E5),
@@ -2787,83 +4258,44 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     );
   }
 
+  String _weekdayKo(DateTime date) {
+    const labels = [
+      '월요일',
+      '화요일',
+      '수요일',
+      '목요일',
+      '금요일',
+      '토요일',
+      '일요일',
+    ];
+
+    return labels[date.weekday - 1];
+  }
+
+  String _logLessonSummaryText(_TrainingLogItem log) {
+    final dateText = _fmtDotYmd(log.date);
+    final weekday = _weekdayKo(log.date);
+    final time = log.time.trim().isEmpty ? '--:--' : log.time.trim();
+    final type = log.type.trim().isEmpty ? '레슨' : log.type.trim();
+
+    return '$dateText $weekday $time $type 레슨';
+  }
+
   void _openLogMoreMenu(_TrainingLogItem log) {
-    showModalBottomSheet(
+    AifcLogManageChatSheet.show(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-              _BlueSheetHeader(
-                title: '수업 상태 관리',
-              subtitle: log.title,
-              icon: Icons.tune_rounded,
-              onClose: () => Navigator.pop(sheetContext),
-            ),
-            Wrap(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.visibility_outlined),
-                  title: const Text('상세 보기'),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _openLogDetailSheet(log);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.check_circle_outline),
-                  title: const Text('일반 수업으로 변경'),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _updateSessionStatus(log, 'normal');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.volunteer_activism_outlined),
-                  title: const Text('서비스 처리'),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _updateSessionStatus(log, 'service');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cancel_outlined),
-                  title: const Text('노쇼 처리'),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _updateSessionStatus(log, 'no_show');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.remove_circle_outline),
-                  title: const Text('노쇼 미차감 처리'),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _updateSessionStatus(log, 'no_show_no_deduct');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.lock_open_rounded),
-                  title: const Text('잠금 해제(PIN)'),
-                  onTap: () async {
-                    Navigator.of(sheetContext).pop();
-                    await _tryUnlockLog(log);
-                  },
-                ),
-              ],
-            ),
-            ]
-          ),
-          ),
-        );
+      memberName: log.name,
+      currentStatus: log.sessionStatus,
+      isLocked: log.locked,
+      lessonSummaryText: _logLessonSummaryText(log),
+      onChangeStatus: (newStatus) async {
+        _updateSessionStatus(log, newStatus);
+      },
+      onConfirmCancel: (pin) async {
+        return _confirmCancelLogWithPin(log, pin);
+      },
+      onViewDetail: () {
+        _openLogDetailSheet(log);
       },
     );
   }
@@ -2885,7 +4317,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         break;
       case 'normal':
       default:
-      _showSnack('일반 수업으로 변경했어요.');
+        _showSnack('일반 레슨으로 변경했어요.');
         break;
     }
   }
@@ -2910,59 +4342,61 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   String _deductionKeyForLog(_TrainingLogItem log) {
-    final id = (log.id ?? '').trim();
+    final id = log.id.trim();
 
-    if (id.isNotEmpty) {
-      return id;
+    if (id.isEmpty) {
+      throw StateError('stable_log_id_required');
     }
 
-    // 혹시 id가 비어있는 예전 더미/임시 로그가 있을 때를 위한 fallback입니다.
-    final title = log.title.trim();
-    final date =
-        '${log.date.year.toString().padLeft(4, '0')}-'
-        '${log.date.month.toString().padLeft(2, '0')}-'
-        '${log.date.day.toString().padLeft(2, '0')}';
+    return 'training_log_$id';
+  }
 
-    final time = log.time.toString().trim();
-    return [
-      widget.memberId ?? '',
-      date,
-      time,
-      title,
-    ].where((e) => e.trim().isNotEmpty).join('|');
+  DateTime _actualLessonDateTime(_TrainingLogItem log) {
+    final parts = log.time.split(':');
+    final hour = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 0 : 0;
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+
+    return DateTime(
+      log.date.year,
+      log.date.month,
+      log.date.day,
+      hour,
+      minute,
+    );
   }
 
   Future<void> _applyRemainingSessionDeductionIfNeeded(
-      _TrainingLogItem log,
-      ) async {
+    _TrainingLogItem log,
+  ) async {
     if (log.deductionApplied) return;
     if (!_shouldDeductSessionOnLock(log)) return;
 
     final memberId = (widget.memberId ?? '').trim();
 
     if (memberId.isEmpty) {
-      _showSnack('회원 연결이 없어 잔여 수업을 차감하지 않았어요.');
+      _showSnack('회원 연결이 없어 잔여 레슨을 소진하지 않았어요.');
       return;
     }
 
-    final deductionKey = _deductionKeyForLog(log);
+    late final String deductionKey;
 
-    if (deductionKey.isEmpty) {
-      _showSnack('수업일지 식별값이 없어 잔여 수업을 차감하지 않았어요.');
+    try {
+      deductionKey = _deductionKeyForLog(log);
+    } catch (_) {
+      _showSnack('레슨일지 식별값이 없어 잔여 레슨을 소진하지 않았어요.');
       return;
     }
 
     try {
       final memberRef =
-      FirebaseFirestore.instance.collection('members').doc(memberId);
+          FirebaseFirestore.instance.collection('members').doc(memberId);
 
       final logDocId = log.id.startsWith('quick_')
           ? log.id.replaceFirst('quick_', '')
           : log.id;
 
-      final logRef = FirebaseFirestore.instance
-          .collection('training_logs')
-          .doc(logDocId);
+      final logRef =
+          FirebaseFirestore.instance.collection('training_logs').doc(logDocId);
 
       int? nextRemainForMessage;
       bool alreadyDeducted = false;
@@ -2985,6 +4419,30 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         final sessions = data['sessions'] is Map
             ? Map<String, dynamic>.from(data['sessions'] as Map)
             : <String, dynamic>{};
+
+        final lessonType = (data['lessonType'] ?? '미입력').toString().trim();
+
+        final lessonNotRegistered =
+            sessions['notRegistered'] == true || lessonType == '미입력';
+
+        if (lessonNotRegistered) {
+          transaction.set(
+            logRef,
+            {
+              'waitingTrainerConfirm': false,
+              'confirmedByTrainer': true,
+              'confirmedAt': FieldValue.serverTimestamp(),
+              'locked': true,
+              'deductionApplied': false,
+              'deductionSkipReason': 'lesson_not_registered',
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+
+          nextRemainForMessage = null;
+          return;
+        }
 
         final rawRemain = data['remainSessions'] ??
             data['remainingSessions'] ??
@@ -3015,15 +4473,21 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             'doneSessions': nextDone,
             'sessions.remain': nextRemain,
             'sessions.done': nextDone,
-
-            // 이 수업일지는 이미 차감됐다는 기록입니다.
+            'sessions.source': 'log',
             'deductedTrainingLogIds': FieldValue.arrayUnion([deductionKey]),
-
-            'lastLogAt': Timestamp.fromDate(DateTime.now()),
+            'lessonSource': 'log',
+            'lessonSync.source': 'log',
+            'lessonSync.lastLogId': deductionKey,
+            'lessonSync.updatedAt': FieldValue.serverTimestamp(),
+            'lastLogAt': Timestamp.fromDate(_actualLessonDateTime(log)),
+            'lastLessonAt': Timestamp.fromDate(_actualLessonDateTime(log)),
+            'lastLessonType': log.type,
+            'lastLessonStatus': log.sessionStatus,
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
         );
+
         transaction.set(
           logRef,
           {
@@ -3032,31 +4496,55 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             'confirmedAt': FieldValue.serverTimestamp(),
             'locked': true,
             'deductionApplied': true,
+            'deductionKey': deductionKey,
+            'remainAfterDeduct': nextRemain,
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
         );
       });
 
-      log.deductionApplied = true;
-
-      if (!mounted) return;
-
       if (alreadyDeducted) {
-        _showSnack('이미 잔여 수업에 반영된 수업일지예요.');
+        if (!mounted) return;
+        _showSnack('이미 레슨일지에 반영된 레슨이에요.');
         return;
       }
 
-      if ((nextRemainForMessage ?? 0) <= 0) {
-        _showSnack('수업일지가 확정되었어요. 잔여 수업은 0회입니다.');
-      } else {
-        _showSnack('수업일지가 확정되어 잔여 수업 1회가 차감되었어요.');
-      }
-    } catch (e) {
-      debugPrint('잔여 수업 차감 실패: $e');
+      log.deductionApplied = nextRemainForMessage != null;
 
       if (!mounted) return;
-      _showSnack('잔여 수업 차감에 실패했어요. 회원카드에서 확인해 주세요.');
+
+      if (nextRemainForMessage == null) {
+        _showSnack('레슨일지가 확정되었어요. 레슨 미등록 고객이라 잔여 횟수는 소진하지 않았어요.');
+      } else if ((nextRemainForMessage ?? 0) <= 0) {
+        _showSnack('레슨일지가 확정되었어요. 잔여 레슨은 0회입니다.');
+      } else {
+        _showSnack('레슨일지가 확정되어 레슨 1회가 소진되었어요.');
+      }
+    } catch (e) {
+      debugPrint('잔여 레슨 소진 실패: $e');
+
+      if (!mounted) return;
+      _showSnack('잔여 레슨 소진에 실패했어요. 회원카드에서 확인해 주세요.');
+    }
+  }
+
+  Future<void> _updateMemberLastLessonOnly(_TrainingLogItem log) async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return;
+
+    try {
+      final lessonDateTime = _actualLessonDateTime(log);
+
+      await FirebaseFirestore.instance.collection('members').doc(memberId).set({
+        'lastLogAt': Timestamp.fromDate(lessonDateTime),
+        'lastLessonAt': Timestamp.fromDate(lessonDateTime),
+        'lastLessonType': log.type,
+        'lastLessonStatus': log.sessionStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('마지막 레슨일 갱신 실패: $e');
     }
   }
 
@@ -3374,7 +4862,6 @@ class _DiagonalLockRibbonPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-
 class _ExerciseLogBlueHeader extends StatelessWidget {
   const _ExerciseLogBlueHeader({
     required this.title,
@@ -3415,189 +4902,193 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
   final VoidCallback onInbodyTap;
   final VoidCallback onCalendarTap;
 
-
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(
-        top: topPadding + 14,
-        left: 16,
-        right: 16,
-        bottom: 18,
-      ),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF9333EA),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return MtfHeaderNeonOverlay(
+      isExpanded: isExpanded,
+      intensity: 0.52,
+      strokeWidth: 1.6,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.only(
+          top: topPadding + 14,
+          left: 16,
+          right: 16,
+          bottom: 18,
         ),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF4F46E5),
+              Color(0xFF9333EA),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 44,
-            child: Row(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(32),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: onBackTap,
+                    borderRadius: BorderRadius.circular(999),
+                    child: const SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _HeaderTopActionButton(
+                    icon: Icons.document_scanner_outlined,
+                    tooltip: '인바디 스캔',
+                    onTap: onInbodyTap,
+                  ),
+                  const SizedBox(width: 8),
+                  _HeaderTopActionButton(
+                    icon: Icons.calendar_month_rounded,
+                    tooltip: '달력 보기',
+                    onTap: onCalendarTap,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 46),
+              child: Text(
+                recentIssue.isEmpty ? '최근 이슈' : recentIssue,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.88),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
               children: [
-                InkWell(
-                  onTap: onBackTap,
-                  borderRadius: BorderRadius.circular(999),
-                  child: const SizedBox(
-                    width: 42,
-                    height: 42,
-                    child: Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
                 Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  child: _HeaderStatCard(
+                    icon: Icons.flag_circle_outlined,
+                    label: '등록 목표',
+                    value: initialGoalLabel,
                   ),
                 ),
                 const SizedBox(width: 8),
-                _HeaderTopActionButton(
-                  icon: Icons.document_scanner_outlined,
-                  tooltip: '인바디 스캔',
-                  onTap: onInbodyTap,
+                Expanded(
+                  child: _HeaderStatCard(
+                    icon: Icons.event_available_rounded,
+                    label: '마지막 레슨일',
+                    value: lastLessonText,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                _HeaderTopActionButton(
-                  icon: Icons.calendar_month_rounded,
-                  tooltip: '달력 보기',
-                  onTap: onCalendarTap,
+                Expanded(
+                  child: _HeaderStatCard(
+                    icon: Icons.flag_outlined,
+                    label: 'D - DAY',
+                    value: goalDdayLabel,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.only(left: 46),
-            child: Text(
-              recentIssue.isEmpty ? '최근 이슈' : recentIssue,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.88),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _HeaderStatCard(
-                  icon: Icons.flag_circle_outlined,
-                  label: '등록 목표',
-                  value: initialGoalLabel,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _HeaderStatCard(
-                  icon: Icons.event_available_rounded,
-                  label: '마지막 수업일',
-                  value: lastLessonText,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _HeaderStatCard(
-                  icon: Icons.flag_outlined,
-                  label: 'D - DAY',
-                  value: goalDdayLabel,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: InkWell(
-              onTap: onToggleExpand,
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.14),
+            const SizedBox(height: 12),
+            Center(
+              child: InkWell(
+                onTap: onToggleExpand,
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.14),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isExpanded ? '레슨 상세 정보 닫기' : '레슨 상세 정보 보기',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.92),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white.withOpacity(0.92),
+                        size: 18,
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isExpanded ? '수업 상세 정보 닫기' : '수업 상세 정보 보기',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.92),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              child: isExpanded
+                  ? Padding(
+                      key: const ValueKey('header_info_open'),
+                      padding: const EdgeInsets.only(top: 12),
+                      child: _HeaderMemberInfoBox(
+                        openingMent: openingMent,
+                        inbodyTrend: inbodyTrend,
+                        todayRecommendedExercise: todayRecommendedExercise,
                       ),
+                    )
+                  : const SizedBox.shrink(
+                      key: ValueKey('header_info_closed'),
                     ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      color: Colors.white.withOpacity(0.92),
-                      size: 18,
-                    ),
-                  ],
-                ),
-              ),
             ),
-          ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            child: isExpanded
-                ? Padding(
-              key: const ValueKey('header_info_open'),
-              padding: const EdgeInsets.only(top: 12),
-              child: _HeaderMemberInfoBox(
-                openingMent: openingMent,
-                inbodyTrend: inbodyTrend,
-                todayRecommendedExercise: todayRecommendedExercise,
-              ),
-            )
-                : const SizedBox.shrink(
-              key: ValueKey('header_info_closed'),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -3628,7 +5119,7 @@ class _HeaderMemberInfoBox extends StatelessWidget {
       child: Column(
         children: [
           _HeaderMessageCard(
-            title: '다음 수업 시작 멘트 및 체크포인트',
+            title: '다음 레슨 시작 멘트 및 체크포인트',
             value: openingMent,
           ),
           const SizedBox(height: 10),
@@ -3880,14 +5371,14 @@ class _HeaderStatCard extends StatelessWidget {
           Icon(icon, color: Colors.white, size: 17),
           const Spacer(),
           Text(
-            value,
-            maxLines: 2,
+            label,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              height: 1.2,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
             ),
           ),
           const SizedBox(height: 3),
@@ -3995,9 +5486,8 @@ class _PerformanceLineChartPainter extends CustomPainter {
 
     final minValue = math.min(values.reduce(math.min), 1);
     final maxValue = math.max(values.reduce(math.max), 10);
-    final valueRange = (maxValue - minValue).abs() < 0.001
-        ? 1.0
-        : (maxValue - minValue);
+    final valueRange =
+        (maxValue - minValue).abs() < 0.001 ? 1.0 : (maxValue - minValue);
 
     final points = <Offset>[];
 
@@ -4093,7 +5583,8 @@ class _MiniSparklinePainter extends CustomPainter {
 
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
-    final range = (maxValue - minValue).abs() < 0.001 ? 1.0 : (maxValue - minValue);
+    final range =
+        (maxValue - minValue).abs() < 0.001 ? 1.0 : (maxValue - minValue);
 
     final points = <Offset>[];
 
@@ -4200,9 +5691,9 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
         InkWell(
           onTap: isLessonDay
               ? () => Navigator.pop(
-            context,
-            _LessonCalendarResult.select(normalized),
-          )
+                    context,
+                    _LessonCalendarResult.select(normalized),
+                  )
               : null,
           borderRadius: BorderRadius.circular(12),
           child: Container(
@@ -4211,8 +5702,8 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
               color: isSelected
                   ? const Color(0xFFEEF2FF)
                   : isLessonDay
-                  ? Colors.white
-                  : Colors.transparent,
+                      ? Colors.white
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               border: isSelected
                   ? Border.all(color: const Color(0xFF4F46E5))
@@ -4261,7 +5752,7 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
             Row(
               children: [
                 const Text(
-                  '수업 달력',
+                  '레슨 달력',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -4271,8 +5762,8 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
                 IconButton(
                   onPressed: () {
                     setState(() {
-                      _visibleMonth =
-                          DateTime(_visibleMonth.year, _visibleMonth.month - 1, 1);
+                      _visibleMonth = DateTime(
+                          _visibleMonth.year, _visibleMonth.month - 1, 1);
                     });
                   },
                   icon: const Icon(Icons.chevron_left_rounded),
@@ -4287,8 +5778,8 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
                 IconButton(
                   onPressed: () {
                     setState(() {
-                      _visibleMonth =
-                          DateTime(_visibleMonth.year, _visibleMonth.month + 1, 1);
+                      _visibleMonth = DateTime(
+                          _visibleMonth.year, _visibleMonth.month + 1, 1);
                     });
                   },
                   icon: const Icon(Icons.chevron_right_rounded),
@@ -4345,15 +5836,15 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
                     onPressed: widget.firstDate == null
                         ? null
                         : () => Navigator.pop(
-                      context,
-                      _LessonCalendarResult.select(
-                        DateTime(
-                          widget.firstDate!.year,
-                          widget.firstDate!.month,
-                          widget.firstDate!.day,
-                        ),
-                      ),
-                    ),
+                              context,
+                              _LessonCalendarResult.select(
+                                DateTime(
+                                  widget.firstDate!.year,
+                                  widget.firstDate!.month,
+                                  widget.firstDate!.day,
+                                ),
+                              ),
+                            ),
                     icon: const Icon(Icons.first_page_rounded),
                     label: const Text('처음 레슨일'),
                   ),
@@ -4364,15 +5855,15 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
                     onPressed: widget.lastDate == null
                         ? null
                         : () => Navigator.pop(
-                      context,
-                      _LessonCalendarResult.select(
-                        DateTime(
-                          widget.lastDate!.year,
-                          widget.lastDate!.month,
-                          widget.lastDate!.day,
-                        ),
-                      ),
-                    ),
+                              context,
+                              _LessonCalendarResult.select(
+                                DateTime(
+                                  widget.lastDate!.year,
+                                  widget.lastDate!.month,
+                                  widget.lastDate!.day,
+                                ),
+                              ),
+                            ),
                     icon: const Icon(Icons.last_page_rounded),
                     label: const Text('마지막 레슨일'),
                   ),
@@ -4435,12 +5926,440 @@ class _GoalDdayItem {
   String id;
   String name;
   DateTime date;
+  bool isCompleted;
+  DateTime? completedAt;
+  bool followUpCreated;
+  String status;
 
   _GoalDdayItem({
     required this.id,
     required this.name,
     required this.date,
+    this.isCompleted = false,
+    this.completedAt,
+    this.followUpCreated = false,
+    this.status = 'active',
   });
+
+  factory _GoalDdayItem.fromFirestore(
+    String id,
+    Map<String, dynamic> data,
+  ) {
+    DateTime? toDate(dynamic value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
+
+    final rawStatus = (data['status'] ?? '').toString().trim();
+
+    final resolvedStatus = rawStatus.isNotEmpty
+        ? rawStatus
+        : data['isCompleted'] == true
+            ? 'completed'
+            : 'active';
+
+    return _GoalDdayItem(
+      id: id,
+      name: (data['name'] ?? data['title'] ?? '').toString(),
+      date: toDate(data['targetDate'] ?? data['date']) ?? DateTime.now(),
+      isCompleted: data['isCompleted'] == true || resolvedStatus == 'completed',
+      completedAt: toDate(data['completedAt']),
+      followUpCreated: data['followUpCreated'] == true,
+      status: resolvedStatus,
+    );
+  }
+
+  Map<String, dynamic> toFirestorePayload() {
+    return {
+      'name': name,
+      'targetDate': Timestamp.fromDate(date),
+      'isCompleted': isCompleted,
+      'completedAt':
+          completedAt == null ? null : Timestamp.fromDate(completedAt!),
+      'followUpCreated': followUpCreated,
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
+}
+
+class _GoalDdayManageSheet extends StatelessWidget {
+  const _GoalDdayManageSheet({
+    required this.goals,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onComplete,
+    required this.onPause,
+    required this.onStop,
+    required this.onResume,
+    required this.onDelete,
+  });
+
+  final List<_GoalDdayItem> goals;
+  final VoidCallback onAdd;
+  final ValueChanged<_GoalDdayItem> onEdit;
+  final ValueChanged<_GoalDdayItem> onComplete;
+  final ValueChanged<_GoalDdayItem> onPause;
+  final ValueChanged<_GoalDdayItem> onStop;
+  final ValueChanged<_GoalDdayItem> onResume;
+  final ValueChanged<_GoalDdayItem> onDelete;
+
+  String _dateText(DateTime value) {
+    return '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
+  }
+
+  String _ddayText(DateTime value) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(value.year, value.month, value.day);
+    final diff = target.difference(today).inDays;
+
+    if (diff == 0) return 'D-DAY';
+    if (diff > 0) return 'D-$diff';
+    return 'D+${diff.abs()}';
+  }
+
+  String _statusLabel(_GoalDdayItem goal) {
+    if (goal.isCompleted || goal.status == 'completed') return '완료';
+    if (goal.status == 'paused') return '보류';
+    if (goal.status == 'stopped') return '중단';
+    return '진행중';
+  }
+
+  Color _statusColor(_GoalDdayItem goal) {
+    if (goal.isCompleted || goal.status == 'completed') {
+      return const Color(0xFF059669);
+    }
+
+    if (goal.status == 'paused') {
+      return const Color(0xFFD97706);
+    }
+
+    if (goal.status == 'stopped') {
+      return const Color(0xFF6B7280);
+    }
+
+    return const Color(0xFF4F46E5);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedGoals = List<_GoalDdayItem>.from(goals)
+      ..sort((a, b) {
+        final aDone = a.isCompleted || a.status == 'completed';
+        final bDone = b.isCompleted || b.status == 'completed';
+
+        if (aDone != bDone) return aDone ? 1 : -1;
+
+        return a.date.compareTo(b.date);
+      });
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.82,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.16),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEEF2FF),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Icon(
+                        Icons.flag_outlined,
+                        color: Color(0xFF4F46E5),
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '목표 D-DAY 관리',
+                            style: TextStyle(
+                              color: Color(0xFF111827),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            '수정, 완료, 보류, 중단, 삭제를 관리합니다.',
+                            style: TextStyle(
+                              color: Color(0xFF6B7280),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: sortedGoals.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            '등록된 D-DAY가 없어요.\n바디프로필, 대회, 웨딩촬영 같은 목표를 먼저 추가해보세요.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFF6B7280),
+                              fontSize: 12.5,
+                              height: 1.45,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                        itemCount: sortedGoals.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final goal = sortedGoals[index];
+                          final statusColor = _statusColor(goal);
+                          final isDone =
+                              goal.isCompleted || goal.status == 'completed';
+                          final isPaused = goal.status == 'paused';
+                          final isStopped = goal.status == 'stopped';
+
+                          return Container(
+                            padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        goal.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF111827),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.10),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        _statusLabel(goal),
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${_dateText(goal.date)} · ${_ddayText(goal.date)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF6B7280),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 11),
+                                Wrap(
+                                  spacing: 7,
+                                  runSpacing: 7,
+                                  children: [
+                                    _GoalManageActionChip(
+                                      label: '수정',
+                                      icon: Icons.edit_outlined,
+                                      onTap: () => onEdit(goal),
+                                    ),
+                                    if (!isDone && !isStopped)
+                                      _GoalManageActionChip(
+                                        label: '완료',
+                                        icon: Icons.check_circle_outline,
+                                        onTap: () => onComplete(goal),
+                                      ),
+                                    if (!isDone && !isPaused && !isStopped)
+                                      _GoalManageActionChip(
+                                        label: '보류',
+                                        icon: Icons.pause_circle_outline,
+                                        onTap: () => onPause(goal),
+                                      ),
+                                    if (!isDone && !isStopped)
+                                      _GoalManageActionChip(
+                                        label: '중단',
+                                        icon: Icons.stop_circle_outlined,
+                                        onTap: () => onStop(goal),
+                                      ),
+                                    if (!isDone && (isPaused || isStopped))
+                                      _GoalManageActionChip(
+                                        label: '다시 진행',
+                                        icon: Icons.play_circle_outline,
+                                        onTap: () => onResume(goal),
+                                      ),
+                                    _GoalManageActionChip(
+                                      label: '삭제',
+                                      icon: Icons.delete_outline,
+                                      danger: true,
+                                      onTap: () => onDelete(goal),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF6B7280),
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text(
+                          '닫기',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: onAdd,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('D-DAY 추가'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F46E5),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoalManageActionChip extends StatelessWidget {
+  const _GoalManageActionChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = danger ? const Color(0xFFDC2626) : const Color(0xFF4F46E5);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: color.withOpacity(0.16),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ExtractedInbodyData {
@@ -4478,6 +6397,7 @@ class _TrainingLogItem {
   bool isRegistrationStart;
   bool isDraft;
   int packageCount;
+
   /// draft 상태에서 선택한 작성방식
   /// '' | text | category | pdf
   String draftEntryMode;
@@ -4520,6 +6440,9 @@ class _TrainingLogItem {
   bool deductionApplied;
   bool waitingTrainerConfirm;
   bool memberSignedFromWeb;
+  bool confirmCancelled;
+  String trainingLogDocId;
+  String scheduleDocId;
 
   String trainerSignedDate;
   String trainerSignedTime;
@@ -4547,8 +6470,6 @@ class _TrainingLogItem {
     this.issueChips = const [],
     this.homeworkStatus = '없음',
     this.nextLessonCheckpoint = '',
-
-
     this.preCondition = '보통',
     this.preMeal = '가볍게 먹음',
     this.preSleep = '보통',
@@ -4569,7 +6490,6 @@ class _TrainingLogItem {
     this.publicGood = '',
     this.publicHomeworkNote = '',
     this.publicCaution = '',
-
     SigCell? trainerSig,
     SigCell? customerSig,
     String? id,
@@ -4577,6 +6497,9 @@ class _TrainingLogItem {
     this.deductionApplied = false,
     this.waitingTrainerConfirm = false,
     this.memberSignedFromWeb = false,
+    this.confirmCancelled = false,
+    this.trainingLogDocId = '',
+    this.scheduleDocId = '',
     this.trainerSignedDate = '',
     this.trainerSignedTime = '',
     this.customerSignedDate = '',
@@ -4584,11 +6507,6 @@ class _TrainingLogItem {
     this.lockedAtDate = '',
     this.lockedAtTime = '',
     this.packageCount = 0,
-
-
-
-
-
   })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
         trainerSig = trainerSig ?? SigCell.empty(),
         customerSig = customerSig ?? SigCell.empty();
@@ -4604,7 +6522,9 @@ class _TrainingLogCard extends StatelessWidget {
     required this.isHighlighted,
     required this.isExpanded,
     required this.goalDdayLabel,
+    required this.femaleConditionVisible,
     required this.draftEntryMode,
+    this.onFemaleConditionTap,
     this.onTap,
     this.onLongPress,
     this.onTapTrainerSig,
@@ -4617,7 +6537,9 @@ class _TrainingLogCard extends StatelessWidget {
   final String registrationStartText;
   final String sessionDisplayText;
   final String goalDdayLabel;
+  final bool femaleConditionVisible;
   final String draftEntryMode;
+  final VoidCallback? onFemaleConditionTap;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onTapTrainerSig;
@@ -4625,7 +6547,6 @@ class _TrainingLogCard extends StatelessWidget {
   final VoidCallback? onLongPressSig;
   final bool isHighlighted;
   final bool isExpanded;
-
 
   String _issueChipSummary(_TrainingLogItem item) {
     if (item.issueChips.isEmpty) return '';
@@ -4692,6 +6613,10 @@ class _TrainingLogCard extends StatelessWidget {
   }
 
   String _recordStatusText(_TrainingLogItem item) {
+    if (item.confirmCancelled) {
+      return '확정 취소';
+    }
+
     if (item.waitingTrainerConfirm && item.memberSignedFromWeb) {
       return '확인 대기';
     }
@@ -4793,17 +6718,15 @@ class _TrainingLogCard extends StatelessWidget {
     return text;
   }
 
-
   String _nextCheckpoint(_TrainingLogItem item) {
-
     if (item.waitingTrainerConfirm && item.memberSignedFromWeb) {
       return '회원 웹서명 완료 · 담당자 서명 대기';
     }
 
     if (item.memberSignedFromWeb && !item.locked) {
-      return '회원 웹서명 완료 · 수업 확정 전';
+      return '회원 웹서명 완료 · 레슨 확정 전';
     }
-    if (item.isDraft) return '수업 전 · 중 · 후로 나눠서 기록하세요';
+    if (item.isDraft) return '레슨 전 · 중 · 후로 나눠서 기록하세요';
     if (item.sessionStatus == 'no_show') return '다음 레슨 일정 재확인';
     if (item.sessionStatus == 'no_show_no_deduct') return '노쇼 미차감 사유 확인';
     if (item.sessionStatus == 'service') return '서비스 처리 목적 확인';
@@ -5084,7 +7007,8 @@ class _TrainingLogCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                 child: Row(
                   children: [
                     Expanded(
@@ -5153,7 +7077,8 @@ class _TrainingLogCard extends StatelessWidget {
             color: noDeduct ? const Color(0xFFFFFBEB) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: noDeduct ? const Color(0xFFFED7AA) : const Color(0xFFFECACA),
+              color:
+                  noDeduct ? const Color(0xFFFED7AA) : const Color(0xFFFECACA),
             ),
           ),
           child: Column(
@@ -5205,23 +7130,23 @@ class _TrainingLogCard extends StatelessWidget {
           color: item.sessionStatus == 'service'
               ? const Color(0xFFF0FDFA)
               : item.sessionStatus == 'no_show'
-              ? const Color(0xFFFEF2F2)
-              : item.sessionStatus == 'no_show_no_deduct'
-              ? const Color(0xFFFFFBEB)
-              : Colors.white,
+                  ? const Color(0xFFFEF2F2)
+                  : item.sessionStatus == 'no_show_no_deduct'
+                      ? const Color(0xFFFFFBEB)
+                      : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isHighlighted
                 ? const Color(0xFF2563EB)
                 : item.locked
-                ? const Color(0xFFD6D3D1)
-                : item.sessionStatus == 'service'
-                ? const Color(0xFF99F6E4)
-                : item.sessionStatus == 'no_show'
-                ? const Color(0xFFFECACA)
-                : item.sessionStatus == 'no_show_no_deduct'
-                ? const Color(0xFFFED7AA)
-                : colorSet.border,
+                    ? const Color(0xFFD6D3D1)
+                    : item.sessionStatus == 'service'
+                        ? const Color(0xFF99F6E4)
+                        : item.sessionStatus == 'no_show'
+                            ? const Color(0xFFFECACA)
+                            : item.sessionStatus == 'no_show_no_deduct'
+                                ? const Color(0xFFFED7AA)
+                                : colorSet.border,
             width: isHighlighted ? 2 : 1,
           ),
           boxShadow: [
@@ -5236,54 +7161,74 @@ class _TrainingLogCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1행
+            // 1행: 날짜/시간은 단독으로 넓게 표시
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: item.sessionStatus == 'no_show_no_deduct'
                       ? RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF92400E),
-                      ),
-                      children: [
-                        TextSpan(
-                          text:
-                          '${sessionNumber}회차 · ${item.date.year}.${item.date.month.toString().padLeft(2, '0')}.${item.date.day.toString().padLeft(2, '0')} ${item.time} · ',
-                        ),
-                        const TextSpan(text: 'NO SHOW '),
-                        const TextSpan(
-                          text: '차감',
+                          text: TextSpan(
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF92400E),
+                            ),
+                            children: [
+                              TextSpan(
+                                text:
+                                    '${sessionNumber}회차 · ${item.date.year}.${item.date.month.toString().padLeft(2, '0')}.${item.date.day.toString().padLeft(2, '0')} ${item.time} · ',
+                              ),
+                              const TextSpan(text: 'NO SHOW '),
+                              const TextSpan(
+                                text: '차감',
+                                style: TextStyle(
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationThickness: 3,
+                                ),
+                              ),
+                            ],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        )
+                      : Text(
+                          _topLineLabel(item, sessionNumber),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            decoration: TextDecoration.lineThrough,
-                            decorationThickness: 3,
+                            fontSize: 10.5,
+                            color: item.sessionStatus == 'service'
+                                ? const Color(0xFF0F766E)
+                                : item.sessionStatus == 'no_show'
+                                    ? const Color(0xFFB91C1C)
+                                    : Colors.black45,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      ],
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  )
-                      : Text(
-                    _topLineLabel(item, sessionNumber),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      color: item.sessionStatus == 'service'
-                          ? const Color(0xFF0F766E)
-                          : item.sessionStatus == 'no_show'
-                          ? const Color(0xFFB91C1C)
-                          : Colors.black45,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: Colors.black38,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 7),
+
+// 1.5행: 상태 칩들은 별도 줄로 분리
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
                 Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: item.inputMethod == 'quick_sign'
                         ? const Color(0xFFEEF2FF)
@@ -5321,17 +7266,21 @@ class _TrainingLogCard extends StatelessWidget {
                 ),
                 if (_recordStatusText(item).isNotEmpty)
                   Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: item.waitingTrainerConfirm
-                          ? const Color(0xFFFFFBEB)
-                          : const Color(0xFFECFDF5),
+                      color: item.confirmCancelled
+                          ? const Color(0xFFF3F4F6)
+                          : item.waitingTrainerConfirm
+                              ? const Color(0xFFFFFBEB)
+                              : const Color(0xFFECFDF5),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: item.waitingTrainerConfirm
-                            ? const Color(0xFFFDE68A)
-                            : const Color(0xFFBBF7D0),
+                        color: item.confirmCancelled
+                            ? const Color(0xFFD1D5DB)
+                            : item.waitingTrainerConfirm
+                                ? const Color(0xFFFDE68A)
+                                : const Color(0xFFBBF7D0),
                       ),
                     ),
                     child: Text(
@@ -5339,86 +7288,110 @@ class _TrainingLogCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: item.waitingTrainerConfirm
-                            ? const Color(0xFFD97706)
-                            : const Color(0xFF059669),
+                        color: item.confirmCancelled
+                            ? const Color(0xFF6B7280)
+                            : item.waitingTrainerConfirm
+                                ? const Color(0xFFD97706)
+                                : const Color(0xFF059669),
                       ),
                     ),
                   ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (item.waitingTrainerConfirm && item.memberSignedFromWeb)
-                      Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFECFDF5),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: const Color(0xFFBBF7D0)),
-                        ),
-                        child: const Text(
-                          '담당자 대기',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF059669),
-                          ),
-                        ),
+                if (item.waitingTrainerConfirm && item.memberSignedFromWeb)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: const Text(
+                      '담당자 대기',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF059669),
                       ),
-                    if (item.isDraft)
-                      Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: draftEntryMode.isEmpty
-                              ? const Color(0xFFFFF7ED)
-                              : const Color(0xFFEEF2FF),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: draftEntryMode.isEmpty
-                                ? const Color(0xFFFED7AA)
-                                : const Color(0xFFC7D2FE),
-                          ),
-                        ),
-                        child: Text(
-                          _draftEntryModeLabel(draftEntryMode),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: draftEntryMode.isEmpty
-                                ? const Color(0xFF9A3412)
-                                : const Color(0xFF4338CA),
-                          ),
-                        ),
+                    ),
+                  ),
+                if (item.isDraft)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: draftEntryMode.isEmpty
+                          ? const Color(0xFFFFF7ED)
+                          : const Color(0xFFEEF2FF),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: draftEntryMode.isEmpty
+                            ? const Color(0xFFFED7AA)
+                            : const Color(0xFFC7D2FE),
                       ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    child: Text(
+                      _draftEntryModeLabel(draftEntryMode),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: draftEntryMode.isEmpty
+                            ? const Color(0xFF9A3412)
+                            : const Color(0xFF4338CA),
+                      ),
+                    ),
+                  ),
+                if (femaleConditionVisible)
+                  GestureDetector(
+                    onTap: onFemaleConditionTap,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
+                        color: const Color(0xFFEAF3DE),
                         borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFC0DD97)),
                       ),
-                      child: Text(
-                        goalDdayLabel,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black54,
-                        ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.spa_outlined,
+                            size: 12,
+                            color: Color(0xFF3B6D11),
+                          ),
+                          SizedBox(width: 3),
+                          Text(
+                            '컨디션',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF3B6D11),
+                              height: 1.0,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      size: 20,
-                      color: Colors.black38,
+                  ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    goalDdayLabel,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black54,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
+
             const SizedBox(height: 10),
 
 // 2행
@@ -5456,24 +7429,25 @@ class _TrainingLogCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 item.sessionStatus == 'no_show'
                     ? _inlineNoShowSignatureChip(
-                  noDeduct: false,
-                  onLongPress: onLongPressSig,
-                )
+                        noDeduct: false,
+                        onLongPress: onLongPressSig,
+                      )
                     : item.sessionStatus == 'no_show_no_deduct'
-                    ? _inlineNoShowSignatureChip(
-                  noDeduct: true,
-                  onLongPress: onLongPressSig,
-                )
-                    : _inlineSignatureChip(
-                  label: '고객 서명',
-                  cell: item.customerSig,
-                  signedAt: item.customerSignedTime.isEmpty
-                      ? item.customerSignedDate
-                      : item.customerSignedTime,
-                  locked: item.locked,
-                  onTap: onTapCustomerSig,
-                  onLongPress: onLongPressSig,
-                ),
+                        ? _inlineNoShowSignatureChip(
+                            noDeduct: true,
+                            onLongPress: onLongPressSig,
+                          )
+                        : _inlineSignatureChip(
+                            label: '고객 서명',
+                            cell: item.customerSig,
+                            signedAt: item.customerSignedTime.isEmpty
+                                ? item.customerSignedDate
+                                : item.customerSignedTime,
+                            locked: item.locked || item.confirmCancelled,
+                            onTap:
+                                item.confirmCancelled ? null : onTapCustomerSig,
+                            onLongPress: onLongPressSig,
+                          ),
               ],
             ),
             const SizedBox(height: 10),
@@ -5502,8 +7476,8 @@ class _TrainingLogCard extends StatelessWidget {
                   signedAt: item.trainerSignedTime.isEmpty
                       ? item.trainerSignedDate
                       : item.trainerSignedTime,
-                  locked: item.locked,
-                  onTap: onTapTrainerSig,
+                  locked: item.locked || item.confirmCancelled,
+                  onTap: item.confirmCancelled ? null : onTapTrainerSig,
                   onLongPress: onLongPressSig,
                 ),
               ],
@@ -5527,16 +7501,35 @@ class _TrainingLogCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (item.locked)
+                if (item.confirmCancelled)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFD1D5DB)),
+                    ),
+                    child: const Text(
+                      '확정취소',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  )
+                else if (item.locked)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF7ED),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: const Color(0xFFFED7AA)),
                     ),
                     child: const Text(
-                      '잠김',
+                      '확정',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
@@ -5562,7 +7555,8 @@ class _TrainingLogCard extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(999),
@@ -5580,11 +7574,13 @@ class _TrainingLogCard extends StatelessWidget {
                         const Spacer(),
                         if (item.locked)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFF7ED),
                               borderRadius: BorderRadius.circular(999),
-                              border: Border.all(color: const Color(0xFFFED7AA)),
+                              border:
+                                  Border.all(color: const Color(0xFFFED7AA)),
                             ),
                             child: const Text(
                               '기록 확정',
@@ -5925,7 +7921,7 @@ class _SignatureSheetState extends State<SignatureSheet> {
   bool _showTypedInput = false;
   final GlobalKey repaintKey = GlobalKey();
   final GlobalKey<_SimpleSignatureCanvasState> canvasKey =
-  GlobalKey<_SimpleSignatureCanvasState>();
+      GlobalKey<_SimpleSignatureCanvasState>();
 
   @override
   void initState() {
@@ -5939,7 +7935,7 @@ class _SignatureSheetState extends State<SignatureSheet> {
 
   Future<String?> _exportPngDataUrl() async {
     final boundary =
-    repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+        repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) return null;
 
     final img = await boundary.toImage(pixelRatio: 2.0);
@@ -5955,7 +7951,7 @@ class _SignatureSheetState extends State<SignatureSheet> {
     return SafeArea(
       child: Padding(
         padding:
-        EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.72,
@@ -6015,11 +8011,13 @@ class _SignatureSheetState extends State<SignatureSheet> {
                           if (!_typedMode) ...[
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                                border:
+                                    Border.all(color: const Color(0xFFE5E7EB)),
                               ),
                               child: const Text(
                                 '박스 안에 서명해주세요.',
@@ -6039,7 +8037,8 @@ class _SignatureSheetState extends State<SignatureSheet> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: const Color(0xFFD1D5DB)),
+                                  border: Border.all(
+                                      color: const Color(0xFFD1D5DB)),
                                 ),
                                 child: SimpleSignatureCanvas(
                                   key: canvasKey,
@@ -6053,8 +8052,10 @@ class _SignatureSheetState extends State<SignatureSheet> {
                               children: [
                                 const Spacer(),
                                 OutlinedButton.icon(
-                                  onPressed: () => canvasKey.currentState?.clear(),
-                                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                                  onPressed: () =>
+                                      canvasKey.currentState?.clear(),
+                                  icon: const Icon(Icons.refresh_rounded,
+                                      size: 16),
                                   label: const Text('지우기'),
                                 ),
                               ],
@@ -6086,11 +8087,15 @@ class _SignatureSheetState extends State<SignatureSheet> {
                                 valueListenable: widget.typedController,
                                 builder: (_, v, __) {
                                   return Text(
-                                    v.text.isEmpty ? '입력한 이름이 여기에 보여요.' : v.text,
+                                    v.text.isEmpty
+                                        ? '입력한 이름이 여기에 보여요.'
+                                        : v.text,
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
-                                      color: v.text.isEmpty ? Colors.black38 : Colors.black87,
+                                      color: v.text.isEmpty
+                                          ? Colors.black38
+                                          : Colors.black87,
                                     ),
                                   );
                                 },
@@ -6123,7 +8128,8 @@ class _SignatureSheetState extends State<SignatureSheet> {
                               return;
                             }
 
-                            final hasDrawn = canvasKey.currentState?.hasStroke == true;
+                            final hasDrawn =
+                                canvasKey.currentState?.hasStroke == true;
                             if (!hasDrawn) return;
 
                             final dataUrl = await _exportPngDataUrl();
@@ -6360,7 +8366,7 @@ class _PdfDraftPlaceholderPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '수업유형: $sessionType',
+                      '레슨유형: $sessionType',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black54,
@@ -6403,9 +8409,9 @@ class _PdfDraftPlaceholderPage extends StatelessWidget {
                     SizedBox(height: 10),
                     Text(
                       '1. 회원 공개용 PDF 레이아웃\n'
-                          '2. 내부 보관용 PDF 레이아웃\n'
-                          '3. 저장된 운동일지 데이터를 PDF로 변환\n'
-                          '4. 공유 / 저장 버튼 연결',
+                      '2. 내부 보관용 PDF 레이아웃\n'
+                      '3. 저장된 운동일지 데이터를 PDF로 변환\n'
+                      '4. 공유 / 저장 버튼 연결',
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.5,

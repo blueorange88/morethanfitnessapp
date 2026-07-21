@@ -1,236 +1,349 @@
 import 'dart:ui';
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../services/app_tier_access_service.dart';
+import '../utils/lesson_insights_stats.dart';
+import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/mtf_floating_more_menu.dart';
+import 'monthly_lesson_history_page.dart';
+
+import '../aifc/core/aifc_avatar.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
+
+@visibleForTesting
+bool blocksEntireStatsPage({
+  required bool isPersonalWorkspace,
+  required bool canUseAdvancedInsights,
+}) =>
+    !canUseAdvancedInsights;
+
 class StatsPage extends StatefulWidget {
   final Map<String, dynamic> scheduleData;
+  final String? personalOwnerUid;
 
   const StatsPage({
-    Key? key,
-    required this.scheduleData,
-  }) : super(key: key);
+    super.key,
+    this.scheduleData = const {},
+    this.personalOwnerUid,
+  });
 
   @override
-  State<StatsPage> createState() => _StatsPageState();
+  State<StatsPage> createState() => _LessonInsightsPageState();
 }
 
-class _StatsPageState extends State<StatsPage> {
-  final NumberFormat _numberFormat = NumberFormat.decimalPattern('ko_KR');
+enum _StatsPeriod { week, month, threeMonths, custom }
 
-  int _feePerSession = 1150000;
-  late TextEditingController _feeController;
+class _StatsDateRange {
+  const _StatsDateRange(this.start, this.endExclusive);
 
-  int _yearSessions = 0;
-  int _monthSessions = 0;
-  int _weekSessions = 0;
+  final DateTime start;
+  final DateTime endExclusive;
+}
 
-  late List<int> _monthlyCounts; // 12개월
-  late List<int> _weekdayCounts; // 월~일
-  late Map<String, int> _typeCounts;
+class _LessonInsightsPageState extends State<StatsPage> {
+  AppTierAccessSnapshot? _tierAccess;
+  bool _isTierAccessLoading = true;
+  bool _tierAccessFailed = false;
+  bool _didShowPersonalTierGate = false;
+  bool _isStatsLoading = true;
+  String? _loadError;
+  LessonInsightStats? _stats;
+  _StatsPeriod _period = _StatsPeriod.month;
+  DateTimeRange? _customRange;
 
-  double _reRegistrationRate = 0;
-  double _newMemberInflowRate = 0;
-  double _introRevenueRate = 0;
-  double _sessionProgressRate = 0;
+  bool get _isPersonalWorkspace =>
+      (widget.personalOwnerUid ?? '').trim().isNotEmpty;
+  String get _personalOwnerUid => widget.personalOwnerUid!.trim();
 
-  late List<double> _momGrowth; // 전월 대비
-  late List<double> _yoyGrowth; // 전년 대비 느낌용 더미/계산값
+  bool get _canUseStatsPage => (_tierAccess?.tierRank ?? 0) >= 3;
 
   @override
   void initState() {
     super.initState();
-    _feeController = TextEditingController(
-      text: _numberFormat.format(_feePerSession),
-    );
-    _monthlyCounts = List<int>.filled(12, 0);
-    _weekdayCounts = List<int>.filled(7, 0);
-    _typeCounts = {};
-    _momGrowth = List<double>.filled(12, 0);
-    _yoyGrowth = List<double>.filled(12, 0);
-    _recalculateStats();
+    _loadTierAccess();
   }
 
-  @override
-  void didUpdateWidget(covariant StatsPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.scheduleData, widget.scheduleData)) {
-      _recalculateStats();
+  Future<void> _loadTierAccess() async {
+    try {
+      final access = _isPersonalWorkspace
+          ? await AppTierAccessService.loadPersonalTrainerAccess(
+              uid: _personalOwnerUid,
+            )
+          : await AppTierAccessService.loadTrainerAccess();
+      if (!mounted) return;
+      setState(() {
+        _tierAccess = access;
+        _tierAccessFailed = false;
+        _isTierAccessLoading = false;
+      });
+      if (!_isPersonalWorkspace || access.tierRank >= 3) {
+        await _loadStats();
+      } else if (mounted) {
+        setState(() => _isStatsLoading = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _didShowPersonalTierGate) return;
+          _didShowPersonalTierGate = true;
+          AifcTierFeatureGateSheet.show(
+            context: context,
+            access: access,
+            feature: AppTierFeatureKey.lessonInsights,
+          );
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _tierAccess = null;
+        _tierAccessFailed = true;
+        _isStatsLoading = false;
+        _isTierAccessLoading = false;
+      });
     }
   }
 
-  @override
-  void dispose() {
-    _feeController.dispose();
-    super.dispose();
-  }
-
-  void _applyFee() {
-    final raw = _feeController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final parsed = int.tryParse(raw);
-    if (parsed == null || parsed <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('수업당 금액을 숫자로 입력해주세요.')),
-      );
-      return;
-    }
-
-    setState(() {
-      _feePerSession = parsed;
-      _feeController.text = _numberFormat.format(parsed);
-      _feeController.selection = TextSelection.collapsed(
-        offset: _feeController.text.length,
-      );
-    });
-    _recalculateStats();
-  }
-
-  int _dayIndex(String day) {
-    switch (day) {
-      case '월':
-        return 0;
-      case '화':
-        return 1;
-      case '수':
-        return 2;
-      case '목':
-        return 3;
-      case '금':
-        return 4;
-      case '토':
-        return 5;
-      case '일':
-        return 6;
-      default:
-        return -1;
-    }
-  }
-
-  String _formatWon(int value) => '${_numberFormat.format(value)}원';
-
-  void _recalculateStats() {
-    final now = DateTime.now();
+  _StatsDateRange _dateRange(DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
-    final mondayThisWeek = today.subtract(Duration(days: today.weekday - 1));
-    final sundayThisWeek = mondayThisWeek.add(const Duration(days: 6));
-
-    int yearSessions = 0;
-    int monthSessions = 0;
-    int weekSessions = 0;
-
-    final monthly = List<int>.filled(12, 0);
-    final weekday = List<int>.filled(7, 0);
-    final typeCounts = <String, int>{};
-
-    widget.scheduleData.forEach((key, value) {
-      final parts = key.split('-');
-      if (parts.length != 3) return;
-
-      final offset = int.tryParse(parts[0]) ?? 0;
-      final dayStr = parts[1];
-      final dayIndex = _dayIndex(dayStr);
-      if (dayIndex < 0) return;
-
-      final baseDate =
-      mondayThisWeek.add(Duration(days: 7 * offset + dayIndex));
-      final baseDay = DateTime(baseDate.year, baseDate.month, baseDate.day);
-
-      if (!baseDay.isBefore(mondayThisWeek) && !baseDay.isAfter(sundayThisWeek)) {
-        weekSessions++;
-      }
-
-      if (baseDay.year == now.year) {
-        yearSessions++;
-        monthly[baseDay.month - 1]++;
-        weekday[dayIndex]++;
-
-        if (baseDay.month == now.month) {
-          monthSessions++;
+    switch (_period) {
+      case _StatsPeriod.week:
+        final start = today.subtract(Duration(days: today.weekday - 1));
+        return _StatsDateRange(start, start.add(const Duration(days: 7)));
+      case _StatsPeriod.month:
+        return _StatsDateRange(
+          DateTime(today.year, today.month),
+          DateTime(today.year, today.month + 1),
+        );
+      case _StatsPeriod.threeMonths:
+        return _StatsDateRange(
+          DateTime(today.year, today.month - 2),
+          DateTime(today.year, today.month + 1),
+        );
+      case _StatsPeriod.custom:
+        final range = _customRange;
+        if (range == null) {
+          return _StatsDateRange(today, today.add(const Duration(days: 1)));
         }
-      }
-
-      String type = '기타';
-      if (value is Map<String, dynamic>) {
-        final rawType = value['type']?.toString() ?? '';
-        switch (rawType) {
-          case '레슨':
-          case 'PT':
-          case 'PT레슨':
-            type = 'PT';
-            break;
-          case '그룹레슨':
-          case '그룹':
-            type = '그룹';
-            break;
-          case '상담':
-            type = '상담';
-            break;
-          case 'OT':
-            type = 'OT';
-            break;
-          case '필라테스':
-            type = '필라테스';
-            break;
-          default:
-            type = rawType.isEmpty ? '기타' : rawType;
-        }
-      }
-      typeCounts[type] = (typeCounts[type] ?? 0) + 1;
-    });
-
-    final momGrowth = <double>[
-      6, 9, 12, 15, 17, 20, 22, 24, 26, 28, 30, 32,
-    ];
-
-    final yoyGrowth = <double>[
-      4, 6, 8, 11, 13, 15, 18, 20, 22, 24, 26, 29,
-    ];
-
-    final int introRevenue = (yearSessions * _feePerSession * 0.18).round();
-    final int totalRevenue = yearSessions * _feePerSession;
-
-    final reRegRate = yearSessions == 0
-        ? 0
-        : ((typeCounts['PT'] ?? 0) + (typeCounts['필라테스'] ?? 0)) /
-        math.max(1, yearSessions) *
-        100;
-
-    final newInflowRate =
-    yearSessions == 0 ? 0 : (monthSessions / math.max(1, yearSessions)) * 100;
-
-    final introRevenueRate =
-    totalRevenue == 0 ? 0 : (introRevenue / totalRevenue) * 100;
-
-    final progressRate =
-    yearSessions == 0 ? 0 : (weekSessions / math.max(1, monthSessions)) * 100;
-
-    setState(() {
-      _yearSessions = yearSessions;
-      _monthSessions = monthSessions;
-      _weekSessions = weekSessions;
-      _monthlyCounts = monthly;
-      _weekdayCounts = weekday;
-      _typeCounts = typeCounts;
-      _momGrowth = momGrowth;
-      _yoyGrowth = yoyGrowth;
-      _reRegistrationRate = reRegRate.clamp(0.0, 100.0).toDouble();
-      _newMemberInflowRate = newInflowRate.clamp(0.0, 100.0).toDouble();
-      _introRevenueRate = introRevenueRate.clamp(0.0, 100.0).toDouble();
-      _sessionProgressRate = progressRate.clamp(0.0, 100.0).toDouble();
-    });
+        final start = DateTime(
+          range.start.year,
+          range.start.month,
+          range.start.day,
+        );
+        final end = DateTime(
+          range.end.year,
+          range.end.month,
+          range.end.day,
+        ).add(const Duration(days: 1));
+        return _StatsDateRange(start, end);
+    }
   }
 
-  int get _yearRevenue => _yearSessions * _feePerSession;
-  int get _monthRevenue => _monthSessions * _feePerSession;
-  int get _weekRevenue => _weekSessions * _feePerSession;
-  int get _avgSessionRevenue =>
-      _yearSessions == 0 ? 0 : (_yearRevenue / _yearSessions).round();
-  int get _introRevenue => (_yearRevenue * 0.18).round();
+  Future<void> _loadStats() async {
+    final now = DateTime.now();
+    final range = _dateRange(now);
+    if (mounted) {
+      setState(() {
+        _isStatsLoading = true;
+        _loadError = null;
+      });
+    }
+
+    try {
+      Query<Map<String, dynamic>> scheduleQuery = FirebaseFirestore.instance
+          .collection('schedules')
+          .where(
+            'startAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(range.start),
+          )
+          .where(
+            'startAt',
+            isLessThan: Timestamp.fromDate(range.endExclusive),
+          );
+      Query<Map<String, dynamic>> memberQuery =
+          FirebaseFirestore.instance.collection('members');
+      if (_isPersonalWorkspace) {
+        scheduleQuery = scheduleQuery
+            .where('trainerId', isEqualTo: _personalOwnerUid)
+            .where('workspaceType', isEqualTo: 'personal');
+        memberQuery = memberQuery
+            .where('trainerId', isEqualTo: _personalOwnerUid)
+            .where('workspaceType', isEqualTo: 'personal');
+      }
+      final results = await Future.wait<dynamic>([
+        scheduleQuery.get(),
+        memberQuery.get(),
+      ]);
+      final scheduleSnapshot =
+          results[0] as QuerySnapshot<Map<String, dynamic>>;
+      final memberSnapshot = results[1] as QuerySnapshot<Map<String, dynamic>>;
+
+      final lessons = scheduleSnapshot.docs
+          .map((doc) => doc.data())
+          .where((data) => !_isDeleted(data))
+          .map((data) {
+        final startAt = _dateFromAny(data['startAt']);
+        if (startAt == null) return null;
+        return LessonInsightEntry(
+          startAt: startAt,
+          status: (data['lessonConfirmStatus'] ?? '').toString().trim(),
+          type: (data['typeName'] ?? data['type'] ?? '기타').toString(),
+        );
+      }).whereType<LessonInsightEntry>();
+
+      final members = memberSnapshot.docs
+          .map((doc) => doc.data())
+          .where((data) => !_isDeleted(data))
+          .map((data) {
+        final sessions = data['sessions'] is Map
+            ? Map<String, dynamic>.from(data['sessions'] as Map)
+            : <String, dynamic>{};
+        final membership = data['membership'] is Map
+            ? Map<String, dynamic>.from(data['membership'] as Map)
+            : <String, dynamic>{};
+        return LessonInsightMember(
+          status: (data['memberStatus'] ?? '').toString().trim(),
+          remainingSessions: _intFromAny(
+            sessions['remain'] ??
+                data['remainSessions'] ??
+                data['remainingSessions'],
+          ),
+          totalSessions: _intFromAny(
+            sessions['total'] ?? data['totalSessions'],
+          ),
+          createdAt: _dateFromAny(data['createdAt']),
+          membershipEndAt: _dateFromAny(
+            membership['endAt'] ??
+                membership['passEnd'] ??
+                data['membershipEndAt'] ??
+                data['expireAt'],
+          ),
+          lastLessonAt: _dateFromAny(
+            data['lastLessonAt'] ?? data['lastLogAt'],
+          ),
+        );
+      });
+
+      final stats = LessonInsightStats.calculate(
+        lessons: lessons,
+        members: members,
+        periodStart: range.start,
+        periodEndExclusive: range.endExclusive,
+        now: now,
+      );
+      if (!mounted) return;
+      setState(() {
+        _stats = stats;
+        _isStatsLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isStatsLoading = false;
+        _loadError = error.toString();
+      });
+    }
+  }
+
+  static bool _isDeleted(Map<String, dynamic> data) {
+    if (data['isDeleted'] == true ||
+        data['deleted'] == true ||
+        data['voided'] == true ||
+        data['archived'] == true ||
+        data['deletedAt'] != null) {
+      return true;
+    }
+    final status = [
+      data['status'],
+      data['scheduleStatus'],
+      data['lessonStatus'],
+      data['deleteStatus'],
+    ].map((value) => (value ?? '').toString().trim().toLowerCase()).join(' ');
+    return status.contains('deleted') ||
+        status.contains('delete') ||
+        status.contains('removed') ||
+        status.contains('archived') ||
+        status.contains('voided') ||
+        status.contains('pending_delete');
+  }
+
+  static DateTime? _dateFromAny(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  static int _intFromAny(dynamic value) {
+    if (value is num) return value.toInt();
+    return int.tryParse((value ?? '').toString().trim()) ?? 0;
+  }
+
+  Future<void> _selectPeriod(_StatsPeriod period) async {
+    if (period == _StatsPeriod.custom) {
+      final now = DateTime.now();
+      final selected = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(now.year - 3),
+        lastDate: DateTime(now.year + 1),
+        initialDateRange: _customRange ??
+            DateTimeRange(
+              start: DateTime(now.year, now.month, 1),
+              end: now,
+            ),
+        helpText: '조회 기간 선택',
+        saveText: '적용',
+      );
+      if (selected == null || !mounted) return;
+      setState(() {
+        _period = period;
+        _customRange = selected;
+      });
+    } else {
+      if (_period == period) return;
+      setState(() => _period = period);
+    }
+    await _loadStats();
+  }
+
+  Future<void> _openTierGuideSheet() async {
+    final access = _tierAccess ??
+        (_isPersonalWorkspace
+            ? await AppTierAccessService.loadPersonalTrainerAccess(
+                uid: _personalOwnerUid,
+              )
+            : await AppTierAccessService.loadTrainerAccess());
+    if (!mounted) return;
+    await AifcTierFeatureGateSheet.show(
+      context: context,
+      access: access,
+      feature: AppTierFeatureKey.lessonInsights,
+    );
+  }
+
+  String get _periodLabel {
+    final range = _dateRange(DateTime.now());
+    final end = range.endExclusive.subtract(const Duration(days: 1));
+    return '${DateFormat('yyyy.MM.dd').format(range.start)} - '
+        '${DateFormat('yyyy.MM.dd').format(end)}';
+  }
+
+  String _rateText(double? rate) =>
+      rate == null ? '-' : '${rate.toStringAsFixed(1)}%';
+
+  Future<void> _openMonthlyLessonHistory() async {
+    if (!_isPersonalWorkspace || !_canUseStatsPage) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MonthlyLessonHistoryPage(
+          personalOwnerUid: _personalOwnerUid,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasData = widget.scheduleData.isNotEmpty;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       body: Stack(
@@ -238,308 +351,369 @@ class _StatsPageState extends State<StatsPage> {
           Column(
             children: [
               _StatsHeader(
-                title: '운영통계',
-                subtitle: '수업, 회원, 매출 흐름을 한눈에 확인해보세요',
+                title: 'MORE 인사이트',
+                subtitle: '실제 레슨과 회원 데이터를 기간별로 확인해보세요',
                 onBackTap: () => Navigator.of(context).maybePop(),
+                trailing: _isPersonalWorkspace && _canUseStatsPage
+                    ? MtfFloatingMoreMenuButton<String>(
+                        items: const [
+                          MtfMoreMenuItem(
+                            value: 'monthly',
+                            icon: Icons.calendar_month_rounded,
+                            label: '월간 레슨 기록',
+                            subLabel: '확정 레슨을 날짜별로 확인',
+                          ),
+                        ],
+                        onSelected: (_) => _openMonthlyLessonHistory(),
+                        tooltip: '인사이트 더보기',
+                      )
+                    : null,
               ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildFeeControlCard(),
-                      const SizedBox(height: 14),
-                      _buildTopSummaryCards(),
-                      const SizedBox(height: 18),
-                      _buildGrowthChartCard(hasData),
-                      const SizedBox(height: 18),
-                      _buildRateCards(),
-                      const SizedBox(height: 18),
-                      _buildMiddleCharts(),
-                      const SizedBox(height: 18),
-                      _buildBottomInsightCards(),
-                      const SizedBox(height: 80),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: _loadStats,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_isTierAccessLoading)
+                          const SizedBox(
+                            height: 220,
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else ...[
+                          _buildPeriodSelector(),
+                          const SizedBox(height: 14),
+                          if (_isStatsLoading)
+                            const SizedBox(
+                              height: 260,
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          else if (_loadError != null)
+                            _buildLoadError()
+                          else ...[
+                            _buildSummary(),
+                            const SizedBox(height: 18),
+                            _buildLessonSection(),
+                            const SizedBox(height: 18),
+                            _buildMemberSection(),
+                            const SizedBox(height: 18),
+                            _buildIncomeSection(),
+                          ],
+                        ],
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: true,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),
-                child: Container(
-                  color: Colors.white.withOpacity(0.04),
+          if (_isTierAccessLoading)
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFFF3F4F6).withOpacity(0.74),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            )
+          else if (_tierAccessFailed)
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFFF3F4F6),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(24),
+                child: const Text(
+                  '등급 정보를 확인하지 못했어요.\n잠시 후 다시 시도해주세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF374151),
+                    fontSize: 14,
+                    height: 1.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            )
+          else if (blocksEntireStatsPage(
+            isPersonalWorkspace: _isPersonalWorkspace,
+            canUseAdvancedInsights: _canUseStatsPage,
+          )) ...[
+            Positioned.fill(
+              child: IgnorePointer(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),
+                  child: Container(color: Colors.white.withOpacity(0.04)),
                 ),
               ),
             ),
-          ),
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: false,
+            Positioned.fill(
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _FloatingPremiumGlassBanner(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('프리미엄 결제 기능은 준비중입니다.'),
-                        ),
-                      );
-                    },
+                  child: _StatsProGateChatCard(
+                    currentTierLabel: _tierAccess?.tierLabel ?? 'Beginner',
+                    onTap: _openTierGuideSheet,
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildFeeControlCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _feeController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: '월 예상 매출 금액',
-                suffixText: '원',
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          FilledButton(
-            onPressed: _applyFee,
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF4F46E5),
-              foregroundColor: Colors.white,
-              minimumSize: const Size(0, 52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text('적용'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopSummaryCards() {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.55,
-      children: [
-        _KpiCard(
-          title: '총 매출액',
-          value: _formatWon(_yearRevenue),
-          subtitle: '전월 대비 +8.2%',
-          icon: Icons.paid_outlined,
-          colors: const [Color(0xFFFF6A00), Color(0xFFFF7F11)],
-        ),
-        _KpiCard(
-          title: '총 수업 수',
-          value: '$_yearSessions',
-          subtitle: '전월 대비 +14.2%',
-          icon: Icons.fitness_center_rounded,
-          colors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
-        ),
-        _KpiCard(
-          title: '신규 유입률',
-          value: '${_newMemberInflowRate.toStringAsFixed(1)}%',
-          subtitle: '이번 달 기준',
-          icon: Icons.group_add_rounded,
-          colors: const [Color(0xFFA855F7), Color(0xFF9333EA)],
-        ),
-        _KpiCard(
-          title: '평균 수업 단가',
-          value: _formatWon(_avgSessionRevenue),
-          subtitle: '전월 대비 -1.8%',
-          icon: Icons.show_chart_rounded,
-          colors: const [Color(0xFF00B63E), Color(0xFF10B981)],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGrowthChartCard(bool hasData) {
+  Widget _buildPeriodSelector() {
+    const labels = {
+      _StatsPeriod.week: '이번 주',
+      _StatsPeriod.month: '이번 달',
+      _StatsPeriod.threeMonths: '3개월',
+      _StatsPeriod.custom: '직접 선택',
+    };
     return _DashboardCard(
-      title: '전월 / 전년 대비 매출 추이',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [
-          _LegendDot(color: Color(0xFFFF7A18), label: '전월 대비'),
-          SizedBox(width: 10),
-          _LegendDot(color: Color(0xFF3B82F6), label: '전년 대비'),
+      title: '조회 기간',
+      trailing: Text(
+        _periodLabel,
+        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _StatsPeriod.values.map((period) {
+          return ChoiceChip(
+            label: Text(labels[period]!),
+            selected: _period == period,
+            onSelected: (_) => _selectPeriod(period),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildLoadError() {
+    return _DashboardCard(
+      title: '데이터를 불러오지 못했어요',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('잠시 후 다시 시도해주세요.'),
+          const SizedBox(height: 12),
+          OutlinedButton(onPressed: _loadStats, child: const Text('다시 불러오기')),
         ],
       ),
-      child: hasData
-          ? SizedBox(
-        height: 260,
-        child: _GrowthComboChart(
-          bars: _momGrowth.map((e) => e.clamp(0.0, 36.0).toDouble()).toList(),
-          line: _yoyGrowth.map((e) => e.clamp(0.0, 36.0).toDouble()).toList(),
-        ),
-      )
-          : _emptyInfo('아직 스케줄 데이터가 없어서 그래프를 그릴 수 없어요.'),
     );
   }
 
-  Widget _buildRateCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _DashboardCard(
-            title: '재등록률',
-            child: _DonutRate(
-              value: _reRegistrationRate,
-              label: '${_reRegistrationRate.toStringAsFixed(1)}%',
-              subtitle: '재등록 비중',
-              color: const Color(0xFF6D28D9),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _DashboardCard(
-            title: '소개건 관련 매출',
-            child: _DonutRate(
-              value: _introRevenueRate,
-              label: '${_introRevenueRate.toStringAsFixed(1)}%',
-              subtitle: _formatWon(_introRevenue),
-              color: const Color(0xFFEA580C),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMiddleCharts() {
+  Widget _buildSummary() {
+    final stats = _stats!;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _DashboardCard(
-          title: '요일별 수업 진행',
-          child: SizedBox(
-            height: 210,
-            child: _WeekdayBarChart(values: _weekdayCounts),
-          ),
-        ),
-        const SizedBox(height: 18),
-        _DashboardCard(
-          title: '수업 유형 비중',
-          child: SizedBox(
-            height: 220,
-            child: _SessionTypeDonut(
-              typeCounts: _typeCounts,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBottomInsightCards() {
-    return Column(
-      children: [
-        Row(
+        const _SectionTitle('요약'),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.65,
           children: [
-            Expanded(
-              child: _SmallInsightCard(
-                title: '이번 주 수업',
-                value: '$_weekSessions회',
-                subtitle: _formatWon(_weekRevenue),
-                icon: Icons.calendar_view_week_rounded,
-              ),
+            _KpiCard(
+              title: '완료 레슨',
+              value: '${stats.completedLessons}회',
+              subtitle: '선택 기간 확정 완료',
+              icon: Icons.task_alt_rounded,
+              colors: const [Color(0xFF4F46E5), Color(0xFF7C3AED)],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SmallInsightCard(
-                title: '이번 달 수업',
-                value: '$_monthSessions회',
-                subtitle: _formatWon(_monthRevenue),
-                icon: Icons.calendar_month_rounded,
-              ),
+            _KpiCard(
+              title: '예정 레슨',
+              value: '${stats.upcomingLessons}회',
+              subtitle: '현재 시각 이후 미확정',
+              icon: Icons.upcoming_rounded,
+              colors: const [Color(0xFF0284C7), Color(0xFF06B6D4)],
+            ),
+            _KpiCard(
+              title: '실제 수업률',
+              value: _rateText(stats.actualLessonRate),
+              subtitle: '확정 결과 기준',
+              icon: Icons.insights_rounded,
+              colors: const [Color(0xFFEA580C), Color(0xFFF59E0B)],
+            ),
+            _KpiCard(
+              title: '활성 회원',
+              value: '${stats.activeMembers}명',
+              subtitle: '현재 회원 상태 기준',
+              icon: Icons.groups_rounded,
+              colors: const [Color(0xFF059669), Color(0xFF10B981)],
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLessonSection() {
+    final stats = _stats!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('레슨'),
+        const SizedBox(height: 10),
+        _DashboardCard(
+          title: '레슨 결과',
+          child: Column(
+            children: [
+              _metricRow('등록 레슨', stats.registeredLessons, '회'),
+              _metricRow('완료', stats.completedLessons, '회'),
+              _metricRow('노쇼 · 차감', stats.noShowDeducted, '회'),
+              _metricRow('노쇼 · 미차감', stats.noShowNotDeducted, '회'),
+              _metricRow('서비스', stats.serviceLessons, '회', isLast: true),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _SmallInsightCard(
-                title: '수업 진행률',
-                value: '${_sessionProgressRate.toStringAsFixed(1)}%',
-                subtitle: '주간/월간 기준',
-                icon: Icons.insights_rounded,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _SmallInsightCard(
-                title: '신규 유입',
-                value: '${_newMemberInflowRate.toStringAsFixed(1)}%',
-                subtitle: '월간 유입 지표',
-                icon: Icons.person_add_alt_1_rounded,
-              ),
-            ),
-          ],
+        _DashboardCard(
+          title: '요일별 등록 레슨',
+          child: SizedBox(
+            height: 170,
+            child: _WeekdayBarChart(values: stats.weekdayCounts),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _DashboardCard(
+          title: '레슨 종류 비중',
+          child: stats.typeCounts.isEmpty
+              ? const _EmptyMetricText('선택 기간에 등록된 레슨이 없어요.')
+              : _SessionTypeDonut(typeCounts: stats.typeCounts),
         ),
       ],
     );
   }
 
-  Widget _emptyInfo(String text) {
+  Widget _buildMemberSection() {
+    final stats = _stats!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('회원'),
+        const SizedBox(height: 10),
+        _DashboardCard(
+          title: '회원 현황',
+          child: Column(
+            children: [
+              _metricRow('활성', stats.activeMembers, '명'),
+              _metricRow('휴면', stats.dormantMembers, '명'),
+              _metricRow('만료', stats.expiredMembers, '명'),
+              _metricRow('기간 내 신규', stats.newMembers, '명', isLast: true),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _DashboardCard(
+          title: '확인할 회원',
+          child: Column(
+            children: [
+              _metricRow('잔여 5회 이하', stats.lowRemainingMembers, '명'),
+              _metricRow('기간 내 회원권 만료 예정', stats.expiringMembers, '명'),
+              _metricRow('14일 이상 미방문', stats.longAbsentMembers, '명',
+                  isLast: true),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIncomeSection() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionTitle('수입'),
+        SizedBox(height: 10),
+        _DashboardCard(
+          title: '확정 수입',
+          child: _EmptyMetricText(
+            '데이터 연결 준비 중\n결제 금액과 결제일이 확인되는 실제 수납 데이터만 연결할 예정이에요.',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _metricRow(
+    String label,
+    int value,
+    String unit, {
+    bool isLast = false,
+  }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 18, color: Colors.black54),
-          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              text,
-              style: const TextStyle(fontSize: 12, color: Colors.black87),
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
+            ),
+          ),
+          Text(
+            '$value$unit',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF111827),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w900,
+        color: Color(0xFF111827),
+      ),
+    );
+  }
+}
+
+class _EmptyMetricText extends StatelessWidget {
+  const _EmptyMetricText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        height: 1.5,
+        fontSize: 13,
+        color: Color(0xFF6B7280),
+        fontWeight: FontWeight.w700,
       ),
     );
   }
@@ -550,97 +724,106 @@ class _StatsHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onBackTap,
+    this.trailing,
   });
 
   final String title;
   final String subtitle;
   final VoidCallback onBackTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(
-        top: topPadding + 12,
-        left: 16,
-        right: 16,
-        bottom: 14,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5B4BDB),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(28),
+    return MtfHeaderNeonOverlay(
+      isExpanded: false,
+      intensity: 0.52,
+      bottomRadius: 28,
+      strokeWidth: 1.6,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.only(
+          top: topPadding + 12,
+          left: 16,
+          right: 16,
+          bottom: 14,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF5B4BDB),
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(28),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 44,
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 2,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 2,
+                      ),
                     ),
-                  ),
-                  child: InkWell(
-                    onTap: onBackTap,
-                    borderRadius: BorderRadius.circular(999),
-                    child: const Center(
-                      child: Text(
-                        '<',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w500,
-                          height: 1.0,
+                    child: InkWell(
+                      onTap: onBackTap,
+                      borderRadius: BorderRadius.circular(999),
+                      child: const Center(
+                        child: Text(
+                          '<',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w500,
+                            height: 1.0,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              subtitle,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.92),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+                  if (trailing != null) trailing!,
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.92),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -718,7 +901,7 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: colors,
@@ -737,360 +920,58 @@ class _KpiCard extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.white, size: 28),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  const _LegendDot({
-    required this.color,
-    required this.label,
-  });
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.black54,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GrowthComboChart extends StatelessWidget {
-  const _GrowthComboChart({
-    required this.bars,
-    required this.line,
-  });
-
-  final List<double> bars;
-  final List<double> line;
-
-  @override
-  Widget build(BuildContext context) {
-    const labels = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-    final double maxValue = math.max(
-      10.0,
-      [...bars, ...line].fold<double>(0.0, (p, e) => math.max(p, e)),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final chartHeight = 190.0;
-        final width = constraints.maxWidth;
-        final stepX = width / 12;
-
-        return Column(
-          children: [
-            SizedBox(
-              height: chartHeight,
-              child: Stack(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _GridPainter(),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(12, (index) {
-                        final barHeight = (bars[index] / maxValue) * (chartHeight - 20);
-                        return Expanded(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Container(
-                              width: 24,
-                              height: barHeight,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF7A18),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _LineChartPainter(
-                        values: line,
-                        maxValue: maxValue,
-                        color: const Color(0xFF3B82F6),
-                        stepX: stepX,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: List.generate(12, (index) {
-                return Expanded(
-                  child: Text(
-                    labels[index],
-                    textAlign: TextAlign.center,
+                  Text(
+                    title,
                     style: const TextStyle(
-                      fontSize: 11,
-                      color: Colors.black54,
+                      color: Colors.white,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                );
-              }),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFE5E7EB)
-      ..strokeWidth = 1;
-
-    for (int i = 0; i <= 4; i++) {
-      final y = size.height * (i / 4);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-
-    for (int i = 0; i <= 11; i++) {
-      final x = size.width * (i / 11);
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint..color = const Color(0xFFF1F5F9));
-      paint.color = const Color(0xFFE5E7EB);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _LineChartPainter extends CustomPainter {
-  const _LineChartPainter({
-    required this.values,
-    required this.maxValue,
-    required this.color,
-    required this.stepX,
-  });
-
-  final List<double> values;
-  final double maxValue;
-  final Color color;
-  final double stepX;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty) return;
-
-    final path = Path();
-    final dotPaint = Paint()..color = color;
-    final linePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-
-    for (int i = 0; i < values.length; i++) {
-      final x = stepX * i + (stepX / 2);
-      final y = size.height - ((values[i] / maxValue) * (size.height - 20)) - 10;
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    canvas.drawPath(path, linePaint);
-
-    for (int i = 0; i < values.length; i++) {
-      final x = stepX * i + (stepX / 2);
-      final y = size.height - ((values[i] / maxValue) * (size.height - 20)) - 10;
-      canvas.drawCircle(Offset(x, y), 4, dotPaint);
-      canvas.drawCircle(
-        Offset(x, y),
-        2,
-        Paint()..color = Colors.white,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
-    return oldDelegate.values != values || oldDelegate.maxValue != maxValue;
-  }
-}
-
-class _DonutRate extends StatelessWidget {
-  const _DonutRate({
-    required this.value,
-    required this.label,
-    required this.subtitle,
-    required this.color,
-  });
-
-  final double value;
-  final String label;
-  final String subtitle;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (value / 100).clamp(0.0, 1.0);
-
-    return Row(
-      children: [
-        SizedBox(
-          width: 120,
-          height: 120,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: const Size(120, 120),
-                painter: _DonutPainter(
-                  progress: progress,
-                  color: color,
-                ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+                  const SizedBox(height: 6),
                   Text(
-                    label,
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    textAlign: TextAlign.center,
                     style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 11,
-                      color: Colors.black54,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+        ],
+      ),
     );
-  }
-}
-
-class _DonutPainter extends CustomPainter {
-  const _DonutPainter({
-    required this.progress,
-    required this.color,
-  });
-
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final stroke = 14.0;
-    final rect = Rect.fromLTWH(
-      stroke / 2,
-      stroke / 2,
-      size.width - stroke,
-      size.height - stroke,
-    );
-
-    final bg = Paint()
-      ..color = const Color(0xFFE5E7EB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke;
-
-    final fg = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, bg);
-    canvas.drawArc(rect, -math.pi / 2, math.pi * 2 * progress, false, fg);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DonutPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.color != color;
   }
 }
 
@@ -1290,91 +1171,13 @@ class _MultiDonutPainter extends CustomPainter {
   }
 }
 
-class _SmallInsightCard extends StatelessWidget {
-  const _SmallInsightCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: const Color(0xFF2563EB)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FloatingPremiumGlassBanner extends StatelessWidget {
-  const _FloatingPremiumGlassBanner({
+class _StatsProGateChatCard extends StatelessWidget {
+  const _StatsProGateChatCard({
+    required this.currentTierLabel,
     required this.onTap,
   });
 
+  final String currentTierLabel;
   final VoidCallback onTap;
 
   @override
@@ -1383,237 +1186,159 @@ class _FloatingPremiumGlassBanner extends StatelessWidget {
       color: Colors.transparent,
       child: Container(
         constraints: const BoxConstraints(
-          maxWidth: 360,
+          maxWidth: 380,
         ),
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(26),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF0F172A).withOpacity(0.72),
-              const Color(0xFF4F46E5).withOpacity(0.42),
-              const Color(0xFFF97316).withOpacity(0.30),
-            ],
-          ),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.16),
-            width: 1.2,
-          ),
+          color: const Color(0xFFF5F4FF),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4F46E5).withOpacity(0.16),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
+              color: const Color(0xFF4F46E5).withOpacity(0.18),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.14),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFBBF24), Color(0xFFF97316)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFF97316).withOpacity(0.28),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.workspace_premium_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  '프리미엄으로 업그레이드',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Icon(
-                                Icons.auto_awesome,
-                                color: Color(0xFFFBBF24),
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            '프리미엄 결제하고 더 똑똑하게 관리하세요.\nAI 인사이트와 고급 통계 기능이 열립니다.',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12.4,
-                              fontWeight: FontWeight.w600,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                const AifcAvatar(
+                  size: 34,
+                  isAnimating: true,
+                  backgroundColor: Color(0xFFF5F4FF),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: const [
-                          _MiniGlassFeatureChip(
-                            icon: Icons.trending_up_rounded,
-                            label: '신규 및 재등록 매출 분석',
-                          ),
-                          _MiniGlassFeatureChip(
-                            icon: Icons.group_add_rounded,
-                            label: '똑똑한 레슨일지 작성 ',
-                          ),
-                          _MiniGlassFeatureChip(
-                            icon: Icons.pie_chart_outline_rounded,
-                            label: '체계적인 계약서 시스템',
-                          ),
-                          _MiniGlassFeatureChip(
-                            icon: Icons.calendar_view_week_rounded,
-                            label: '편리한 스케줄 관리',
-                          ),
-                        ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(6),
+                        topRight: Radius.circular(18),
+                        bottomLeft: Radius.circular(18),
+                        bottomRight: Radius.circular(18),
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFFE0DEFF),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: onTap,
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFFF97316),
-                      backgroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 11,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 12,
+                    child: Text(
+                      '인사이트는 Pro부터 열려요.\n\n'
+                      '현재 등급은 $currentTierLabel 입니다.\n'
+                      '완료·예정 레슨, 회원 현황, 요일별 레슨 패턴처럼 실제 데이터로 확인되는 지표를 볼 수 있어요.',
+                      style: const TextStyle(
+                        color: Color(0xFF1E1B4B),
+                        fontSize: 13,
+                        height: 1.45,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    child: const Text('자세히 보기'),
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.72),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: const Color(0xFFE0DEFF),
+                ),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _StatsGateBenefitRow(
+                    icon: Icons.trending_up_rounded,
+                    text: '기간별 완료·예정 레슨 확인',
+                  ),
+                  SizedBox(height: 8),
+                  _StatsGateBenefitRow(
+                    icon: Icons.groups_rounded,
+                    text: '활성·신규 회원 현황 확인',
+                  ),
+                  SizedBox(height: 8),
+                  _StatsGateBenefitRow(
+                    icon: Icons.calendar_view_week_rounded,
+                    text: '요일별 레슨 패턴 분석',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: onTap,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                child: const Text(
+                  '등급 안내 보기',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _MiniGlassFeatureChip extends StatelessWidget {
-  const _MiniGlassFeatureChip({
+class _StatsGateBenefitRow extends StatelessWidget {
+  const _StatsGateBenefitRow({
     required this.icon,
-    required this.label,
+    required this.text,
   });
 
   final IconData icon;
-  final String label;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.10),
+    return Row(
+      children: [
+        const SizedBox(width: 1),
+        Icon(
+          icon,
+          size: 16,
+          color: Color(0xFF4F46E5),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 15,
-            color: const Color(0xFFFBBF24),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
+              color: Color(0xFF312E81),
+              fontSize: 12,
+              height: 1.35,
+              fontWeight: FontWeight.w800,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatsProChip extends StatelessWidget {
-  const _StatsProChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: const Text(
-        'PRO',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
         ),
-      ),
+      ],
     );
   }
 }
