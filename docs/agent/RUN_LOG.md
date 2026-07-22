@@ -1533,3 +1533,13 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 설치 후 정체성: PROD environment/project/package 로그가 정상이고 UID 및 nickname fingerprint가 설치 전과 일치했다. profile 존재, 일정 182→182, tier Beginner→Beginner, onboarding/DEV 신호/permission-denied/crash는 모두 0건이었다. 운영 일정·회원·프로필 문서를 생성·수정·삭제하지 않았다.
 - 위젯: 기존 PROD 주간 위젯 instance ID 73은 유지됐고 앱 foreground 동기화 후 기존 일정 데이터가 다시 표시됐다. 기존 다음 레슨 provider는 유지됐으나 설치 전부터 홈 화면 배치 instance는 없었다. 신규 오늘 레슨 provider는 Android 목록에 정상 등록됐다. 신규 위젯을 홈에 추가하기 위한 페이지 이동 중 기기가 화면 OFF·Keyguard 활성 상태가 되어 즉시 중단했다. 따라서 신규 오늘 레슨 렌더링, cold/warm 탭, 다음 레슨 위젯 배치 유지, gate/MyPage 읽기 검증은 미검증이다.
 - 보호: `adb uninstall`, `pm clear`, 일반 앱 삭제, 데이터 초기화, 운영 일정 자동 쓰기, 전체 Firebase 배포, Play Store 배포를 하지 않았다. 다음 백로그로 이동하지 않았다.
+
+## 2026-07-22 — PROD 1.0.1 남은 읽기 중심 실기기 카나리
+
+- 위젯 인스턴스: PROD 주간 위젯은 ID 73, PROD 오늘 레슨 위젯은 ID 77로 유지됐다. 별도로 DEV 오늘 레슨 ID 75와 DEV 다음 레슨 ID 76이 있어 package 기준으로 구분했다. PROD 오늘 위젯은 남은 레슨 6건을 표시하며 다음 11:00, 다다음 12:00, 이후 14:00/17:00/18:00을 중복 없이 렌더링했다. 총 6건 중 5건만 보이는데 `외 1개` 표시는 없어 overflow 표시 누락으로 기록했다.
+- 탭: 앱 process가 살아 있는 warm 탭은 PROD MainActivity를 foreground로 열었고, 현재 주의 수요일 열을 선택한 뒤 `오늘 다음 레슨` 제목을 고정 헤더 바로 아래에 배치했다. `am force-stop` 후 PROD 위젯을 두 위치에서 탭한 cold 검증은 app process만 생성되고 MainActivity start/foreground 및 widget action 로그가 없어 실패로 기록했다.
+- MyPage: 기존 nickname/profile과 기존 활동 지역 표시가 유지됐다. Beginner, 회원 0명, 레슨 182건을 읽었고 활동 지역 값도 화면에 표시됐다. 선생님 정보는 소속 형태 미선택 때문에 미완료 상태였다.
+- gate: 회원 추가는 `고객카드 등록은 Amateur부터`, 신규 계약은 `Semi-Pro부터`, 인사이트는 `Pro부터` gate가 각각 표시됐다. MORE 비즈니스는 연결 요청이 아직 없고 요청이 생기면 알려준다는 AI FC 대기 안내가 표시됐다.
+- 등급 미션: Home과 등급 안내 모두 1/2 완료, 레슨 일정 182/10을 표시했다. 따라서 일정 미션은 완료이고 선생님 정보 미완료 때문에 Beginner가 유지되는 정상 상태다.
+- 인바디: personal 회원 0명이고 회원 추가가 Amateur gate로 차단되어 운영 회원을 새로 만들지 않고는 회원카드의 인바디 카메라 버튼에 진입할 수 없었다. 사전 안내는 이번 읽기 전용 카나리에서 미검증으로 남겼다.
+- 오류·보호: 전체 수동 검증 구간에서 permission-denied 0건, fatal crash 0건, ANR 0건이었다. Firebase Functions/indexes/Rules/Storage 재배포, APK 재설치, 앱 삭제·데이터 초기화, 운영 일정·회원 쓰기, Play Store 배포를 실행하지 않았다. 다음 백로그로 이동하지 않았다.
