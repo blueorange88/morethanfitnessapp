@@ -11,6 +11,10 @@ String homeScheduleScopedDocumentId(String docId, String? ownerUid) {
   return '$owner--$clean';
 }
 
+bool shouldPersistMemberNextLessonCache(String? ownerUid) {
+  return (ownerUid?.trim() ?? '').isEmpty;
+}
+
 enum HomeScheduleMutationFailureReason {
   commitFailed,
   sourceStillExists,
@@ -464,6 +468,7 @@ class HomeScheduleFirestoreService {
   }) async {
     final cleanMemberId = memberId.trim();
     if (cleanMemberId.isEmpty) return;
+    if (!shouldPersistMemberNextLessonCache(ownerUid)) return;
 
     final now = DateTime.now();
 

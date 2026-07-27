@@ -80,6 +80,7 @@ function memberPayload(index, prefix = "010") {
     idempotencyKey: `member-${prefix}-${index}`,
     name: `회원 ${index}`,
     gender: index % 2 === 0 ? "female" : "male",
+    birthDate: "1990-02-03",
     phone: `${prefix}${String(index).padStart(8, "0")}`,
     activityRegion: "서울",
     note: "test",
@@ -399,6 +400,90 @@ async function main() {
       });
     });
 
+    const legacyOwner = await signUpAnonymous();
+    await bootstrapAnonymous(legacyOwner);
+    await promoteAnonymousToAmateur(env, legacyOwner, "legacy-create");
+    const legacyPayload = memberPayload(70, "014");
+    delete legacyPayload.birthDate;
+    const legacyCreated = await callFunction(
+      "createManagedMember",
+      legacyOwner.idToken,
+      legacyPayload,
+    );
+    await scenario("1.0.3 legacy create without birth succeeds", async () => {
+      assert.equal(legacyCreated.status, 200, JSON.stringify(legacyCreated.body));
+      assert.equal(legacyCreated.body.result.created, true);
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(
+        db,
+        "members",
+        legacyCreated.body.result.memberId,
+      ));
+      const data = snapshot.data();
+      assert.equal(data.trainerId, legacyOwner.localId);
+      assert.equal(data.workspaceType, "personal");
+      assert.equal(data.birth, undefined);
+      assert.equal(data.birthDisplay, undefined);
+      assert.equal(data.birthAt, undefined);
+      assert.equal(data.groupId, undefined);
+      assert.equal(data.groupName, undefined);
+    });
+    await scenario("supplied invalid create birth is rejected", async () => {
+      const rejected = await callFunction(
+        "createManagedMember",
+        legacyOwner.idToken,
+        {...memberPayload(71, "014"), birthDate: "1990-02-30"},
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDocs(query(
+        collection(db, "members"),
+        where("trainerId", "==", legacyOwner.localId),
+        where("workspaceType", "==", "personal"),
+      ));
+      assert.equal(snapshot.size, 1);
+    });
+    const currentPayload = memberPayload(72, "014");
+    const currentCreated = await callFunction(
+      "createManagedMember",
+      legacyOwner.idToken,
+      currentPayload,
+    );
+    await scenario("1.0.4 create persists canonical birth fields", async () => {
+      assert.equal(currentCreated.status, 200, JSON.stringify(currentCreated.body));
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(
+        db,
+        "members",
+        currentCreated.body.result.memberId,
+      ));
+      const data = snapshot.data();
+      assert.equal(data.birthDisplay, "1990-02-03");
+      assert.equal(data.birth.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
+      assert.equal(data.birthAt.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
+    });
+    await scenario("legacy retry does not rewrite a current member", async () => {
+      const replayPayload = {...currentPayload};
+      delete replayPayload.birthDate;
+      const replayed = await callFunction(
+        "createManagedMember",
+        legacyOwner.idToken,
+        replayPayload,
+      );
+      assert.equal(replayed.status, 200, JSON.stringify(replayed.body));
+      assert.equal(replayed.body.result.created, false);
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(
+        db,
+        "members",
+        currentCreated.body.result.memberId,
+      ));
+      const data = snapshot.data();
+      assert.equal(data.birthDisplay, "1990-02-03");
+      assert.equal(data.birth.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
+      assert.equal(data.birthAt.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
+    });
+
     const first = await create(owner, 1);
     await scenario("Amateur anonymous first valid member succeeds", async () => {
       assert.equal(first.status, 200);
@@ -413,9 +498,203 @@ async function main() {
       assert.equal(data.memberId, firstId);
       assert.equal(data.trainerId, owner.localId);
       assert.equal(data.workspaceType, "personal");
+      assert.equal(data.gender, "male");
+      assert.equal(data.birthDisplay, "1990-02-03");
+      assert.equal(data.birth.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
+      assert.equal(data.birthAt.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
       assert.equal(data.phoneNormalized, "01000000001");
+      assert.equal(data.groupId, undefined);
+      assert.equal(data.groupName, undefined);
       assert.equal(data.countsTowardLifetimeQualification, true);
       assert.ok(data.qualifiedAt);
+    });
+    await scenario("member gender and birth update persist for owner readback", async () => {
+      const updated = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {
+          memberId: firstId,
+          gender: "female",
+          birthDate: "1992-02-29",
+        },
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      assert.equal(updated.body.result.updated, true);
+      const db = context(env, owner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", firstId));
+      const data = snapshot.data();
+      assert.equal(data.gender, "female");
+      assert.equal(data.birthDisplay, "1992-02-29");
+      assert.equal(data.birth.toDate().toISOString(), "1992-02-29T00:00:00.000Z");
+      assert.equal(data.birthAt.toDate().toISOString(), "1992-02-29T00:00:00.000Z");
+    });
+    await scenario("invalid birth update is rejected without changing stored data", async () => {
+      const rejected = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, birthDate: "1992-02-30"},
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+      const db = context(env, owner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", firstId));
+      assert.equal(snapshot.data().birthDisplay, "1992-02-29");
+    });
+    await scenario("create identity fields cannot be supplied by the client", async () => {
+      const rejected = await callFunction(
+        "createManagedMember",
+        owner.idToken,
+        {
+          ...memberPayload(90),
+          idempotencyKey: "identity-injection",
+          trainerId: "other-trainer",
+          workspaceType: "legacy",
+        },
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+    });
+    await scenario("update identity fields cannot be supplied by the client", async () => {
+      const rejected = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {
+          memberId: firstId,
+          trainerId: "other-trainer",
+          workspaceType: "legacy",
+        },
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+    });
+    await scenario("other trainer cannot update an owned member", async () => {
+      const other = await signUpAnonymous();
+      await bootstrapAnonymous(other);
+      const rejected = await callFunction(
+        "updateManagedMember",
+        other.idToken,
+        {memberId: firstId, gender: "male"},
+      );
+      assert.equal(rejected.body.error.status, "PERMISSION_DENIED");
+    });
+    const duplicateUpdateTrainer = await signUpAnonymous();
+    await bootstrapAnonymous(duplicateUpdateTrainer);
+    await promoteAnonymousToAmateur(
+      env,
+      duplicateUpdateTrainer,
+      "duplicate-update",
+    );
+    const duplicateUpdateFirst = await callFunction(
+      "createManagedMember",
+      duplicateUpdateTrainer.idToken,
+      memberPayload(1, "013"),
+    );
+    const duplicateUpdateSecond = await callFunction(
+      "createManagedMember",
+      duplicateUpdateTrainer.idToken,
+      memberPayload(2, "013"),
+    );
+    const duplicateUpdateFirstId = duplicateUpdateFirst.body.result.memberId;
+    await scenario("member update keeps its own phone without duplicate error", async () => {
+      const updated = await callFunction(
+        "updateManagedMember",
+        duplicateUpdateTrainer.idToken,
+        {
+          memberId: duplicateUpdateFirstId,
+          phone: memberPayload(1, "013").phone,
+        },
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      assert.equal(updated.body.result.updated, true);
+    });
+    await scenario("member update rejects another owned member phone", async () => {
+      const rejected = await callFunction(
+        "updateManagedMember",
+        duplicateUpdateTrainer.idToken,
+        {
+          memberId: duplicateUpdateFirstId,
+          phone: memberPayload(2, "013").phone,
+        },
+      );
+      assert.equal(rejected.body.error.status, "ALREADY_EXISTS");
+      const db = context(
+        env,
+        duplicateUpdateTrainer.localId,
+        true,
+      ).firestore();
+      const snapshot = await getDoc(
+        doc(db, "members", duplicateUpdateFirstId),
+      );
+      assert.equal(snapshot.data().phoneNormalized, memberPayload(1, "013").phone);
+      assert.notEqual(
+        duplicateUpdateFirstId,
+        duplicateUpdateSecond.body.result.memberId,
+      );
+    });
+    await scenario("member consent persists, reads back, and resets canonically", async () => {
+      const agreed = await callFunction(
+        "updateManagedMemberConsent",
+        owner.idToken,
+        {memberId: firstId, agreed: true},
+      );
+      assert.equal(agreed.status, 200, JSON.stringify(agreed.body));
+      let agreedAt;
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const snapshot = await getDoc(doc(admin.firestore(), "members", firstId));
+        const data = snapshot.data();
+        assert.equal(data.trainingLogConsentAgreed, true);
+        assert.ok(data.trainingLogConsentAgreedAt);
+        agreedAt = data.trainingLogConsentAgreedAt.toMillis();
+      });
+      const retried = await callFunction(
+        "updateManagedMemberConsent",
+        owner.idToken,
+        {memberId: firstId, agreed: true},
+      );
+      assert.equal(retried.status, 200, JSON.stringify(retried.body));
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const snapshot = await getDoc(doc(admin.firestore(), "members", firstId));
+        assert.equal(
+          snapshot.data().trainingLogConsentAgreedAt.toMillis(),
+          agreedAt,
+        );
+      });
+      const reset = await callFunction(
+        "updateManagedMemberConsent",
+        owner.idToken,
+        {memberId: firstId, agreed: false},
+      );
+      assert.equal(reset.status, 200, JSON.stringify(reset.body));
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const snapshot = await getDoc(doc(admin.firestore(), "members", firstId));
+        const data = snapshot.data();
+        assert.equal(data.trainingLogConsentAgreed, false);
+        assert.equal(data.trainingLogConsentAgreedAt, undefined);
+      });
+    });
+    await scenario("other uid cannot change member consent", async () => {
+      const other = await signUpAnonymous();
+      await bootstrapAnonymous(other);
+      const result = await callFunction(
+        "updateManagedMemberConsent",
+        other.idToken,
+        {memberId: firstId, agreed: true},
+      );
+      assert.equal(result.body.error.status, "PERMISSION_DENIED");
+    });
+    await scenario("personal profile preferences are user scoped", async () => {
+      const updated = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {
+          memberDefaultGroupLabel: "MY STUDIO",
+          customLessonTypes: ["그룹레슨", "발레핏", "자이로토닉"],
+        },
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.memberDefaultGroupLabel, "MY STUDIO");
+      assert.deepEqual(
+        profile.customLessonTypes,
+        ["그룹레슨", "발레핏", "자이로토닉"],
+      );
     });
     await scenario("anonymous owner can read only own member", async () => {
       const db = context(env, owner.localId, true).firestore();
@@ -435,6 +714,19 @@ async function main() {
         )),
       );
       assert.equal(snapshot.size, 1);
+      const phoneSnapshot = await assertSucceeds(
+        getDocs(query(
+          collection(db, "members"),
+          where("trainerId", "==", owner.localId),
+          where("workspaceType", "==", "personal"),
+          where("phoneNormalized", "==", memberPayload(1).phone),
+        )),
+      );
+      assert.equal(phoneSnapshot.size, 1);
+      await assertFails(getDocs(query(
+        collection(db, "members"),
+        where("phoneNormalized", "==", memberPayload(1).phone),
+      )));
       await assertFails(getDocs(collection(db, "members")));
     });
     await scenario("client member create update delete remain rejected", async () => {
@@ -615,8 +907,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 38);
-    process.stdout.write("All 38 anonymous member and tier scenarios passed.\n");
+    assert.equal(passed, 52);
+    process.stdout.write("All 52 anonymous member and tier scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

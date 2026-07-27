@@ -1,7 +1,6 @@
 package com.example.mtf_app
 
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -21,6 +20,7 @@ import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.AppWidgetId
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
@@ -61,8 +61,9 @@ class MtfScheduleWidget : GlanceAppWidget() {
         get() = HomeWidgetGlanceStateDefinition()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = (id as? AppWidgetId)?.appWidgetId ?: 0
         provideContent {
-            GlanceContent(context, currentState())
+            GlanceContent(context, currentState(), appWidgetId)
         }
     }
 
@@ -70,6 +71,7 @@ class MtfScheduleWidget : GlanceAppWidget() {
     private fun GlanceContent(
         context: Context,
         currentState: HomeWidgetGlanceState,
+        appWidgetId: Int,
     ) {
         val prefs = currentState.preferences
         val widgetSize = LocalSize.current
@@ -145,8 +147,11 @@ class MtfScheduleWidget : GlanceAppWidget() {
             rowCount = rows.size,
         )
 
-        val openAppIntent = buildOpenAppIntent(context)
-        val widgetSettingsIntent = buildWidgetSettingsIntent(context)
+        val openAppIntent = MtfWidgetIntentFactory.openWeeklySchedule(context, appWidgetId)
+        val widgetSettingsIntent = MtfWidgetIntentFactory.openWeeklySettings(
+            context,
+            appWidgetId,
+        )
 
         val headerHorizontalPadding = 8.dp
         val headerVerticalPadding = 7.dp
@@ -244,7 +249,10 @@ class MtfScheduleWidget : GlanceAppWidget() {
                     }
 
                     Text(
-                        text = compactWeekTitle(title),
+                        text = MtfWidgetIntentFactory.displayTitle(
+                            context,
+                            compactWeekTitle(title),
+                        ),
                         style = titleStyle,
                         modifier = GlanceModifier.width(titleWidth)
                     )
@@ -820,19 +828,6 @@ class MtfScheduleWidget : GlanceAppWidget() {
         }
 
         return bitmap
-    }
-
-    private fun buildOpenAppIntent(context: Context): Intent {
-        return Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-    }
-
-    private fun buildWidgetSettingsIntent(context: Context): Intent {
-        return Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra("mtf_route", "/widget-settings")
-        }
     }
 
     private fun buildDisplayRows(

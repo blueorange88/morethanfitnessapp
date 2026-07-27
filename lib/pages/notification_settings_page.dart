@@ -1264,7 +1264,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
       }
 
       if (!canUseSmartAlarm) {
-        return 'Amateur부터 사용할 수 있어요';
+        return 'Semi-Pro부터 사용할 수 있어요';
       }
 
       if (smartAlarmEnabled) {
@@ -1297,7 +1297,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
       }
 
       if (!canUseSmartAlarm) {
-        return '현재는 기본 레슨 알림을 사용할 수 있어요. Amateur부터는 빈 시간 기준으로 연속 레슨 알림을 줄일 수 있어요.';
+        return '현재는 기본 레슨 알림을 사용할 수 있어요. Semi-Pro부터는 빈 시간 기준으로 연속 레슨 알림을 줄일 수 있어요.';
       }
 
       if (canUseContractBasisAlarm) {
@@ -1446,7 +1446,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Amateur부터 MORE 스마트 알림을 사용할 수 있어요. 지금은 선택한 기본 알림 시간대로 레슨 시작 전에 알려드려요.',
+                                'Semi-Pro부터 MORE 스마트 알림을 사용할 수 있어요. 지금은 선택한 기본 알림 시간대로 레슨 시작 전에 알려드려요.',
                                 style: TextStyle(
                                   fontSize: 10.8,
                                   height: 1.35,
@@ -1477,7 +1477,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                     ],
                     if (enabled && !accessLoading && !canUseSmartAlarm) ...[
                       const SizedBox(height: 10),
-                      // Amateur 잠금 안내 박스
+                      // Semi-Pro 잠금 안내 박스
                     ],
                   ],
                 ),

@@ -12,6 +12,7 @@ class HomeWeeklyGoalSection extends StatelessWidget {
     required this.topFirst,
     required this.topSecond,
     required this.primaryColor,
+    this.onEdit,
   });
 
   final String title;
@@ -21,6 +22,7 @@ class HomeWeeklyGoalSection extends StatelessWidget {
   final String topFirst;
   final String topSecond;
   final Color primaryColor;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -29,13 +31,25 @@ class HomeWeeklyGoalSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              if (onEdit != null)
+                IconButton(
+                  tooltip: '주간 레슨 목표 수정',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           Card(

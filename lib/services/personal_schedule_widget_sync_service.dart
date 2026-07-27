@@ -3,6 +3,7 @@ import 'home_widget_block_mapper.dart';
 import 'home_widget_grid_mapper.dart';
 import 'home_widget_preview_sync_service.dart';
 import 'mtf_home_widget_service.dart';
+import 'app_environment.dart';
 
 abstract interface class PersonalScheduleWidgetGateway {
   Future<String> loadOwnerUid();
@@ -128,11 +129,16 @@ class HomeWidgetPersonalScheduleGateway
             memberName: schedule.name,
             lessonType: schedule.type,
             memo: schedule.memo,
+            ownerUid: schedule.trainerId,
+            workspaceType: schedule.workspaceType,
             remainingSessions: schedule.remainingSessions,
             status: schedule.status,
           );
         }).toList(),
         personalOwnerUid: uid,
+        environment: AppEnvironmentConfig.environmentName,
+        projectId: AppEnvironmentConfig.firebaseProjectId,
+        source: 'scheduleSnapshot',
       ),
     );
   }

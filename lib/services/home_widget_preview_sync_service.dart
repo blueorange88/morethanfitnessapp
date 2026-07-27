@@ -11,6 +11,8 @@ class HomeWidgetPreviewLesson {
     required this.memberName,
     required this.lessonType,
     required this.memo,
+    required this.ownerUid,
+    required this.workspaceType,
     this.remainingSessions,
     this.status = 'scheduled',
   });
@@ -20,6 +22,8 @@ class HomeWidgetPreviewLesson {
   final String memberName;
   final String lessonType;
   final String memo;
+  final String ownerUid;
+  final String workspaceType;
   final int? remainingSessions;
   final String status;
 }
@@ -43,6 +47,9 @@ class HomeWidgetPreviewSyncPayload {
     required this.currentMarkerRatio1,
     required this.lessons,
     this.personalOwnerUid = '',
+    this.environment = '',
+    this.projectId = '',
+    this.source = 'appStart',
     this.debugLog = false,
   });
 
@@ -66,11 +73,24 @@ class HomeWidgetPreviewSyncPayload {
 
   final List<HomeWidgetPreviewLesson> lessons;
   final String personalOwnerUid;
+  final String environment;
+  final String projectId;
+  final String source;
   final bool debugLog;
 }
 
 class HomeWidgetPreviewSyncService {
   const HomeWidgetPreviewSyncService._();
+
+  static int _lastPayloadRevision = 0;
+
+  static int _nextPayloadRevision(DateTime generatedAt) {
+    final candidate = generatedAt.millisecondsSinceEpoch;
+    final revision =
+        candidate > _lastPayloadRevision ? candidate : _lastPayloadRevision + 1;
+    _lastPayloadRevision = revision;
+    return revision;
+  }
 
   static Future<void> sync(HomeWidgetPreviewSyncPayload payload) async {
     if (payload.debugLog) {
@@ -80,6 +100,51 @@ class HomeWidgetPreviewSyncService {
         'startHour=${payload.startHour}, '
         'endHour=${payload.endHour}, '
         'days=${payload.days0.join(",")}',
+      );
+    }
+
+    if (payload.personalOwnerUid.trim().isNotEmpty) {
+      final generatedAt = DateTime.now();
+      final sourceItems = payload.lessons.map((lesson) {
+        return HomeWidgetTodayRollupItem(
+          startAt: lesson.startAt,
+          endAt: lesson.endAt,
+          memberName: lesson.memberName,
+          lessonType: lesson.lessonType,
+          ownerUid: lesson.ownerUid,
+          workspaceType: lesson.workspaceType,
+          remainingSessions: lesson.remainingSessions,
+          status: lesson.status,
+        );
+      }).toList(growable: false);
+      final selection = HomeWidgetTodayRollupMapper.selectTodayPayload(
+        sourceItems: sourceItems,
+        currentOwnerUid: payload.personalOwnerUid,
+        generatedAt: generatedAt,
+      );
+      final payloadRevision = _nextPayloadRevision(generatedAt);
+      final encoded = HomeWidgetTodayRollupMapper.encode(
+        HomeWidgetTodayRollupSnapshot(
+          ownerUid: payload.personalOwnerUid,
+          environment: payload.environment,
+          projectId: payload.projectId,
+          generatedAt: generatedAt,
+          payloadRevision: payloadRevision,
+          items: selection.items,
+        ),
+      );
+      await MtfHomeWidgetService.syncVerifiedPersonalTodayLessonRollup(
+        ownerUid: payload.personalOwnerUid,
+        environment: payload.environment,
+        projectId: payload.projectId,
+        workspaceType: 'personal',
+        generatedAt: generatedAt,
+        encodedItems: encoded,
+        payloadRevision: payloadRevision,
+        scheduleSourceCount: payload.lessons.length,
+        todayCandidateCount: selection.todayCandidateCount,
+        payloadItemCount: selection.items.length,
+        source: payload.source,
       );
     }
 
@@ -111,24 +176,5 @@ class HomeWidgetPreviewSyncService {
     }).toList();
 
     await syncNextLessonWidgetFromEvents(widgetEvents);
-
-    await MtfHomeWidgetService.syncTodayLessonRollup(
-      HomeWidgetTodayRollupMapper.encode(
-        HomeWidgetTodayRollupSnapshot(
-          ownerUid: payload.personalOwnerUid,
-          generatedAt: DateTime.now(),
-          items: payload.lessons.map((lesson) {
-            return HomeWidgetTodayRollupItem(
-              startAt: lesson.startAt,
-              endAt: lesson.endAt,
-              memberName: lesson.memberName,
-              lessonType: lesson.lessonType,
-              remainingSessions: lesson.remainingSessions,
-              status: lesson.status,
-            );
-          }).toList(),
-        ),
-      ),
-    );
   }
 }

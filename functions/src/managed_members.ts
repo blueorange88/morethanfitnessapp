@@ -84,6 +84,67 @@ function requiredGender(data: Record<string, unknown>): Gender {
   return gender as Gender;
 }
 
+type BirthDate = {
+  display: string;
+  timestamp: Timestamp;
+};
+
+function requiredBirthDate(data: Record<string, unknown>): BirthDate {
+  const raw = data.birthDate ?? data.birthDisplay;
+  if (typeof raw !== "string") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "birthDate_required",
+    );
+  }
+  const display = raw.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(display);
+  if (!match) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "birthDate_invalid",
+    );
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "birthDate_invalid",
+    );
+  }
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  ));
+  let age = todayUtc.getUTCFullYear() - year;
+  if (todayUtc.getUTCMonth() < month - 1 ||
+      (todayUtc.getUTCMonth() === month - 1 && todayUtc.getUTCDate() < day)) {
+    age -= 1;
+  }
+  if (year < 1900 || date > todayUtc || age < 4 || age >= 100) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "birthDate_invalid",
+    );
+  }
+  return {display, timestamp: Timestamp.fromDate(date)};
+}
+
+function optionalCreateBirthDate(
+  data: Record<string, unknown>,
+): BirthDate | null {
+  if (!Object.prototype.hasOwnProperty.call(data, "birthDate")) {
+    return null;
+  }
+  return requiredBirthDate(data);
+}
+
 function countsTowardManaged(state: ManagedState): boolean {
   return state === "active" || state === "paused";
 }
@@ -194,20 +255,43 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
     const uid = requireUid(ctx);
     const data = objectData(raw);
     allowOnly(data, [
-      "idempotencyKey", "name", "gender", "phone", "activityRegion", "note",
+      "idempotencyKey", "name", "gender", "birthDate", "phone", "note",
+      "postal", "address", "detailAddress", "lessonType",
+      "totalSessions", "remainingSessions", "lessonsNotRegistered",
+      "activityRegion",
     ]);
     const idempotencyKey = requiredString(data, "idempotencyKey");
     const name = requiredString(data, "name");
     const gender = requiredGender(data);
+    const birthDate = optionalCreateBirthDate(data);
     const phone = requiredString(data, "phone");
     const phoneNormalized = normalizedPhone(phone);
-    const activityRegion = requiredString(data, "activityRegion");
     const note = optionalString(data, "note");
+    const activityRegion = optionalString(data, "activityRegion");
+    const postal = optionalString(data, "postal");
+    const address = optionalString(data, "address");
+    const detailAddress = optionalString(data, "detailAddress");
+    const lessonType = optionalString(data, "lessonType") || "미입력";
+    const totalSessions = Number(data.totalSessions ?? 0);
+    const remainingSessions = Number(data.remainingSessions ?? 0);
+    const lessonsNotRegistered = data.lessonsNotRegistered === true;
     requireMaxLength(idempotencyKey, "idempotencyKey", 128);
     requireMaxLength(name, "name", 80);
     requireMaxLength(phone, "phone", 32);
-    requireMaxLength(activityRegion, "activityRegion", 120);
     requireMaxLength(note, "note", 1000);
+    requireMaxLength(activityRegion, "activityRegion", 120);
+    requireMaxLength(postal, "postal", 12);
+    requireMaxLength(address, "address", 240);
+    requireMaxLength(detailAddress, "detailAddress", 240);
+    requireMaxLength(lessonType, "lessonType", 40);
+    if (!Number.isInteger(totalSessions) || totalSessions < 0 ||
+        !Number.isInteger(remainingSessions) || remainingSessions < 0 ||
+        remainingSessions > totalSessions) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "session_count_invalid",
+      );
+    }
 
     const memberId = memberIdFor(uid, idempotencyKey);
     const profileRef = db.collection("trainer_profiles").doc(uid);
@@ -259,9 +343,26 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           qualifiedAt: now,
           name,
           gender,
+          ...(birthDate == null ? {} : {
+            birth: birthDate.timestamp,
+            birthDisplay: birthDate.display,
+            birthAt: birthDate.timestamp,
+          }),
           phone,
           phoneNormalized,
+          postal,
+          address,
+          detailAddress,
           activityRegion,
+          lessonType,
+          totalSessions,
+          remainingSessions,
+          remainSessions: remainingSessions,
+          sessions: {
+            notRegistered: lessonsNotRegistered,
+            total: totalSessions,
+            remain: remainingSessions,
+          },
           note,
           createdAt: now,
           updatedAt: now,
@@ -365,7 +466,12 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
   return async (raw: unknown, ctx: functions.https.CallableContext) => {
     const uid = requireUid(ctx);
     const data = objectData(raw);
-    allowOnly(data, ["memberId", "name", "gender", "phone", "activityRegion", "note"]);
+    allowOnly(data, [
+      "memberId", "name", "gender", "birthDate", "phone", "note",
+      "postal", "address", "detailAddress", "lessonType",
+      "totalSessions", "remainingSessions", "lessonsNotRegistered",
+      "activityRegion",
+    ]);
     const memberId = requiredString(data, "memberId");
     const profileRef = db.collection("trainer_profiles").doc(uid);
     const memberRef = db.collection("members").doc(memberId);
@@ -386,14 +492,34 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         const merged = {...current, ...data};
         const name = requiredString(merged, "name");
         const gender = requiredGender(merged);
+        const birthDate = requiredBirthDate(merged);
         const phone = requiredString(merged, "phone");
         const phoneNormalized = normalizedPhone(phone);
-        const activityRegion = requiredString(merged, "activityRegion");
+        const activityRegion = optionalString(merged, "activityRegion");
         const note = optionalString(merged, "note");
+        const postal = optionalString(merged, "postal");
+        const address = optionalString(merged, "address");
+        const detailAddress = optionalString(merged, "detailAddress");
+        const lessonType = optionalString(merged, "lessonType") || "미입력";
+        const totalSessions = Number(merged.totalSessions ?? 0);
+        const remainingSessions = Number(merged.remainingSessions ?? 0);
+        const lessonsNotRegistered = merged.lessonsNotRegistered === true;
         requireMaxLength(name, "name", 80);
         requireMaxLength(phone, "phone", 32);
         requireMaxLength(activityRegion, "activityRegion", 120);
         requireMaxLength(note, "note", 1000);
+        requireMaxLength(postal, "postal", 12);
+        requireMaxLength(address, "address", 240);
+        requireMaxLength(detailAddress, "detailAddress", 240);
+        requireMaxLength(lessonType, "lessonType", 40);
+        if (!Number.isInteger(totalSessions) || totalSessions < 0 ||
+            !Number.isInteger(remainingSessions) || remainingSessions < 0 ||
+            remainingSessions > totalSessions) {
+          throw new functions.https.HttpsError(
+            "invalid-argument",
+            "session_count_invalid",
+          );
+        }
         const duplicateSnapshot = await transaction.get(
           duplicatePhoneQuery(db, uid, phoneNormalized),
         );
@@ -407,10 +533,25 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         transaction.update(memberRef, {
           name,
           gender,
+          birth: birthDate.timestamp,
+          birthDisplay: birthDate.display,
+          birthAt: birthDate.timestamp,
           phone,
           phoneNormalized,
           activityRegion,
           note,
+          postal,
+          address,
+          detailAddress,
+          lessonType,
+          totalSessions,
+          remainingSessions,
+          remainSessions: remainingSessions,
+          sessions: {
+            notRegistered: lessonsNotRegistered,
+            total: totalSessions,
+            remain: remainingSessions,
+          },
           countsTowardLifetimeQualification: true,
           ...(firstQualification ? {qualifiedAt: now} : {}),
           updatedAt: now,
@@ -430,6 +571,62 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       });
     } catch (error) {
       return translateError(error, "updateManagedMember");
+    }
+  };
+}
+
+export function updateManagedMemberConsentHandler(
+  db: FirebaseFirestore.Firestore,
+) {
+  return async (raw: unknown, ctx: functions.https.CallableContext) => {
+    const uid = requireUid(ctx);
+    const data = objectData(raw);
+    allowOnly(data, ["memberId", "agreed"]);
+    const memberId = requiredString(data, "memberId");
+    if (typeof data.agreed !== "boolean") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "consent_state_invalid",
+      );
+    }
+    const agreed = data.agreed;
+    const profileRef = db.collection("trainer_profiles").doc(uid);
+    const memberRef = db.collection("members").doc(memberId);
+    try {
+      return await db.runTransaction(async (transaction) => {
+        const [profileSnapshot, memberSnapshot] = await Promise.all([
+          transaction.get(profileRef),
+          transaction.get(memberRef),
+        ]);
+        validateProfile(uid, profileSnapshot, ctx);
+        if (!memberSnapshot.exists) {
+          throw new functions.https.HttpsError("not-found", "member_not_found");
+        }
+        const current = memberSnapshot.data() ?? {};
+        if (current.memberId !== memberId || current.trainerId !== uid ||
+            current.workspaceType !== "personal") {
+          throw new functions.https.HttpsError(
+            "permission-denied",
+            "member_owner_mismatch",
+          );
+        }
+        const update: Record<string, unknown> = {
+          trainingLogConsentAgreed: agreed,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (agreed) {
+          if (current.trainingLogConsentAgreed !== true ||
+              current.trainingLogConsentAgreedAt == null) {
+            update.trainingLogConsentAgreedAt = FieldValue.serverTimestamp();
+          }
+        } else {
+          update.trainingLogConsentAgreedAt = FieldValue.delete();
+        }
+        transaction.update(memberRef, update);
+        return {updated: true, memberId, agreed};
+      });
+    } catch (error) {
+      return translateError(error, "updateManagedMemberConsent");
     }
   };
 }

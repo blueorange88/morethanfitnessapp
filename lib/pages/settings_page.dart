@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/home_repeat_lesson_grouping_mode.dart';
 import '../services/app_account_service.dart';
+import '../services/mtf_home_widget_service.dart';
 import 'password_change_page.dart';
 import '../widgets/home/schedule/home_repeat_lesson_grouping_sheet.dart';
 
@@ -138,6 +139,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     setState(() => _signingOut = true);
     try {
+      if ((widget.personalOwnerUid ?? '').trim().isNotEmpty) {
+        await MtfHomeWidgetService.clearPersonalScheduleData();
+      }
       await AppAccountService.instance.signOut();
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(

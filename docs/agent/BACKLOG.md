@@ -1,5 +1,189 @@
 # BACKLOG
 
+## 2026-07-27 PROD 1.0.4 코드·저장소 release blocker
+- [x] 1.0.3 실제 `createManagedMember` no-birth payload와 1.0.4 `birthDate` payload 확인
+- [x] 생년월일 미제공 legacy만 허용하고 supplied invalid는 거부하는 compatibility layer 적용
+- [x] 신규 요청의 canonical `birth`·`birthDisplay`·`birthAt` 저장과 legacy 재요청 비rewrite 확인
+- [x] auth UID·owner/workspace·전화번호 중복·identity 주입·legacy group 미생성·PII 미로그 방어 유지
+- [x] 위젯 exact 호출 경로 확인 후 inexact 단일 경로 전환과 `SCHEDULE_EXACT_ALARM` 제거
+- [x] POST/BOOT·일반 inexact 알림·3개 widget provider·rollover receiver 유지
+- [x] 관련 Flutter 115개, 전체 Flutter 474개 통과
+- [x] managed member Emulator 52개와 전체 Emulator suite 통과
+- [x] Functions build, analyze error 0(기존 warning 246/info 955), diff check 통과
+- [x] DEV Kotlin·merged Manifest·DEV Debug APK 통과
+- [x] 미추적 제품 7개와 테스트 8개를 release 필수로 분류
+- [x] 문서 12·prompts 25·임시 4·ignore artifacts를 release commit 제외로 분류
+- [x] DEV fixture·viewport의 Debug+DEV 차단과 PROD 무시 테스트 확인
+- [ ] 총 58개 release allowlist를 재감사한 뒤 선별 stage·commit — 별도 승인 필요
+- [ ] Android release signing을 debug key에서 배포 key로 전환 — 별도 승인과 보안 입력 필요
+- [ ] `1.0.4` versionName 및 Play에서 미사용인 versionCode 확정·변경 — 별도 승인 필요
+- [ ] 승인된 정확한 PROD Functions만 선택 배포하고 하위 호환 smoke 확인 — 별도 승인 필요
+- [ ] PROD release AAB 빌드·문자열/Manifest/서명 감사와 1.0.3 위 업데이트 canary — 별도 승인 필요
+- PROD Firebase·배포·PROD build·Galaxy·version/signing/keystore·Play Console·git stage/commit/push는 이번 작업에서 수행하지 않았다.
+
+## 2026-07-26 고객카드 stale 최근 회원 캐시 최종 완료
+- [x] Firestore 로컬 schedule snapshot의 stale member ID 출처와 Home 조회 시점을 확정
+- [x] Personal members 조회를 `trainerId=current UID` + `workspaceType=personal`로 제한하고 owner 없는 document-ID query 제거
+- [x] missing·deleted ID 일부/전체 제외, 빈 ID query 0, cache/pending cleanup write 차단, authoritative cleanup 허용
+- [x] member resolution 오류의 unhandled 전파 차단과 식별자 없는 안전 로그
+- [x] Personal 일정 저장 후 legacy `members.nextLessonAt` 직접 write 생략, canonical schedules 기준 유지
+- [x] 관련 Flutter 86개, 전체 Flutter 459개 통과
+- [x] Personal schedules Emulator 27개와 전체 Emulator 묶음 통과
+- [x] analyze 신규 error 0·기존 62개 유지, diff check 오류 0, DEV Debug APK·데이터 보존 설치 통과
+- [x] 삭제 전 최근 회원 표시와 authoritative schedule 1건 확인
+- [x] 서버 회원·일정만 precondition 삭제 후 첫 재실행 cache 1→server 0 self-heal
+- [x] 삭제 회원 최근 목록 제거와 고객리스트 0명 확인
+- [x] 두 번째 재실행 cache 0건으로 동일 삭제 ID 재조회 입력 제거 확인
+- [x] permission-denied·unhandled exception·fatal crash·ANR·PROD marker 0
+- [x] 서버 tier Beginner·회원 0·일정 0·custom type 0·managed count 0·기본 그룹명 복원
+- [x] 고객카드 잔여 묶음 완료; 다음 Semi-Pro·동의·위젯 묶음 미진행
+- [x] Galaxy·PROD·Firebase 추가 배포·`pm clear` 미작업
+
+## 2026-07-26 고객카드 stale 최근 회원 캐시 blocker
+- [x] stale ID 출처를 Firestore 로컬 `schedules` snapshot과 `HomeDeletedMemberScheduleService.deletedMemberIdsFromScheduleDocs()`의 owner 없는 document-ID query로 확정
+- [x] Personal `members` 조회를 현재 Auth UID의 `trainerId` + `workspaceType=personal` 조건으로 제한하고 owner 없는 fallback 제거
+- [x] missing·deleted·pending-delete ID만 제외하며 다른 로컬 설정·익명 UID·DEV fixture를 변경하지 않는 순수 self-heal 판정 추가
+- [x] cache/pending snapshot에서 cleanup write 금지, authoritative server snapshot에서만 unlink cleanup 허용
+- [x] member resolution 예외를 Home에서 처리하고 식별자 없는 error code·안전한 빈 schedule UI로 unhandled exception 차단
+- [x] 신규 7개, 관련 Flutter 80개, 전체 Flutter 458개, Personal schedules Emulator 27개, 전체 Emulator 묶음 통과
+- [x] 변경 범위 analyze 신규 error 0, `git diff --check` 오류 0, DEV Debug APK와 데이터 보존 업데이트 설치 통과
+- [x] 실기기 DEV 합성 회원 1건과 연결 일정 1건 생성, authoritative schedule snapshot 1건 확인
+- [x] 삭제 후 force-stop/restart stale cache self-heal·동일 ID 재조회 입력 제거·고객리스트 0명 실증 완료
+- [x] `HomeScheduleFirestoreService.refreshMemberNextLesson()`의 Personal `members.nextLessonAt` 직접 write를 차단하고 legacy 동작 유지
+- [x] 중단 후 이번 테스트 회원·일정만 precondition 삭제, 서버 tier Beginner·회원 0·일정 0·custom type 0·managed count 0 복원
+- [x] 고객카드 잔여 묶음 완료; Semi-Pro·개인정보 동의·위젯 회귀로 이동하지 않음
+- [x] Galaxy·PROD·Firebase 추가 배포·`pm clear` 미작업
+
+## 2026-07-26 고객카드 저장 무결성·DEV 선택 배포
+- [x] 남성 선택이 `female`로 저장되던 UI 문자열 비교 원인 수정
+- [x] 생년월일 create/update callable payload·allowlist·canonical write·readback 계약 복구
+- [x] Personal 기존 회원 수정을 `updateManagedMember` callable 경로로 통일
+- [x] auth 필수, owner/workspace 검증, identity 강제, 변경 필드 allowlist 감사
+- [x] 자기 전화번호 제외 owner 범위 중복 검사와 다른 trainer 수정 차단 검증
+- [x] legacy `groupId/groupName` 신규 저장 0, `member_groups` 접근 0 확인
+- [x] Functions build, managed member 48개와 전체 Emulator 묶음 통과
+- [x] 관련 Flutter 29개, 전체 Flutter 443개, 신규 analyze error 0, diff check 통과
+- [x] DEV `more-than-fitness-dev-mft`의 `createManagedMember`, `updateManagedMember`만 `asia-northeast3`에 선택 배포
+- [x] 배포 전후 함수 목록 비교로 다른 함수·Rules·indexes·Storage 미배포 확인
+- [x] `TO2408FB00746` 데이터 보존 DEV 설치와 validation 실패 callable 0 확인
+- [x] 주소 포함·미포함 생성, canonical identity·성별·생년월일 서버 readback 확인
+- [x] 동일 전화번호 기존 회원 수정 성공과 다른 회원 전화번호 중복 차단 확인
+- [x] permission-denied·fatal crash·ANR·PROD marker 0 확인
+- [x] 테스트 회원 2건 삭제, DEV UID Beginner·카운터·회원 집합 원복
+- [x] PROD·Galaxy·`pm clear`·PROD APK·기타 Firebase 배포 미작업
+- [x] 다음 백로그 미진행
+
+현재 고객카드 성별·생년월일 저장 무결성 수정과 승인된 DEV 두 함수 선택 배포, 실기기 생성·수정·중복 차단·서버 readback·원복까지 완료됐다. Artifact Registry cleanup policy 경고는 요청대로 설정을 변경하지 않았으며 배포된 두 함수의 ACTIVE 상태는 별도 확인했다.
+
+## 2026-07-26 DEV 서버 저장 재검증 후 신규 결함
+- [x] 현재 DEV UID canonical profile 원본 Beginner·count 0·사용자 종류 0 확인
+- [x] DEV project 고정·precondition guard로 tier만 Amateur 임시 변경
+- [x] 주소 포함 회원 저장·function readback·목록 표시·재진입 주소 유지
+- [x] 주소 없는 회원 저장·레슨 OFF·미등록·0/0·기간 미등록 서버 경로
+- [x] 사용자 레슨 종류 추가·readback·재표시·중복 1개 유지·삭제
+- [x] 삭제된 종류를 사용하는 기존 DEVTYPE 값 유지
+- [x] 신규 문서 legacy `groupId/groupName` 0 확인
+- [ ] 신규 personal 회원 생년월일 저장 계약 추가: client service payload, Function allowlist·transaction, readback 테스트 필요
+- [ ] 남/여 → male/female 매핑 수정: 현재 `남성` 비교로 남성이 female로 저장됨
+- [ ] 위 두 결함 관련 Flutter·Functions Emulator 회귀 테스트 추가
+- [ ] Functions 변경이 필요하면 DEV 선택 배포를 별도 승인받은 뒤 서버 재검증
+- [x] 테스트 회원 3개 삭제와 profile count·customLessonTypes 원복
+- [x] 현재 UID Beginner, 회원 0, 사용자 종류 0 최종 readback
+- [x] 앱 재시작 후 Home Beginner·고객리스트 0명·새 세션 오류 로그 0
+- [x] PROD·Galaxy·Firebase 배포·`pm clear` 미작업
+- [x] 다음 백로그 미진행
+
+현재 고객카드 서버 저장 검증 판정은 **실패**다. 주소·그룹·사용자 레슨 종류 경로는 통과했지만 생년월일 누락과 성별 오저장 두 결함을 수정하기 전에는 완료 처리하지 않는다.
+
+## 2026-07-26 고객카드 반복 validation focus 수정 및 후속 검증
+- [x] 기본정보 2/2에서 offscreen 이름 validator가 `FormState`에서 빠지는 정확한 원인 확인
+- [x] 매 저장마다 controller 기반 필수 오류 목록과 첫 오류를 새로 계산
+- [x] 이전 focus 요청 취소와 stale callback 차단을 공통 coordinator에 구현
+- [x] 이름+전화 오류 저장 1·2·3회 이름 focus 회귀 테스트
+- [x] 이름 정상화 후 전화 오류 저장 1·2회 전화번호 focus 회귀 테스트
+- [x] 관련 Flutter 테스트 41개, 전체 Flutter 테스트 439개 통과
+- [x] 회원/tier Emulator 41개, owner-scoped 일정 Emulator 27개 통과
+- [x] 변경 범위 analyze 신규 error 0, `git diff --check` 오류 0
+- [x] `TO2408FB00746` DEV 데이터 보존 업데이트 설치
+- [x] 실기기 이름 저장 1·2·3회 이름 focused·일반 키보드·전화 unfocused 확인
+- [x] 실기기 이름 정상 후 전화 저장 1·2회 전화 focused·숫자 키보드 확인
+- [x] 생년월일 오류, 직접입력 레슨 종류 빈 값, 여러 오류 첫 항목 이동 확인
+- [x] Daum 주소 검색 `about://` callback 결함 수정 및 공개 예시 주소 callback 확인
+- [x] 레슨 등록 OFF, 레슨 미등록, 총 0/잔여 0, 기간 미등록 표시 확인
+- [x] legacy `member_groups` 요청 0 및 owner-scoped schedules Emulator 검증
+- [ ] 주소 포함·미포함 회원 저장 후 재진입: 실제 DEV server tier `Beginner`의 `failed-precondition`으로 차단
+- [ ] 사용자 레슨 종류 추가·실기기 readback·재표시·삭제·기존 회원 값 유지: 신규 회원 저장 차단으로 물리 검증 불가
+- [ ] 기본 그룹 표시명 네 화면 실기기 교차 확인: 자동 테스트 통과, 실기기 3지점 확인
+- [ ] 고객카드 5개 진입 경로 실기기 교차 확인: 정적·자동 검증 통과, 실기기 목록 신규 1경로 확인
+- [x] permission-denied·회원 저장 성공·회원 문서 생성·crash·ANR·PROD project 징후 0
+- [x] Galaxy·PROD·Firebase 배포·`pm clear` 미작업
+- [x] 다음 백로그 미진행
+
+남은 실기기 항목은 서버 tier를 변경하지 않는 현재 안전 조건에서는 완료할 수 없다. Firestore tier 변경 승인을 받기 전에는 재시도하지 않는다.
+
+## 2026-07-25 P10HD Lite DEV 고객카드 통합 실기기 검증
+
+- [x] 지정 기기 `TO2408FB00746`과 DEV package/foreground 확인
+- [x] DEV 로컬 Amateur fixture 적용 및 Firestore/Functions 변경 없음 확인
+- [x] 고객리스트에서 신규 고객카드 진입
+- [x] 360dp 기본정보 2/2 키보드 닫힘/열림 overflow·주소 요소·터치 확인
+- [x] 이름 오류 1회차 이동·포커스·키보드·호출 부재 확인
+- [ ] 이름 오류 2회차 이름 재포커스: 전화번호 필드와 숫자 키보드로 잘못 이동
+- [x] 전화번호 오류 1회차 이동·포커스·숫자 키보드·호출 부재 확인
+- [x] 전화번호 오류 2회차 초기화 후 반복 이동·포커스·숫자 키보드 확인
+- [x] 320/390/411dp 키보드 닫힘/열림 주소 요소·겹침·터치 확인
+- [x] permission-denied/createManagedMember/저장 완료/overflow/crash/ANR/PROD project marker 0건
+- [x] DEV 고객리스트 `DEVTEST` 미표시로 회원 미생성 교차 확인
+- [ ] 전체 통합 판정: 이름 오류 2회차 실패로 미완료
+- Galaxy·PROD·Firebase 배포·`pm clear`·실제 회원 저장은 미작업. 다음 백로그로 이동하지 않는다.
+
+## 2026-07-23 PROD 오늘 레슨 위젯 날짜 변경 후 재검증 중단
+
+- [x] 기존 설치 PROD `1.0.2 (3)`와 unlocked `R3CX40M6EEM` 확인
+- [x] 7월 23일 owner metadata와 payload 179건 write/readback/update 성공
+- [x] native 계산에서 owner/payload 유효 및 `upcomingCount=10`, `hiddenCount=4`, `result=ready` 확인
+- [ ] 런처 RemoteViews 반영: 실제 화면은 계속 `남은 레슨 0개` 빈 상태
+- [ ] 요청한 6건/`외 1개` 실제 렌더
+- [ ] PROD warm/cold 위젯 탭: 렌더 중단 조건에 따라 실행하지 않음
+
+7월 23일에는 native Glance 계산 자체는 빈 상태에서 ready 상태로 바뀌었지만 launcher에 표시된 오늘 위젯은 갱신되지 않았다. 요청서의 `외 1개` 미표시 즉시 중단 조건에 따라 추가 코드 수정, APK 재설치, Firebase/운영 데이터 작업과 탭 검증을 진행하지 않는다.
+
+## 2026-07-22 PROD 1.0.2 오늘 레슨 위젯 카나리 중단
+
+- [x] PROD `1.0.2+3` APK 빌드, package/project/version/provider 확인
+- [x] 기존 설치 APK와 신규 APK signer SHA-256 일치 확인
+- [x] `adb install -r` 데이터 보존 업데이트 성공
+- [x] 설치 전후 UID·nickname fingerprint, profile, schedule stream 180건 유지
+- [x] PROD owner metadata와 payload 180건 write/readback/update 성공
+- [x] 기존 주간 위젯 인스턴스와 세 provider 유지
+- [ ] PROD 오늘 위젯 `외 1개` 렌더: 실제 native 결과가 `upcomingCount=0`, 빈 상태로 표시됨
+- [ ] PROD warm/cold 위젯 탭: 렌더 중단 조건에 따라 실행하지 않음
+
+현재 PROD 주간 위젯에는 7월 22일 일정이 표시되고 personal schedule stream도 180건이지만, 오늘 위젯 native parser는 같은 시점에 `payloadCount=180`, `ownerMatched=true`, `result=empty`를 반환했다. 요청서의 `외 1개` 미표시 즉시 중단 조건에 따라 Firebase·운영 데이터 추가 작업과 warm/cold 탭을 진행하지 않았다. 동일한 두 번째 작업문은 중복 설치·검증하지 않는다.
+
+## 2026-07-22 Android 오늘 레슨 위젯 overflow·cold tap 보완
+
+- [x] 실제 표시 행 기준 `topCardCount`·`visibleRemainingCount`·`hiddenCount` 계산
+- [x] `외 N개`를 잘리지 않는 `오늘 남은 일정` 제목 행에 배치
+- [x] 오늘 위젯 MainActivity Intent에 고유 action/data와 Activity launch flags 적용
+- [x] cold/warm action을 Home 준비 뒤 한 번만 consume하도록 pending 유지
+- [x] 개인정보 없는 render·tap·deep-link Debug 로그 추가
+- [x] 0~8개 overflow, 6개/하단 3행 `외 1개`, 중복 없음, cold/warm 단일 consume 테스트
+- [x] 관련 14개·전체 377개 Flutter 테스트, 변경 범위 analyze, DEV/PROD Kotlin·Manifest·Debug APK, diff 검사
+- [x] DEV warm tap: MainActivity foreground와 action 1회 consume 확인
+- [x] DEV 정상 cold tap: DEV recent task 제거·process 없음 뒤 MainActivity foreground와 initial intent 1회 consume 확인
+- [x] DEV owner self-heal: schedule source/payload 6건, owner/environment/project/workspace/date 재읽기 검증과 widget update 확인
+- [ ] DEV 6개/`외 1개` 육안 렌더: 현재 6개 source가 7/20~7/23에 분산되고 오늘 7/22는 1건이라 실제 화면 조건 미충족
+- [ ] DEV 주간 위젯 실제 배치 회귀: provider는 있으나 launcher instance 없음
+- [x] `1.0.2+3` PROD 패치 빌드·서명/identity 비교·`adb install -r` 데이터 보존 검증
+- [ ] PROD 오늘 위젯 실제 일정 렌더와 warm/cold 탭 검증
+
+기기 `R3CX40M6EEM`은 연결됐지만 세 차례 모두 Keyguard `showing=true`여서 DEV 앱 설치와 홈 위젯 조작을 시작하지 않았다. 실기기 성공을 추측하지 않았고 PROD 버전 변경·APK 설치·Firebase 작업도 하지 않았다. 다음 백로그로 이동하지 않는다.
+
+후속 재검증에서는 Keyguard 해제와 정확한 `main_dev.dart` DEV APK의 데이터 보존 설치를 확인했다. warm tap은 통과했지만 force-stop 뒤 cold tap은 process만 생성되고 launcher가 top에 남아 실패했다. canonical Home schedule cache는 6건인데 widget owner cache가 비어 오늘 위젯은 0건으로 렌더됐다. 따라서 `1.0.2+3` PROD 단계는 계속 보류한다.
+
+최종 보완에서 canonical `HomePage`의 snapshot/resume 동기화가 owner metadata를 같은 `HomeWidgetPreferences`에 쓰고 재읽기한 뒤 payload와 update를 수행하도록 수정했다. DEV 실기기에서 owner와 payload 6건은 정상 복구됐고, 정상 cold는 `force-stop`이 아닌 DEV recent task 제거 후 process 없음 상태에서 통과했다. 현재 DEV 6건 중 오늘 일정은 1건뿐이므로 `외 1개` 실화면은 추측하지 않고 자동 6건 layout 테스트 통과와 별개로 미검증 유지한다. PROD 단계로 이동하지 않는다.
+
 ## Android Debug Emulator host 127.0.0.1 통일 (2026-07-17)
 
 - [x] Auth·Firestore·Functions 공통 host `127.0.0.1`
@@ -620,6 +804,34 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [ ] Android 기기 재연결 후 10개 일정 self-heal, Home/MyPage 2/2, 첫 안내, Amateur 고객카드 등록, 최근 회원 빈 CTA, Pro gate 육안 확인
 - PROD Firebase와 데이터에는 아무 작업도 하지 않았고 다음 백로그로 이동하지 않는다.
 
+## 2026-07-23 DEV 네 가지 회귀
+
+- [x] 스마트 알람 사용 기준과 사용자 안내를 Semi-Pro 이상으로 통일
+- [x] legacy 고객카드 route 복귀 시 그룹 목록 재조회
+- [x] Personal 고객카드에서 unscoped legacy 그룹 조회·노출 차단
+- [x] 이번 주·다음 주 목표 제목 자동 테스트 및 DEV 실기기 확인
+- [x] MyPage 저장 검증 실패 시 전체 Form 기준 첫 오류 필드 이동
+- [x] 관련 테스트 30개 및 DEV Debug APK 검증
+- [ ] DEV Rules가 허용하는 legacy 검증 계정/환경에서 그룹 저장 후 목록 즉시 노출 실기기 확인
+- [ ] 최종 변경 뒤 전체 Flutter 테스트와 변경 범위 analyze 재실행(현재 Flutter 도구가 15분 동안 종료되지 않음)
+- PROD APK/Firebase/운영 데이터 작업 없이 중단하며 다음 백로그로 이동하지 않는다.
+
+### 2026-07-24 실기기 재검증 결과
+
+- [x] Amateur 고객카드·회원목록 레슨일지 Semi-Pro gate
+- [x] 기본 그룹 표시명 임시 변경, 목록 필터·카드 배지·고객카드 검은 띠 반영
+- [x] 앱 재실행 후 임시 그룹명 유지 및 `MORE THAN GYM` 복원
+- [x] 회원 주소 선택 UI와 Kakao 우편번호 검색 화면 진입
+- [ ] 서버 tier를 바꾸지 않는 Semi-Pro fixture 또는 기존 Semi-Pro DEV 테스트 계정 준비
+- [ ] Semi-Pro 고객카드·목록·Home·직접 route·QR/회원서명 레슨일지 진입
+- [ ] 개인정보 동의 저장·서버 readback·재진입·재실행·초기화
+- [ ] 주소 결과 callback·저장·재진입과 주소 없이 저장
+- [ ] 사용자 레슨 종류 추가·재진입·삭제 및 기존 회원 값 유지
+- [ ] 고객카드 첫 오류별 이동
+- [ ] 위젯 warm/cold, Smart Alarm, 이번 주·다음 주 목표 회귀
+- [ ] Personal 고객카드의 nested collection·schedule·`trainer_profile/me` permission-denied 및 unhandled exception 원인 확인
+- 기기 포그라운드가 반복 전환되어 다른 앱 오조작 위험 때문에 중단했다. PROD 1.0.4 준비 완료로 처리하지 않는다.
+
 ## 2026-07-21 Android 오늘 레슨 롤업 위젯
 
 - [x] 기존 Home/Personal 공통 일정 스냅샷을 재사용한 오늘 레슨 롤업 데이터 연결
@@ -632,6 +844,12 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [x] 변경 범위 analyze 신규 compile error 0건(기존 home_page warning/info 59건)
 - [x] 위젯 cold/warm action을 기존 Home 오늘 이동 메서드에 단일 consume 연결
 - [ ] Android 실기기 위젯 선택 목록·0/1/2/3/6건·진행 중·갱신·탭·자정 전환 수동 확인
+- [x] 전체 schedule 대신 current UID personal의 한국 날짜 오늘 일정만 담는 schema v2 payload 적용
+- [x] writer/readback/parser/render를 appWidgetId·payloadRevision으로 연결하고 stale revision 차단
+- [x] Glance 최상위 Column 10개 제한 초과로 인한 Null RemoteViews 복구
+- [x] DEV 기존 오늘 위젯 ID 75 실제 1건 및 local fixture 6건 `외 1개`, 10건 `외 4개` 렌더 확인
+- [x] DEV warm 탭 및 process 재생성 탭 MainActivity foreground·단일 consume 회귀 확인
+- [ ] 사용자 홈 배치를 변경하지 않는 별도 수동 세션에서 새 DEV 오늘 위젯 인스턴스 추가·동일 revision 확인
 - Firebase/Rules/Storage 배포와 PROD 데이터 작업은 수행하지 않음.
 
 ## 2026-07-21 MyPage 소속별 정보·활동 지역 3곳·영문 이름 검증
@@ -693,3 +911,309 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [x] DEV 함수 3개 선택 배포 성공(Artifact Registry cleanup policy 후처리 실패로 CLI 종료 코드 1)
 - [ ] Android 기기 재연결 후 등급 교체·진행률 감소/재완료·승급 축하 1회·MyPage picker/formatter 육안 확인
 - PROD Firebase와 데이터에는 아무 작업도 하지 않았고 다음 백로그로 이동하지 않는다.
+
+## 2026-07-23 PROD 1.0.3 전 차단 요소
+
+- [x] Personal 신규 고객카드를 기존 `createManagedMember` callable의 canonical `members/{memberId}` 경로로 저장
+- [x] 서버 readback·owner/workspace 검증·목록 snapshot 수신·실제 카드 렌더 확인
+- [x] Personal 신규 저장 전 unscoped 전화번호 중복 조회 제거, 서버 UID 범위 transaction 중복 검증만 사용
+- [x] 가상/legacy/missing 그룹 cache를 무그룹으로 보정하고 다른 owner 그룹은 거부
+- [ ] Personal canonical custom group의 저장 모델·owner 검증·callable 계약 설계 및 Emulator/실기기 검증
+- [x] Amateur의 기존 pending 알림을 전체 재구축하고 Smart Alarm effective=false·일반 알림 유지 확인
+- [x] Semi-Pro userRequested false/true 정책 단위 테스트
+- [x] Flutter 명령 비종료가 Android Studio 자동 Flutter daemon의 SDK lock 점유임을 확인
+- [x] 전체 Flutter 테스트 403개 exit code 0 및 analyze 정상 종료 확인
+- [x] DEV Debug APK, DEV Kotlin compile, DEV Manifest merge, diff 검증
+- [ ] 기존 잘못 저장된 PROD 카드의 비파괴 복구는 별도 승인·문서별 identity 감사 후 수행
+- Custom group 실데이터 경로가 없어 PROD 1.0.3 준비 완료로 처리하지 않는다. PROD APK/Firebase/데이터 작업 없이 중단하고 다음 백로그로 이동하지 않는다.
+
+## 2026-07-23 Personal custom group 정책 결정
+
+- [x] 현재 저장소·전체 Git 이력·Rules·Functions·테스트·문서에서 group 계약 전수 감사
+- [x] `member_groups/{groupId}`와 `members.groupId/groupName`이 owner/workspace 없는 legacy direct-write 계약임을 확인
+- [x] Personal canonical custom group collection·owner field·workspace field·assignment callable이 존재하지 않음을 확인
+- [x] `createManagedMember`가 group 인자를 허용하지 않고 안전한 무그룹 canonical member만 생성함을 확인
+- [x] PROD `createManagedMember` read-only metadata 확인: ACTIVE, v1 callable, asia-northeast3, Node 22, maxInstances 10, hash `8575d4c179d15956d188e616e3928df8f7919617`
+- [x] PROD 배포 기록 commit과 현재 Functions source diff 0, 신규 앱 request 계약 호환 확인
+- [x] 관련 22개·전체 403개 Flutter 테스트, analyze 정상 종료, DEV Debug APK, diff 검증
+- [x] 제품 결정: 1.0.3은 안전한 Personal 무그룹 저장 정책으로 고정
+- [ ] 별도 후속 작업: owner-scoped Personal custom group schema·Rules·Functions·Emulator·실기기 검증 설계
+- [x] PROD 1.0.3 (4) 자동 검증: 관련 44개·전체 403개 테스트, PROD Kotlin/Manifest/resource, PROD Debug APK, signer·세 widget provider, diff 검사
+- [ ] 실기기 재연결 후 기존 앱 위 `adb install -r`와 데이터 보존·위젯·Smart Alarm·고객카드·MyPage·gate 카나리 검증
+- 기기 목록이 비어 설치와 실기기 검증을 안전하게 중단했다. Firebase/운영 데이터 작업 없이 다음 백로그로 이동하지 않는다.
+
+## 2026-07-24 PROD 1.0.3 (4) 카나리 반영
+
+- [x] 기존 1.0.2 (3)와 신규 APK signer 일치 확인
+- [x] `adb install -r` Success, 1.0.3 (4) 업데이트
+- [x] UID·nickname fingerprint, profile, 일정 230건, Amateur 등급 보존
+- [x] PROD identity 유지, DEV 데이터 혼입 및 신규 onboarding 없음
+- [x] 오늘 schema v2 payload 7건, 현재 남은 5건 2+3행, 중복 0, hidden 0 실제 렌더
+- [x] warm/cold MainActivity foreground·현재 주/오늘/다음 레슨 이동·1회 consume
+- [x] 기존 주간 위젯 실제 일정 표시와 주간/다음/오늘 provider 유지
+- [x] Amateur Smart Alarm `tierAllowed=false`, `effective=false`, pending 166건 일반 알림 정책 재구축
+- [x] Personal `member_groups` 미조회, `__ungrouped__` 표시명만 유지, 신규 카드 legacy custom group 선택 없음
+- [x] Amateur 고객카드 허용, Semi-Pro 계약서 gate, Pro 인사이트 gate, MORE 비즈니스 AI FC 대기 안내
+- [x] permission-denied·fatal crash·ANR 0건
+- [ ] 사용자 직접 신규 회원 저장 시 callable/readback/snapshot/무그룹/전체 목록 노출 관찰
+- [ ] 별도 후속 작업에서 Personal 화면의 `__ungrouped__` 표시명을 제품 문구로 유지할지 검토
+- Firebase 재배포, 운영 문서 자동 쓰기, 앱 삭제·데이터 초기화, Play Store 배포 없이 중단한다. 다음 백로그로 이동하지 않는다.
+- [ ] DEV Personal 고객카드·레슨일지 회귀 실기기 최종 확인
+  - 코드 및 자동 검증 완료: 레슨일지 Semi-Pro gate, 동의 persistence, 기본 그룹 표시명, 선택 회원 주소, 레슨 종류 직접입력/관리, 첫 오류 이동.
+  - 연결된 Android 기기가 없어 실화면 검증은 미완료.
+  - DEV Functions 선택 배포 미완료: `createManagedMember`, `updatePersonalTrainerProfile`, `updateManagedMemberConsent`.
+  - 배포 후 확인: 그룹명 목록·카드 동기화, 주소 picker 적용, 동의 저장·초기화 재진입, 미입력/직접입력/삭제, 첫 오류 이동, 저장 후 목록 노출, 오늘 위젯 및 Smart Alarm 회귀.
+  - PROD 1.0.4 검토 전 DEV 실기기 통과가 필요하며 PROD 배포·데이터 작업은 별도 승인 전 금지.
+
+## 2026-07-24 DEV Personal 고객카드·레슨일지 회귀
+
+- [x] Personal 레슨일지 Semi-Pro gate 및 페이지 직접 진입 방어
+- [x] 개인정보 동의 canonical 저장·readback·초기화 및 실패 화면 유지
+- [x] `memberDefaultGroupLabel` 기반 Personal 기본 그룹 표시명 통일
+- [x] Personal 그룹 메뉴의 legacy `member_groups` 생성 진입 차단
+- [x] 회원 주소 선택값 전환과 주소 picker callback 보존
+- [x] MyPage `activityRegions`와 회원 주소 분리
+- [x] 레슨 종류 미입력·0회 회원 저장 허용
+- [x] UID 범위 `customLessonTypes` 직접입력·관리
+- [x] 고객카드 첫 오류 accordion 확장·스크롤·focus
+- [x] 관련 18개 및 전체 Flutter 412개 테스트, DEV Debug APK
+- [x] DEV Functions 3개 선택 배포(create/update 성공, cleanup policy 미변경)
+- [x] DEV 실기기 Amateur gate, 미등록 레슨 표시, 기본 그룹 표시 및 legacy 생성 진입 차단
+- [ ] DEV Semi-Pro 계정으로 레슨일지 정상 진입과 동의 저장·초기화 실화면 확인
+- [ ] DEV 실기기 주소 검색, 사용자 레슨 종류 추가·삭제, 첫 오류 이동 확인
+- [ ] DEV 실기기 기본 그룹 표시명 변경 후 목록·고객카드 동시 갱신과 재진입 확인
+- PROD APK/Firebase/운영 데이터 작업 없이 중단하며 다음 백로그로 이동하지 않는다.
+## 2026-07-24 DEV Personal 고객카드 canonical read 권한 오류
+
+- [x] Home 일정 → 고객카드 진입에 Personal owner UID 전달
+- [x] Personal `trainer_profile/me` 조회 차단 및 `trainer_profiles/{uid}` 사용
+- [x] Personal legacy nested `care_milestones`·`achievement_badges` 조회 차단
+- [x] 회원 일정 query를 top-level `schedules`의 Auth UID·personal workspace·memberId 범위로 제한
+- [x] member/schedule listener `onError`와 중복 억제 진단 로그 적용
+- [x] 관련 8개·전체 Flutter 416개 테스트, Rules Emulator 27개, 변경 범위 analyze, DEV Debug APK
+- [ ] DEV 실기기 회원목록·신규/기존 고객카드·accordion·레슨일지 gate에서 permission-denied/unhandled 0건 최종 확인
+- 실기기 포커스가 DEV 밖으로 전환되어 안전하게 중단했다. 이 확인 전에는 직전 Semi-Pro fixture·동의·주소 수동 검증을 재개하거나 PROD 1.0.4 준비 완료로 처리하지 않는다.
+
+## 2026-07-24 DEV Personal 고객카드 최종 수동 검증
+
+- [x] 신규 고객카드가 존재하지 않는 member 문서·통계·예약 listener를 생성 전에 시작하지 않도록 분리
+- [x] 신규 고객카드 진입 직후 permission-denied 및 legacy/nested 실제 요청 0건 확인
+- [x] 관련 9개·전체 Flutter 417개 테스트와 DEV Debug APK 빌드
+- [ ] 안정적인 DEV 에뮬레이터에서 Semi-Pro 허용·동의 저장/초기화·주소 검색·사용자 레슨 종류·첫 오류 이동 재검증
+- [ ] 그룹 표시명·오늘 위젯·Smart Alarm·이번 주/다음 주 목표 수동 회귀
+- [ ] 위 항목 통과 전 PROD 1.0.4 준비 완료 처리 금지
+- Android System UI/시스템 앱 ANR로 남은 수동 항목은 미검증이다. 다음 백로그로 이동하지 않는다.
+## 2026-07-25 새 DEV API 35 에뮬레이터 수동 검증
+
+- [x] `emulator-5554`가 새 AVD `MTF_DEV_API35`임을 확인
+- [x] Android 15(API 35), x86_64, 부팅·화면·네트워크·자동 시간·저장 공간 확인
+- [x] DEV identity 및 새 익명 UID bootstrap/profile read 확인
+- [x] 닉네임 온보딩 완료 후 personal Home 진입 확인
+- [ ] 안정적인 AVD에서 고객카드 A~G permission/legacy 요청 최종 검증
+- [ ] Amateur 및 DEV 전용 Semi-Pro fixture gate 검증
+- [ ] 개인정보 동의 저장·재진입·재실행·초기화 검증
+- [ ] 주소 callback, 주소 없는 저장, 사용자 레슨 종류, 첫 오류 이동 검증
+- [ ] 기본 그룹 표시명 및 위젯·Smart Alarm·MyPage 회귀 검증
+- 중단 사유: Google Play services ANR 이후 Gboard ANR가 추가 발생해 시스템 앱 반복 장애 중단 기준을 충족했다.
+- PROD 1.0.4 준비 완료 처리 금지. 다음 백로그로 이동하지 않는다.
+## 2026-07-25 MTF_DEV_API35_4K 수동 검증 중단
+
+- [x] `emulator-5554` / `MTF_DEV_API35_4K` / API 35 / x86_64 식별
+- [x] 부팅·화면·Keyguard·네트워크·자동 시간·저장 공간 확인
+- [ ] 고객카드 A~G 및 canonical permission 검증
+- [ ] Semi-Pro gate·동의·주소·레슨 종류·오류 이동·그룹 표시명 검증
+- [ ] 위젯·Smart Alarm·MyPage 회귀 검증
+- 중단 사유: 기능 검증 시작 전 Phone, Google Play services, Messages 시스템 앱 ANR가 연속 확인됨.
+- 안정적인 새 AVD가 준비되기 전 PROD 1.0.4 준비 완료 처리 및 다음 백로그 이동 금지.
+## 2026-07-25 DEV A-1 수동 검증 재개
+
+- [x] 지정 AVD `MTF_DEV_API35_4K`만 실행
+- [x] 실제 device ID `emulator-5554` 확인
+- [x] AVD 이름, Android 15/API 35, x86_64, `PAGE_SIZE=4096` 확인
+- [ ] DEV build/install/start 및 Personal Home 진입
+- [ ] A-1: 회원목록 → 신규 고객카드 화면 진입
+- [ ] A-1 logcat: permission-denied, legacy/nested 요청, fatal crash 확인
+- 중단 사유: DEV Gradle 빌드 진행 중 `Application Not Responding: com.android.systemui`가 발생해 즉시 중단했다. 안정적인 지정 AVD 환경에서 A-1만 다시 검증해야 하며 A-2 이후로 이동하지 않는다.
+## 2026-07-25 MTF_DEV_API35_4K System UI ANR 환경 진단
+
+- [x] `emulator-5554` / `MTF_DEV_API35_4K` / API 35 / x86_64 / `PAGE_SIZE=4096` 재확인
+- [x] `dumpsys activity lastanr`, CPU, System UI meminfo, all-buffer ANR 관련 logcat 수집
+- [x] Emulator 36.1.9.0, Windows 하이퍼바이저·물리 메모리, AVD GPU/RAM/CPU/Fast Boot 설정 확인
+- [x] logcat에서 System UI KeyguardService 37.741초 service timeout과 같은 부팅 구간의 다중 프로세스 ANR 확인
+- [ ] 안정적인 환경이 준비된 뒤 A-1(회원목록 → 신규 고객카드 진입)만 재검증
+- 진단 결론: 현재 CPU와 System UI 메모리에는 명백한 과부하가 없지만 ANR 시점에는 다중 startup/service timeout이 있었다. `HyperVisorPresent=False`, 2 cores/2048 MB, GPU auto/gfxstream, Fast Boot 허용이라는 환경값을 다음 조치 판단 근거로 남긴다. 이번 작업에서는 어떤 설정도 변경하지 않고 다음 백로그로 이동하지 않는다.
+## 2026-07-25 Windows Android Emulator 가상화 가속 진단
+
+- [x] 실행 중 `emulator-5554`가 `MTF_DEV_API35_4K`임을 확인하고 데이터 삭제 없이 정상 종료
+- [x] Android Emulator 공식 `-accel-check`: `AEHD (version 2.2) is installed and usable.`
+- [x] AEHD kernel driver `RUNNING`, GVM 서비스 미설치 확인
+- [x] Intel N100 BIOS virtualization, VM monitor extensions, SLAT 모두 `True` 확인
+- [ ] `HypervisorPlatform` 기능 상태: 일반 권한 DISM 오류 740로 미확인
+- [ ] `hypervisorlaunchtype`: BCD store access denied로 미확인
+- [ ] 안정적인 환경이 준비된 뒤 A-1(회원목록 → 신규 고객카드 진입)만 재검증
+- 이번 작업에서는 가속기·AVD·Windows 설정을 변경하지 않았으며 다음 백로그로 이동하지 않는다.
+## 2026-07-25 Galaxy DEV A-1 수동 검증
+
+- [x] 승인된 `R3CX40M6EEM` / `SM-S926N` / Android 16(API 36)에서 DEV flavor 빌드·설치·시작
+- [x] PROD 1.0.3(4)와 DEV 패키지 동시 설치 및 PROD 보존 확인
+- [x] DEV identity와 Personal Home 진입, 1분 안정성 확인
+- [x] A-1 회원목록 → 신규 고객카드 진입
+- [x] `회원 주소 (선택)` 표시
+- [x] A-1 이후 permission-denied, legacy/nested 요청, PROD project 문자열, fatal crash, ANR 0건
+- [ ] A-1 화면 정상 표시: 주소 영역 아래 vertical RenderFlex가 bottom 14px overflow
+- [ ] 별도 승인 작업에서 overflow의 정확한 위젯·제약 위치만 조사하고 최소 수정 여부 판단
+- 회원 정보 입력·저장과 A-2 이후 검증은 수행하지 않았다. API 35 에뮬레이터 ANR 항목도 여전히 미검증이며 다음 백로그로 이동하지 않는다.
+## 2026-07-25 Galaxy DEV 고객카드 묶음 — 첫 오류 이동 중단
+
+- [x] 이름 오류 최초 이동·focus·키보드·오류 팝업
+- [ ] 이름 오류 반복 저장 시 재이동·refocus·키보드 재개방
+- [x] 전화번호 오류 최초 이동·focus·키보드·오류 팝업
+- [ ] 전화번호 오류 반복 저장 시 재이동·refocus·키보드 재개방
+- [ ] 회원 문서 미생성 DEV 서버 readback: permission-denied 즉시 중단으로 미확인
+- [ ] 중단 결함: client `members where phoneNormalized == ...` query가 Firestore Rules에서 permission-denied
+- [ ] 오류 팝업 정확한 표시 문구: 런타임 로그에 없어 미확인
+- [ ] 생년월일·직접입력·여러 오류, 주소, 사용자 레슨 종류, 기본 그룹 표시명, 나머지 고객카드 진입 경로
+- permission-denied 중단 조건에 따라 고객카드 묶음 검증을 중단했다. 소스 수정이나 다음 백로그 진행은 별도 승인 전 금지한다.
+
+## 2026-07-25 DEV 고객카드 검증 기반·확정 결함
+
+- [x] DEV Debug + DEV 환경에서만 동작하는 로컬 effective tier fixture
+- [x] 서버 실제 tier 보존 및 Firestore·Functions 쓰기 없음
+- [x] DEV 배지 길게 누르기 등급 선택, PROD 비활성
+- [x] 고객카드 공통 DEV viewport `OFF/320/360/390/411dp`, MediaQuery 부수 상태 보존
+- [x] Personal phone 중복 검증 owner/workspace 경계 및 신규 서버 transaction 위임
+- [x] 반복 오류 저장 시 동일 입력칸 refocus·키보드 재요청
+- [x] 기본정보 2/2 PageView 높이 `260`으로 조정
+- [x] 관련 Flutter 36개, 전체 Flutter 433개, Emulator 41개 통과
+- [x] 변경 범위 analyze 오류 0건, DEV Debug APK 빌드·태블릿 데이터 보존 설치·Home 진입
+- [ ] 태블릿 수동: Amateur 선택 후 신규 고객카드 360dp overflow 확인
+- [ ] 태블릿 수동: 이름 오류 저장 2회, 전화번호 오류 저장 2회 모두 이동·focus·키보드 확인
+- [ ] 태블릿 수동: 320/390/411dp 화면 확인
+- 수동 확인 전 완료 처리하지 않고 다음 백로그로 이동하지 않는다.
+
+## 2026-07-26 DEV 고객카드 잔여 기능 묶음
+
+- [x] Kakao 주소 검색 진입·callback·canonical 주소 즉시 반영·저장 readback·재진입·재실행 유지
+- [x] 사용자 레슨 종류 추가·profile readback·재표시·중복 방지·삭제·기존 회원 값 유지·기본 종류 삭제 UI 차단
+- [x] 기본 그룹 표시명 네 화면 일치·재실행 유지·server readback·baseline 원복 및 네 화면 재확인
+- [x] 회원목록 신규/기존, Home 일정, 닫기 후 재진입, 앱 완전 재실행의 고객카드 5개 진입 경로
+- [x] Personal top-level schedules query의 Auth owner + `workspaceType=personal` + member 조건 및 owner 불일치 방어
+- [x] Personal runtime에서 `trainer_profile/me`, `achievement_badges`, `care_milestones`, `member_groups`, PROD project 징후 0건 사전 정리 확인
+- [x] 320/360/390/411dp 기본정보·주소·키보드·삭제된 종류 경고·그룹 영역 overflow 회귀
+- [x] 삭제된 사용자 레슨 종류 경고 상태의 회원 현황 높이 보정과 회귀 테스트
+- [x] 320/360dp 기본정보 저장값 잘림 방지용 카드 내부 constraint 기반 세로 배치와 회귀 테스트
+- [x] 관련 Flutter 75개·전체 451개, 전체 Emulator suite, analyze 신규 error 0, diff check, DEV Debug APK·데이터 보존 설치
+- [x] 테스트 회원·일정·custom type·그룹명·tier·count baseline 복원, helper APK 제거, 기기 회전 복원
+- [ ] 즉시 중단 결함: 삭제 정리 후 앱 재실행 시 stale 최근 회원 ID의 `members where __name__ in [...]` 조회가 `permission-denied`와 unhandled exception을 발생시킨다. 실제 ID를 로그·보고서에 노출하지 않고, missing/deleted member를 안전하게 제외하는 최근 회원 read 경계를 조사·수정·재검증해야 한다.
+- [ ] 위 permission-denied 수정 후 정리→완전 재실행→고객리스트 0명과 종료 로그 0건을 다시 확인해야 고객카드 잔여 묶음을 완료 처리할 수 있다.
+- 즉시 중단 조건에 따라 DEV 앱은 force-stop 상태다. 서버는 Beginner, 회원 0, 일정 0, custom type 0, 기본 그룹 `MORE THAN GYM`으로 복원됐다. Semi-Pro·개인정보 동의·위젯 회귀로 이동하지 않는다.
+
+## 2026-07-26 DEV Semi-Pro Gate + 개인정보 동의
+
+- [x] 중앙 tier 정책과 DEV fixture 격리, PROD fixture 무시, Smart Alarm `tierAllowed && userRequested` 확인
+- [x] 고객카드·회원목록·Home 레슨일지/빠른서명/확정/서명요청·직접 페이지에 canonical owner/workspace/member 동의 guard 공통 적용
+- [x] callable 성공만으로 완료하지 않고 Source.server readback을 다시 요구하며 다른 owner/non-personal 진입 차단
+- [x] 레슨일지 8개 진입 경로의 Amateur 차단·Semi-Pro 허용 정책과 direct defense 회귀 테스트 보강
+- [x] 핵심 Flutter 25개·전체 Flutter 465개, managed member Emulator 48개와 전체 Emulator 묶음, Functions build, analyze 신규 error 0, diff check, DEV Debug APK
+- [x] P10HD Lite에서 Amateur 고객리스트 허용, Semi-Pro fixture 선택, 앱 재실행 후 서버 등급 fixture 복귀, 실제 서버 tier Beginner 확인
+- [ ] 실기기 계약서 없는 회원 동의 저장·readback·재진입·앱 재실행·초기화: 실제 tier Beginner와 회원 0명 상태에서 서버가 신규 회원을 `amateur_required`로 거부하며 실제 tier 변경이 금지되어 수행 불가
+- [ ] 실기기 레슨일지 8개 경로 전수: canonical DEV 회원·일정이 없어 UI 전수 실행 불가. 자동/정적 검증과 실기기 확인을 구분해 유지
+- [x] 종료 로그 permission-denied 0, fatal 0, ANR 0, PROD project 0, consent callable 0, 잘못된 write 0
+- [x] local fixture 서버 등급 복원, DEV 앱 force-stop, 서버 baseline 미변경, Galaxy·PROD·Firebase 추가 배포 미작업
+- 다음 위젯·알림 회귀 묶음으로 이동하지 않는다.
+
+## 2026-07-26 DEV 실제 Semi-Pro 동의 검증 후 permission-denied 중단
+
+- [x] 현재 태블릿 DEV UID profile baseline Beginner·회원 0·일정 0 확인
+- [x] `updateTime` precondition으로 실제 tier Semi-Pro 한 필드 임시 변경 및 서버/앱 readback
+- [x] DEV 테스트 회원 1건 canonical 생성과 owner/workspace/legacy group 부재 확인
+- [x] 미동의 레슨일지 진입 → 동의 화면 → `updateManagedMemberConsent` 1회 → 레슨일지 화면 진입
+- [x] 서버 readback `trainingLogConsentAgreed=true`, `trainingLogConsentAgreedAt` 존재 확인
+- [ ] 동의 후 고객카드 재진입·앱 재실행 유지: 동의 직후 permission-denied 재발로 즉시 중단
+- [ ] 동의 초기화와 초기화 후 재진입·재실행: 동일 즉시 중단 조건으로 미실행
+- [ ] 동의 성공 뒤 레슨일지 초기 로딩의 members/training_logs permission-denied 원인 조사·최소 수정·자동/실기기 재검증
+- [x] 정확한 테스트 회원 1건 삭제, tier/earned tier/count Beginner baseline 단일 commit 원복
+- [x] 최종 member 0·schedule 0·관리/누적 count 0·custom type 0·기본 그룹 `MORE THAN GYM` readback
+- [x] DEV 앱 force-stop, 임시 guard/script 제거, PROD·Galaxy·Firebase 배포 미작업
+- permission-denied 수정 전에는 개인정보 동의 실기기 묶음을 완료 처리하지 않는다. 다음 회귀 묶음으로 이동하지 않는다.
+
+## 2026-07-26 — Semi-Pro 개인정보 동의 permission-denied blocker 완료
+- [x] 기존 9개 permission-denied 집계의 고유 원인을 owner 없는 Personal `training_logs` 조회 2종과 금지된 legacy `goal_ddays` 조회 1종으로 분류
+- [x] Personal training log read를 owner/workspace/member 조건의 canonical query로 통일
+- [x] Personal legacy goal D-day/care milestone/badge 경로 및 owner 없는 schedule fallback 차단
+- [x] 식별자 없는 Firestore 오류 처리와 회귀 테스트 추가
+- [x] 동의 완료 카드와 `동의 초기화` 접근을 막던 고객카드 표시 조건 수정
+- [x] 관련 Flutter 42개·전체 Flutter 470개 및 전체 Emulator suite 통과
+- [x] analyze 신규 error 0, `git diff --check`, DEV Debug APK 통과
+- [x] 실기기 동의 저장·서버 readback·재진입·앱 재실행 유지 검증
+- [x] 동의 초기화·서버 readback·재진입·앱 재실행·동의 화면 재표시 검증
+- [x] permission-denied·unhandled exception·fatal crash·ANR·PROD marker 0 확인
+- [x] 테스트 회원 삭제, tier Beginner 복원, member/schedule/count/custom type 0 확인
+- [x] PROD·Galaxy·Firebase 추가 배포·다음 회귀 묶음 미진행
+
+## 2026-07-26 Galaxy 최종 DEV 회귀 — 즉시 중단 후 남은 항목
+
+- [x] Galaxy `R3CX40M6EEM` / `SM-S926N` / Android 16(API 36), DEV·PROD 별도 패키지, PROD `1.0.3 (4)` 시작 상태 확인
+- [x] 주간·다음 레슨·오늘 레슨 widget provider 3개 Manifest·runtime 유지 확인
+- [x] DEV 오늘 marker 일정 6건으로 schema 2·Asia/Seoul·revision·6개 payload와 실제 다음/다다음/하단 3건/`외 1개` 표시 확인
+- [x] Personal Home 주간 목표 편집 경로 추가: 기존 로컬 key 유지, 양수 저장, 빈 값/0 기본값 40 복원
+- [x] warm action 중복 원인 확인 및 `MainActivity.onNewIntent()` pending/intent 선소비·실패 시 복원 수정
+- [x] 관련 Flutter 11개와 DEV Kotlin compile, 최종 DEV Debug APK build·데이터 보존 재설치
+- [x] DEV marker 일정 6건 삭제와 기존 Galaxy DEV baseline `Amateur / member 1 / schedule 7` 복원
+- [ ] 수정 후 실제 DEV 오늘 위젯 warm tap 1회 consume 재검증
+- [ ] DEV force-stop 후 실제 오늘 위젯 cold tap, onCreate 1회 consume, foreground 재소비 0 재검증
+- [ ] Amateur/Semi-Pro Smart Alarm과 일반 알림 실기기 회귀
+- [ ] 이번 주·다음 주 목표 입력·저장·재진입·재실행·빈 값·기존값 복원 실기기 회귀
+- [ ] MyPage 활동 지역 최대 3곳·저장·readback·재진입·재실행·기존값 복원 실기기 회귀
+- [ ] 마지막 주간 목표·warm 경합 수정 기준 전체 Flutter·전체 Emulator·Functions build·analyze·diff check 재실행
+- [ ] Galaxy 현재 DEV baseline이 요청 전제(Beginner/member 0/schedule 0)와 다른 이유를 사용자 확인 후, 기존 DEV 데이터를 건드리지 않는 검증 계획 재수립
+- 즉시 중단 사유: 고정 홈 페이지 좌표가 기존 PROD 위젯을 눌러 PROD 앱이 foreground가 됐다. PROD에 추가 입력·데이터 명령·Firebase 접근은 하지 않았으며 이후 DEV marker 정리와 문서화 외 실기기 검증을 중단했다.
+- `DEV 검증 완료`와 `PROD 1.0.4 준비 가능` 판정은 금지한다. Firebase 추가 배포와 다음 묶음으로 이동하지 않는다.
+
+## 2026-07-27 Galaxy 최종 DEV 회귀 재개 — cold 탭 즉시 중단
+
+- [x] 최신 관련 Flutter 89개·전체 Flutter 472개 통과
+- [x] 관련 Emulator 27+30개와 전체 Emulator suite 통과
+- [x] Functions build, analyze error 0(기존 warning/info 1,201), diff check, DEV Kotlin·Manifest provider 3개·DEV APK 통과
+- [x] DEV 데이터 보존 업데이트와 DEV package/project identity, PROD `1.0.3 (4)` package 보존 확인
+- [x] 사용자 warm 탭 로그에서 `onNewIntent` 1회, dispatch 1회, success 1회, 오류 0 확인
+- [ ] warm 화면 중복 push 0: 탭 직후 사용자가 응답 화면으로 전환해 UI 연속 관찰 미확인
+- [ ] cold `onCreate`·1회 consume·foreground 재전환 재소비 0: 사용자 cold 탭 뒤 PROD package foreground가 확인돼 즉시 중단
+- [ ] Smart Alarm Amateur/Semi-Pro/fixture 해제 및 일반 알림 실기기 회귀
+- [ ] 이번 주·다음 주 목표 저장·재진입·재실행·원복 실기기 회귀
+- [ ] MyPage 활동 지역 최대 3곳·readback·재진입·재실행·원복 실기기 회귀
+- [ ] 최종 DEV 종료 로그와 baseline `Amateur / member 1 / schedule 7` 재확인
+- [x] 좌표 기반 위젯 탭 미사용, PROD package 대상 ADB 명령·PROD Firebase·PROD APK/AAB·추가 Firebase 배포 미작업
+- 즉시 중단 조건이 재발했으므로 `DEV 검증 완료`와 `PROD 1.0.4 준비 가능` 판정은 계속 금지한다.
+
+## 2026-07-27 Galaxy DEV 위젯 명시적 대상 수정 후 잔여 항목
+
+- [x] DEV/PROD appWidget provider와 `PendingIntent` creator·package·component·URI를 정적으로 분리 확인
+- [x] 세 위젯 공통 explicit intent factory, package-scoped 오늘 action, flavor URI와 appWidget instance identity 적용
+- [x] DEV flavor에만 picker 이름·`DEV ·` 제목·보라색 DEV 전용 배너 추가, PROD 문자열/UI 미변경
+- [x] 위젯 관련 Flutter 90개·전체 Flutter 473개, 전체 Emulator suite, Functions build, analyze error 0, diff check, DEV Kotlin·Manifest provider 3개·DEV APK 통과
+- [x] DEV 데이터 보존 업데이트와 launcher UI hierarchy의 DEV provider·전용 배너·전체 클릭 영역 확인
+- [x] 최신 사용자 cold 탭에서 DEV explicit START 1회, `onCreate` 1회, delivered/consumed 1회, Dart dispatch/success 1회 확인
+- [x] 최신 DEV cold 탭 구간 permission-denied·fatal crash·ANR 0 확인
+- [ ] foreground 재전환 후 같은 widget action 재소비 0 확인
+- [ ] Smart Alarm Amateur/Semi-Pro/fixture 해제와 일반 알림 실기기 회귀
+- [ ] 이번 주·다음 주 목표 저장·재진입·재실행·원복 실기기 회귀
+- [ ] MyPage 활동 지역 최대 3곳·readback·재진입·재실행·원복 실기기 회귀
+- [ ] DEV baseline `Amateur / member 1 / schedule 7` 최종 readback
+- 즉시 중단: logcat 초기화 이후 최신 DEV 탭 이전에 launcher가 PROD `MainActivity`를 시작한 별도 기록 3건이 확인됐다. Codex의 PROD 대상 명령·자동 위젯 탭은 없었지만 `PROD 앱 foreground 0` 조건을 만족하지 않으므로 잔여 실기기 회귀를 진행하지 않는다.
+- `DEV 검증 완료`와 `PROD 1.0.4 준비 가능` 판정은 계속 금지한다. PROD·Firebase 추가 작업과 다음 묶음으로 이동하지 않는다.
+
+## 2026-07-27 Galaxy 최종 DEV 회귀 완료
+
+- [x] PROD foreground 3건을 `12:01:16.201`, `12:02:47.081`, `12:03:12.132`의 별도 launcher→PROD PendingIntent 사건으로 분류
+- [x] 세 사건이 최신 DEV cold `12:13:32.604`보다 10분 이상 앞선 비인과 로그임을 ActivityTaskManager·WindowManagerShell·top-resumed·component·token으로 확인
+- [x] DEV cold explicit START·`onCreate`·consume·Dart dispatch/success 각 1회, 재소비 0, 오류 0으로 최종 통과
+- [x] DEV fixture Amateur/Semi-Pro Smart Alarm `tierAllowed && userRequested` 실기기 회귀와 일반 레슨 알림 preference 유지 확인
+- [x] 이번 주·다음 주 목표 UI 저장, 재진입, DEV 앱 재실행 유지, 기존 default 40 정책 원복 확인
+- [x] MyPage 활동 지역 3곳 저장, 최대 3곳 제한, server readback, 재진입·재실행 유지, 기존 1곳 원복 확인
+- [x] 종료 로그 permission-denied·unhandled exception·fatal crash·실제 ANR·PROD Firebase marker·legacy Personal marker 0 확인
+- [x] 남아 있던 고유 위젯 marker 일정 6건만 정리하고 DEV baseline `Amateur / member 1 / schedule 7 / custom type 0 / MORE THAN GYM / 활동 지역 1` 복원
+- [x] 최신 자동 검증 결과 유지: 관련 Flutter 90개, 전체 Flutter 473개, 전체 Emulator suite, Functions build, analyze error 0, diff check, DEV Kotlin·Manifest provider 3개·DEV APK
+- [x] PROD package 대상 ADB 명령·PROD 앱 실행·홈 좌표 탭·PROD 위젯 조작·PROD Firebase·PROD APK/AAB·Firebase 추가 배포 미작업
+- [x] 최종 판정: `DEV 검증 완료`, `PROD 1.0.4 준비 가능`
+- 다음 회귀 묶음이나 PROD 빌드·배포·설치로 이동하지 않는다.

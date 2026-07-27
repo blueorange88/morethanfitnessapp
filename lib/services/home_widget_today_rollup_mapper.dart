@@ -5,7 +5,16 @@ const Set<String> _excludedTodayRollupStatuses = {
   'archived',
   'voided',
   'tombstone',
+  'pending-delete',
+  'pendingdelete',
+  'rollback',
+  'failed',
+  'temp',
+  'example',
 };
+
+const int kHomeWidgetTodayRollupSchemaVersion = 2;
+const String kHomeWidgetTodayRollupTimezone = 'Asia/Seoul';
 
 class HomeWidgetTodayRollupItem {
   const HomeWidgetTodayRollupItem({
@@ -13,6 +22,8 @@ class HomeWidgetTodayRollupItem {
     required this.endAt,
     required this.memberName,
     required this.lessonType,
+    required this.ownerUid,
+    required this.workspaceType,
     this.remainingSessions,
     this.status = 'scheduled',
   });
@@ -21,15 +32,17 @@ class HomeWidgetTodayRollupItem {
   final DateTime endAt;
   final String memberName;
   final String lessonType;
+  final String ownerUid;
+  final String workspaceType;
   final int? remainingSessions;
   final String status;
 
   bool isOngoingAt(DateTime now) => !startAt.isAfter(now) && endAt.isAfter(now);
 
   Map<String, Object?> toJson() => {
-        'startAtMillis': startAt.millisecondsSinceEpoch,
-        'endAtMillis': endAt.millisecondsSinceEpoch,
-        'memberName': memberName.trim(),
+        'startAtEpochMs': startAt.millisecondsSinceEpoch,
+        'endAtEpochMs': endAt.millisecondsSinceEpoch,
+        'displayName': memberName.trim(),
         'lessonType': lessonType.trim(),
         if (remainingSessions != null) 'remainingSessions': remainingSessions,
         'status': status.trim().toLowerCase(),
@@ -42,12 +55,31 @@ class HomeWidgetTodayRollupSnapshot {
     required this.generatedAt,
     required this.items,
     this.workspaceType = 'personal',
+    this.environment = '',
+    this.projectId = '',
+    this.payloadRevision,
   });
 
   final String ownerUid;
   final String workspaceType;
+  final String environment;
+  final String projectId;
   final DateTime generatedAt;
   final List<HomeWidgetTodayRollupItem> items;
+  final int? payloadRevision;
+
+  int get effectivePayloadRevision =>
+      payloadRevision ?? generatedAt.millisecondsSinceEpoch;
+}
+
+class HomeWidgetTodayRollupSelection {
+  const HomeWidgetTodayRollupSelection({
+    required this.items,
+    required this.todayCandidateCount,
+  });
+
+  final List<HomeWidgetTodayRollupItem> items;
+  final int todayCandidateCount;
 }
 
 class HomeWidgetTodayRollupView {
@@ -64,17 +96,84 @@ class HomeWidgetTodayRollupView {
   final int totalCount;
 }
 
+class HomeWidgetTodayRollupLayout {
+  const HomeWidgetTodayRollupLayout({
+    required this.upcomingCount,
+    required this.topCardCount,
+    required this.remainingSourceCount,
+    required this.visibleRemainingCount,
+    required this.hiddenCount,
+  });
+
+  final int upcomingCount;
+  final int topCardCount;
+  final int remainingSourceCount;
+  final int visibleRemainingCount;
+  final int hiddenCount;
+}
+
 class HomeWidgetTodayRollupMapper {
   const HomeWidgetTodayRollupMapper._();
+
+  static HomeWidgetTodayRollupSelection selectTodayPayload({
+    required List<HomeWidgetTodayRollupItem> sourceItems,
+    required String currentOwnerUid,
+    required DateTime generatedAt,
+  }) {
+    final cleanOwnerUid = currentOwnerUid.trim();
+    final today = seoulDateKey(generatedAt);
+    final todayCandidates = sourceItems.where((item) {
+      return cleanOwnerUid.isNotEmpty &&
+          item.ownerUid.trim() == cleanOwnerUid &&
+          item.workspaceType.trim() == 'personal' &&
+          seoulDateKey(item.startAt) == today;
+    }).toList(growable: false);
+    final selected = todayCandidates.where((item) {
+      return item.endAt.isAfter(item.startAt) &&
+          !_excludedTodayRollupStatuses.contains(
+            _normalizedStatus(item.status),
+          );
+    }).toList()
+      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    return HomeWidgetTodayRollupSelection(
+      items: List.unmodifiable(selected),
+      todayCandidateCount: todayCandidates.length,
+    );
+  }
+
+  static HomeWidgetTodayRollupLayout buildLayout({
+    required int upcomingCount,
+    required int remainingCapacity,
+  }) {
+    final safeUpcomingCount = upcomingCount < 0 ? 0 : upcomingCount;
+    final safeRemainingCapacity = remainingCapacity < 0 ? 0 : remainingCapacity;
+    final topCardCount = safeUpcomingCount > 2 ? 2 : safeUpcomingCount;
+    final remainingSourceCount = safeUpcomingCount - topCardCount;
+    final visibleRemainingCount = remainingSourceCount > safeRemainingCapacity
+        ? safeRemainingCapacity
+        : remainingSourceCount;
+    return HomeWidgetTodayRollupLayout(
+      upcomingCount: safeUpcomingCount,
+      topCardCount: topCardCount,
+      remainingSourceCount: remainingSourceCount,
+      visibleRemainingCount: visibleRemainingCount,
+      hiddenCount: remainingSourceCount - visibleRemainingCount,
+    );
+  }
 
   static String encode(HomeWidgetTodayRollupSnapshot snapshot) {
     final sorted = List<HomeWidgetTodayRollupItem>.of(snapshot.items)
       ..sort((a, b) => a.startAt.compareTo(b.startAt));
     return jsonEncode({
+      'schemaVersion': kHomeWidgetTodayRollupSchemaVersion,
       'ownerUid': snapshot.ownerUid.trim(),
       'workspaceType': snapshot.workspaceType.trim(),
-      'generatedDate': _dateKey(snapshot.generatedAt),
-      'generatedAtMillis': snapshot.generatedAt.millisecondsSinceEpoch,
+      'environment': snapshot.environment.trim(),
+      'projectId': snapshot.projectId.trim(),
+      'timezone': kHomeWidgetTodayRollupTimezone,
+      'localDate': seoulDateKey(snapshot.generatedAt),
+      'generatedAtEpochMs': snapshot.generatedAt.millisecondsSinceEpoch,
+      'payloadRevision': snapshot.effectivePayloadRevision,
       'items': sorted.map((item) => item.toJson()).toList(),
     });
   }
@@ -87,7 +186,7 @@ class HomeWidgetTodayRollupMapper {
     if (snapshot.ownerUid.trim().isEmpty ||
         snapshot.ownerUid.trim() != currentOwnerUid.trim() ||
         snapshot.workspaceType != 'personal' ||
-        _dateKey(snapshot.generatedAt) != _dateKey(now)) {
+        seoulDateKey(snapshot.generatedAt) != seoulDateKey(now)) {
       return const HomeWidgetTodayRollupView(
         next: null,
         second: null,
@@ -97,8 +196,8 @@ class HomeWidgetTodayRollupMapper {
     }
 
     final visible = snapshot.items.where((item) {
-      final status = item.status.trim().toLowerCase();
-      return _dateKey(item.startAt) == _dateKey(now) &&
+      final status = _normalizedStatus(item.status);
+      return seoulDateKey(item.startAt) == seoulDateKey(now) &&
           item.endAt.isAfter(now) &&
           item.endAt.isAfter(item.startAt) &&
           !_excludedTodayRollupStatuses.contains(status);
@@ -119,8 +218,13 @@ class HomeWidgetTodayRollupMapper {
     );
   }
 
-  static String _dateKey(DateTime value) =>
-      '${value.year.toString().padLeft(4, '0')}-'
-      '${value.month.toString().padLeft(2, '0')}-'
-      '${value.day.toString().padLeft(2, '0')}';
+  static String seoulDateKey(DateTime value) {
+    final seoul = value.toUtc().add(const Duration(hours: 9));
+    return '${seoul.year.toString().padLeft(4, '0')}-'
+        '${seoul.month.toString().padLeft(2, '0')}-'
+        '${seoul.day.toString().padLeft(2, '0')}';
+  }
+
+  static String _normalizedStatus(String value) =>
+      value.trim().toLowerCase().replaceAll('_', '-').replaceAll(' ', '-');
 }

@@ -653,8 +653,8 @@ class _SemiProSmartFeatureNotice extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  '아마추어에서는 연속 레슨 알림을 줄이고, 스케줄표 메모를 알림에 함께 표시해요.\n'
-                  'Semi-Pro부터는 계약서, 레슨일지 메모, 첫 레슨/신규회원 관리까지 함께 확인해요.',
+                  'Semi-Pro부터 연속 레슨 알림을 줄이고, 스케줄표 메모와 계약서, '
+                  '레슨일지 메모, 첫 레슨/신규회원 관리까지 함께 확인해요.',
                   style: TextStyle(
                     fontSize: 11.2,
                     height: 1.38,
@@ -918,7 +918,7 @@ class _LockedGuideCard extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            '아마추어부터 사용할 수 있어요',
+            'Semi-Pro부터 사용할 수 있어요',
             style: TextStyle(
               color: _kSmartText,
               fontSize: 14,

@@ -10,7 +10,10 @@ import 'client_card_page.dart';
 import 'personal_training_log_page.dart';
 import '../utils/korean_search_utils.dart' as search_utils;
 import '../services/app_tier_access_service.dart';
+import '../services/personal_member_card_save_service.dart';
+import '../services/personal_member_preferences_service.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/personal_training_log_entry_guard.dart';
 
 import '../widgets/aifc_interaction.dart';
 import '../aifc/core/aifc_nickname.dart';
@@ -25,6 +28,7 @@ import '../widgets/mtf_floating_more_menu.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 
 import 'dart:math' as math;
+import 'dart:async';
 
 const Color kClientBgColor = Color(0xFFF3F4F6);
 const Color kClientCardColor = Colors.white;
@@ -191,9 +195,12 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   final ValueNotifier<int> _groupNamesVersionNotifier = ValueNotifier<int>(0);
 
   String _aifcTrainerNameSourceText = '';
+  StreamSubscription<PersonalMemberPreferences>?
+      _personalMemberPreferencesSubscription;
 
   @override
   void dispose() {
+    _personalMemberPreferencesSubscription?.cancel();
     _searchController.dispose();
     _searchKeywordNotifier.dispose();
     _scrollController.dispose();
@@ -424,6 +431,23 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     final fallbackNames = _defaultGroupNames();
 
     if (_isPersonalWorkspace) {
+      final owner = widget.personalOwnerUid!.trim();
+      _personalMemberPreferencesSubscription ??=
+          PersonalMemberPreferencesService(uid: owner).watch().listen(
+        (preferences) {
+          if (!mounted) return;
+          final nextNames = _defaultGroupNames()
+            ..[_ungroupedGroupId] = preferences.defaultGroupLabel;
+          setState(() {
+            _groupIds.clear();
+            _groupNames
+              ..clear()
+              ..addAll(nextNames);
+            _memberGroupMapNotifier.value = const <String, String>{};
+            _groupNamesVersionNotifier.value++;
+          });
+        },
+      );
       if (!mounted) return;
       setState(() {
         _groupIds.clear();
@@ -966,6 +990,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                           key: _headerKey,
                           data: headerData,
                           trainerLabel: _aifcNicknameLabel,
+                          isPersonalWorkspace: _isPersonalWorkspace,
                           isListViewListenable: _isListViewNotifier,
                           selectedCareFilterListenable:
                               _dashboardCareFilterNotifier,
@@ -1838,12 +1863,22 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       onSave: (value) async {
         final newName = value.trim();
 
-        if (newName.isEmpty) {
-          throw Exception('empty');
+        final validationError = groupId == _ungroupedGroupId
+            ? validatePersonalDefaultGroupLabel(newName)
+            : (newName.isEmpty
+                ? 'empty'
+                : newName.length > maxLength
+                    ? 'too_long'
+                    : null);
+        if (validationError != null) {
+          throw Exception(validationError);
         }
 
-        if (newName.length > maxLength) {
-          throw Exception('too_long');
+        if (_isPersonalWorkspace) {
+          await PersonalMemberPreferencesService(
+            uid: widget.personalOwnerUid!.trim(),
+          ).saveDefaultGroupLabel(newName);
+          return '$newName 그룹명으로 적어둘게요.';
         }
 
         final bool isSystemGroup = _systemGroupIds.contains(groupId);
@@ -1884,6 +1919,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Future<void> _showCreateGroupDialog() async {
+    if (_isPersonalWorkspace) {
+      await _showRenameGroupDialog(_ungroupedGroupId);
+      return;
+    }
+
     if (_groupIds.length >= 5) {
       _showSnack('그룹은 최대 5개까지만 만들 수 있어요.');
       return;
@@ -2346,6 +2386,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   Future<void> _showGroupManagementSheet() async {
     _closeHeaderOverlayIfNeeded();
 
+    if (_isPersonalWorkspace) {
+      await _showRenameGroupDialog(_ungroupedGroupId);
+      return;
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -2426,8 +2471,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     }
   }
 
-  void _openEdit(Member member) {
-    Navigator.push(
+  Future<void> _openEdit(Member member) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ClientCardPage.edit(
@@ -2437,10 +2482,24 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         ),
       ),
     );
+    if (!mounted || _isPersonalWorkspace) return;
+    await _loadGroups();
   }
 
-  void _openLog(Member member) {
-    Navigator.push(
+  Future<void> _openLog(Member member) async {
+    final owner = widget.personalOwnerUid?.trim() ?? '';
+    if (owner.isNotEmpty) {
+      final allowed = await PersonalTrainingLogEntryGuard.guard(
+        context: context,
+        ownerUid: owner,
+        memberId: member.id,
+        loadAccess: () =>
+            AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+        entryPoint: 'client_list_training_log',
+      );
+      if (!allowed || !mounted) return;
+    }
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PersonalTrainingLogPage(
@@ -2450,6 +2509,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           totalSessions: member.totalSessions,
           remainingSessions: member.remainingSessions,
           lastLogAt: member.lastLogAt,
+          personalOwnerUid: owner.isEmpty ? null : owner,
         ),
       ),
     );
@@ -2470,7 +2530,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     }
     final newId = FirebaseFirestore.instance.collection('members').doc().id;
 
-    Navigator.push(
+    final result = await Navigator.push<PersonalMemberCardSaveResult>(
       context,
       MaterialPageRoute(
         builder: (_) => ClientCardPage.newMember(
@@ -2479,6 +2539,30 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         ),
       ),
     );
+    if (!mounted) return;
+    if (_isPersonalWorkspace) {
+      if (result == null) return;
+      _searchController.clear();
+      _searchKeywordNotifier.value = '';
+      _clearDashboardCareFilter();
+      _clearAlertFilter();
+      setState(() {
+        _selectedLessonDate = null;
+        _membershipFilter = null;
+        _initialQuickFilter = ClientListInitialFilter.none;
+      });
+      _setSelectedGroupId(null);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
+      await scrollToMember(result.memberId);
+      final visible = _memberItemKeys[result.memberId]?.currentContext != null;
+      PersonalMemberCardSaveService.logVisibleResult(
+        groupSelection: result.groupSelection,
+        visibleAfterSave: visible,
+      );
+      return;
+    }
+    await _loadGroups();
   }
 
   void _togglePin(Member member) {
@@ -3350,6 +3434,7 @@ class DashboardBlueHeader extends StatefulWidget {
     super.key,
     required this.data,
     required this.trainerLabel,
+    required this.isPersonalWorkspace,
     required this.onBackTap,
     required this.isListViewListenable,
     required this.onAddCustomer,
@@ -3364,6 +3449,7 @@ class DashboardBlueHeader extends StatefulWidget {
 
   final DashboardHeaderData data;
   final String trainerLabel;
+  final bool isPersonalWorkspace;
   final VoidCallback onBackTap;
   final VoidCallback onAddCustomer;
   final VoidCallback onCreateGroup;
@@ -3706,13 +3792,17 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                                   cardWidth: 218,
                                   offset: const Offset(0, 8),
                                   onSelected: _handleMenuSelected,
-                                  items: const [
+                                  items: [
                                     MtfMoreMenuItem(
                                       value: _DashboardHeaderMenuAction
                                           .createGroup,
                                       icon: Icons.add_box_rounded,
-                                      label: '새 그룹 만들기',
-                                      subLabel: '회원 분류 추가',
+                                      label: widget.isPersonalWorkspace
+                                          ? '기본 그룹 이름 변경'
+                                          : '새 그룹 만들기',
+                                      subLabel: widget.isPersonalWorkspace
+                                          ? '모든 Personal 회원 표시명'
+                                          : '회원 분류 추가',
                                     ),
                                     MtfMoreMenuItem(
                                       value: _DashboardHeaderMenuAction

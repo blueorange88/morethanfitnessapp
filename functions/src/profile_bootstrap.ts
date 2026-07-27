@@ -671,6 +671,7 @@ export function createUpdatePersonalTrainerProfileHandler(
       "affiliationType", "nickname", "realName", "jobTitle",
       "birth", "contractTrainerNameSource", "contractTrainerCustomName",
       "nameEn", "activityRegions", "gymName", "centerLocation",
+      "memberDefaultGroupLabel", "customLessonTypes",
     ];
     if (Object.keys(data).some((key) => !allowed.includes(key))) {
       throw new functions.https.HttpsError("invalid-argument", "unknown_fields");
@@ -681,7 +682,7 @@ export function createUpdatePersonalTrainerProfileHandler(
     const updates: Record<string, unknown> = {};
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
-        if (key === "activityRegions") continue;
+        if (key === "activityRegions" || key === "customLessonTypes") continue;
         const maxLength = key === "phone" ? 32 :
           key === "birth" ? 10 : key === "nickname" ? 6 :
             key === "nameEn" ? 40 : 120;
@@ -698,6 +699,54 @@ export function createUpdatePersonalTrainerProfileHandler(
       const regions = normalizeActivityRegions(data.activityRegions, null);
       updates.activityRegions = regions;
       updates.activityRegion = regions[0];
+    }
+    if (Object.prototype.hasOwnProperty.call(data, "customLessonTypes")) {
+      if (!Array.isArray(data.customLessonTypes)) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "custom_lesson_types_invalid",
+        );
+      }
+      const seen = new Set<string>();
+      const values: string[] = [];
+      for (const rawValue of data.customLessonTypes) {
+        if (typeof rawValue !== "string") {
+          throw new functions.https.HttpsError(
+            "invalid-argument",
+            "custom_lesson_types_invalid",
+          );
+        }
+        const value = rawValue.trim().replace(/\s+/g, " ");
+        const key = value.toLocaleLowerCase("ko-KR");
+        if (value.length === 0 || value.length > 40 || seen.has(key)) {
+          throw new functions.https.HttpsError(
+            "invalid-argument",
+            "custom_lesson_types_invalid",
+          );
+        }
+        seen.add(key);
+        values.push(value);
+      }
+      if (values.length > 30) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "custom_lesson_types_invalid",
+        );
+      }
+      updates.customLessonTypes = values;
+    }
+    if (Object.prototype.hasOwnProperty.call(
+      updates,
+      "memberDefaultGroupLabel",
+    )) {
+      const label = String(updates.memberDefaultGroupLabel).trim();
+      if (label.length < 2 || label.length > 30) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "member_default_group_label_invalid",
+        );
+      }
+      updates.memberDefaultGroupLabel = label;
     }
 
     const validateOptional = (

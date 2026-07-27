@@ -17,6 +17,14 @@ AppTierAccessSnapshot access(int rank) => AppTierAccessSnapshot(
     );
 
 void main() {
+  test('MORE 스마트 알람은 Semi-Pro 이상만 허용한다', () {
+    expect(access(0).canUseSmartAlarm, isFalse);
+    expect(access(1).canUseSmartAlarm, isFalse);
+    for (var rank = 2; rank <= 5; rank++) {
+      expect(access(rank).canUseSmartAlarm, isTrue);
+    }
+  });
+
   test('고객카드 신규 등록은 Amateur 이상만 허용한다', () {
     expect(
       AppTierAccessService.canUseFeature(
@@ -32,6 +40,38 @@ void main() {
           AppTierFeatureKey.customerCardCreate,
         ),
         isTrue,
+      );
+    }
+  });
+
+  test('레슨일지 8개 진입 경로는 Semi-Pro 이상만 허용한다', () {
+    const entryPoints = <String>[
+      '고객카드',
+      '회원목록',
+      'Home 빠른작업',
+      '일정 확정 회원 서명 요청',
+      '빠른서명',
+      'QR/deep link',
+      'PersonalTrainingLogPage 직접 route',
+      '페이지 내부 direct defense',
+    ];
+
+    for (final entryPoint in entryPoints) {
+      expect(
+        AppTierAccessService.canUseFeature(
+          access(1),
+          AppTierFeatureKey.trainingLog,
+        ),
+        isFalse,
+        reason: '$entryPoint Amateur 차단',
+      );
+      expect(
+        AppTierAccessService.canUseFeature(
+          access(2),
+          AppTierFeatureKey.trainingLog,
+        ),
+        isTrue,
+        reason: '$entryPoint Semi-Pro 허용',
       );
     }
   });

@@ -3,4 +3,8 @@
     <string name="weekly_schedule_widget_name">모어댄 주간 일정</string>
     <string name="next_lesson_widget_name">모어댄 다음 레슨</string>
     <string name="today_lesson_rollup_widget_name">모어댄 오늘 레슨</string>
+    <string name="mtf_widget_intent_scheme" translatable="false">morethan</string>
+    <string name="mtf_widget_dev_badge" translatable="false">DEV</string>
+    <string name="mtf_widget_dev_banner" translatable="false">DEV</string>
+    <bool name="mtf_widget_show_dev_badge">false</bool>
 </resources>

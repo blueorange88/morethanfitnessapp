@@ -1,5 +1,36 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+Set<String> resolveDeletedPersonalMemberIds({
+  required Set<String> linkedMemberIds,
+  required Map<String, Map<String, dynamic>> ownedMembersById,
+}) {
+  final deletedMemberIds = <String>{};
+
+  for (final memberId in linkedMemberIds) {
+    final member = ownedMembersById[memberId];
+    if (member == null) {
+      deletedMemberIds.add(memberId);
+      continue;
+    }
+
+    final isDeleted = member['isDeleted'] == true;
+    final deleteStatus = (member['deleteStatus'] ?? '').toString();
+    if (isDeleted || deleteStatus == 'pending_delete') {
+      deletedMemberIds.add(memberId);
+    }
+  }
+
+  return deletedMemberIds;
+}
+
+bool shouldCleanupDeletedMemberScheduleLinks({
+  required bool isFromCache,
+  required bool hasPendingWrites,
+  required bool hasDeletedMemberIds,
+}) {
+  return hasDeletedMemberIds && !isFromCache && !hasPendingWrites;
+}
+
 class HomeDeletedMemberScheduleService {
   HomeDeletedMemberScheduleService._();
 
@@ -12,55 +43,37 @@ class HomeDeletedMemberScheduleService {
       _db.collection('schedules');
 
   static Future<Set<String>> deletedMemberIdsFromScheduleDocs(
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-      ) async {
-    final memberIds = <String>{};
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs, {
+    required String personalOwnerUid,
+  }) async {
+    final ownerUid = personalOwnerUid.trim();
+    if (ownerUid.isEmpty) return <String>{};
 
+    final memberIds = <String>{};
     for (final doc in docs) {
       final data = doc.data();
-
       final memberId = (data['memberId'] ?? '').toString().trim();
 
-      if (memberId.isEmpty) continue;
-      if (data['linkedMemberDeleted'] == true) continue;
-
+      if (memberId.isEmpty || data['linkedMemberDeleted'] == true) continue;
       memberIds.add(memberId);
     }
 
     if (memberIds.isEmpty) return <String>{};
 
-    final deletedIds = <String>{};
-    final ids = memberIds.toList();
+    final snapshot = await _members
+        .where('trainerId', isEqualTo: ownerUid)
+        .where('workspaceType', isEqualTo: 'personal')
+        .get();
 
-    for (int i = 0; i < ids.length; i += 10) {
-      final chunk = ids.skip(i).take(10).toList();
+    final ownedMembersById = <String, Map<String, dynamic>>{
+      for (final doc in snapshot.docs)
+        if (memberIds.contains(doc.id)) doc.id: doc.data(),
+    };
 
-      final snapshot = await _members
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get();
-
-      final foundIds = snapshot.docs.map((doc) => doc.id).toSet();
-
-      // 문서 자체가 없는 회원도 삭제된 회원처럼 취급
-      for (final id in chunk) {
-        if (!foundIds.contains(id)) {
-          deletedIds.add(id);
-        }
-      }
-
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-
-        final isDeleted = data['isDeleted'] == true;
-        final deleteStatus = (data['deleteStatus'] ?? '').toString();
-
-        if (isDeleted || deleteStatus == 'pending_delete') {
-          deletedIds.add(doc.id);
-        }
-      }
-    }
-
-    return deletedIds;
+    return resolveDeletedPersonalMemberIds(
+      linkedMemberIds: memberIds,
+      ownedMembersById: ownedMembersById,
+    );
   }
 
   static Future<void> cleanupDeletedMemberScheduleLinks({
@@ -96,7 +109,6 @@ class HomeDeletedMemberScheduleService {
           'totalSessions': FieldValue.delete(),
           'remainingSessions': FieldValue.delete(),
           'remainSessions': FieldValue.delete(),
-
           'sessionSnapshotTotal': FieldValue.delete(),
           'sessionSnapshotRemainBefore': FieldValue.delete(),
           'sessionSnapshotRemainAfter': FieldValue.delete(),
@@ -104,7 +116,6 @@ class HomeDeletedMemberScheduleService {
           'sessionSnapshotDoneAfter': FieldValue.delete(),
           'sessionSnapshotLessonNumber': FieldValue.delete(),
           'sessionSnapshotLabel': FieldValue.delete(),
-
           'linkedMemberDeleted': true,
           'deletedMemberId': memberId,
           'updatedAt': FieldValue.serverTimestamp(),
@@ -123,9 +134,8 @@ class HomeDeletedMemberScheduleService {
     final cleanMemberId = memberId.trim();
     if (cleanMemberId.isEmpty) return;
 
-    final snap = await _schedules
-        .where('memberId', isEqualTo: cleanMemberId)
-        .get();
+    final snap =
+        await _schedules.where('memberId', isEqualTo: cleanMemberId).get();
 
     if (snap.docs.isEmpty) return;
 

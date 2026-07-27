@@ -2,9 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../utils/personal_tier_parser.dart';
+import 'dev_tier_fixture.dart';
 
 enum AppTierFeatureKey {
   customerCardCreate,
+  trainingLog,
   lessonInsights,
   dday,
   moreDay,
@@ -86,9 +88,27 @@ class AppTierAccessSnapshot {
   final int contractSignedMemberCount;
   final int branchCount;
 
+  AppTierAccessSnapshot withEffectiveTierRank(int effectiveTierRank) {
+    if (effectiveTierRank == tierRank) return this;
+    return AppTierAccessSnapshot(
+      tierRank: effectiveTierRank,
+      earnedTierRank: earnedTierRank,
+      supportTierRank: supportTierRank,
+      organizationTierRank: organizationTierRank,
+      storedTierRank: storedTierRank,
+      isSponsor: isSponsor,
+      profileCompleted: profileCompleted,
+      kakaoLinked: kakaoLinked,
+      activeMemberCount: activeMemberCount,
+      kakaoCardLinkedMemberCount: kakaoCardLinkedMemberCount,
+      contractSignedMemberCount: contractSignedMemberCount,
+      branchCount: branchCount,
+    );
+  }
+
   bool get canUseSmartAlarm {
-    // Amateur 이상
-    return tierRank >= 1;
+    // Semi-Pro 이상
+    return tierRank >= 2;
   }
 
   bool get canUseDday {
@@ -196,7 +216,22 @@ class AppTierAccessService {
       throw StateError('personal_trainer_profile_not_found');
     }
 
-    return personalSnapshotFromProfile(snapshot.data() ?? const {});
+    final serverAccess =
+        personalSnapshotFromProfile(snapshot.data() ?? const {});
+    final effectiveTierRank = DevTierFixtureController.resolveTierRank(
+      serverAccess.tierRank,
+    );
+    if (kDebugMode &&
+        DevTierFixtureController.isAvailable &&
+        effectiveTierRank != serverAccess.tierRank) {
+      debugPrint(
+        '[MTF_DEV_TIER_FIXTURE] '
+        'serverTier=${serverAccess.tierLabel} '
+        'effectiveTier=${tierLabelFromRank(effectiveTierRank)} '
+        'localOnly=true',
+      );
+    }
+    return serverAccess.withEffectiveTierRank(effectiveTierRank);
   }
 
   @visibleForTesting
@@ -481,6 +516,16 @@ class AppTierAccessService {
           description: '레슨 일정 10개와 선생님 정보 입력을 완료하면 사용할 수 있어요.',
           shortBenefit: '회원별 고객카드 관리',
           highlightTier: 'amateur',
+        );
+
+      case AppTierFeatureKey.trainingLog:
+        return const AppTierFeatureInfo(
+          feature: AppTierFeatureKey.trainingLog,
+          requiredRank: 2,
+          title: '레슨일지',
+          description: '레슨 기록 작성과 회원 서명 요청은 Semi-Pro부터 사용할 수 있어요.',
+          shortBenefit: '레슨일지 작성·서명',
+          highlightTier: 'semiPro',
         );
 
       case AppTierFeatureKey.lessonInsights:

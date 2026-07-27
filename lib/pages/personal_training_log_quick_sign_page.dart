@@ -8,6 +8,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../services/member_smart_alarm_context_service.dart';
 import '../services/more_care_slot_service.dart';
+import '../services/app_tier_access_service.dart';
+import '../widgets/personal_training_log_entry_guard.dart';
 
 const Color kQuickSignPrimaryColor = Color(0xFF4F46E5);
 const Color kQuickSignPrimaryColor2 = Color(0xFF9333EA);
@@ -67,6 +69,8 @@ class _PersonalTrainingQuickLogSignPageState
   bool _memberSignedFromWeb = false;
   bool _quickLogLocked = false;
   bool _quickLogDeductionApplied = false;
+  bool _entryAccessResolved = false;
+  bool _entryAccessAllowed = false;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _quickLogSub;
 
@@ -85,8 +89,42 @@ class _PersonalTrainingQuickLogSignPageState
   @override
   void initState() {
     super.initState();
+    if (_personalOwnerUid.isEmpty) {
+      _entryAccessResolved = true;
+      _entryAccessAllowed = true;
+      _startQuickSignData();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _resolvePersonalEntryAccess();
+      });
+    }
+  }
+
+  void _startQuickSignData() {
     _loadInitialData();
     _bindQuickLogStream();
+  }
+
+  Future<void> _resolvePersonalEntryAccess() async {
+    final allowed = await PersonalTrainingLogEntryGuard.guard(
+      context: context,
+      ownerUid: _personalOwnerUid,
+      memberId: _cleanMemberId,
+      loadAccess: () => AppTierAccessService.loadPersonalTrainerAccess(
+        uid: _personalOwnerUid,
+      ),
+      entryPoint: 'personal_training_log_quick_sign_direct_route',
+    );
+    if (!mounted) return;
+    setState(() {
+      _entryAccessResolved = true;
+      _entryAccessAllowed = allowed;
+    });
+    if (!allowed) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    _startQuickSignData();
   }
 
   @override
@@ -2202,6 +2240,12 @@ class _PersonalTrainingQuickLogSignPageState
 
   @override
   Widget build(BuildContext context) {
+    if (!_entryAccessResolved || !_entryAccessAllowed) {
+      return const Scaffold(
+        backgroundColor: kQuickSignBgColor,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final memberSignatureEnabled = _requiresMemberSignature;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

@@ -93,6 +93,7 @@ import '../widgets/home/schedule/home_row_minute_settings_sheet.dart';
 import '../widgets/home/schedule/home_repeat_lesson_grouping_sheet.dart';
 
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/personal_training_log_entry_guard.dart';
 
 import '../aifc/home/aifc_home_schedule_time_range_chat_sheet.dart';
 import '../aifc/home/aifc_home_schedule_action_chat_sheet.dart';
@@ -695,7 +696,7 @@ class _HomePageState extends State<HomePage>
     _bindScheduleStream();
     _bindBannerDataStreams();
     unawaited(_loadLessonTypePrefs());
-    _queueHomeWidgetSync();
+    _queueHomeWidgetSync(source: 'appStart');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(HomeWidgetNavigationService.start(_handleWidgetAction));
     });
@@ -716,7 +717,7 @@ class _HomePageState extends State<HomePage>
       });
 
       _rebindScheduleStreamIfNeeded();
-      _queueHomeWidgetSync();
+      _queueHomeWidgetSync(source: 'timer');
     });
   }
 
@@ -759,14 +760,14 @@ class _HomePageState extends State<HomePage>
       _homeEntrySerial++;
       _headerMessageContextSignature = '';
     });
-    _queueHomeWidgetSync(delay: Duration.zero);
+    _queueHomeWidgetSync(delay: Duration.zero, source: 'resume');
     unawaited(HomeWidgetNavigationService.consumePending(_handleWidgetAction));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed || !mounted) return;
-    _queueHomeWidgetSync(delay: Duration.zero);
+    _queueHomeWidgetSync(delay: Duration.zero, source: 'resume');
     unawaited(HomeWidgetNavigationService.consumePending(_handleWidgetAction));
   }
 
@@ -840,6 +841,50 @@ class _HomePageState extends State<HomePage>
     final saved = prefs.getInt('goal_weekly_lesson_target') ?? 40;
     if (!mounted) return;
     setState(() => _weeklyLessonGoal = saved);
+  }
+
+  Future<void> _editWeeklyGoal() async {
+    final controller = TextEditingController(text: '$_weeklyLessonGoal');
+    final submitted = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('주간 레슨 목표'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: '목표 레슨 수',
+            hintText: '비우면 기본값 40회',
+            suffixText: '회',
+          ),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || submitted == null) return;
+
+    final parsed = parseHomeWeeklyGoalInput(submitted);
+    final prefs = await SharedPreferences.getInstance();
+    if (submitted.trim().isEmpty) {
+      await prefs.remove('goal_weekly_lesson_target');
+    } else {
+      await prefs.setInt('goal_weekly_lesson_target', parsed);
+    }
+    if (!mounted) return;
+    setState(() => _weeklyLessonGoal = parsed);
   }
 
   Future<void> _loadLessonTypePrefs() async {
@@ -1164,8 +1209,28 @@ class _HomePageState extends State<HomePage>
         );
       }
 
-      final deletedMemberIds =
-          await _deletedMemberIdsFromScheduleDocs(snapshot.docs);
+      Set<String> deletedMemberIds;
+      try {
+        deletedMemberIds =
+            await _deletedMemberIdsFromScheduleDocs(snapshot.docs);
+      } catch (error) {
+        if (kDebugMode) {
+          final errorCode = error is FirebaseException
+              ? error.code
+              : error.runtimeType.toString();
+          debugPrint(
+            '[MTF_SCHEDULE_MEMBER_RESOLUTION] result=failure '
+            'errorCode=$errorCode',
+          );
+        }
+        if (!mounted || bindingId != _scheduleStreamBindingId) return;
+        setState(() {
+          _scheduleStreamReady = true;
+          scheduleData.clear();
+        });
+        _queueHomeWidgetSync(source: 'scheduleSnapshot');
+        return;
+      }
 
       // 새 snapshot 또는 새 stream binding이 이미 시작됐다면 이 결과는 폐기합니다.
       // 그렇지 않으면 오래된 snapshot이 삭제된 레슨을 다시 화면에 올릴 수 있습니다.
@@ -1190,7 +1255,11 @@ class _HomePageState extends State<HomePage>
         revision: snapshotId,
       );
 
-      if (deletedMemberIds.isNotEmpty) {
+      if (shouldCleanupDeletedMemberScheduleLinks(
+        isFromCache: snapshot.metadata.isFromCache,
+        hasPendingWrites: snapshot.metadata.hasPendingWrites,
+        hasDeletedMemberIds: deletedMemberIds.isNotEmpty,
+      )) {
         unawaited(
           _cleanupDeletedMemberScheduleLinks(
             docs: snapshot.docs,
@@ -1519,7 +1588,7 @@ class _HomePageState extends State<HomePage>
       });
 
       unawaited(_refreshScheduleCountsFromMembers());
-      _queueHomeWidgetSync();
+      _queueHomeWidgetSync(source: 'scheduleSnapshot');
       _queueNotificationSync();
       _updateBannerState();
     }, onError: (Object error, StackTrace stackTrace) {
@@ -1537,7 +1606,7 @@ class _HomePageState extends State<HomePage>
         _scheduleStreamReady = true;
         scheduleData.clear();
       });
-      _queueHomeWidgetSync();
+      _queueHomeWidgetSync(source: 'scheduleSnapshot');
     });
   }
 
@@ -1546,6 +1615,7 @@ class _HomePageState extends State<HomePage>
   ) {
     return HomeDeletedMemberScheduleService.deletedMemberIdsFromScheduleDocs(
       docs,
+      personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : '',
     );
   }
 
@@ -3296,12 +3366,13 @@ class _HomePageState extends State<HomePage>
 
   void _queueHomeWidgetSync({
     Duration delay = const Duration(milliseconds: 250),
+    String source = 'mutation',
   }) {
     _homeWidgetSyncController.queue(
       delay: delay,
       syncAction: () async {
         if (!mounted) return;
-        await _syncHomeWidgetPreview();
+        await _syncHomeWidgetPreview(source: source);
       },
     );
   }
@@ -3335,7 +3406,19 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _syncHomeWidgetPreview() async {
+  Future<void> _syncHomeWidgetPreview({String source = 'mutation'}) async {
+    if (_isPersonalWorkspace && !_scheduleStreamReady) {
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_DAILY_WIDGET_OWNER] source=$source authUidPresent=true '
+          'ownerKeyPresentBefore=unknown ownerKeyWritten=false '
+          'ownerMatchedAfter=false environmentMatched=true '
+          'workspaceMatched=true result=deferred '
+          'errorCode=schedule_snapshot_pending',
+        );
+      }
+      return;
+    }
     final rows0 = _buildWidgetWeekRows(0);
     final rows1 = _buildWidgetWeekRows(1);
 
@@ -3368,6 +3451,8 @@ class _HomePageState extends State<HomePage>
         memberName: item.name,
         lessonType: item.type,
         memo: item.memo ?? '',
+        ownerUid: _personalOwnerUid,
+        workspaceType: _isPersonalWorkspace ? 'personal' : 'legacy',
         remainingSessions: int.tryParse(item.remainingSessions ?? ''),
       );
     }).toList();
@@ -3391,6 +3476,9 @@ class _HomePageState extends State<HomePage>
         currentMarkerRatio1: currentMarkerRatio1,
         lessons: lessons,
         personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : '',
+        environment: AppEnvironmentConfig.environmentName,
+        projectId: AppEnvironmentConfig.firebaseProjectId,
+        source: source,
         debugLog: false,
       ),
     );
@@ -4211,14 +4299,6 @@ class _HomePageState extends State<HomePage>
     }
 
     return result;
-  }
-
-  String _goalTitleForWeekOffset(int weekOffset) {
-    if (weekOffset == 0) return '이번 주 목표';
-    if (weekOffset == 1) return '다음 주 목표';
-    if (weekOffset == -1) return '지난 주 목표';
-
-    return '${_weekTitleForOffset(weekOffset).replaceAll('\n', ' ')} 목표';
   }
 
   double _weeklyGoalProgress(int current, int target) {
@@ -6854,6 +6934,7 @@ class _HomePageState extends State<HomePage>
       MaterialPageRoute(
         builder: (_) => ClientCardPage(
           memberId: resolvedMemberId,
+          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
         ),
       ),
     );
@@ -6988,6 +7069,17 @@ class _HomePageState extends State<HomePage>
     required String memberName,
     String? phone,
   }) async {
+    if (_isPersonalWorkspace) {
+      final allowed = await AifcTierFeatureGateSheet.guard(
+        context: context,
+        access: null,
+        feature: AppTierFeatureKey.trainingLog,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_training_log',
+      );
+      if (!allowed || !mounted) return;
+    }
+
     final resolvedMemberId = await _resolveLinkedMemberId(
       memberId: memberId,
       memberName: memberName,
@@ -7020,6 +7112,18 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
+    if (_isPersonalWorkspace) {
+      final consentAllowed = await PersonalTrainingLogEntryGuard.guard(
+        context: context,
+        ownerUid: _personalOwnerUid,
+        memberId: resolvedMemberId,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_training_log_consent',
+        checkTier: false,
+      );
+      if (!consentAllowed || !mounted) return;
+    }
+
     final logPageArgs = await _loadMemberLogPageArgs(
       memberId: resolvedMemberId,
       fallbackName: memberName,
@@ -7037,6 +7141,7 @@ class _HomePageState extends State<HomePage>
           totalSessions: logPageArgs['totalSessions'] as int? ?? 0,
           remainingSessions: logPageArgs['remainingSessions'] as int? ?? 0,
           lastLogAt: logPageArgs['lastLogAt'] as DateTime?,
+          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
         ),
       ),
     );
@@ -7234,6 +7339,17 @@ class _HomePageState extends State<HomePage>
     DateTime? startAt,
     DateTime? endAt,
   }) async {
+    if (_isPersonalWorkspace) {
+      final allowed = await AifcTierFeatureGateSheet.guard(
+        context: context,
+        access: null,
+        feature: AppTierFeatureKey.trainingLog,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_quick_sign',
+      );
+      if (!allowed || !mounted) return;
+    }
+
     final cleanMemberId = memberId?.trim() ?? '';
 
     if (cleanMemberId.isEmpty) {
@@ -7253,6 +7369,18 @@ class _HomePageState extends State<HomePage>
         bottomOffset: 110,
       );
       return;
+    }
+
+    if (_isPersonalWorkspace) {
+      final consentAllowed = await PersonalTrainingLogEntryGuard.guard(
+        context: context,
+        ownerUid: _personalOwnerUid,
+        memberId: cleanMemberId,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_quick_sign_consent',
+        checkTier: false,
+      );
+      if (!consentAllowed || !mounted) return;
     }
 
     final memberSnap = await FirebaseFirestore.instance
@@ -7632,6 +7760,17 @@ class _HomePageState extends State<HomePage>
     required BuildContext toastContext,
     String? confirmStatus,
   }) async {
+    if (_isPersonalWorkspace) {
+      final allowed = await AifcTierFeatureGateSheet.guard(
+        context: context,
+        access: null,
+        feature: AppTierFeatureKey.trainingLog,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_lesson_finalize',
+      );
+      if (!allowed || !mounted) return;
+    }
+
     final memberId = (session['memberId'] ?? '').toString().trim();
     final memberName = (session['name'] ?? '회원').toString().trim();
     final memberPhone = (session['phone'] ?? '').toString().trim();
@@ -7653,6 +7792,18 @@ class _HomePageState extends State<HomePage>
         bottomOffset: 110,
       );
       return;
+    }
+
+    if (_isPersonalWorkspace) {
+      final consentAllowed = await PersonalTrainingLogEntryGuard.guard(
+        context: context,
+        ownerUid: _personalOwnerUid,
+        memberId: memberId,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_lesson_finalize_consent',
+        checkTier: false,
+      );
+      if (!consentAllowed || !mounted) return;
     }
 
     final status = confirmStatus ?? _confirmStatusFromScheduleSession(session);
@@ -7882,6 +8033,17 @@ class _HomePageState extends State<HomePage>
     DateTime? startAt,
     DateTime? endAt,
   }) async {
+    if (_isPersonalWorkspace) {
+      final allowed = await AifcTierFeatureGateSheet.guard(
+        context: context,
+        access: null,
+        feature: AppTierFeatureKey.trainingLog,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_member_signature_request',
+      );
+      if (!allowed || !mounted) return null;
+    }
+
     final cleanMemberId = memberId.trim();
     final cleanMemberName = memberName.trim();
     final cleanPhone = _normalizePhone(memberPhone ?? '');
@@ -7903,6 +8065,18 @@ class _HomePageState extends State<HomePage>
         bottomOffset: 110,
       );
       return null;
+    }
+
+    if (_isPersonalWorkspace) {
+      final consentAllowed = await PersonalTrainingLogEntryGuard.guard(
+        context: context,
+        ownerUid: _personalOwnerUid,
+        memberId: cleanMemberId,
+        loadAccess: _loadCurrentTierAccess,
+        entryPoint: 'home_schedule_member_signature_request_consent',
+        checkTier: false,
+      );
+      if (!consentAllowed || !mounted) return null;
     }
 
     if (cleanScheduleDocId.isNotEmpty) {
@@ -12000,7 +12174,10 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildWeeklyGoal() {
     final weekOffset = _indexToOffset(_weekPageIndex);
-    final goalTitle = _goalTitleForWeekOffset(weekOffset);
+    final goalTitle = homeWeeklyGoalTitleForOffset(
+      weekOffset,
+      fallbackWeekTitle: _weekTitleForOffset(weekOffset),
+    );
 
     final weekCount = _countWeekSessions(weekOffset);
     final goalTarget = _weeklyGoalTarget();
@@ -12018,6 +12195,7 @@ class _HomePageState extends State<HomePage>
       topFirst: top1,
       topSecond: top2,
       primaryColor: kPrimaryColor,
+      onEdit: _isPersonalWorkspace ? _editWeeklyGoal : null,
     );
   }
 
@@ -12058,6 +12236,23 @@ class _HomePageState extends State<HomePage>
       ),
     );
   }
+}
+
+@visibleForTesting
+String homeWeeklyGoalTitleForOffset(
+  int weekOffset, {
+  required String fallbackWeekTitle,
+}) {
+  if (weekOffset == 0) return '이번 주 목표';
+  if (weekOffset == 1) return '다음 주 목표';
+  if (weekOffset == -1) return '지난 주 목표';
+  return '${fallbackWeekTitle.replaceAll('\n', ' ')} 목표';
+}
+
+@visibleForTesting
+int parseHomeWeeklyGoalInput(String value) {
+  final parsed = int.tryParse(value.trim());
+  return parsed != null && parsed > 0 ? parsed : 40;
 }
 
 class _HomeMembershipContractMember {

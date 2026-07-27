@@ -6,10 +6,60 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import 'app_tier_access_service.dart';
-import '../models/schedule_item.dart';
-import 'lesson_notification_prefs.dart';
 import '../aifc/core/aifc_nickname.dart';
+import '../models/schedule_item.dart';
+import 'app_tier_access_service.dart';
+import 'lesson_notification_prefs.dart';
+
+class SmartAlarmSyncPolicy {
+  const SmartAlarmSyncPolicy({
+    required this.tierAllowed,
+    required this.userRequested,
+    required this.effective,
+    required this.legacySmartReservationsPresent,
+    required this.cancelledSmartCount,
+    required this.generalNotificationsResynced,
+  });
+
+  final bool tierAllowed;
+  final bool userRequested;
+  final bool effective;
+  final bool legacySmartReservationsPresent;
+  final int cancelledSmartCount;
+  final bool generalNotificationsResynced;
+}
+
+@visibleForTesting
+SmartAlarmSyncPolicy buildSmartAlarmSyncPolicy({
+  required bool tierAllowed,
+  required bool userRequested,
+  required int pendingNotificationCount,
+}) {
+  final rebuildsLegacySmartReservations =
+      !tierAllowed && userRequested && pendingNotificationCount > 0;
+  return SmartAlarmSyncPolicy(
+    tierAllowed: tierAllowed,
+    userRequested: userRequested,
+    effective: tierAllowed && userRequested,
+    legacySmartReservationsPresent: rebuildsLegacySmartReservations,
+    cancelledSmartCount:
+        rebuildsLegacySmartReservations ? pendingNotificationCount : 0,
+    generalNotificationsResynced: !tierAllowed,
+  );
+}
+
+@visibleForTesting
+String buildSmartAlarmPolicyDebugMessage(SmartAlarmSyncPolicy policy) {
+  return 'tierAllowed=${policy.tierAllowed} '
+      'userRequested=${policy.userRequested} '
+      'effective=${policy.effective} '
+      'legacySmartReservationsPresent='
+      '${policy.legacySmartReservationsPresent} '
+      'cancelledSmartCount=${policy.cancelledSmartCount} '
+      'generalNotificationsResynced='
+      '${policy.generalNotificationsResynced} '
+      'result=success';
+}
 
 @visibleForTesting
 String buildSmartAlarmDecisionDebugMessage({
@@ -184,7 +234,13 @@ class NotificationService {
     final canUseSmartAlarm = tierAccess.canUseSmartAlarm;
     final canUseSemiProSmartAlarm = tierAccess.canUseSemiProSmartAlarm;
 
-    final effectiveSmartEnabled = smartEnabled && canUseSmartAlarm;
+    final pendingBeforeRebuild = await _plugin.pendingNotificationRequests();
+    final smartPolicy = buildSmartAlarmSyncPolicy(
+      tierAllowed: canUseSmartAlarm,
+      userRequested: smartEnabled,
+      pendingNotificationCount: pendingBeforeRebuild.length,
+    );
+    final effectiveSmartEnabled = smartPolicy.effective;
 
     if (kDebugMode) {
       debugPrint(
@@ -232,6 +288,10 @@ class NotificationService {
 
     if (futureItems.isEmpty) {
       debugPrint('[MTF_NOTIFY] no future lessons');
+      debugPrint(
+        '[MTF_SMART_ALARM_POLICY] '
+        '${buildSmartAlarmPolicyDebugMessage(smartPolicy)}',
+      );
       return;
     }
 
@@ -287,6 +347,10 @@ class NotificationService {
       'priorityMemo=$priorityMemoEnabled, '
       'firstLesson=$firstLessonEnabled, '
       'scheduled=$scheduledCount',
+    );
+    debugPrint(
+      '[MTF_SMART_ALARM_POLICY] '
+      '${buildSmartAlarmPolicyDebugMessage(smartPolicy)}',
     );
   }
 

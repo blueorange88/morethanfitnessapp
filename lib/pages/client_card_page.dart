@@ -9,6 +9,7 @@ import '../utils/membership_pause_status_utils.dart';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -27,6 +28,9 @@ import 'membership_contract_page.dart';
 import '../services/app_tier_access_service.dart';
 import '../services/lesson_product_service.dart';
 import '../services/inbody_camera_permission_service.dart';
+import '../services/personal_member_card_save_service.dart';
+import '../services/personal_member_consent_service.dart';
+import '../services/personal_member_preferences_service.dart';
 import '../widgets/aifc_tier_guide_chat_sheet.dart';
 
 import '../aifc/core/aifc_avatar.dart';
@@ -35,8 +39,10 @@ import '../aifc/core/aifc_nickname.dart';
 import '../widgets/aifc_info_chat_sheet.dart';
 import '../widgets/aifc_option_chat_sheet.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/personal_training_log_entry_guard.dart';
 import '../widgets/aifc_care_milestone_chat_sheet.dart';
 import '../widgets/mtf_floating_more_menu.dart';
+import '../widgets/dev_client_card_viewport.dart';
 import '../widgets/aifc_contract_history_chat_sheet.dart';
 import '../widgets/aifc_interaction.dart';
 import '../widgets/aifc_confirm_chat_sheet.dart';
@@ -49,6 +55,113 @@ const Color kPageBorder = Color(0xFFE5E7EB);
 const Color kPageText = Color(0xFF111827);
 const Color kPageMuted = Color(0xFF6B7280);
 const Color kPageFieldBg = Color(0xFFF8FAFC);
+
+@visibleForTesting
+List<String> clientCardMissingRequiredFields({
+  required String name,
+  required String gender,
+  required String birthText,
+  required String phone,
+  required bool hasPhoneDuplicate,
+  required bool isEnteringCustomLessonType,
+  required String customLessonType,
+}) {
+  final items = <String>[];
+
+  if (name.trim().isEmpty) {
+    items.add('이름');
+  }
+
+  if (gender != '남' && gender != '여') {
+    items.add('성별');
+  }
+
+  final birthValidation = validateMemberBirthDate(
+    birthText,
+    required: true,
+  );
+
+  if (!birthValidation.isValid) {
+    items.add('생년월일');
+  }
+
+  final phoneValidation = validateKoreanMobilePhone(
+    phone,
+    required: true,
+  );
+
+  if (!phoneValidation.isValid || hasPhoneDuplicate) {
+    items.add('전화번호');
+  }
+
+  if (isEnteringCustomLessonType && customLessonType.trim().isEmpty) {
+    items.add('직접입력 레슨 종류');
+  }
+
+  return items;
+}
+
+@visibleForTesting
+bool clientCardValidationPassed({
+  required bool formValid,
+  required List<String> missingRequiredFields,
+}) {
+  return formValid && missingRequiredFields.isEmpty;
+}
+
+@visibleForTesting
+double clientCardMemberSetupPageHeight({
+  required bool isCustomLessonTypeSelected,
+  required bool isLessonTypeLockedByContract,
+  required bool isLegacyCurrentLessonType,
+}) {
+  if (isLegacyCurrentLessonType) return 462;
+  if (isCustomLessonTypeSelected || isLessonTypeLockedByContract) return 392;
+  return 348;
+}
+
+@visibleForTesting
+bool clientCardUsesStackedBasicInfoLayout(double viewportWidth) =>
+    viewportWidth <= 360;
+
+@visibleForTesting
+double clientCardBasicInfoPageHeight(double viewportWidth) =>
+    clientCardUsesStackedBasicInfoLayout(viewportWidth) ? 450 : 260;
+
+class ClientCardValidationFocusCoordinator {
+  int _requestVersion = 0;
+
+  void cancelPending() {
+    _requestVersion++;
+  }
+
+  Future<bool> refocus({
+    required FocusNode focusNode,
+    required VoidCallback unfocusCurrent,
+    required Future<void> Function() waitForFocusSettlement,
+    required Future<void> Function() showKeyboard,
+  }) async {
+    final requestVersion = ++_requestVersion;
+    unfocusCurrent();
+    await waitForFocusSettlement();
+    if (requestVersion != _requestVersion) return false;
+
+    focusNode.requestFocus();
+    await waitForFocusSettlement();
+    if (requestVersion != _requestVersion) return false;
+
+    if (!focusNode.hasFocus) {
+      focusNode.requestFocus();
+      await waitForFocusSettlement();
+    }
+    if (requestVersion != _requestVersion || !focusNode.hasFocus) {
+      return false;
+    }
+
+    await showKeyboard();
+    return requestVersion == _requestVersion && focusNode.hasFocus;
+  }
+}
 
 enum AchievementBadgeCode {
   lesson100,
@@ -1969,14 +2082,43 @@ class _MemberGroupOption {
   final String label;
 }
 
+@visibleForTesting
+Map<String, String>? parsePostcodeSearchMessage(String message) {
+  try {
+    final decoded = jsonDecode(message);
+    if (decoded is! Map) return null;
+    final result = <String, String>{
+      'zonecode': (decoded['zonecode'] ?? '').toString().trim(),
+      'roadAddress': (decoded['roadAddress'] ?? '').toString().trim(),
+      'jibunAddress': (decoded['jibunAddress'] ?? '').toString().trim(),
+      'buildingName': (decoded['buildingName'] ?? '').toString().trim(),
+    };
+    if (result['zonecode']!.isEmpty &&
+        result['roadAddress']!.isEmpty &&
+        result['jibunAddress']!.isEmpty) {
+      return null;
+    }
+    return result;
+  } catch (_) {
+    return null;
+  }
+}
+
 class _PostcodeSearchResult {
   const _PostcodeSearchResult({
     required this.zonecode,
-    required this.address,
+    required this.roadAddress,
+    required this.jibunAddress,
+    required this.buildingName,
   });
 
   final String zonecode;
-  final String address;
+  final String roadAddress;
+  final String jibunAddress;
+  final String buildingName;
+
+  String get displayAddress =>
+      roadAddress.isNotEmpty ? roadAddress : jibunAddress;
 }
 
 class _MemberGradeTheme {
@@ -2150,7 +2292,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
   final _genderFieldKey = GlobalKey();
   final _birthFieldKey = GlobalKey<FormFieldState<String>>();
   final _phoneFieldKey = GlobalKey();
+  final _addressFieldKey = GlobalKey();
   final _lessonMembershipSectionKey = GlobalKey();
+  final _customLessonTypeFieldKey = GlobalKey();
+  final _basicInfoExpansionController = ExpansibleController();
+  final _memberSetupExpansionController = ExpansibleController();
+  final _validationFocusCoordinator = ClientCardValidationFocusCoordinator();
 
   final _picker = ImagePicker();
 
@@ -2158,11 +2305,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
   String? _photoUrl;
 
   final _nameC = TextEditingController();
+  final _nameFocusNode = FocusNode();
   String _gender = '미입력';
   DateTime? _birthDate;
   final _birthTextC = TextEditingController();
   final _birthFocusNode = FocusNode();
   final _phoneC = TextEditingController();
+  final _phoneFocusNode = FocusNode();
 
   final _postalC = TextEditingController();
   final _addrC = TextEditingController();
@@ -2175,6 +2324,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   static const String _customLessonTypeValue = '__custom_lesson_type__';
 
   final _customLessonTypeC = TextEditingController();
+  final _customLessonTypeFocusNode = FocusNode();
 
   String _lessonType = '미입력';
   String _memberStatus = '활성';
@@ -2271,6 +2421,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Timer? _draftTimer;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _memberStatsSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _nextReservationSub;
+  final Set<String> _reportedFirestoreErrors = <String>{};
+  StreamSubscription<PersonalMemberPreferences>?
+      _personalMemberPreferencesSubscription;
   Timer? _nextReservationTickTimer;
   List<QueryDocumentSnapshot<Map<String, dynamic>>>
       _nextReservationScheduleDocs = [];
@@ -2286,10 +2439,80 @@ class _ClientCardPageState extends State<ClientCardPage> {
   final List<_MemberGroupOption> _groupOptions = [
     _MemberGroupOption(id: '__ungrouped__', label: 'MORE THAN GYM'),
   ];
+  List<String> _customLessonTypes = const <String>[];
+  bool _isEnteringCustomLessonType = false;
 
   bool get _isEditMode => widget.isEditMode;
   bool get _isPersonalWorkspace =>
       (widget.personalOwnerUid ?? '').trim().isNotEmpty;
+
+  String get _personalOwnerUid => widget.personalOwnerUid?.trim() ?? '';
+
+  bool _isOwnedPersonalMember(Map<String, dynamic> data) {
+    if (!_isPersonalWorkspace) return true;
+    return data['trainerId'] == _personalOwnerUid &&
+        data['workspaceType'] == 'personal' &&
+        data['managementState'] != 'deleted';
+  }
+
+  String _firestoreErrorCode(Object error) {
+    if (error is FirebaseException) {
+      return error.code.trim().isEmpty ? 'other' : error.code.trim();
+    }
+    return 'other';
+  }
+
+  void _logCanonicalRead({
+    required String feature,
+    required String pathType,
+    required bool ownerScoped,
+    required String result,
+    String errorCode = '',
+  }) {
+    debugPrint(
+      '[MTF_CANONICAL_READ] '
+      'feature=$feature '
+      'pathType=$pathType '
+      'workspace=${_isPersonalWorkspace ? 'personal' : 'legacy'} '
+      'ownerScoped=$ownerScoped '
+      'result=$result '
+      'errorCode=${errorCode.isEmpty ? 'none' : errorCode}',
+    );
+  }
+
+  void _logLegacyReadBlocked({
+    required String feature,
+    required String legacyPathType,
+    required String fallback,
+  }) {
+    debugPrint(
+      '[MTF_LEGACY_READ_BLOCKED] '
+      'feature=$feature '
+      'legacyPathType=$legacyPathType '
+      'fallback=$fallback '
+      'result=success',
+    );
+  }
+
+  void _handleFirestoreError({
+    required String feature,
+    required String operation,
+    required Object error,
+    bool userMessageShown = false,
+  }) {
+    final errorCode = _firestoreErrorCode(error);
+    final key = '$feature:$operation:$errorCode';
+    final duplicateSuppressed = !_reportedFirestoreErrors.add(key);
+    if (duplicateSuppressed) return;
+    debugPrint(
+      '[MTF_FIRESTORE_ERROR_HANDLED] '
+      'feature=$feature '
+      'operation=$operation '
+      'errorCode=$errorCode '
+      'userMessageShown=$userMessageShown '
+      'duplicateSuppressed=false',
+    );
+  }
 
   bool get _canUseSemiProFeatures {
     return (_tierAccess?.tierRank ?? 0) >= 2;
@@ -2373,12 +2596,40 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Future<String> _loadDefaultTrainerName() async {
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('trainer_profile')
-          .doc('me')
-          .get();
+      if (_isPersonalWorkspace) {
+        _logLegacyReadBlocked(
+          feature: 'profile',
+          legacyPathType: 'trainer_profile_me',
+          fallback: 'canonical',
+        );
+      }
+      final snap = _isPersonalWorkspace
+          ? await FirebaseFirestore.instance
+              .collection('trainer_profiles')
+              .doc(_personalOwnerUid)
+              .get()
+          : await FirebaseFirestore.instance
+              .collection('trainer_profile')
+              .doc('me')
+              .get();
 
       final data = snap.data();
+
+      if (_isPersonalWorkspace) {
+        _logCanonicalRead(
+          feature: 'profile',
+          pathType: 'canonical',
+          ownerScoped: true,
+          result: snap.exists ? 'success' : 'empty',
+        );
+        final realName = (data?['realName'] ?? '').toString().trim();
+        final displayName = (data?['displayName'] ?? '').toString().trim();
+        final nickname = (data?['nickname'] ?? '').toString().trim();
+        if (realName.isNotEmpty) return realName;
+        if (displayName.isNotEmpty) return displayName;
+        if (nickname.isNotEmpty) return nickname;
+        return '';
+      }
 
       final contractTrainerName =
           (data?['contractTrainerName'] ?? '').toString().trim();
@@ -2390,7 +2641,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
       if (name.isNotEmpty) return name;
 
       return '';
-    } catch (_) {
+    } catch (error) {
+      _handleFirestoreError(
+        feature: 'profile',
+        operation: 'get',
+        error: error,
+      );
       return '';
     }
   }
@@ -2579,6 +2835,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     _draftKey = 'member_form_draft_${widget.memberId}_v6';
+    _bindPersonalMemberPreferences();
 
     if (widget.initialName == null && widget.initialPhone == null) {
       _loadDraft();
@@ -2641,6 +2898,46 @@ class _ClientCardPageState extends State<ClientCardPage> {
     _bindNextReservationStream();
   }
 
+  Future<void> _loadInitialNewClientCardData() async {
+    final startedAt = DateTime.now();
+
+    await _loadMemberGroupOptions();
+
+    final elapsed = DateTime.now().difference(startedAt);
+    const minimumDelay = Duration(milliseconds: 220);
+    if (elapsed < minimumDelay) {
+      await Future.delayed(minimumDelay - elapsed);
+    }
+
+    await _fillDefaultTrainerIfEmpty();
+
+    if (!mounted) return;
+    setState(() {
+      _isClientCardLoaded = true;
+    });
+  }
+
+  void _bindPersonalMemberPreferences() {
+    if (!_isPersonalWorkspace) return;
+    _personalMemberPreferencesSubscription = PersonalMemberPreferencesService(
+      uid: widget.personalOwnerUid!.trim(),
+    ).watch().listen((preferences) {
+      if (!mounted) return;
+      setState(() {
+        _customLessonTypes = preferences.customLessonTypes;
+        _headerGroupLabel = preferences.defaultGroupLabel;
+        _groupOptions
+          ..clear()
+          ..add(
+            _MemberGroupOption(
+              id: '__ungrouped__',
+              label: preferences.defaultGroupLabel,
+            ),
+          );
+      });
+    });
+  }
+
   Future<void> _prepareNewCardAccess() async {
     try {
       final access = await AppTierAccessService.loadPersonalTrainerAccess(
@@ -2658,7 +2955,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _newCardAccessAllowed = allowed;
       });
       if (allowed) {
-        _startClientCardLoading();
+        await _loadInitialNewClientCardData();
       } else {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -2683,18 +2980,22 @@ class _ClientCardPageState extends State<ClientCardPage> {
     _draftTimer?.cancel();
     _memberStatsSub?.cancel();
     _nextReservationSub?.cancel();
+    _personalMemberPreferencesSubscription?.cancel();
     _nextReservationTickTimer?.cancel();
     _nameC.dispose();
+    _nameFocusNode.dispose();
     _birthFocusNode.removeListener(_handleBirthFocusChange);
     _birthFocusNode.dispose();
     _birthTextC.dispose();
     _phoneC.dispose();
+    _phoneFocusNode.dispose();
     _postalC.dispose();
     _addrC.dispose();
     _addrDetailC.dispose();
     _jobC.dispose();
     _trainerC.dispose();
     _customLessonTypeC.dispose();
+    _customLessonTypeFocusNode.dispose();
     _totalSessionsC.dispose();
     _remainSessionsC.dispose();
     _noShowDeductedC.dispose();
@@ -2739,6 +3040,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
       _ => groupId,
     };
 
+    if (_isPersonalWorkspace) {
+      return _headerGroupLabel.trim().isEmpty
+          ? kPersonalDefaultGroupLabel
+          : _headerGroupLabel.trim();
+    }
+
     try {
       final groupSnap = await FirebaseFirestore.instance
           .collection('member_groups')
@@ -2757,6 +3064,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<String> _loadDefaultGroupName() async {
+    if (_isPersonalWorkspace) {
+      return _headerGroupLabel.trim().isEmpty
+          ? kPersonalDefaultGroupLabel
+          : _headerGroupLabel.trim();
+    }
+
     try {
       final snap = await FirebaseFirestore.instance
           .collection('member_groups')
@@ -2834,6 +3147,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _loadCareMilestonesFromFirestore() async {
+    if (_isPersonalWorkspace) {
+      _logLegacyReadBlocked(
+        feature: 'memberCard',
+        legacyPathType: 'member_nested',
+        fallback: 'empty',
+      );
+      if (!mounted) return;
+      setState(_careMilestones.clear);
+      return;
+    }
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('members')
@@ -2854,12 +3177,30 @@ class _ClientCardPageState extends State<ClientCardPage> {
           ..clear()
           ..addAll(items);
       });
-    } catch (_) {
+    } catch (error) {
+      _handleFirestoreError(
+        feature: 'memberCard',
+        operation: 'get',
+        error: error,
+      );
       // 인덱스나 권한 문제로 실패해도 회원카드 로딩은 막지 않음
     }
   }
 
   Future<void> _loadAchievementBadgesFromFirestore() async {
+    if (_isPersonalWorkspace) {
+      _logLegacyReadBlocked(
+        feature: 'memberCard',
+        legacyPathType: 'member_nested',
+        fallback: 'empty',
+      );
+      if (!mounted) return;
+      setState(() {
+        _achievementBadges.clear();
+        _representativeBadge = null;
+      });
+      return;
+    }
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('members')
@@ -2882,7 +3223,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
         _representativeBadge = _resolveRepresentativeBadge(badges);
       });
-    } catch (_) {
+    } catch (error) {
+      _handleFirestoreError(
+        feature: 'memberCard',
+        operation: 'get',
+        error: error,
+      );
       // 메달 로드 실패해도 카드 표시를 막지 않음
     }
   }
@@ -2893,6 +3239,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     required String source,
     required DateTime earnedAt,
   }) async {
+    if (_isPersonalWorkspace) return;
     try {
       final docId = code.name;
 
@@ -2915,6 +3262,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _syncAutoAchievementBadges() async {
+    if (_isPersonalWorkspace) return;
     final total = int.tryParse(_totalSessionsC.text.trim()) ?? 0;
     final remain = int.tryParse(_remainSessionsC.text.trim()) ?? 0;
     final done = (total - remain).clamp(0, total);
@@ -3486,6 +3834,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _loadMemberGroupOptions() async {
+    if (_isPersonalWorkspace) {
+      if (!mounted) return;
+      final label = _headerGroupLabel.trim().isEmpty
+          ? kPersonalDefaultGroupLabel
+          : _headerGroupLabel.trim();
+      setState(() {
+        _groupOptions
+          ..clear()
+          ..add(
+            _MemberGroupOption(
+              id: '__ungrouped__',
+              label: label,
+            ),
+          );
+        _selectedGroupId = '__ungrouped__';
+        _headerGroupLabel = label;
+      });
+      return;
+    }
+
     try {
       final snapshot =
           await FirebaseFirestore.instance.collection('member_groups').get();
@@ -3641,8 +4009,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
         .listen((snap) {
       final data = snap.data();
       if (data == null || !mounted) return;
+      if (!_isOwnedPersonalMember(data)) {
+        _logCanonicalRead(
+          feature: 'memberCard',
+          pathType: 'canonical',
+          ownerScoped: false,
+          result: 'empty',
+        );
+        return;
+      }
 
+      _logCanonicalRead(
+        feature: 'memberCard',
+        pathType: 'canonical',
+        ownerScoped: _isPersonalWorkspace,
+        result: 'success',
+      );
       _applyLessonStatsFromMemberData(data);
+    }, onError: (Object error, StackTrace stackTrace) {
+      _handleFirestoreError(
+        feature: 'memberCard',
+        operation: 'listen',
+        error: error,
+      );
     });
   }
 
@@ -3661,6 +4050,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
   bool _isScheduleVisibleAsNextReservation(Map<String, dynamic> data) {
     if (data['isDeleted'] == true) return false;
     if (data['deleted'] == true) return false;
+    if (data['isArchived'] == true) return false;
+    if (data['archived'] == true) return false;
     if (data['voided'] == true) return false;
     if (data['confirmCancelled'] == true) return false;
 
@@ -3713,13 +4104,44 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final cleanMemberId = widget.memberId.trim();
     if (cleanMemberId.isEmpty) return;
 
-    _nextReservationSub = FirebaseFirestore.instance
-        .collection('schedules')
-        .where('memberId', isEqualTo: cleanMemberId)
-        .snapshots()
-        .listen((snapshot) {
+    Query<Map<String, dynamic>> query =
+        FirebaseFirestore.instance.collection('schedules');
+
+    if (_isPersonalWorkspace) {
+      final authUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+      if (authUid.isEmpty || authUid != _personalOwnerUid) {
+        _logCanonicalRead(
+          feature: 'memberSchedule',
+          pathType: 'canonical',
+          ownerScoped: false,
+          result: 'failure',
+          errorCode: authUid.isEmpty ? 'unauthenticated' : 'owner_mismatch',
+        );
+        return;
+      }
+      query = query
+          .where('trainerId', isEqualTo: authUid)
+          .where('workspaceType', isEqualTo: 'personal');
+    }
+
+    query = query.where('memberId', isEqualTo: cleanMemberId);
+    _nextReservationSub = query.snapshots().listen((snapshot) {
       _nextReservationScheduleDocs = snapshot.docs;
+      _logCanonicalRead(
+        feature: 'memberSchedule',
+        pathType: 'canonical',
+        ownerScoped: _isPersonalWorkspace,
+        result: snapshot.docs.isEmpty ? 'empty' : 'success',
+      );
       _applyNextReservationFromSchedules();
+    }, onError: (Object error, StackTrace stackTrace) {
+      _nextReservationScheduleDocs = const [];
+      _applyNextReservationFromSchedules();
+      _handleFirestoreError(
+        feature: 'memberSchedule',
+        operation: 'listen',
+        error: error,
+      );
     });
   }
 
@@ -3732,6 +4154,21 @@ class _ClientCardPageState extends State<ClientCardPage> {
       if (!snap.exists || !mounted) return;
 
       final d = snap.data() ?? <String, dynamic>{};
+      if (!_isOwnedPersonalMember(d)) {
+        _logCanonicalRead(
+          feature: 'memberCard',
+          pathType: 'canonical',
+          ownerScoped: false,
+          result: 'empty',
+        );
+        return;
+      }
+      _logCanonicalRead(
+        feature: 'memberCard',
+        pathType: 'canonical',
+        ownerScoped: _isPersonalWorkspace,
+        result: 'success',
+      );
 
       DateTime? dt(dynamic v) {
         if (v == null) return null;
@@ -3846,7 +4283,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
       } else if (rawStatus == '만료') {
         nextGroupLabel = await _loadGroupDisplayName('__system_expired__');
         nextSelectedGroupId = '__ungrouped__';
-      } else if (groupId != null && groupId.isNotEmpty) {
+      } else if (!_isPersonalWorkspace &&
+          groupId != null &&
+          groupId.isNotEmpty) {
         nextGroupLabel = await _loadGroupDisplayName(groupId);
         nextSelectedGroupId = groupId;
       } else {
@@ -4083,7 +4522,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
             ? 'MORE THAN GYM'
             : nextGroupLabel.trim();
       });
-    } catch (_) {}
+    } catch (error) {
+      _handleFirestoreError(
+        feature: 'memberCard',
+        operation: 'get',
+        error: error,
+      );
+    }
   }
 
   void _debouncedSave() {
@@ -5774,18 +6219,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Future<void> _openTrainingLogConsent() async {
     final agreed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => const TrainingLogConsentPage(),
+        builder: (_) => TrainingLogConsentPage(
+          onAgree: _isPersonalWorkspace
+              ? () => _persistTrainingLogConsent(true)
+              : null,
+        ),
       ),
     );
 
     if (agreed == true) {
-      setState(() {
-        _trainingLogConsentAgreed = true;
-        _trainingLogConsentAgreedAt = DateTime.now();
-      });
-
-      if (mounted) {
-        _showAifcToast('레슨일지 개인정보 동의가 저장되었어요.');
+      try {
+        if (!_isPersonalWorkspace) {
+          await _persistTrainingLogConsent(true);
+        }
+        if (mounted) {
+          _showAifcToast('레슨일지 개인정보 동의가 저장되었어요.');
+        }
+      } catch (_) {
+        if (mounted) {
+          _showAifcToast('개인정보 동의를 저장하지 못했어요. 다시 시도해주세요.');
+        }
       }
     } else if (agreed == false) {
       if (mounted) {
@@ -5795,10 +6248,33 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _openTrainingLogWithConsent() async {
-    if (!_trainingLogConsentAgreed) {
+    if (_isPersonalWorkspace) {
+      final owner = widget.personalOwnerUid!.trim();
+      final allowed = await PersonalTrainingLogEntryGuard.guard(
+        context: context,
+        ownerUid: owner,
+        memberId: widget.memberId,
+        access: _tierAccess,
+        loadAccess: () =>
+            AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+        entryPoint: 'client_card_training_log',
+      );
+      if (!allowed || !mounted) return;
+      await _loadFromFirestore();
+    } else {
+      if (!await _guardTierFeature(AppTierFeatureKey.trainingLog)) return;
+    }
+
+    if (!_isPersonalWorkspace &&
+        !_contractSigned &&
+        !_trainingLogConsentAgreed) {
       final agreed = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (_) => const TrainingLogConsentPage(),
+          builder: (_) => TrainingLogConsentPage(
+            onAgree: _isPersonalWorkspace
+                ? () => _persistTrainingLogConsent(true)
+                : null,
+          ),
         ),
       );
 
@@ -5809,10 +6285,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
         return;
       }
 
-      setState(() {
-        _trainingLogConsentAgreed = true;
-        _trainingLogConsentAgreedAt = DateTime.now();
-      });
+      try {
+        if (!_isPersonalWorkspace) {
+          await _persistTrainingLogConsent(true);
+        }
+      } catch (_) {
+        if (mounted) {
+          _showAifcToast('개인정보 동의를 저장하지 못했어요. 다시 시도해주세요.');
+        }
+        return;
+      }
     }
 
     if (!mounted) return;
@@ -5826,6 +6308,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
           totalSessions: int.tryParse(_totalSessionsC.text.trim()) ?? 0,
           remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
           lastLogAt: _lastLogAt,
+          personalOwnerUid:
+              _isPersonalWorkspace ? widget.personalOwnerUid!.trim() : null,
         ),
       ),
     );
@@ -5836,12 +6320,53 @@ class _ClientCardPageState extends State<ClientCardPage> {
     await _syncAutoAchievementBadges();
   }
 
-  Future<void> _scrollToFirstRequiredField() async {
-    final missing = _missingRequiredFields();
-    if (missing.isEmpty) return;
+  Future<void> _persistTrainingLogConsent(bool agreed) async {
+    if (_isPersonalWorkspace) {
+      final state = await PersonalMemberConsentService(
+        uid: widget.personalOwnerUid!.trim(),
+      ).update(memberId: widget.memberId, agreed: agreed);
+      if (!mounted) return;
+      setState(() {
+        _trainingLogConsentAgreed = state.agreed;
+        _trainingLogConsentAgreedAt = state.agreedAt;
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _trainingLogConsentAgreed = agreed;
+      _trainingLogConsentAgreedAt = agreed ? DateTime.now() : null;
+    });
+  }
+
+  Future<void> _resetTrainingLogConsent() async {
+    try {
+      await _persistTrainingLogConsent(false);
+      if (mounted) {
+        _showAifcToast('개인정보동의 상태를 초기화했어요.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showAifcToast('개인정보동의 상태를 초기화하지 못했어요.');
+      }
+    }
+  }
+
+  Future<void> _scrollToFirstRequiredField(String? firstMissing) async {
+    if (firstMissing == null) return;
+    final isBasicInfoTarget = firstMissing != '직접입력 레슨 종류';
+
+    if (isBasicInfoTarget) {
+      _basicInfoExpansionController.expand();
+    } else {
+      _memberSetupExpansionController.expand();
+    }
+    await WidgetsBinding.instance.endOfFrame;
 
     // 기본정보 첫 페이지에 필수 항목이 모여 있으니 먼저 1페이지로 이동
-    if (_basicInfoPageController.hasClients && _basicInfoPageIndex != 0) {
+    if (isBasicInfoTarget &&
+        _basicInfoPageController.hasClients &&
+        _basicInfoPageIndex != 0) {
       setState(() {
         _basicInfoPageIndex = 0;
       });
@@ -5855,11 +6380,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     await Future.delayed(const Duration(milliseconds: 80));
 
-    final GlobalKey? targetKey = switch (missing.first) {
+    final GlobalKey? targetKey = switch (firstMissing) {
       '이름' => _nameFieldKey,
       '성별' => _genderFieldKey,
       '생년월일' => _birthFieldKey,
       '전화번호' => _phoneFieldKey,
+      '직접입력 레슨 종류' => _customLessonTypeFieldKey,
+      _ => null,
+    };
+    final FocusNode? targetFocusNode = switch (firstMissing) {
+      '이름' => _nameFocusNode,
+      '생년월일' => _birthFocusNode,
+      '전화번호' => _phoneFocusNode,
+      '직접입력 레슨 종류' => _customLessonTypeFocusNode,
       _ => null,
     };
 
@@ -5872,20 +6405,41 @@ class _ClientCardPageState extends State<ClientCardPage> {
       curve: Curves.easeOutCubic,
       alignment: 0.18,
     );
+    final focused = await _refocusValidationField(targetFocusNode);
+    debugPrint(
+      '[MTF_CLIENT_CARD_VALIDATION_FOCUS] '
+      'target=$firstMissing '
+      'focused=$focused',
+    );
   }
 
   Future<void> _submitAndStay() async {
     if (!_isEditMode && _isPersonalWorkspace && !_newCardAccessAllowed) {
       return;
     }
-    _normalizeBirthInput(validateField: true);
-    final valid = _formKey.currentState?.validate() ?? false;
+    _validationFocusCoordinator.cancelPending();
+    _normalizeBirthInput();
+    final missingRequiredFields = _missingRequiredFields();
+    final firstMissingRequiredField =
+        missingRequiredFields.isEmpty ? null : missingRequiredFields.first;
+    final formValid = _formKey.currentState?.validate() ?? false;
+    final valid = clientCardValidationPassed(
+      formValid: formValid,
+      missingRequiredFields: missingRequiredFields,
+    );
+    debugPrint(
+      '[MTF_CLIENT_CARD_VALIDATION] '
+      'valid=$valid '
+      'formValid=$formValid '
+      'firstMissing=${firstMissingRequiredField ?? 'none'} '
+      'missingCount=${missingRequiredFields.length}',
+    );
     if (!valid) {
       setState(() {
         _showRequiredFieldsNotice = true;
       });
 
-      await _scrollToFirstRequiredField();
+      await _scrollToFirstRequiredField(firstMissingRequiredField);
 
       if (!mounted) return;
       _showAifcToast('필수 입력 항목을 먼저 확인해드릴게요.');
@@ -5909,7 +6463,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _showRequiredFieldsNotice = true;
       });
 
-      await _scrollToBasicInfoField(_phoneFieldKey);
+      await _scrollToBasicInfoField(
+        _phoneFieldKey,
+        focusNode: _phoneFocusNode,
+      );
 
       if (!mounted) return;
 
@@ -5927,7 +6484,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _showRequiredFieldsNotice = true;
       });
 
-      await _scrollToBasicInfoField(_birthFieldKey);
+      await _scrollToBasicInfoField(
+        _birthFieldKey,
+        focusNode: _birthFocusNode,
+      );
 
       if (!mounted) return;
 
@@ -5962,6 +6522,65 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     try {
+      if (_isPersonalWorkspace && !_isEditMode) {
+        final result = await PersonalMemberCardSaveService(
+          uid: widget.personalOwnerUid!.trim(),
+        ).createAndVerify(
+          idempotencyKey: widget.memberId,
+          name: _nameC.text.trim(),
+          gender: _gender,
+          birthDate: _birthTextC.text,
+          phone: _phoneC.text.trim(),
+          postal: _postalC.text.trim(),
+          address: _addrC.text.trim(),
+          detailAddress: _addrDetailC.text.trim(),
+          lessonType: _lessonType.trim().isEmpty ? '미입력' : _lessonType.trim(),
+          totalSessions: int.tryParse(_totalSessionsC.text.trim()) ?? 0,
+          remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
+          lessonsNotRegistered: _lessonsNotRegistered,
+          note: _noteC.text.trim(),
+          selectedGroupId: _selectedGroupId,
+        );
+        await _persistCustomLessonTypeIfNeeded();
+
+        await _clearDraft();
+        if (!mounted) return;
+        if (Navigator.canPop(context)) {
+          Navigator.of(context).pop();
+        }
+        if (!mounted) return;
+        Navigator.of(context).pop(result);
+        return;
+      }
+
+      if (_isPersonalWorkspace && _isEditMode) {
+        await PersonalMemberCardSaveService(
+          uid: widget.personalOwnerUid!.trim(),
+        ).updateAndVerify(
+          memberId: widget.memberId,
+          name: _nameC.text.trim(),
+          gender: _gender,
+          birthDate: _birthTextC.text,
+          phone: _phoneC.text.trim(),
+          postal: _postalC.text.trim(),
+          address: _addrC.text.trim(),
+          detailAddress: _addrDetailC.text.trim(),
+          lessonType: _lessonType.trim().isEmpty ? '미입력' : _lessonType.trim(),
+          totalSessions: int.tryParse(_totalSessionsC.text.trim()) ?? 0,
+          remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
+          lessonsNotRegistered: _lessonsNotRegistered,
+          note: _noteC.text.trim(),
+        );
+        await _persistCustomLessonTypeIfNeeded();
+        await _clearDraft();
+        if (!mounted) return;
+        if (Navigator.canPop(context)) {
+          Navigator.of(context).pop();
+        }
+        _showAifcToast('회원정보를 저장했어요.');
+        return;
+      }
+
       final raw = _collectFormMap(includeRegisteredAt: true);
       final docRef =
           FirebaseFirestore.instance.collection('members').doc(widget.memberId);
@@ -5987,6 +6606,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         );
         tx.set(docRef, payload, SetOptions(merge: true));
       });
+      await _persistCustomLessonTypeIfNeeded();
 
       if (isNew) {
         await _bootstrapMemberArtifacts(
@@ -6254,10 +6874,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
     if (cleanMemberId.isEmpty) return;
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('schedules')
-          .where('memberId', isEqualTo: cleanMemberId)
-          .get();
+      Query<Map<String, dynamic>> query =
+          FirebaseFirestore.instance.collection('schedules');
+      if (_isPersonalWorkspace) {
+        final authUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+        if (authUid.isEmpty || authUid != _personalOwnerUid) {
+          _logCanonicalRead(
+            feature: 'memberScheduleUnlink',
+            pathType: 'canonical',
+            ownerScoped: false,
+            result: 'failure',
+            errorCode: authUid.isEmpty ? 'unauthenticated' : 'owner_mismatch',
+          );
+          return;
+        }
+        query = query
+            .where('trainerId', isEqualTo: authUid)
+            .where('workspaceType', isEqualTo: 'personal');
+      }
+      final snap =
+          await query.where('memberId', isEqualTo: cleanMemberId).get();
 
       if (snap.docs.isEmpty) return;
 
@@ -6972,17 +7608,43 @@ class _ClientCardPageState extends State<ClientCardPage> {
   String get _lessonTypeDropdownValue {
     final value = _lessonType.trim();
 
+    if (_isEnteringCustomLessonType) return _customLessonTypeValue;
     if (value.isEmpty) return '미입력';
 
-    if (_baseLessonTypeOptions.contains(value)) {
+    if (_lessonTypeDropdownOptions.contains(value)) {
       return value;
     }
 
-    return _customLessonTypeValue;
+    return value;
   }
 
   bool get _isCustomLessonTypeSelected {
-    return _lessonTypeDropdownValue == _customLessonTypeValue;
+    return _isEnteringCustomLessonType;
+  }
+
+  bool get _isLegacyCurrentLessonType {
+    final value = _lessonType.trim();
+    if (value.isEmpty || _isEnteringCustomLessonType) return false;
+    if (_baseLessonTypeOptions.contains(value)) return false;
+    return !_customLessonTypes.any(
+      (item) =>
+          customLessonTypeComparisonKey(item) ==
+          customLessonTypeComparisonKey(value),
+    );
+  }
+
+  List<String> get _lessonTypeDropdownOptions {
+    final values = <String>[..._baseLessonTypeOptions];
+    for (final value in _customLessonTypes) {
+      if (!values.contains(value)) values.add(value);
+    }
+    final current = _lessonType.trim();
+    if (current.isNotEmpty &&
+        current != _customLessonTypeValue &&
+        !values.contains(current)) {
+      values.add(current);
+    }
+    return values;
   }
 
   void _syncCustomLessonTypeControllerIfNeeded() {
@@ -6994,6 +7656,101 @@ class _ClientCardPageState extends State<ClientCardPage> {
     if (_customLessonTypeC.text.trim() != value) {
       _customLessonTypeC.text = value;
     }
+  }
+
+  Future<void> _showCustomLessonTypeManagement() async {
+    if (!_isPersonalWorkspace) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  '레슨 종류 관리',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '기본 제공 종류는 유지되고, 직접 추가한 종류만 삭제할 수 있어요.',
+                  style: TextStyle(color: kPageMuted, fontSize: 12),
+                ),
+                const SizedBox(height: 14),
+                if (_customLessonTypes.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      '추가한 레슨 종류가 없어요.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: kPageMuted),
+                    ),
+                  )
+                else
+                  ..._customLessonTypes.map(
+                    (type) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(type),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          final confirmed = await _showAifcConfirm(
+                            title: '레슨 종류를 삭제할까요?',
+                            message: '선택 목록에서만 제거되며 기존 회원과 일정의 저장값은 유지돼요.',
+                            confirmText: '삭제',
+                            danger: true,
+                          );
+                          if (!confirmed) return;
+                          final next = _customLessonTypes
+                              .where(
+                                (value) =>
+                                    customLessonTypeComparisonKey(value) !=
+                                    customLessonTypeComparisonKey(type),
+                              )
+                              .toList();
+                          try {
+                            await PersonalMemberPreferencesService(
+                              uid: widget.personalOwnerUid!.trim(),
+                            ).saveCustomLessonTypes(next);
+                            if (sheetContext.mounted) {
+                              Navigator.of(sheetContext).pop();
+                            }
+                            if (mounted) {
+                              _showAifcToast('레슨 종류 목록에서 삭제했어요.');
+                            }
+                          } catch (_) {
+                            if (mounted) {
+                              _showAifcToast('레슨 종류를 삭제하지 못했어요.');
+                            }
+                          }
+                        },
+                        child: const Text('삭제'),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _persistCustomLessonTypeIfNeeded() async {
+    if (!_isPersonalWorkspace || !_isEnteringCustomLessonType) return;
+    final value = normalizeCustomLessonType(_customLessonTypeC.text);
+    if (value.isEmpty) return;
+    final key = customLessonTypeComparisonKey(value);
+    if (_customLessonTypes
+        .any((item) => customLessonTypeComparisonKey(item) == key)) {
+      return;
+    }
+    await PersonalMemberPreferencesService(
+      uid: widget.personalOwnerUid!.trim(),
+    ).saveCustomLessonTypes([..._customLessonTypes, value]);
   }
 
   bool _isActiveDuplicateMemberDoc(
@@ -7011,7 +7768,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return true;
   }
 
-  Future<void> _scrollToBasicInfoField(GlobalKey key) async {
+  Future<void> _scrollToBasicInfoField(
+    GlobalKey key, {
+    FocusNode? focusNode,
+  }) async {
     if (_basicInfoPageController.hasClients && _basicInfoPageIndex != 0) {
       setState(() {
         _basicInfoPageIndex = 0;
@@ -7035,9 +7795,47 @@ class _ClientCardPageState extends State<ClientCardPage> {
       curve: Curves.easeOutCubic,
       alignment: 0.18,
     );
+    await _refocusValidationField(focusNode);
+  }
+
+  Future<bool> _refocusValidationField(FocusNode? focusNode) async {
+    if (focusNode == null) return false;
+
+    return _validationFocusCoordinator.refocus(
+      focusNode: focusNode,
+      unfocusCurrent: _clearValidationFocus,
+      waitForFocusSettlement: _waitForValidationFocusSettlement,
+      showKeyboard: () =>
+          SystemChannels.textInput.invokeMethod<void>('TextInput.show'),
+    );
+  }
+
+  void _clearValidationFocus() {
+    for (final focusNode in <FocusNode>[
+      _nameFocusNode,
+      _birthFocusNode,
+      _phoneFocusNode,
+      _customLessonTypeFocusNode,
+    ]) {
+      focusNode.unfocus();
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  Future<void> _waitForValidationFocusSettlement() async {
+    await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 48));
   }
 
   Future<bool> _ensurePhoneIsNotDuplicatedBeforeSave() async {
+    // Personal 신규 회원은 createManagedMember transaction이 현재 UID 범위에서
+    // 중복 전화번호를 최종 판정한다. 클라이언트의 전역 members 조회는
+    // owner-scoped Rules에 의해 거부되며 저장 전 불필요한 permission-denied를 만든다.
+    if (_isPersonalWorkspace && !_isEditMode) {
+      return true;
+    }
+
     final phoneDigits = normalizeMemberPhone(_phoneC.text);
 
     if (phoneDigits.isEmpty) {
@@ -7071,11 +7869,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
         final value = target.value.trim();
         if (value.isEmpty) continue;
 
-        final snapshot = await FirebaseFirestore.instance
-            .collection('members')
-            .where(target.key, isEqualTo: value)
-            .limit(8)
-            .get();
+        Query<Map<String, dynamic>> query =
+            FirebaseFirestore.instance.collection('members');
+        if (_isPersonalWorkspace) {
+          query = query
+              .where('trainerId', isEqualTo: _personalOwnerUid)
+              .where('workspaceType', isEqualTo: 'personal');
+        }
+        final snapshot =
+            await query.where(target.key, isEqualTo: value).limit(8).get();
 
         for (final doc in snapshot.docs) {
           if (_isActiveDuplicateMemberDoc(doc)) {
@@ -7111,7 +7913,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _showRequiredFieldsNotice = true;
       });
 
-      await _scrollToBasicInfoField(_phoneFieldKey);
+      await _scrollToBasicInfoField(
+        _phoneFieldKey,
+        focusNode: _phoneFocusNode,
+      );
 
       if (!mounted) return false;
 
@@ -7127,39 +7932,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   List<String> _missingRequiredFields() {
-    final items = <String>[];
-
-    if (_nameC.text.trim().isEmpty) {
-      items.add('이름');
-    }
-
-    if (_gender != '남' && _gender != '여') {
-      items.add('성별');
-    }
-
-    final birthValidation = validateMemberBirthDate(
-      _birthTextC.text,
-      required: true,
+    return clientCardMissingRequiredFields(
+      name: _nameC.text,
+      gender: _gender,
+      birthText: _birthTextC.text,
+      phone: _phoneC.text,
+      hasPhoneDuplicate: _phoneDuplicateMessage != null,
+      isEnteringCustomLessonType: _isEnteringCustomLessonType,
+      customLessonType: _customLessonTypeC.text,
     );
-
-    if (!birthValidation.isValid) {
-      items.add('생년월일');
-    }
-
-    final phoneValidation = validateKoreanMobilePhone(
-      _phoneC.text,
-      required: true,
-    );
-
-    if (!phoneValidation.isValid || _phoneDuplicateMessage != null) {
-      items.add('전화번호');
-    }
-
-    if (_lessonType.trim().isEmpty || _lessonType == '미입력') {
-      items.add('레슨형태');
-    }
-
-    return items;
   }
 
   Widget _buildRequiredFieldsNoticeCard() {
@@ -7378,7 +8159,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   bool get _hideTopActionCards {
     if (!_isClientCardLoaded) return true;
-    return _trainingLogConsentAgreed;
+    if (_isPersonalWorkspace && !_canUseSemiProFeatures) return true;
+    if (_contractSigned) return true;
+    return false;
   }
 
   String _trainingLogReadyText() {
@@ -7711,13 +8494,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _trainingLogConsentAgreed = false;
-                      _trainingLogConsentAgreedAt = null;
-                    });
-                    _showAifcToast('개인정보동의 상태를 초기화했어요.');
-                  },
+                  onPressed: _resetTrainingLogConsent,
                   icon: const Icon(Icons.refresh),
                   label: const Text('동의 초기화'),
                   style: OutlinedButton.styleFrom(
@@ -7740,236 +8517,260 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Widget _basicInfoSection() {
+    Widget buildNameField() => TextFormField(
+          key: _nameFieldKey,
+          controller: _nameC,
+          focusNode: _nameFocusNode,
+          decoration: _inputDecoration(
+            '이름',
+            suffixIcon: _buildAgeSuffix(),
+            requiredField: true,
+          ),
+          validator: (value) =>
+              (value == null || value.trim().isEmpty) ? '이름 입력' : null,
+          onChanged: (value) => setState(() {
+            _headerDisplayName = value.trim();
+          }),
+        );
+
+    Widget buildGenderField() => DropdownButtonFormField<String>(
+          key: _genderFieldKey,
+          value: _gender,
+          isExpanded: true,
+          decoration: _inputDecoration(
+            '성별',
+            requiredField: true,
+          ),
+          items: const [
+            DropdownMenuItem(value: '미입력', child: Text('미입력')),
+            DropdownMenuItem(value: '남', child: Text('남')),
+            DropdownMenuItem(value: '여', child: Text('여')),
+          ],
+          onChanged: (value) => setState(() => _gender = value ?? '미입력'),
+        );
+
+    Widget buildBirthField() => TextFormField(
+          key: _birthFieldKey,
+          controller: _birthTextC,
+          focusNode: _birthFocusNode,
+          decoration: _inputDecoration(
+            '생년월일',
+            hint: 'YYYY-MM-DD',
+            requiredField: true,
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.date_range),
+              onPressed: () async {
+                final current = _birthDate ?? _parseDate(_birthTextC.text);
+                final now = DateTime.now();
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate:
+                      current ?? DateTime(now.year - 25, now.month, now.day),
+                  firstDate: DateTime(1900),
+                  lastDate: now,
+                );
+                if (picked != null) {
+                  setState(() {
+                    _birthDate = picked;
+                    _birthTextC.text = _formatDate(picked);
+                  });
+                }
+              },
+            ),
+          ),
+          keyboardType: TextInputType.datetime,
+          inputFormatters: const [MemberBirthDateInputFormatter()],
+          textInputAction: TextInputAction.done,
+          onEditingComplete: () {
+            _normalizeBirthInput(validateField: true);
+            _birthFocusNode.unfocus();
+          },
+          onChanged: (value) {
+            setState(() {
+              _birthDate = _parseDate(value);
+            });
+          },
+          validator: (value) {
+            final result = validateMemberBirthDate(
+              value ?? '',
+              required: true,
+            );
+            return result.isValid ? null : result.errorText ?? '생년월일을 확인해주세요.';
+          },
+        );
+
+    Widget buildJobField() => TextFormField(
+          controller: _jobC,
+          decoration: _inputDecoration(
+            '직업',
+            hint: '예: 사무직',
+          ),
+        );
+
+    Widget buildPhoneField() => TextFormField(
+          key: _phoneFieldKey,
+          controller: _phoneC,
+          focusNode: _phoneFocusNode,
+          decoration: _inputDecoration(
+            '전화번호',
+            hint: '010-1234-5678',
+            requiredField: true,
+          ),
+          keyboardType: TextInputType.phone,
+          inputFormatters: const [MemberPhoneInputFormatter()],
+          validator: (value) {
+            final result = validateKoreanMobilePhone(
+              value ?? '',
+              required: true,
+            );
+            if (!result.isValid) return '';
+            if (_phoneDuplicateMessage != null) return '';
+            return null;
+          },
+          onChanged: (_) {
+            if (_phoneDuplicateMessage != null) {
+              _phoneDuplicateMessage = null;
+            }
+            setState(() {});
+          },
+        );
+
     return _ExpandableSectionCard(
+      controller: _basicInfoExpansionController,
       icon: Icons.person_outline_rounded,
       title: '회원 정보',
       subtitle: '담당 회원의 기본정보를 입력해요',
       initiallyExpanded: !_isEditMode,
-      child: Column(
-        children: [
-          _buildBasicInfoPagerHeader(),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 223,
-            child: PageView(
-              controller: _basicInfoPageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _basicInfoPageIndex = index;
-                });
-              },
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Column(
-                    children: [
-                      Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final viewportWidth = constraints.maxWidth;
+          final useStackedLayout =
+              clientCardUsesStackedBasicInfoLayout(viewportWidth);
+          return Column(
+            children: [
+              _buildBasicInfoPagerHeader(),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: clientCardBasicInfoPageHeight(viewportWidth),
+                child: PageView(
+                  controller: _basicInfoPageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _basicInfoPageIndex = index;
+                    });
+                  },
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Column(
                         children: [
-                          Expanded(
-                            flex: 3,
-                            child: TextFormField(
-                              key: _nameFieldKey,
-                              controller: _nameC,
-                              decoration: _inputDecoration(
-                                '이름',
-                                suffixIcon: _buildAgeSuffix(),
-                                requiredField: true,
-                              ),
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? '이름 입력'
-                                  : null,
-                              onChanged: (v) => setState(() {
-                                _headerDisplayName = v.trim();
-                              }),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 2,
-                            child: DropdownButtonFormField<String>(
-                              key: _genderFieldKey,
-                              value: _gender,
-                              decoration: _inputDecoration(
-                                '성별',
-                                requiredField: true,
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                    value: '미입력', child: Text('미입력')),
-                                DropdownMenuItem(value: '남', child: Text('남')),
-                                DropdownMenuItem(value: '여', child: Text('여')),
+                          if (useStackedLayout) ...[
+                            buildNameField(),
+                            const SizedBox(height: 12),
+                            buildGenderField(),
+                            const SizedBox(height: 12),
+                            buildBirthField(),
+                            const SizedBox(height: 12),
+                            buildJobField(),
+                          ] else ...[
+                            Row(
+                              children: [
+                                Expanded(flex: 3, child: buildNameField()),
+                                const SizedBox(width: 10),
+                                Expanded(flex: 2, child: buildGenderField()),
                               ],
-                              onChanged: (v) =>
-                                  setState(() => _gender = v ?? '미입력'),
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(child: buildBirthField()),
+                                const SizedBox(width: 10),
+                                Expanded(child: buildJobField()),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          buildPhoneField(),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Row(
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: TextFormField(
-                              key: _birthFieldKey,
-                              controller: _birthTextC,
-                              focusNode: _birthFocusNode,
-                              decoration: _inputDecoration(
-                                '생년월일',
-                                hint: 'YYYY-MM-DD',
-                                requiredField: true,
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.date_range),
-                                  onPressed: () async {
-                                    final current = _birthDate ??
-                                        _parseDate(_birthTextC.text);
-                                    final now = DateTime.now();
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      initialDate: current ??
-                                          DateTime(now.year - 25, now.month,
-                                              now.day),
-                                      firstDate: DateTime(1900),
-                                      lastDate: now,
-                                    );
-                                    if (picked != null) {
-                                      setState(() {
-                                        _birthDate = picked;
-                                        _birthTextC.text = _formatDate(picked);
-                                      });
-                                    }
-                                  },
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: TextFormField(
+                                  controller: _postalC,
+                                  decoration: _inputDecoration('우편번호'),
+                                  keyboardType: TextInputType.number,
                                 ),
                               ),
-                              keyboardType: TextInputType.datetime,
-                              inputFormatters: const [
-                                MemberBirthDateInputFormatter(),
-                              ],
-                              textInputAction: TextInputAction.done,
-                              onEditingComplete: () {
-                                _normalizeBirthInput(validateField: true);
-                                _birthFocusNode.unfocus();
-                              },
-                              onChanged: (value) {
-                                setState(() {
-                                  _birthDate = _parseDate(value);
-                                });
-                              },
-                              validator: (v) {
-                                final result = validateMemberBirthDate(
-                                  v ?? '',
-                                  required: true,
-                                );
-
-                                return result.isValid
-                                    ? null
-                                    : result.errorText ?? '생년월일을 확인해주세요.';
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _jobC,
-                              decoration: _inputDecoration(
-                                '직업',
-                                hint: '예: 사무직',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: _phoneFieldKey,
-                        controller: _phoneC,
-                        decoration: _inputDecoration(
-                          '전화번호',
-                          hint: '010-1234-5678',
-                          requiredField: true,
-                        ),
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: const [
-                          MemberPhoneInputFormatter(),
-                        ],
-                        validator: (v) {
-                          final result = validateKoreanMobilePhone(
-                            v ?? '',
-                            required: true,
-                          );
-
-                          if (!result.isValid) return '';
-
-                          if (_phoneDuplicateMessage != null) return '';
-
-                          return null;
-                        },
-                        onChanged: (_) {
-                          if (_phoneDuplicateMessage != null) {
-                            _phoneDuplicateMessage = null;
-                          }
-
-                          setState(() {});
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: _postalC,
-                              decoration: _inputDecoration('우편번호'),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 3,
-                            child: OutlinedButton(
-                              onPressed: _openPostcodeSearch,
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size(double.infinity, 56),
-                                side: const BorderSide(color: kPageBorder),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                flex: 3,
+                                child: OutlinedButton(
+                                  onPressed: _openPostcodeSearch,
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize:
+                                        const Size(double.infinity, 56),
+                                    side: const BorderSide(color: kPageBorder),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Text('우편번호 찾기'),
                                 ),
                               ),
-                              child: const Text('우편번호 찾기'),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            key: _addressFieldKey,
+                            controller: _addrC,
+                            decoration: _inputDecoration(
+                              '회원 주소 (선택)',
+                              hint: '예: 서울특별시 강남구 테헤란로 1',
                             ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '주소를 입력하면 상담과 방문 관리에 도움이 돼요. 나중에 입력해도 돼요.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                height: 1.35,
+                                color: kPageMuted,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _addrDetailC,
+                            decoration: _inputDecoration('상세주소'),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _addrC,
-                        decoration: _inputDecoration('주소'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _addrDetailC,
-                        decoration: _inputDecoration('상세주소'),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          _buildBasicInfoPageDots(),
-        ],
+              ),
+              const SizedBox(height: 6),
+              _buildBasicInfoPageDots(),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _memberSetupSection() {
     return _ExpandableSectionCard(
+      controller: _memberSetupExpansionController,
       icon: Icons.badge_outlined,
       title: '회원 현황',
       subtitle: '회원 현황 등을 체크합니다',
@@ -7979,9 +8780,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
           _buildMemberSetupPagerHeader(),
           const SizedBox(height: 8),
           SizedBox(
-            height: _isCustomLessonTypeSelected || _isLessonTypeLockedByContract
-                ? 392
-                : 348,
+            height: clientCardMemberSetupPageHeight(
+              isCustomLessonTypeSelected: _isCustomLessonTypeSelected,
+              isLessonTypeLockedByContract: _isLessonTypeLockedByContract,
+              isLegacyCurrentLessonType: _isLegacyCurrentLessonType,
+            ),
             child: PageView(
               controller: _memberSetupPageController,
               onPageChanged: (index) {
@@ -8049,15 +8852,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               ? '레슨 형태 · 계약서 기준'
                               : '레슨 형태',
                         ),
-                        items: const [
-                          DropdownMenuItem(value: '미입력', child: Text('미입력')),
-                          DropdownMenuItem(value: 'PT', child: Text('PT')),
-                          DropdownMenuItem(value: '필라테스', child: Text('필라테스')),
-                          DropdownMenuItem(value: '요가', child: Text('요가')),
-                          DropdownMenuItem(value: '그룹', child: Text('그룹')),
-                          DropdownMenuItem(value: '줌바', child: Text('줌바')),
-                          DropdownMenuItem(value: '재활', child: Text('재활')),
-                          DropdownMenuItem(
+                        items: [
+                          ..._lessonTypeDropdownOptions.map(
+                            (value) => DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(
+                                value == '미입력' ? '레슨권 미등록' : value,
+                              ),
+                            ),
+                          ),
+                          const DropdownMenuItem(
                             value: _customLessonTypeValue,
                             child: Text('직접입력'),
                           ),
@@ -8068,10 +8872,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             : (v) {
                                 setState(() {
                                   if (v == _customLessonTypeValue) {
-                                    final custom =
-                                        _customLessonTypeC.text.trim();
-                                    _lessonType = custom.isEmpty ? '' : custom;
+                                    _isEnteringCustomLessonType = true;
+                                    _lessonType = '';
                                   } else {
+                                    _isEnteringCustomLessonType = false;
                                     _lessonType = v ?? '미입력';
                                     _customLessonTypeC.clear();
                                   }
@@ -8081,22 +8885,55 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       if (_isCustomLessonTypeSelected) ...[
                         const SizedBox(height: 10),
                         TextFormField(
+                          key: _customLessonTypeFieldKey,
                           controller: _customLessonTypeC,
+                          focusNode: _customLessonTypeFocusNode,
                           enabled: !_lessonsNotRegistered &&
                               !_isLessonTypeLockedByContract,
                           decoration: _inputDecoration(
                             _isLessonTypeLockedByContract
                                 ? '계약서 레슨 형태'
                                 : '레슨 형태 직접입력',
-                            hint: '예: 듀엣PT / 산전필라테스 / 체형교정',
+                            hint: '예: 그룹레슨, 발레핏, 자이로토닉',
                           ),
+                          validator: (value) {
+                            if (!_isEnteringCustomLessonType) return null;
+                            return normalizeCustomLessonType(value ?? '')
+                                    .isEmpty
+                                ? '레슨 종류를 입력해주세요.'
+                                : null;
+                          },
                           onChanged: (value) {
                             setState(() {
-                              _lessonType = value.trim();
+                              _lessonType = normalizeCustomLessonType(value);
                             });
                           },
                         ),
                       ],
+                      if (_isLegacyCurrentLessonType) ...[
+                        const SizedBox(height: 8),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '현재 회원이 사용 중인 기존 종류예요.',
+                            style: TextStyle(
+                              color: kPageMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _isPersonalWorkspace
+                              ? _showCustomLessonTypeManagement
+                              : null,
+                          icon: const Icon(Icons.tune_rounded, size: 17),
+                          label: const Text('레슨 종류 관리'),
+                        ),
+                      ),
                       if (_isLessonTypeLockedByContract) ...[
                         const SizedBox(height: 8),
                         Row(
@@ -8130,40 +8967,66 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _groupOptions
-                                .any((item) => item.id == _selectedGroupId)
-                            ? _selectedGroupId
-                            : '__ungrouped__',
-                        decoration: _inputDecoration('그룹설정'),
-                        items: _groupOptions.map((group) {
-                          return DropdownMenuItem<String>(
-                            value: group.id,
-                            child: Text(
-                              group.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          final nextId = value ?? '__ungrouped__';
-                          final nextLabel = _groupOptions
-                              .firstWhere(
-                                (item) => item.id == nextId,
-                                orElse: () => const _MemberGroupOption(
-                                  id: '__ungrouped__',
-                                  label: 'MORE THAN GYM',
+                      if (_isPersonalWorkspace)
+                        InputDecorator(
+                          decoration: _inputDecoration('소속 그룹'),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.home_work_outlined,
+                                size: 18,
+                                color: kPageMuted,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _headerGroupLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: kPageText,
+                                  ),
                                 ),
-                              )
-                              .label;
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        DropdownButtonFormField<String>(
+                          value: _groupOptions
+                                  .any((item) => item.id == _selectedGroupId)
+                              ? _selectedGroupId
+                              : '__ungrouped__',
+                          decoration: _inputDecoration('그룹설정'),
+                          items: _groupOptions.map((group) {
+                            return DropdownMenuItem<String>(
+                              value: group.id,
+                              child: Text(
+                                group.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            final nextId = value ?? '__ungrouped__';
+                            final nextLabel = _groupOptions
+                                .firstWhere(
+                                  (item) => item.id == nextId,
+                                  orElse: () => const _MemberGroupOption(
+                                    id: '__ungrouped__',
+                                    label: 'MORE THAN GYM',
+                                  ),
+                                )
+                                .label;
 
-                          setState(() {
-                            _selectedGroupId = nextId;
-                            _headerGroupLabel = nextLabel;
-                          });
-                        },
-                      ),
+                            setState(() {
+                              _selectedGroupId = nextId;
+                              _headerGroupLabel = nextLabel;
+                            });
+                          },
+                        ),
                     ],
                   ),
                 ),
@@ -10229,8 +11092,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     setState(() {
       _postalC.text = result.zonecode;
-      _addrC.text = result.address;
-      _addrDetailC.clear();
+      _addrC.text = result.displayAddress;
+      if (result.buildingName.isNotEmpty) {
+        _addrDetailC.text = result.buildingName;
+      }
     });
 
     _debouncedSave();
@@ -10432,6 +11297,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   @override
   Widget build(BuildContext context) {
+    return DevClientCardViewport(
+      child: _buildClientCardContent(context),
+    );
+  }
+
+  Widget _buildClientCardContent(BuildContext context) {
     if (!_newCardAccessResolved) {
       return const Scaffold(
         backgroundColor: kPageBg,
@@ -10639,27 +11510,12 @@ class _DaumPostcodeSearchPageState extends State<_DaumPostcodeSearchPage> {
         oncomplete: function(data) {
           var roadAddress = data.roadAddress || '';
           var jibunAddress = data.jibunAddress || '';
-          var address = roadAddress.length > 0 ? roadAddress : jibunAddress;
-
-          var extra = '';
-
-          if (data.bname && /[동|로|가]\$/g.test(data.bname)) {
-            extra += data.bname;
-          }
-
-          if (data.buildingName && data.apartment === 'Y') {
-            extra += extra.length > 0
-              ? ', ' + data.buildingName
-              : data.buildingName;
-          }
-
-          if (extra.length > 0 && roadAddress.length > 0) {
-            address += ' (' + extra + ')';
-          }
 
           DaumPostcodeChannel.postMessage(JSON.stringify({
             zonecode: data.zonecode || '',
-            address: address || ''
+            roadAddress: roadAddress,
+            jibunAddress: jibunAddress,
+            buildingName: data.buildingName || ''
           }));
         }
       }).embed(document.getElementById('postcode'));
@@ -10681,26 +11537,22 @@ class _DaumPostcodeSearchPageState extends State<_DaumPostcodeSearchPage> {
       ..addJavaScriptChannel(
         'DaumPostcodeChannel',
         onMessageReceived: (message) {
-          try {
-            final decoded = jsonDecode(message.message);
-
-            if (decoded is! Map) return;
-
-            final zonecode = (decoded['zonecode'] ?? '').toString().trim();
-            final address = (decoded['address'] ?? '').toString().trim();
-
-            if (zonecode.isEmpty && address.isEmpty) return;
-
-            Navigator.of(context).pop(
-              _PostcodeSearchResult(
-                zonecode: zonecode,
-                address: address,
-              ),
-            );
-          } catch (_) {}
+          final decoded = parsePostcodeSearchMessage(message.message);
+          if (decoded == null) return;
+          Navigator.of(context).pop(
+            _PostcodeSearchResult(
+              zonecode: decoded['zonecode']!,
+              roadAddress: decoded['roadAddress']!,
+              jibunAddress: decoded['jibunAddress']!,
+              buildingName: decoded['buildingName']!,
+            ),
+          );
         },
       )
-      ..loadHtmlString(_postcodeHtml());
+      ..loadHtmlString(
+        _postcodeHtml(),
+        baseUrl: 'https://postcode.map.daum.net/',
+      );
   }
 
   @override
@@ -11628,6 +12480,7 @@ class _ExpandableSectionCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.child,
+    this.controller,
     this.subtitle,
     this.trailing,
     this.initiallyExpanded = false,
@@ -11637,6 +12490,7 @@ class _ExpandableSectionCard extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget child;
+  final ExpansibleController? controller;
   final Widget? trailing;
   final bool initiallyExpanded;
 
@@ -11662,6 +12516,7 @@ class _ExpandableSectionCard extends StatelessWidget {
           highlightColor: Colors.transparent,
         ),
         child: ExpansionTile(
+          controller: controller,
           initiallyExpanded: initiallyExpanded,
           maintainState: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),

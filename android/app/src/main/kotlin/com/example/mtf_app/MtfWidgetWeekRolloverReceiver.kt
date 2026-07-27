@@ -159,20 +159,11 @@ class MtfWidgetWeekRolloverReceiver : BroadcastReceiver() {
             triggerAtMillis: Long,
             pendingIntent: PendingIntent,
         ) {
-            try {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    pendingIntent
-                )
-            } catch (_: SecurityException) {
-                // 정확 알람 권한이 없는 기기에서는 기존 절전 허용 알람으로 fallback
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    pendingIntent
-                )
-            }
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerAtMillis,
+                pendingIntent
+            )
         }
     }
 }

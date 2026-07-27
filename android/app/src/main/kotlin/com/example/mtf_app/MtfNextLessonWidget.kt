@@ -1,7 +1,6 @@
 package com.example.mtf_app
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -10,6 +9,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.AppWidgetId
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
@@ -41,15 +41,17 @@ class MtfNextLessonWidget : GlanceAppWidget() {
         get() = HomeWidgetGlanceStateDefinition()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val appWidgetId = (id as? AppWidgetId)?.appWidgetId ?: 0
         provideContent {
-            Content(context, currentState())
+            Content(context, currentState(), appWidgetId)
         }
     }
 
     @Composable
     private fun Content(
         context: Context,
-        currentState: HomeWidgetGlanceState
+        currentState: HomeWidgetGlanceState,
+        appWidgetId: Int,
     ) {
         val prefs = currentState.preferences
 
@@ -67,9 +69,7 @@ class MtfNextLessonWidget : GlanceAppWidget() {
             memo = prefs.getString("mtf_widget_second_lesson_memo", "") ?: "",
         )
 
-        val openAppIntent = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        val openAppIntent = MtfWidgetIntentFactory.openNextLesson(context, appWidgetId)
 
         Column(
             modifier = GlanceModifier
@@ -79,7 +79,7 @@ class MtfNextLessonWidget : GlanceAppWidget() {
                 .padding(10.dp)
         ) {
             Text(
-                text = "다음 레슨",
+                text = MtfWidgetIntentFactory.displayTitle(context, "다음 레슨"),
                 style = TextStyle(
                     color = widgetColor(0xFF4F46E5),
                     fontSize = 15.sp,

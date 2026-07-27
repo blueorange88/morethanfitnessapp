@@ -30,5 +30,6 @@ analyzer:
   exclude:
     - backup/**
     - build/**
+    - node_modules/**
     - lib/app_router.dart
     - lib/ui/**

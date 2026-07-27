@@ -195,6 +195,16 @@ async function main() {
           memberId: "owned-member",
         })));
     });
+    await scenario("owner-scoped member schedule query succeeds", async () => {
+      const result = await assertSucceeds(getDocs(query(
+        collection(owner, "schedules"),
+        where("trainerId", "==", "trainer-a"),
+        where("workspaceType", "==", "personal"),
+        where("memberId", "==", "owned-member"),
+      )));
+      assert.deepEqual(result.docs.map((item) => item.id),
+        [scheduleId("trainer-a", "owned-link")]);
+    });
     await scenario("another trainer member link is denied", async () => {
       await env.withSecurityRulesDisabled(async (admin) => {
         await setDoc(doc(admin.firestore(), "members", "other-member"), {
@@ -295,8 +305,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 26);
-    process.stdout.write("All 26 personal schedule rules scenarios passed.\n");
+    assert.equal(passed, 27);
+    process.stdout.write("All 27 personal schedule rules scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

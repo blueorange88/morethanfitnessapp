@@ -25,6 +25,7 @@ import '../services/more_care_slot_service.dart';
 import '../services/app_tier_access_service.dart';
 
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/personal_training_log_entry_guard.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 
 import '../aifc/core/aifc_chat_sheet.dart';
@@ -47,6 +48,7 @@ class PersonalTrainingLogPage extends StatefulWidget {
   final int? totalSessions;
   final int? remainingSessions;
   final DateTime? lastLogAt;
+  final String? personalOwnerUid;
 
   /// 2차 확장용
   final String? quickMemo;
@@ -63,6 +65,7 @@ class PersonalTrainingLogPage extends StatefulWidget {
     this.totalSessions,
     this.remainingSessions,
     this.lastLogAt,
+    this.personalOwnerUid,
     this.quickMemo,
     this.recentIssue,
     this.reRegistrationLabel,
@@ -119,6 +122,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   bool _femaleConditionEnabled = false;
   DateTime? _femaleConditionLastStartAt;
   int _femaleConditionCycleDays = 28;
+  bool _entryAccessResolved = false;
+  bool _entryAccessAllowed = false;
+
+  String get _personalOwnerUid => widget.personalOwnerUid?.trim() ?? '';
+  bool get _isPersonalWorkspace => _personalOwnerUid.isNotEmpty;
 
   String _latestInbodyDate = '';
   String _latestWeight = '';
@@ -261,6 +269,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     required _GoalDdayItem goal,
     required DateTime completedAt,
   }) async {
+    if (_isPersonalWorkspace) return;
+
     final memberId = (widget.memberId ?? '').trim();
     if (memberId.isEmpty) return;
 
@@ -291,7 +301,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-    } catch (_) {}
+    } catch (error) {
+      _logFirestoreReadFailure(
+        source: 'legacy_achievement_badge_write',
+        error: error,
+      );
+    }
   }
 
   Future<void> _loadGoalDdaysFromFirestore() async {
@@ -313,8 +328,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           ..clear()
           ..addAll(items);
       });
-    } catch (e) {
-      debugPrint('D-DAY 목표 로드 실패: $e');
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'legacy_goal_ddays', error: error);
     }
   }
 
@@ -330,6 +345,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
       final data = snap.data();
       if (data == null) return;
+      if (_isPersonalWorkspace &&
+          (data['memberId'] != memberId ||
+              data['trainerId'] != _personalOwnerUid ||
+              data['workspaceType'] != 'personal')) {
+        return;
+      }
 
       final health = data['health'] is Map
           ? Map<String, dynamic>.from(data['health'] as Map)
@@ -355,8 +376,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         _femaleConditionCycleDays =
             (femaleCondition['cycleDays'] as num?)?.toInt() ?? 28;
       });
-    } catch (e) {
-      debugPrint('컨디션주기 정보 로드 실패: $e');
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'member_condition', error: error);
     }
   }
 
@@ -553,6 +574,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   CollectionReference<Map<String, dynamic>>? _goalDdaysRef() {
+    if (_isPersonalWorkspace) return null;
+
     final memberId = (widget.memberId ?? '').trim();
     if (memberId.isEmpty) return null;
 
@@ -626,6 +649,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   CollectionReference<Map<String, dynamic>>? _careMilestonesRef() {
+    if (_isPersonalWorkspace) return null;
+
     final memberId = (widget.memberId ?? '').trim();
     if (memberId.isEmpty) return null;
 
@@ -811,7 +836,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   void initState() {
     super.initState();
 
-    _loadTierAccess();
+    final owner = widget.personalOwnerUid?.trim() ?? '';
+    if (owner.isEmpty) {
+      _entryAccessResolved = true;
+      _entryAccessAllowed = true;
+      _loadTierAccess();
+      _loadTrainingLogDataSources();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _resolvePersonalEntryAccess(owner);
+      });
+    }
 
     final now = DateTime.now();
     final d1 = now.subtract(const Duration(days: 18));
@@ -899,14 +934,43 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         inputMethod: 'text',
       ),
     ]);
+  }
 
+  void _loadTrainingLogDataSources() {
     _loadQuickSignedLogsFromFirestore();
     _loadAnatomyLogsFromFirestore();
+    if (_isPersonalWorkspace) {
+      _loadFemaleConditionFromMember();
+      return;
+    }
     _loadGoalDdaysFromFirestore().then((_) {
       if (!mounted) return;
       _syncNextMoreDaySummaryToMember();
     });
     _loadFemaleConditionFromMember();
+  }
+
+  Future<void> _resolvePersonalEntryAccess(String owner) async {
+    final allowed = await PersonalTrainingLogEntryGuard.guard(
+      context: context,
+      ownerUid: owner,
+      memberId: widget.memberId ?? '',
+      loadAccess: () =>
+          AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+      entryPoint: 'personal_training_log_direct_route',
+    );
+    if (!mounted) return;
+    setState(() {
+      _entryAccessResolved = true;
+      _entryAccessAllowed = allowed;
+    });
+    if (!allowed && mounted) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    await _loadTierAccess();
+    if (!mounted) return;
+    _loadTrainingLogDataSources();
   }
 
   DateTime? _quickLogDateFromAny(dynamic value) {
@@ -943,16 +1007,36 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     }
   }
 
+  Query<Map<String, dynamic>> _trainingLogsQuery(String memberId) {
+    var query = FirebaseFirestore.instance
+        .collection('training_logs')
+        .where('memberId', isEqualTo: memberId);
+    if (!_isPersonalWorkspace) return query;
+
+    query = query
+        .where('trainerId', isEqualTo: _personalOwnerUid)
+        .where('workspaceType', isEqualTo: 'personal');
+    return query;
+  }
+
+  void _logFirestoreReadFailure({
+    required String source,
+    required Object error,
+  }) {
+    final errorCode =
+        error is FirebaseException ? error.code : error.runtimeType.toString();
+    debugPrint(
+      '[MTF_TRAINING_LOG_READ] source=$source result=failure '
+      'errorCode=$errorCode identifiersLogged=false',
+    );
+  }
+
   Future<void> _loadQuickSignedLogsFromFirestore() async {
     final memberId = (widget.memberId ?? '').trim();
     if (memberId.isEmpty) return;
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('training_logs')
-          .where('memberId', isEqualTo: memberId)
-          .where('quickSignedOnly', isEqualTo: true)
-          .get();
+      final snapshot = await _trainingLogsQuery(memberId).get();
 
       if (!mounted) return;
 
@@ -960,6 +1044,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
+        if (data['quickSignedOnly'] != true) continue;
 
         final rawStartAt = data['startAt'];
         final startAt = _quickLogDateFromAny(rawStartAt) ?? DateTime.now();
@@ -1051,8 +1136,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           _logs.add(log);
         }
       });
-    } catch (e) {
-      debugPrint('빠른 서명 로그 불러오기 실패: $e');
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'quick_signed_logs', error: error);
     }
   }
 
@@ -1061,10 +1146,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     if (memberId.isEmpty) return;
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('training_logs')
-          .where('memberId', isEqualTo: memberId)
-          .get();
+      final snapshot = await _trainingLogsQuery(memberId).get();
       if (!mounted) return;
 
       final nextLogs = <_TrainingLogItem>[];
@@ -1108,7 +1190,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         }
       });
     } catch (error) {
-      debugPrint('해부학 레슨일지 불러오기 실패: $error');
+      _logFirestoreReadFailure(source: 'anatomy_logs', error: error);
     }
   }
 
@@ -1367,7 +1449,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   Future<void> _loadTierAccess() async {
     try {
-      final access = await AppTierAccessService.loadTrainerAccess();
+      final owner = widget.personalOwnerUid?.trim() ?? '';
+      final access = owner.isEmpty
+          ? await AppTierAccessService.loadTrainerAccess()
+          : await AppTierAccessService.loadPersonalTrainerAccess(uid: owner);
 
       if (!mounted) return;
 
@@ -1386,11 +1471,14 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Future<bool> _guardDdayFeature() async {
+    final owner = widget.personalOwnerUid?.trim() ?? '';
     return AifcTierFeatureGateSheet.guard(
       context: context,
       access: _tierAccess,
       feature: AppTierFeatureKey.dday,
-      loadAccess: AppTierAccessService.loadTrainerAccess,
+      loadAccess: owner.isEmpty
+          ? AppTierAccessService.loadTrainerAccess
+          : () => AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
       onShowTierGuide: (info) async {
         _showSnack(
             '${info.requiredTierLabel} 안내는 마이페이지의 등급 안내에서 다시 확인할 수 있어요.');
@@ -1920,6 +2008,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_entryAccessResolved || !_entryAccessAllowed) {
+      return const Scaffold(
+        backgroundColor: kLogBgColor,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final headerName = (widget.memberName ?? '').trim();
     final headerTrainer = (widget.trainerName ?? '').trim();
 
@@ -2704,16 +2798,26 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       'lastTrainingLogId',
     ];
 
-    for (final field in fields) {
-      final snap = await db
-          .collection('schedules')
-          .where(field, isEqualTo: logDocId)
-          .limit(1)
-          .get();
+    try {
+      for (final field in fields) {
+        Query<Map<String, dynamic>> query =
+            db.collection('schedules').where(field, isEqualTo: logDocId);
+        if (_isPersonalWorkspace) {
+          final memberId = (widget.memberId ?? '').trim();
+          if (memberId.isEmpty) return null;
+          query = query
+              .where('trainerId', isEqualTo: _personalOwnerUid)
+              .where('workspaceType', isEqualTo: 'personal')
+              .where('memberId', isEqualTo: memberId);
+        }
+        final snap = await query.limit(1).get();
 
-      if (snap.docs.isNotEmpty) {
-        return snap.docs.first.reference;
+        if (snap.docs.isNotEmpty) {
+          return snap.docs.first.reference;
+        }
       }
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'schedule_for_log', error: error);
     }
 
     return null;

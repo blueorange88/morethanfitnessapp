@@ -1346,16 +1346,7 @@ class _MyPageState extends State<MyPage> {
     }
     _logPersonalProfileValidation();
     if (!_formKey.currentState!.validate()) {
-      if (validateTrainerEnglishName(_nameEnController.text) != null) {
-        final fieldContext = _englishNameFieldKey.currentContext;
-        if (fieldContext != null) {
-          await Scrollable.ensureVisible(
-            fieldContext,
-            alignment: 0.2,
-            duration: const Duration(milliseconds: 250),
-          );
-        }
-      }
+      await _scrollToFirstInvalidProfileField();
       return false;
     }
     setState(() => _isSaving = true);
@@ -1650,6 +1641,44 @@ class _MyPageState extends State<MyPage> {
       if (mounted) _showSnack('임시 보관하지 못했어요. 입력 내용은 화면에 남아 있어요.');
       return false;
     }
+  }
+
+  Future<void> _scrollToFirstInvalidProfileField() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    final formContext = _formKey.currentContext;
+    if (formContext == null) return;
+
+    Element? firstInvalidElement;
+    double? firstInvalidDy;
+
+    void inspect(Element element) {
+      if (element is StatefulElement &&
+          element.state is FormFieldState<dynamic>) {
+        final state = element.state as FormFieldState<dynamic>;
+        final renderObject = element.renderObject;
+        if (state.hasError && renderObject is RenderBox) {
+          final dy = renderObject.localToGlobal(Offset.zero).dy;
+          if (firstInvalidDy == null || dy < firstInvalidDy!) {
+            firstInvalidDy = dy;
+            firstInvalidElement = element;
+          }
+        }
+      }
+      element.visitChildren(inspect);
+    }
+
+    formContext.visitChildElements(inspect);
+    final invalidContext = firstInvalidElement;
+    if (invalidContext == null) return;
+
+    await Scrollable.ensureVisible(
+      invalidContext,
+      alignment: 0.2,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
   }
 
   Future<void> _requestExit() async {

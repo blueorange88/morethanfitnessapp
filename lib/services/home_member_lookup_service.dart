@@ -48,8 +48,8 @@ class HomeMemberLookupService {
           (data['deleteStatus'] ?? '').toString() != 'pending_delete';
       if (kDebugMode) {
         debugPrint(
-          '[MTF_RECENT_MEMBER] uid=${owner.isEmpty ? 'legacy' : owner} '
-          'workspace=${owner.isEmpty ? 'legacy' : 'personal'} source=$source '
+          '[MTF_RECENT_MEMBER] '
+          'ownerScope=${owner.isEmpty ? 'legacy' : 'personal'} source=$source '
           'candidateCount=1 validatedCount=${active ? 1 : 0} '
           'ownerValidated=$ownerValid',
         );
@@ -58,8 +58,8 @@ class HomeMemberLookupService {
     } catch (error) {
       if (kDebugMode) {
         debugPrint(
-          '[MTF_RECENT_MEMBER] uid=${owner.isEmpty ? 'legacy' : owner} '
-          'workspace=${owner.isEmpty ? 'legacy' : 'personal'} source=$source '
+          '[MTF_RECENT_MEMBER] '
+          'ownerScope=${owner.isEmpty ? 'legacy' : 'personal'} source=$source '
           'candidateCount=1 validatedCount=0 ownerValidated=false '
           'errorType=${error.runtimeType}',
         );

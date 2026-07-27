@@ -24,6 +24,7 @@ import {
 import {
   createManagedMemberHandler,
   transitionManagedMemberStateHandler,
+  updateManagedMemberConsentHandler,
   updateManagedMemberHandler,
 } from "./managed_members.js";
 import {
@@ -72,6 +73,9 @@ exports.transitionManagedMemberState = personalFunctions.https.onCall(
 );
 exports.updateManagedMember = personalFunctions.https.onCall(
   updateManagedMemberHandler(db),
+);
+exports.updateManagedMemberConsent = personalFunctions.https.onCall(
+  updateManagedMemberConsentHandler(db),
 );
 exports.finalizePersonalTrainingLog = personalFunctions.https.onCall(
   finalizePersonalTrainingLogHandler(db),

@@ -4,9 +4,41 @@ import 'package:flutter/material.dart';
 /// 수업일지 / PT 로그용 개인정보 수집·이용 동의 페이지
 /// - 홈 페이지처럼 모바일 기준(최대 480px) 레이아웃
 /// - 모어댄 컬러(인디고+퍼플 그라데이션) 사용
-/// - 확인 버튼 누르면 Navigator.pop(context, true), 취소는 false
-class TrainingLogConsentPage extends StatelessWidget {
-  const TrainingLogConsentPage({super.key});
+/// - 저장 callback이 있으면 서버 저장 성공 뒤에만 true를 반환한다.
+class TrainingLogConsentPage extends StatefulWidget {
+  const TrainingLogConsentPage({
+    super.key,
+    this.onAgree,
+  });
+
+  final Future<void> Function()? onAgree;
+
+  @override
+  State<TrainingLogConsentPage> createState() => _TrainingLogConsentPageState();
+}
+
+class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
+  bool _saving = false;
+  String? _saveError;
+
+  Future<void> _submitAgreement() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
+    try {
+      await widget.onAgree?.call();
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = '동의를 저장하지 못했어요. 입력 상태를 유지했으니 다시 시도해주세요.';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,10 +188,11 @@ class TrainingLogConsentPage extends StatelessWidget {
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: () {
-                                // 동의 안 함
-                                Navigator.of(context).pop(false);
-                              },
+                              onPressed: _saving
+                                  ? null
+                                  : () {
+                                      Navigator.of(context).pop(false);
+                                    },
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.black87,
                                 side: BorderSide(color: Colors.grey.shade400),
@@ -175,26 +208,45 @@ class TrainingLogConsentPage extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () {
-                                // 동의
-                                Navigator.of(context).pop(true);
-                              },
+                              onPressed: _saving ? null : _submitAgreement,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF4F46E5),
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              child: const Text(
-                                '동의하고 계속하기',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              child: _saving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      '동의하고 계속하기',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],
                       ),
+                      if (_saveError != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          _saveError!,
+                          key: const Key('training_log_consent_save_error'),
+                          style: const TextStyle(
+                            color: Color(0xFFB91C1C),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 12),
                       const Center(

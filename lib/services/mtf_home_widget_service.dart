@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 
 import '../models/widget_theme.dart';
@@ -10,6 +13,15 @@ class MtfHomeWidgetService {
 
   static const String keyActiveOffset = 'mtf_widget_active_offset';
   static const String keyPersonalOwnerUid = 'mtf_widget_personal_owner_uid';
+  static const String keyPersonalEnvironment =
+      'mtf_widget_personal_environment';
+  static const String keyPersonalProjectId = 'mtf_widget_personal_project_id';
+  static const String keyPersonalWorkspaceType =
+      'mtf_widget_personal_workspace_type';
+  static const String keyTodayRollupGeneratedAt =
+      'mtf_widget_today_rollup_generated_at_millis';
+  static const String keyTodayRollupLocalDate =
+      'mtf_widget_today_rollup_local_date';
 
   static const String keyTitle0 = 'mtf_widget_title_0';
   static const String keyHeader0 = 'mtf_widget_header_0';
@@ -48,8 +60,7 @@ class MtfHomeWidgetService {
   static const String keySecondLessonType = 'mtf_widget_second_lesson_type';
   static const String keySecondLessonMemo = 'mtf_widget_second_lesson_memo';
 
-  static const String keyTodayRollupItems =
-      'mtf_widget_today_rollup_items_v1';
+  static const String keyTodayRollupItems = 'mtf_widget_today_rollup_items_v1';
 
   static const String keyWidgetThemeMode = 'mtf_widget_theme_mode';
 
@@ -65,8 +76,20 @@ class MtfHomeWidgetService {
     return HomeWidget.saveWidgetData<String>(keyPersonalOwnerUid, uid.trim());
   }
 
-  static Future<void> clearPersonalScheduleData() async {
+  static Future<void> clearPersonalScheduleData({
+    MtfHomeWidgetStorage? storage,
+  }) async {
+    if (storage != null) {
+      await _clearIdentityBoundScheduleData(storage);
+      await storage.updateTodayLessonRollup();
+      return;
+    }
     await HomeWidget.saveWidgetData<String>(keyPersonalOwnerUid, '');
+    await HomeWidget.saveWidgetData<String>(keyPersonalEnvironment, '');
+    await HomeWidget.saveWidgetData<String>(keyPersonalProjectId, '');
+    await HomeWidget.saveWidgetData<String>(keyPersonalWorkspaceType, '');
+    await HomeWidget.saveWidgetData<int>(keyTodayRollupGeneratedAt, 0);
+    await HomeWidget.saveWidgetData<String>(keyTodayRollupLocalDate, '');
     await HomeWidget.saveWidgetData<int>(keyActiveOffset, 0);
     await HomeWidget.saveWidgetData<String>(keyTitle0, '이번 주 스케줄');
     await HomeWidget.saveWidgetData<String>(keyHeader0, '');
@@ -179,6 +202,183 @@ class MtfHomeWidgetService {
       qualifiedAndroidName:
           'com.example.mtf_app.MtfTodayLessonRollupWidgetReceiver',
     );
+  }
+
+  static Future<void> syncVerifiedPersonalTodayLessonRollup({
+    required String ownerUid,
+    required String environment,
+    required String projectId,
+    required String workspaceType,
+    required DateTime generatedAt,
+    required String encodedItems,
+    required int payloadRevision,
+    required int scheduleSourceCount,
+    required int todayCandidateCount,
+    required int payloadItemCount,
+    required String source,
+    MtfHomeWidgetStorage? storage,
+  }) async {
+    final cleanOwnerUid = ownerUid.trim();
+    final cleanEnvironment = environment.trim();
+    final cleanProjectId = projectId.trim();
+    final cleanWorkspaceType = workspaceType.trim();
+    final localDate = _seoulDateKey(generatedAt);
+    final targetStorage = storage ?? const HomeWidgetPluginStorage();
+
+    if (cleanOwnerUid.isEmpty ||
+        cleanEnvironment.isEmpty ||
+        cleanProjectId.isEmpty ||
+        cleanWorkspaceType != 'personal') {
+      throw StateError('invalid_personal_widget_identity');
+    }
+
+    var ownerWrite = false;
+    var ownerReadback = false;
+    var ownerKeyPresentBefore = false;
+    var environmentMatched = false;
+    var workspaceMatched = false;
+    var payloadWrite = false;
+    var payloadReadback = false;
+    var readbackItemCount = -1;
+    var readbackRevision = -1;
+    var localDateMatched = false;
+    var staleRevisionIgnored = false;
+    var updateTriggered = false;
+    var result = 'failure';
+    var errorCode = 'none';
+    try {
+      final previousOwner =
+          (await targetStorage.readString(keyPersonalOwnerUid)).trim();
+      ownerKeyPresentBefore = previousOwner.isNotEmpty;
+      if (previousOwner.isNotEmpty && previousOwner != cleanOwnerUid) {
+        await _clearIdentityBoundScheduleData(targetStorage);
+      }
+
+      await targetStorage.writeString(keyPersonalOwnerUid, cleanOwnerUid);
+      await targetStorage.writeString(
+        keyPersonalEnvironment,
+        cleanEnvironment,
+      );
+      await targetStorage.writeString(keyPersonalProjectId, cleanProjectId);
+      await targetStorage.writeString(
+        keyPersonalWorkspaceType,
+        cleanWorkspaceType,
+      );
+      await targetStorage.writeInt(
+        keyTodayRollupGeneratedAt,
+        generatedAt.millisecondsSinceEpoch,
+      );
+      await targetStorage.writeString(keyTodayRollupLocalDate, localDate);
+      ownerWrite = true;
+
+      final ownerMatched =
+          (await targetStorage.readString(keyPersonalOwnerUid)).trim() ==
+              cleanOwnerUid;
+      environmentMatched =
+          (await targetStorage.readString(keyPersonalEnvironment)).trim() ==
+                  cleanEnvironment &&
+              (await targetStorage.readString(keyPersonalProjectId)).trim() ==
+                  cleanProjectId;
+      workspaceMatched =
+          (await targetStorage.readString(keyPersonalWorkspaceType)).trim() ==
+              cleanWorkspaceType;
+      ownerReadback = ownerMatched &&
+          environmentMatched &&
+          workspaceMatched &&
+          await targetStorage.readInt(keyTodayRollupGeneratedAt) ==
+              generatedAt.millisecondsSinceEpoch &&
+          (await targetStorage.readString(keyTodayRollupLocalDate)).trim() ==
+              localDate;
+      if (!ownerReadback) {
+        throw StateError('personal_widget_owner_readback_failed');
+      }
+
+      final previousPayload =
+          await targetStorage.readString(keyTodayRollupItems);
+      if (previousPayload.trim().startsWith('{')) {
+        try {
+          final previousJson =
+              jsonDecode(previousPayload) as Map<String, dynamic>;
+          final previousRevision =
+              (previousJson['payloadRevision'] as num?)?.toInt() ?? 0;
+          if (previousRevision > payloadRevision) {
+            staleRevisionIgnored = true;
+            result = 'stale_ignored';
+            return;
+          }
+        } catch (_) {
+          // schema v1 또는 손상된 과거 payload는 정상 schema v2로 덮어쓴다.
+        }
+      }
+
+      await targetStorage.writeString(keyTodayRollupItems, encodedItems);
+      payloadWrite = true;
+      final readbackEncoded =
+          await targetStorage.readString(keyTodayRollupItems);
+      final readback = jsonDecode(readbackEncoded) as Map<String, dynamic>;
+      readbackItemCount = (readback['items'] as List?)?.length ?? -1;
+      readbackRevision = (readback['payloadRevision'] as num?)?.toInt() ?? -1;
+      localDateMatched = readback['localDate'] == localDate;
+      payloadReadback = readbackEncoded == encodedItems &&
+          readback['schemaVersion'] == 2 &&
+          readbackRevision == payloadRevision &&
+          readbackItemCount == payloadItemCount &&
+          localDateMatched;
+      if (!payloadReadback) {
+        throw StateError('personal_widget_payload_readback_failed');
+      }
+
+      await targetStorage.updateTodayLessonRollup();
+      updateTriggered = true;
+      result = 'success';
+    } catch (_) {
+      errorCode = !ownerWrite
+          ? 'owner_write_failed'
+          : !ownerReadback
+              ? 'owner_readback_failed'
+              : !payloadWrite
+                  ? 'payload_write_failed'
+                  : !payloadReadback
+                      ? 'payload_readback_failed'
+                      : 'widget_update_failed';
+      try {
+        await targetStorage.writeString(keyTodayRollupItems, '[]');
+      } catch (_) {}
+      try {
+        await targetStorage.writeString(keyPersonalOwnerUid, '');
+      } catch (_) {}
+      try {
+        await targetStorage.updateTodayLessonRollup();
+      } catch (_) {
+        // 원래 저장 오류를 보존한다. 다음 appStart/resume이 self-heal을 재시도한다.
+      }
+      rethrow;
+    } finally {
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_DAILY_WIDGET_OWNER] '
+          'source=$source authUidPresent=${cleanOwnerUid.isNotEmpty} '
+          'ownerKeyPresentBefore=$ownerKeyPresentBefore '
+          'ownerKeyWritten=$ownerWrite ownerMatchedAfter=$ownerReadback '
+          'environmentMatched=$environmentMatched '
+          'workspaceMatched=$workspaceMatched result=$result '
+          'errorCode=$errorCode',
+        );
+        debugPrint(
+          '[MTF_DAILY_WIDGET_PAYLOAD] '
+          'source=$source payloadRevision=$payloadRevision '
+          'scheduleSourceCount=$scheduleSourceCount '
+          'todayCandidateCount=$todayCandidateCount '
+          'payloadItemCount=$payloadItemCount '
+          'localDateMatched=$localDateMatched ownerReady=$ownerReadback '
+          'writeSucceeded=$payloadWrite readbackItemCount=$readbackItemCount '
+          'readbackRevision=$readbackRevision payloadVerified=$payloadReadback '
+          'staleRevisionIgnored=$staleRevisionIgnored '
+          'updateRequested=$updateTriggered result=$result '
+          'errorCode=$errorCode',
+        );
+      }
+    }
   }
 
   static Future<void> rolloverCachedNextWeekToCurrentWeek() async {
@@ -452,4 +652,81 @@ class MtfHomeWidgetService {
       qualifiedAndroidName: _qualifiedAndroidName,
     );
   }
+
+  static String _seoulDateKey(DateTime value) {
+    final seoul = value.toUtc().add(const Duration(hours: 9));
+    return '${seoul.year.toString().padLeft(4, '0')}-'
+        '${seoul.month.toString().padLeft(2, '0')}-'
+        '${seoul.day.toString().padLeft(2, '0')}';
+  }
+
+  static Future<void> _clearIdentityBoundScheduleData(
+    MtfHomeWidgetStorage storage,
+  ) async {
+    for (final key in <String>[
+      keyPersonalOwnerUid,
+      keyPersonalEnvironment,
+      keyPersonalProjectId,
+      keyPersonalWorkspaceType,
+      keyTodayRollupLocalDate,
+      keyTodayRollupItems,
+      keyRows0,
+      keyRows1,
+      keyDays0,
+      keyDays1,
+      keyBlocks0,
+      keyBlocks1,
+      keyNextLessonTime,
+      keyNextLessonName,
+      keyNextLessonType,
+      keyNextLessonMemo,
+      keySecondLessonTime,
+      keySecondLessonName,
+      keySecondLessonType,
+      keySecondLessonMemo,
+    ]) {
+      await storage.writeString(key, key == keyTodayRollupItems ? '[]' : '');
+    }
+    await storage.writeInt(keyTodayRollupGeneratedAt, 0);
+  }
+}
+
+abstract interface class MtfHomeWidgetStorage {
+  Future<String> readString(String key);
+
+  Future<int> readInt(String key);
+
+  Future<void> writeString(String key, String value);
+
+  Future<void> writeInt(String key, int value);
+
+  Future<void> updateTodayLessonRollup();
+}
+
+class HomeWidgetPluginStorage implements MtfHomeWidgetStorage {
+  const HomeWidgetPluginStorage();
+
+  @override
+  Future<String> readString(String key) async =>
+      await HomeWidget.getWidgetData<String>(key, defaultValue: '') ?? '';
+
+  @override
+  Future<int> readInt(String key) async =>
+      await HomeWidget.getWidgetData<int>(key, defaultValue: 0) ?? 0;
+
+  @override
+  Future<void> writeString(String key, String value) =>
+      HomeWidget.saveWidgetData<String>(key, value);
+
+  @override
+  Future<void> writeInt(String key, int value) =>
+      HomeWidget.saveWidgetData<int>(key, value);
+
+  @override
+  Future<void> updateTodayLessonRollup() => HomeWidget.updateWidget(
+        name: 'MtfTodayLessonRollupWidgetReceiver',
+        androidName: 'MtfTodayLessonRollupWidgetReceiver',
+        qualifiedAndroidName:
+            'com.example.mtf_app.MtfTodayLessonRollupWidgetReceiver',
+      );
 }
