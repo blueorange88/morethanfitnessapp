@@ -28,6 +28,14 @@ import {
   updateManagedMemberHandler,
 } from "./managed_members.js";
 import {
+  createPersonalGroupHandler,
+  createPersonalTagHandler,
+  deletePersonalGroupHandler,
+  deletePersonalTagHandler,
+  renamePersonalGroupHandler,
+  renamePersonalTagHandler,
+} from "./personal_member_taxonomy.js";
+import {
   cancelPersonalTrainingLogHandler,
   finalizePersonalTrainingLogHandler,
 } from "./personal_training_logs.js";
@@ -76,6 +84,24 @@ exports.updateManagedMember = personalFunctions.https.onCall(
 );
 exports.updateManagedMemberConsent = personalFunctions.https.onCall(
   updateManagedMemberConsentHandler(db),
+);
+exports.createPersonalGroup = personalFunctions.https.onCall(
+  createPersonalGroupHandler(db),
+);
+exports.renamePersonalGroup = personalFunctions.https.onCall(
+  renamePersonalGroupHandler(db),
+);
+exports.deletePersonalGroup = personalFunctions.https.onCall(
+  deletePersonalGroupHandler(db),
+);
+exports.createPersonalTag = personalFunctions.https.onCall(
+  createPersonalTagHandler(db),
+);
+exports.renamePersonalTag = personalFunctions.https.onCall(
+  renamePersonalTagHandler(db),
+);
+exports.deletePersonalTag = personalFunctions.https.onCall(
+  deletePersonalTagHandler(db),
 );
 exports.finalizePersonalTrainingLog = personalFunctions.https.onCall(
   finalizePersonalTrainingLogHandler(db),

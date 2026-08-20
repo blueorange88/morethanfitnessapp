@@ -6,6 +6,8 @@ import 'dev_tier_fixture.dart';
 
 enum AppTierFeatureKey {
   customerCardCreate,
+  personalGroup,
+  personalTag,
   trainingLog,
   lessonInsights,
   dday,
@@ -516,6 +518,26 @@ class AppTierAccessService {
           description: '레슨 일정 10개와 선생님 정보 입력을 완료하면 사용할 수 있어요.',
           shortBenefit: '회원별 고객카드 관리',
           highlightTier: 'amateur',
+        );
+
+      case AppTierFeatureKey.personalGroup:
+        return const AppTierFeatureInfo(
+          feature: AppTierFeatureKey.personalGroup,
+          requiredRank: 1,
+          title: '회원 그룹',
+          description: '회원 그룹 만들기와 고객카드 그룹 지정은 Amateur부터 사용할 수 있어요.',
+          shortBenefit: '회원 그룹 분류',
+          highlightTier: 'amateur',
+        );
+
+      case AppTierFeatureKey.personalTag:
+        return const AppTierFeatureInfo(
+          feature: AppTierFeatureKey.personalTag,
+          requiredRank: 2,
+          title: '회원 태그',
+          description: '복수 태그 관리와 태그 필터는 Semi-Pro부터 사용할 수 있어요.',
+          shortBenefit: '복수 태그 분류·필터',
+          highlightTier: 'semiPro',
         );
 
       case AppTierFeatureKey.trainingLog:

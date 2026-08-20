@@ -56,11 +56,11 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
   final VoidCallback onHideScheduleExamples;
 
   final void Function(
-      int weekOffset,
-      String day,
-      String time,
-      bool hasSession,
-      ) onCellTap;
+    int weekOffset,
+    String day,
+    String time,
+    bool hasSession,
+  ) onCellTap;
 
   final VoidCallback onTimeHeaderTap;
   final VoidCallback onTimeHeaderLongPress;
@@ -72,6 +72,7 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final rows = timeSlots.length + 1;
     final tableHeight = rows * _rowHeight;
     final weekOffset = indexToOffset(weekPageIndex);
@@ -97,9 +98,9 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           softWrap: true,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
-                            color: Colors.black87,
+                            color: colors.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -108,22 +109,22 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
                     const SizedBox(width: 6),
                     GestureDetector(
                       onTap: onToggleHelp,
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             '사용법',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.black54,
+                              color: colors.onSurfaceVariant,
                               decoration: TextDecoration.underline,
                             ),
                           ),
-                          SizedBox(width: 2),
+                          const SizedBox(width: 2),
                           Icon(
                             Icons.help_outline,
                             size: 16,
-                            color: Colors.black54,
+                            color: colors.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -145,11 +146,11 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     onPressed: weekPageIndex > 0
                         ? () {
-                      weekPageController.previousPage(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOut,
-                      );
-                    }
+                            weekPageController.previousPage(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                            );
+                          }
                         : null,
                   ),
                   IconButton(
@@ -157,11 +158,11 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     onPressed: weekPageIndex < totalWeeks - 1
                         ? () {
-                      weekPageController.nextPage(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOut,
-                      );
-                    }
+                            weekPageController.nextPage(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut,
+                            );
+                          }
                         : null,
                   ),
                 ],
@@ -170,15 +171,15 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           if (showScheduleHelp) ...[
-            const Text(
+            Text(
               "· 좌우 스와이프해서 지난 주 / 이번 주 / 다음 주는 물론 앞뒤 4주까지 볼 수 있어요.\n"
-                  "· 빈 칸을 탭하면 레슨일정을 등록할 수 있어요.\n"
-                  "· ‘시간’ 칸을 누르면 첫/마지막 시간을 설정할 수 있고, 길게 누르면 전체 시작 분을 바꿀 수 있어요.\n"
-                  "· 06시, 07시 같은 숫자 시간 칸을 길게 누르면 해당 시간 줄만 조정할 수 있어요.\n"
-                  "· 제목을 길게 누르거나 ⋮ 버튼을 누르면 스케줄표 관리 메뉴가 열려요.",
+              "· 빈 칸을 탭하면 레슨일정을 등록할 수 있어요.\n"
+              "· ‘시간’ 칸을 누르면 첫/마지막 시간을 설정할 수 있고, 길게 누르면 전체 시작 분을 바꿀 수 있어요.\n"
+              "· 06시, 07시 같은 숫자 시간 칸을 길게 누르면 해당 시간 줄만 조정할 수 있어요.\n"
+              "· 제목을 길게 누르거나 ⋮ 버튼을 누르면 스케줄표 관리 메뉴가 열려요.",
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.black54,
+                color: colors.onSurfaceVariant,
                 height: 1.4,
               ),
             ),
@@ -222,27 +223,27 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: const Color(0xFFE5E7EB),
+                  color: colors.outline,
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.info_outline_rounded,
                     size: 18,
-                    color: Color(0xFF6B7280),
+                    color: colors.onSurfaceVariant,
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '저 AI FC가 예시 레슨을 먼저 올려뒀어요. 실제 레슨을 3개 이상 등록하면 자연스럽게 사라져요.',
                       style: TextStyle(
                         fontSize: 11.5,
                         height: 1.35,
-                        color: Color(0xFF4B5563),
+                        color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

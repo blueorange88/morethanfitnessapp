@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../theme/app_colors.dart';
 import 'home_time_dialog_parts.dart';
 
 class HomeTimeRangeDialog {
@@ -139,7 +140,7 @@ class HomeTimeRangeDialog {
                       Flexible(
                         child: SingleChildScrollView(
                           keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
+                              ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.fromLTRB(16, 13, 16, 10),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -229,7 +230,8 @@ class HomeTimeRangeDialog {
                                         controller: startTextController,
                                         keyboardType: TextInputType.number,
                                         inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly,
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
                                           const HomeMaxNumberInputFormatter(
                                             max: 23,
                                           ),
@@ -238,16 +240,18 @@ class HomeTimeRangeDialog {
                                           labelText: '시작',
                                           hintText: '0~23',
                                           filled: true,
-                                          fillColor: const Color(0xFFF8FAFC),
+                                          fillColor: Theme.of(dialogContext)
+                                              .inputDecorationTheme
+                                              .fillColor,
                                           isDense: true,
                                           contentPadding:
-                                          const EdgeInsets.symmetric(
+                                              const EdgeInsets.symmetric(
                                             horizontal: 10,
                                             vertical: 10,
                                           ),
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -255,7 +259,7 @@ class HomeTimeRangeDialog {
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -263,7 +267,7 @@ class HomeTimeRangeDialog {
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,
@@ -278,7 +282,8 @@ class HomeTimeRangeDialog {
                                         controller: endTextController,
                                         keyboardType: TextInputType.number,
                                         inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly,
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
                                           const HomeMaxNumberInputFormatter(
                                             max: 23,
                                           ),
@@ -287,16 +292,18 @@ class HomeTimeRangeDialog {
                                           labelText: '종료',
                                           hintText: '0~23',
                                           filled: true,
-                                          fillColor: const Color(0xFFF8FAFC),
+                                          fillColor: Theme.of(dialogContext)
+                                              .inputDecorationTheme
+                                              .fillColor,
                                           isDense: true,
                                           contentPadding:
-                                          const EdgeInsets.symmetric(
+                                              const EdgeInsets.symmetric(
                                             horizontal: 10,
                                             vertical: 10,
                                           ),
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -304,7 +311,7 @@ class HomeTimeRangeDialog {
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -312,7 +319,7 @@ class HomeTimeRangeDialog {
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,
@@ -342,7 +349,8 @@ class HomeTimeRangeDialog {
                                   vertical: 7,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
+                                  color:
+                                      dialogContext.mtfThemeTokens.cardSurface,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(

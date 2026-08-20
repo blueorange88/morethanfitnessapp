@@ -7,9 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-
-
-
+import '../theme/app_colors.dart';
 
 const Color kMembershipContractPrimary = Color(0xFF4F46E5);
 const Color kMembershipContractBg = Color(0xFFF8FAFC);
@@ -29,6 +27,7 @@ class MembershipContractPage extends StatefulWidget {
     required this.membershipStartAt,
     required this.membershipEndAt,
     required this.membershipPaused,
+    this.loadExistingDraft = true,
   });
 
   final String memberId;
@@ -40,6 +39,7 @@ class MembershipContractPage extends StatefulWidget {
   final DateTime? membershipStartAt;
   final DateTime? membershipEndAt;
   final bool membershipPaused;
+  final bool loadExistingDraft;
 
   @override
   State<MembershipContractPage> createState() => _MembershipContractPageState();
@@ -93,7 +93,8 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
       text: suggestedPauseDays.toString(),
     );
     _pauseRuleMemoC = TextEditingController(
-      text: '회원권 정지는 계약 기간 내 최대 ${suggestedPauseDays}일까지 가능하며, 정지 기간만큼 종료일을 연장할 수 있습니다.',
+      text:
+          '회원권 정지는 계약 기간 내 최대 ${suggestedPauseDays}일까지 가능하며, 정지 기간만큼 종료일을 연장할 수 있습니다.',
     );
     _refundRuleMemoC = TextEditingController(
       text: '환불 조건은 센터/강사 운영 정책과 실제 이용 내역을 기준으로 별도 확인합니다.',
@@ -104,7 +105,11 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
 
     _signatureNameC.text = widget.memberName.trim();
 
-    _loadDraftFromFirestore();
+    if (widget.loadExistingDraft) {
+      _loadDraftFromFirestore();
+    } else {
+      _isDraftLoaded = true;
+    }
     _extraMemoC = TextEditingController();
   }
 
@@ -253,17 +258,18 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
           _signatureNameC.text,
         );
         final loadedSignatureUrl =
-        (data['signatureImageUrl'] ?? '').toString().trim();
+            (data['signatureImageUrl'] ?? '').toString().trim();
 
-        _signatureImageUrl = loadedSignatureUrl.isEmpty ? null : loadedSignatureUrl;
+        _signatureImageUrl =
+            loadedSignatureUrl.isEmpty ? null : loadedSignatureUrl;
 
         final loadedContractImageUrl =
-        (data['contractImageUrl'] ?? data['archiveImageUrl'] ?? '')
-            .toString()
-            .trim();
+            (data['contractImageUrl'] ?? data['archiveImageUrl'] ?? '')
+                .toString()
+                .trim();
 
         _contractImageUrl =
-        loadedContractImageUrl.isEmpty ? null : loadedContractImageUrl;
+            loadedContractImageUrl.isEmpty ? null : loadedContractImageUrl;
 
         _contractImageArchivedAt = _dateFromAny(
           data['contractImageArchivedAt'] ?? data['archivedAt'],
@@ -390,7 +396,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
     await WidgetsBinding.instance.endOfFrame;
 
     final boundary = _contractCaptureKey.currentContext?.findRenderObject()
-    as RenderRepaintBoundary?;
+        as RenderRepaintBoundary?;
 
     if (boundary == null) {
       throw Exception('contract_capture_boundary_not_found');
@@ -475,7 +481,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                   const SizedBox(height: 8),
                   Text(
                     '${widget.memberName} 님의 회원권계약서를 서명 완료 상태로 저장할게요.\n'
-                        '이후에는 계약서 기준 정지/연장 조건으로 관리됩니다.',
+                    '이후에는 계약서 기준 정지/연장 조건으로 관리됩니다.',
                     style: const TextStyle(
                       fontSize: 12.5,
                       height: 1.45,
@@ -506,8 +512,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                         child: FilledButton(
                           onPressed: () => Navigator.pop(sheetContext, true),
                           style: FilledButton.styleFrom(
-                            backgroundColor: kMembershipContractPrimary,
-                            foregroundColor: Colors.white,
+                            backgroundColor:
+                                Theme.of(sheetContext).colorScheme.secondary,
+                            foregroundColor:
+                                Theme.of(sheetContext).colorScheme.onSecondary,
                             minimumSize: const Size(0, 46),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -540,7 +548,8 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
       final maxPauseDays =
           int.tryParse(_maxPauseDaysC.text.trim()) ?? _suggestedMaxPauseDays();
 
-      final signatureImageUrl = await _uploadMembershipSignature(signatureBytes);
+      final signatureImageUrl =
+          await _uploadMembershipSignature(signatureBytes);
 
       final contractRef = FirebaseFirestore.instance
           .collection('members')
@@ -674,7 +683,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                   const SizedBox(height: 8),
                   const Text(
                     '현재 화면의 회원권계약서 내용을 이미지로 저장해둘게요.\n'
-                        '나중에 PDF 보관 기능을 붙이면 이 이미지도 함께 활용할 수 있어요.',
+                    '나중에 PDF 보관 기능을 붙이면 이 이미지도 함께 활용할 수 있어요.',
                     style: TextStyle(
                       fontSize: 12.5,
                       height: 1.45,
@@ -705,8 +714,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                         child: FilledButton(
                           onPressed: () => Navigator.pop(sheetContext, true),
                           style: FilledButton.styleFrom(
-                            backgroundColor: kMembershipContractPrimary,
-                            foregroundColor: Colors.white,
+                            backgroundColor:
+                                Theme.of(sheetContext).colorScheme.secondary,
+                            foregroundColor:
+                                Theme.of(sheetContext).colorScheme.onSecondary,
                             minimumSize: const Size(0, 46),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -802,10 +813,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
   }
 
   InputDecoration _inputDecoration(
-      String label, {
-        String? hint,
-        String? suffixText,
-      }) {
+    String label, {
+    String? hint,
+    String? suffixText,
+  }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
@@ -834,12 +845,17 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
   @override
   Widget build(BuildContext context) {
     final membershipDays = _membershipDays();
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     return Scaffold(
-      backgroundColor: kMembershipContractBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: kMembershipContractText,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        flexibleSpace: DecoratedBox(
+          decoration: BoxDecoration(gradient: context.mtfHeaderGradient),
+        ),
         elevation: 0,
         title: const Text(
           '회원권계약서',
@@ -852,28 +868,28 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
         top: false,
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: tokens.cardSurface,
             border: Border(
-              top: BorderSide(color: kMembershipContractBorder),
+              top: BorderSide(color: tokens.cardBorder),
             ),
           ),
           child: FilledButton.icon(
             onPressed: _isSaving ? null : _saveDraft,
             icon: _isSaving
                 ? const SizedBox(
-              width: 17,
-              height: 17,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
+                    width: 17,
+                    height: 17,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.save_outlined),
             label: Text(_isSaving ? '저장 중' : '초안 저장'),
             style: FilledButton.styleFrom(
-              backgroundColor: kMembershipContractPrimary,
-              foregroundColor: Colors.white,
+              backgroundColor: scheme.secondary,
+              foregroundColor: scheme.onSecondary,
               minimumSize: const Size(0, 52),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -907,16 +923,18 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                         _InfoRow(
                           label: '회원권 기간',
                           value:
-                          '${_dateText(widget.membershipStartAt)} ~ ${_dateText(widget.membershipEndAt)}',
+                              '${_dateText(widget.membershipStartAt)} ~ ${_dateText(widget.membershipEndAt)}',
                         ),
                         _InfoRow(
                           label: '총 기간',
-                          value: membershipDays == null ? '-' : '${membershipDays}일',
+                          value: membershipDays == null
+                              ? '-'
+                              : '${membershipDays}일',
                         ),
                         _InfoRow(
                           label: '레슨',
                           value:
-                          '총 ${widget.totalSessions}회 / 잔여 ${widget.remainingSessions}회',
+                              '총 ${widget.totalSessions}회 / 잔여 ${widget.remainingSessions}회',
                         ),
                         _InfoRow(
                           label: '레슨 형태',
@@ -1010,10 +1028,8 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 12),
             _archiveSection(),
-
             const SizedBox(height: 12),
             const _NoticeCard(),
           ],
@@ -1048,7 +1064,8 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
             ),
           ),
           const SizedBox(height: 10),
-          if (_signatureImageUrl != null && _signatureImageUrl!.trim().isNotEmpty) ...[
+          if (_signatureImageUrl != null &&
+              _signatureImageUrl!.trim().isNotEmpty) ...[
             const SizedBox(height: 10),
             Container(
               width: double.infinity,
@@ -1104,9 +1121,8 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
             decoration: BoxDecoration(
-              color: _isSigned
-                  ? const Color(0xFFF0FDF4)
-                  : const Color(0xFFFFFBEB),
+              color:
+                  _isSigned ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _isSigned
@@ -1135,18 +1151,18 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
               onPressed: _isSigned || _isSigning ? null : _completeSignature,
               icon: _isSigning
                   ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.verified_outlined),
               label: Text(_isSigned ? '서명 완료됨' : '서명 완료 처리'),
               style: FilledButton.styleFrom(
-                backgroundColor: kMembershipContractPrimary,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                foregroundColor: Theme.of(context).colorScheme.onSecondary,
                 disabledBackgroundColor: const Color(0xFFE5E7EB),
                 disabledForegroundColor: const Color(0xFF9CA3AF),
                 minimumSize: const Size(0, 48),
@@ -1173,7 +1189,8 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_contractImageUrl != null && _contractImageUrl!.trim().isNotEmpty) ...[
+          if (_contractImageUrl != null &&
+              _contractImageUrl!.trim().isNotEmpty) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -1229,9 +1246,8 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
             decoration: BoxDecoration(
-              color: _isSigned
-                  ? const Color(0xFFF8FAFC)
-                  : const Color(0xFFFFFBEB),
+              color:
+                  _isSigned ? const Color(0xFFF8FAFC) : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _isSigned
@@ -1262,12 +1278,12 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                   : _archiveContractImage,
               icon: _isArchivingImage
                   ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                ),
-              )
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Icon(Icons.cloud_upload_outlined),
               label: Text(
                 _contractImageUrl == null ? '계약서 이미지 보관' : '계약서 이미지 다시 보관',
@@ -1301,17 +1317,11 @@ class _HeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gradient = context.mtfHeaderGradient;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF9333EA),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: gradient,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -1388,15 +1398,16 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.mtfThemeTokens;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.contractDocumentSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: kMembershipContractBorder),
+        border: Border.all(color: tokens.contractDocumentBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -1427,8 +1438,8 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: kMembershipContractText,
+                      style: TextStyle(
+                        color: tokens.contractDocumentText,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
@@ -1437,8 +1448,9 @@ class _SectionCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
-                          color: kMembershipContractMuted,
+                        style: TextStyle(
+                          color: tokens.contractDocumentText
+                              .withValues(alpha: 0.68),
                           fontSize: 11.5,
                           height: 1.35,
                           fontWeight: FontWeight.w700,
@@ -1470,6 +1482,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cleanValue = value.trim().isEmpty ? '-' : value.trim();
+    final tokens = context.mtfThemeTokens;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
@@ -1480,8 +1493,8 @@ class _InfoRow extends StatelessWidget {
             width: 92,
             child: Text(
               label,
-              style: const TextStyle(
-                color: kMembershipContractMuted,
+              style: TextStyle(
+                color: tokens.contractDocumentText.withValues(alpha: 0.68),
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -1490,8 +1503,8 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               cleanValue,
-              style: const TextStyle(
-                color: kMembershipContractText,
+              style: TextStyle(
+                color: tokens.contractDocumentText,
                 fontSize: 12.5,
                 height: 1.35,
                 fontWeight: FontWeight.w800,
@@ -1520,7 +1533,7 @@ class _NoticeCard extends StatelessWidget {
       ),
       child: const Text(
         '지금 단계는 회원권계약서 초안입니다.\n'
-            '다음 단계에서 회원 서명, PDF 보관, 계약서 기반 정지 가능일 검증을 연결하면 됩니다.',
+        '다음 단계에서 회원 서명, PDF 보관, 계약서 기반 정지 가능일 검증을 연결하면 됩니다.',
         style: TextStyle(
           color: Color(0xFF92400E),
           fontSize: 11.5,
@@ -1571,7 +1584,7 @@ class _MembershipSignaturePadPageState
 
     try {
       final boundary = _signatureKey.currentContext?.findRenderObject()
-      as RenderRepaintBoundary?;
+          as RenderRepaintBoundary?;
 
       if (boundary == null) {
         throw Exception('signature_boundary_not_found');
@@ -1604,11 +1617,16 @@ class _MembershipSignaturePadPageState
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF111827),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        flexibleSpace: DecoratedBox(
+          decoration: BoxDecoration(gradient: context.mtfHeaderGradient),
+        ),
         elevation: 0,
         title: const Text(
           '회원권계약서 서명',
@@ -1619,6 +1637,7 @@ class _MembershipSignaturePadPageState
         actions: [
           TextButton(
             onPressed: _clear,
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text(
               '지우기',
               style: TextStyle(
@@ -1632,11 +1651,11 @@ class _MembershipSignaturePadPageState
         top: false,
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: tokens.cardSurface,
             border: Border(
               top: BorderSide(
-                color: Color(0xFFE5E7EB),
+                color: tokens.cardBorder,
               ),
             ),
           ),
@@ -1664,8 +1683,8 @@ class _MembershipSignaturePadPageState
                 child: FilledButton(
                   onPressed: _save,
                   style: FilledButton.styleFrom(
-                    backgroundColor: kMembershipContractPrimary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: scheme.secondary,
+                    foregroundColor: scheme.onSecondary,
                     minimumSize: const Size(0, 48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -1711,10 +1730,10 @@ class _MembershipSignaturePadPageState
             child: Container(
               height: 280,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: tokens.signatureCanvasSurface,
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: const Color(0xFFD1D5DB),
+                  color: tokens.contractDocumentBorder,
                   width: 1.2,
                 ),
               ),

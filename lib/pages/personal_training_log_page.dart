@@ -23,6 +23,7 @@ import 'package:flutter/rendering.dart';
 import '../services/member_smart_alarm_context_service.dart';
 import '../services/more_care_slot_service.dart';
 import '../services/app_tier_access_service.dart';
+import '../services/member_sign_url_service.dart';
 
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
 import '../widgets/personal_training_log_entry_guard.dart';
@@ -30,15 +31,13 @@ import '../widgets/mtf_header_neon_overlay.dart';
 
 import '../aifc/core/aifc_chat_sheet.dart';
 import '../aifc/widget/aifc_log_manage_chat_sheet.dart';
+import '../theme/app_colors.dart';
 
 const Color kLogBgColor = Color(0xFFF3F4F6);
 const Color kLogCardColor = Colors.white;
 const Color kLogBorderColor = Color(0xFFE5E7EB);
 const double kLogPageHorizontalPadding = 16;
 const double kLogMaxContentWidth = 520;
-
-const String kMemberSignBaseUrl =
-    'https://more-than-fitness-f6adb.web.app/sign';
 
 class PersonalTrainingLogPage extends StatefulWidget {
   final String? memberId;
@@ -2009,9 +2008,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   @override
   Widget build(BuildContext context) {
     if (!_entryAccessResolved || !_entryAccessAllowed) {
-      return const Scaffold(
-        backgroundColor: kLogBgColor,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
     final headerName = (widget.memberName ?? '').trim();
@@ -2045,7 +2044,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             isTablet ? kLogMaxContentWidth : constraints.maxWidth;
 
         return Scaffold(
-          backgroundColor: kLogBgColor,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Center(
             child: SizedBox(
               width: width,
@@ -2257,15 +2256,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Widget _buildSearchBar() {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.trainingLogSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: tokens.trainingLogSetDivider),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: scheme.shadow.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -2273,10 +2274,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.search_rounded,
             size: 20,
-            color: Colors.black45,
+            color: scheme.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -2303,10 +2304,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                   _searchQuery = '';
                 });
               },
-              icon: const Icon(
+              icon: Icon(
                 Icons.close_rounded,
                 size: 18,
-                color: Colors.black45,
+                color: scheme.onSurfaceVariant,
               ),
             ),
         ],
@@ -2316,6 +2317,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   Widget _buildMoreFilterToggleChip() {
     final opened = _showMoreLogFilters;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     return InkWell(
       onTap: () {
@@ -2327,10 +2330,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: opened ? const Color(0xFFF3F4F6) : Colors.white,
+          color: opened ? tokens.trainingLogSetRow : tokens.trainingLogSurface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: const Color(0xFFE5E7EB),
+            color: tokens.trainingLogSetDivider,
           ),
         ),
         child: Row(
@@ -2339,15 +2342,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             Icon(
               opened ? Icons.keyboard_arrow_up_rounded : Icons.add_rounded,
               size: 15,
-              color: Colors.black54,
+              color: scheme.onSurfaceVariant,
             ),
             const SizedBox(width: 4),
             Text(
               opened ? '접기' : '더보기',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
-                color: Colors.black54,
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -2357,23 +2360,25 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Widget _buildDateSectionHeader(DateTime date) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 8),
       child: Row(
         children: [
           Text(
             _fmtDotYmd(date),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: scheme.onSurface,
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Container(
               height: 1,
-              color: const Color(0xFFE5E7EB),
+              color: tokens.trainingLogSetDivider,
             ),
           ),
         ],
@@ -2383,6 +2388,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   Widget _buildFilterChip(String label, String value) {
     final selected = _logFilter == value;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     return InkWell(
       onTap: () {
@@ -2394,10 +2401,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF4F46E5) : Colors.white,
+          color: selected ? scheme.secondary : tokens.trainingLogSurface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? const Color(0xFF4F46E5) : const Color(0xFFE5E7EB),
+            color: selected ? scheme.secondary : tokens.trainingLogSetDivider,
           ),
         ),
         child: Text(
@@ -2405,7 +2412,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           style: TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w800,
-            color: selected ? Colors.white : Colors.black87,
+            color: selected ? scheme.onSecondary : scheme.onSurface,
           ),
         ),
       ),
@@ -2413,6 +2420,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Widget _buildCreateButton() {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         SizedBox(
@@ -2420,8 +2428,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           child: FilledButton.icon(
             onPressed: _openNewLogSheet,
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF4F46E5),
-              foregroundColor: Colors.white,
+              backgroundColor: scheme.secondary,
+              foregroundColor: scheme.onSecondary,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -2443,9 +2451,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           child: OutlinedButton.icon(
             onPressed: _openMemberSignRequestSheetFromLogPage,
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF4F46E5),
+              foregroundColor: scheme.secondary,
               side: BorderSide(
-                color: const Color(0xFF4F46E5).withOpacity(0.24),
+                color: scheme.secondary.withValues(alpha: 0.44),
               ),
               padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(
@@ -2467,22 +2475,23 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Widget _buildNoticeBox() {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
+        color: scheme.secondaryContainer,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD7EAFE)),
+        border: Border.all(color: scheme.secondary.withValues(alpha: 0.44)),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             Icons.info_outline_rounded,
             size: 18,
-            color: Color(0xFF1D4ED8),
+            color: scheme.onSecondaryContainer,
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               "• 달력에서 표시된 날만 레슨 기록이 있어요\n"
@@ -2491,7 +2500,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               "• 카드에는 핵심만, 자세한 내용은 탭해서 확인해요",
               style: TextStyle(
                 fontSize: 11.5,
-                color: Color(0xFF1F2937),
+                color: scheme.onSecondaryContainer,
                 height: 1.45,
                 fontWeight: FontWeight.w600,
               ),
@@ -2504,18 +2513,20 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   Widget _buildLogList() {
     final logs = _filteredLogs();
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     if (logs.isEmpty) {
       return Container(
         margin: const EdgeInsets.only(top: 2),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: kLogCardColor,
+          color: tokens.trainingLogSurface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: kLogBorderColor),
+          border: Border.all(color: tokens.trainingLogSetDivider),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: scheme.shadow.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -2526,7 +2537,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             Icon(
               Icons.note_alt_outlined,
               size: 20,
-              color: Colors.grey,
+              color: scheme.onSurfaceVariant,
             ),
             SizedBox(width: 8),
             Expanded(
@@ -2534,9 +2545,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                 _searchQuery.isNotEmpty
                     ? "검색 결과가 없어요.\n다른 키워드로 다시 검색해보세요."
                     : "조건에 맞는 레슨일지가 없어요.\n필터를 바꾸거나 새 기록을 작성해보세요.",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.5,
-                  color: Colors.black54,
+                  color: scheme.onSurfaceVariant,
                   height: 1.45,
                   fontWeight: FontWeight.w600,
                 ),
@@ -3373,7 +3384,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   String _buildMemberSignUrl(String token) {
-    return '$kMemberSignBaseUrl?t=$token';
+    return MemberSignUrlService.build(token).toString();
   }
 
   String _quickSignLogIdForCurrentLogPage() {
@@ -3474,7 +3485,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                   const SizedBox(height: 4),
                   Text(
                     '${(widget.memberName ?? '').trim().isEmpty ? '회원' : widget.memberName!.trim()} 님에게 서명 링크를 공유하세요.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       height: 1.35,
                       color: Color(0xFF6B7280),
@@ -3725,10 +3736,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
+        final tokens = sheetContext.mtfThemeTokens;
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: tokens.sheetBackground,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: SafeArea(
             top: false,
@@ -4851,19 +4863,21 @@ class _EntryMethodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
       child: Container(
         decoration: BoxDecoration(
-          color: locked ? const Color(0xFFF8FAFC) : Colors.white,
+          color: locked ? scheme.surfaceContainerHighest : tokens.cardSurface,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: locked ? const Color(0xFFE5E7EB) : const Color(0xFFD1D5DB),
+            color: locked ? scheme.outlineVariant : tokens.cardBorder,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: scheme.shadow.withOpacity(0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -4881,15 +4895,15 @@ class _EntryMethodTile extends StatelessWidget {
                     height: 42,
                     decoration: BoxDecoration(
                       color: locked
-                          ? const Color(0xFFE5E7EB)
-                          : const Color(0xFFEEF2FF),
+                          ? scheme.surfaceContainerHighest
+                          : scheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
                       icon,
                       color: locked
-                          ? const Color(0xFF6B7280)
-                          : const Color(0xFF4F46E5),
+                          ? scheme.onSurfaceVariant
+                          : scheme.onSecondaryContainer,
                     ),
                   ),
                   const Spacer(),
@@ -4898,7 +4912,8 @@ class _EntryMethodTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: locked ? Colors.black54 : Colors.black87,
+                      color:
+                          locked ? scheme.onSurfaceVariant : scheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -4908,7 +4923,7 @@ class _EntryMethodTile extends StatelessWidget {
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       height: 1.4,
-                      color: locked ? Colors.black45 : Colors.black54,
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -5009,6 +5024,7 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return MtfHeaderNeonOverlay(
       isExpanded: isExpanded,
@@ -5023,14 +5039,7 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
           bottom: 18,
         ),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF4F46E5),
-              Color(0xFF9333EA),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient: gradient,
           borderRadius: const BorderRadius.vertical(
             bottom: Radius.circular(32),
           ),
@@ -6134,24 +6143,27 @@ class _GoalDdayManageSheet extends StatelessWidget {
     return '진행중';
   }
 
-  Color _statusColor(_GoalDdayItem goal) {
+  Color _statusColor(BuildContext context, _GoalDdayItem goal) {
+    final palette = context.mtfChartPalette;
     if (goal.isCompleted || goal.status == 'completed') {
-      return const Color(0xFF059669);
+      return palette.positiveSeries;
     }
 
     if (goal.status == 'paused') {
-      return const Color(0xFFD97706);
+      return palette.warningSeries;
     }
 
     if (goal.status == 'stopped') {
-      return const Color(0xFF6B7280);
+      return Theme.of(context).colorScheme.onSurfaceVariant;
     }
 
-    return const Color(0xFF4F46E5);
+    return Theme.of(context).colorScheme.primary;
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     final sortedGoals = List<_GoalDdayItem>.from(goals)
       ..sort((a, b) {
         final aDone = a.isCompleted || a.status == 'completed';
@@ -6171,11 +6183,11 @@ class _GoalDdayManageSheet extends StatelessWidget {
             maxHeight: MediaQuery.of(context).size.height * 0.82,
           ),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: tokens.sheetBackground,
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.16),
+                color: scheme.shadow.withOpacity(0.16),
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),
@@ -6188,7 +6200,7 @@ class _GoalDdayManageSheet extends StatelessWidget {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
+                  color: scheme.outlineVariant,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -6200,32 +6212,32 @@ class _GoalDdayManageSheet extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEEF2FF),
+                        color: scheme.primaryContainer,
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.flag_outlined,
-                        color: Color(0xFF4F46E5),
+                        color: scheme.onPrimaryContainer,
                       ),
                     ),
                     const SizedBox(width: 11),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             '목표 D-DAY 관리',
                             style: TextStyle(
-                              color: Color(0xFF111827),
+                              color: scheme.onSurface,
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          SizedBox(height: 3),
+                          const SizedBox(height: 3),
                           Text(
                             '수정, 완료, 보류, 중단, 삭제를 관리합니다.',
                             style: TextStyle(
-                              color: Color(0xFF6B7280),
+                              color: scheme.onSurfaceVariant,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
                             ),
@@ -6238,14 +6250,14 @@ class _GoalDdayManageSheet extends StatelessWidget {
               ),
               Expanded(
                 child: sortedGoals.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Padding(
                           padding: EdgeInsets.all(24),
                           child: Text(
                             '등록된 D-DAY가 없어요.\n바디프로필, 대회, 웨딩촬영 같은 목표를 먼저 추가해보세요.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Color(0xFF6B7280),
+                              color: scheme.onSurfaceVariant,
                               fontSize: 12.5,
                               height: 1.45,
                               fontWeight: FontWeight.w700,
@@ -6259,7 +6271,7 @@ class _GoalDdayManageSheet extends StatelessWidget {
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final goal = sortedGoals[index];
-                          final statusColor = _statusColor(goal);
+                          final statusColor = _statusColor(context, goal);
                           final isDone =
                               goal.isCompleted || goal.status == 'completed';
                           final isPaused = goal.status == 'paused';
@@ -6268,10 +6280,10 @@ class _GoalDdayManageSheet extends StatelessWidget {
                           return Container(
                             padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
+                              color: tokens.cardSurface,
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: const Color(0xFFE5E7EB),
+                                color: tokens.cardBorder,
                               ),
                             ),
                             child: Column(
@@ -6284,8 +6296,8 @@ class _GoalDdayManageSheet extends StatelessWidget {
                                         goal.name,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF111827),
+                                        style: TextStyle(
+                                          color: scheme.onSurface,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w900,
                                         ),
@@ -6315,8 +6327,8 @@ class _GoalDdayManageSheet extends StatelessWidget {
                                 const SizedBox(height: 6),
                                 Text(
                                   '${_dateText(goal.date)} · ${_ddayText(goal.date)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF6B7280),
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -6377,8 +6389,8 @@ class _GoalDdayManageSheet extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF6B7280),
-                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                          foregroundColor: scheme.onSurfaceVariant,
+                          side: BorderSide(color: scheme.outline),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -6397,8 +6409,8 @@ class _GoalDdayManageSheet extends StatelessWidget {
                         icon: const Icon(Icons.add_rounded, size: 18),
                         label: const Text('D-DAY 추가'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF4F46E5),
-                          foregroundColor: Colors.white,
+                          backgroundColor: scheme.primary,
+                          foregroundColor: scheme.onPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -6432,7 +6444,9 @@ class _GoalManageActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? const Color(0xFFDC2626) : const Color(0xFF4F46E5);
+    final color = danger
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.primary;
 
     return InkWell(
       onTap: onTap,
@@ -7223,6 +7237,8 @@ class _TrainingLogCard extends StatelessWidget {
     final colorSet = _colorSetForSessionType(item.type);
     final trainerOk = item.trainerSig.isSigned;
     final customerOk = item.customerSig.isSigned;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     return InkWell(
       borderRadius: BorderRadius.circular(22),
@@ -7237,7 +7253,7 @@ class _TrainingLogCard extends StatelessWidget {
                   ? const Color(0xFFFEF2F2)
                   : item.sessionStatus == 'no_show_no_deduct'
                       ? const Color(0xFFFFFBEB)
-                      : Colors.white,
+                      : tokens.trainingLogSurface,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isHighlighted
@@ -7250,12 +7266,12 @@ class _TrainingLogCard extends StatelessWidget {
                             ? const Color(0xFFFECACA)
                             : item.sessionStatus == 'no_show_no_deduct'
                                 ? const Color(0xFFFED7AA)
-                                : colorSet.border,
+                                : tokens.trainingLogSetDivider,
             width: isHighlighted ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: scheme.shadow.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -7306,7 +7322,7 @@ class _TrainingLogCard extends StatelessWidget {
                                 ? const Color(0xFF0F766E)
                                 : item.sessionStatus == 'no_show'
                                     ? const Color(0xFFB91C1C)
-                                    : Colors.black45,
+                                    : scheme.onSurfaceVariant,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -7317,7 +7333,7 @@ class _TrainingLogCard extends StatelessWidget {
                       ? Icons.keyboard_arrow_up_rounded
                       : Icons.keyboard_arrow_down_rounded,
                   size: 20,
-                  color: Colors.black38,
+                  color: scheme.onSurfaceVariant,
                 ),
               ],
             ),
@@ -7486,7 +7502,7 @@ class _TrainingLogCard extends StatelessWidget {
                   ),
                   child: Text(
                     goalDdayLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: Colors.black54,
@@ -7522,9 +7538,9 @@ class _TrainingLogCard extends StatelessWidget {
                     _exerciseSummary(item),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
-                      color: Colors.black87,
+                      color: scheme.onSurface,
                       fontWeight: FontWeight.w800,
                       height: 1.35,
                     ),
@@ -7565,9 +7581,9 @@ class _TrainingLogCard extends StatelessWidget {
                     _memoSummary(item),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11.5,
-                      color: Colors.black54,
+                      color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                       height: 1.4,
                     ),
@@ -7596,9 +7612,9 @@ class _TrainingLogCard extends StatelessWidget {
                     _nextCheckpoint(item),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: Colors.black45,
+                      color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
                       height: 1.35,
                     ),
@@ -7649,9 +7665,9 @@ class _TrainingLogCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: tokens.trainingLogSetRow,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  border: Border.all(color: tokens.trainingLogSetDivider),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -8052,6 +8068,8 @@ class _SignatureSheetState extends State<SignatureSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return SafeArea(
       child: Padding(
         padding:
@@ -8061,7 +8079,7 @@ class _SignatureSheetState extends State<SignatureSheet> {
           initialChildSize: 0.72,
           builder: (context, controller) {
             return Material(
-              color: Colors.white,
+              color: tokens.sheetBackground,
               elevation: 8,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(24),
@@ -8088,10 +8106,10 @@ class _SignatureSheetState extends State<SignatureSheet> {
                             children: [
                               Text(
                                 _typedMode ? '타이핑 서명' : '손글씨 서명',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
-                                  color: Colors.black87,
+                                  color: scheme.onSurface,
                                 ),
                               ),
                               const Spacer(),
@@ -8118,16 +8136,16 @@ class _SignatureSheetState extends State<SignatureSheet> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
+                                color: tokens.trainingLogSetRow,
                                 borderRadius: BorderRadius.circular(14),
-                                border:
-                                    Border.all(color: const Color(0xFFE5E7EB)),
+                                border: Border.all(
+                                    color: tokens.trainingLogSetDivider),
                               ),
-                              child: const Text(
+                              child: Text(
                                 '박스 안에 서명해주세요.',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.black45,
+                                  color: scheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -8139,10 +8157,10 @@ class _SignatureSheetState extends State<SignatureSheet> {
                                 width: double.infinity,
                                 height: 200,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: tokens.signatureCanvasSurface,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                      color: const Color(0xFFD1D5DB)),
+                                      color: tokens.contractDocumentBorder),
                                 ),
                                 child: SimpleSignatureCanvas(
                                   key: canvasKey,
@@ -8170,7 +8188,7 @@ class _SignatureSheetState extends State<SignatureSheet> {
                               decoration: InputDecoration(
                                 hintText: '이름 입력',
                                 filled: true,
-                                fillColor: const Color(0xFFF8FAFC),
+                                fillColor: tokens.trainingLogSetRow,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   borderSide: BorderSide.none,
@@ -8185,7 +8203,7 @@ class _SignatureSheetState extends State<SignatureSheet> {
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey.shade300),
                                 borderRadius: BorderRadius.circular(14),
-                                color: Colors.white,
+                                color: tokens.signatureCanvasSurface,
                               ),
                               child: ValueListenableBuilder<TextEditingValue>(
                                 valueListenable: widget.typedController,
@@ -8553,19 +8571,13 @@ class _BlueSheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gradient = context.mtfHeaderGradient;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF9333EA),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: const BorderRadius.vertical(
           top: Radius.circular(24),
         ),
       ),

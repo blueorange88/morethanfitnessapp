@@ -82,6 +82,7 @@ class MtfScheduleWidget : GlanceAppWidget() {
         val themeMode = prefs.getString("mtf_widget_theme_mode", "light") ?: "light"
 
         val headerDrawable = when (themeMode) {
+            "brandLight" -> R.drawable.widget_header_brand_light
             "dark" -> R.drawable.widget_header_dark
             "pinkperfume" -> R.drawable.widget_header_pinkperfume
             "brownHistory" -> R.drawable.widget_header_brown_history

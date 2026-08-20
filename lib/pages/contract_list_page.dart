@@ -7,6 +7,7 @@ import '../widgets/aifc_tier_feature_gate_sheet.dart';
 
 import '../widgets/aifc_confirm_chat_sheet.dart';
 import '../widgets/aifc_interaction.dart';
+import '../theme/app_colors.dart';
 
 const Color kContractListPrimary = Color(0xFF4F46E5);
 const Color kContractListPrimary2 = Color(0xFF9333EA);
@@ -443,8 +444,10 @@ class _ContractListPageState extends State<ContractListPage> {
                         icon: const Icon(Icons.edit_outlined),
                         label: const Text('이어서 작성'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: kContractListPrimary,
-                          foregroundColor: Colors.white,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.secondary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onSecondary,
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -463,6 +466,7 @@ class _ContractListPageState extends State<ContractListPage> {
   }
 
   Widget _buildFilterTabs() {
+    final scheme = Theme.of(context).colorScheme;
     Widget tab(String value, String label) {
       final selected = _filter == value;
 
@@ -478,10 +482,10 @@ class _ContractListPageState extends State<ContractListPage> {
             height: 36,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? kContractListPrimary : Colors.white,
+              color: selected ? scheme.secondaryContainer : scheme.surface,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: selected ? kContractListPrimary : kContractListBorder,
+                color: selected ? scheme.secondary : scheme.outline,
               ),
             ),
             child: Text(
@@ -489,7 +493,9 @@ class _ContractListPageState extends State<ContractListPage> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: selected ? Colors.white : const Color(0xFF64748B),
+                color: selected
+                    ? scheme.onSecondaryContainer
+                    : scheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -521,7 +527,7 @@ class _ContractListPageState extends State<ContractListPage> {
         final width = isTablet ? kContractListMaxWidth : constraints.maxWidth;
 
         return Scaffold(
-          backgroundColor: kContractListBg,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Center(
             child: SizedBox(
               width: width,
@@ -643,6 +649,7 @@ class _ContractListHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return Container(
       width: double.infinity,
@@ -652,16 +659,9 @@ class _ContractListHeader extends StatelessWidget {
         right: 24,
         bottom: 18,
       ),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            kContractListPrimary,
-            kContractListPrimary2,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(32),
         ),
       ),
@@ -749,6 +749,8 @@ class _ContractListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     final status = (data['status'] ?? data['stage'] ?? '').toString();
     final color = statusColor(status);
 
@@ -764,12 +766,12 @@ class _ContractListTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: tokens.cardSurface,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: kContractListBorder),
+          border: Border.all(color: tokens.cardBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.025),
+              color: scheme.shadow.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -799,8 +801,8 @@ class _ContractListTile extends StatelessWidget {
                     memberName.isEmpty ? '이름 없는 계약서' : memberName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF111827),
+                    style: TextStyle(
+                      color: scheme.onSurface,
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
                     ),
@@ -810,8 +812,8 @@ class _ContractListTile extends StatelessWidget {
                     productName.isEmpty ? '상품명 미입력' : productName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -821,8 +823,8 @@ class _ContractListTile extends StatelessWidget {
                     '${contractNo.isEmpty ? '계약번호 없음' : contractNo} · ${formatMoney(totalPrice)}원 · ${dateText(updatedAt)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF9CA3AF),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.82),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -867,13 +869,14 @@ class _PreviewRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.mtfThemeTokens;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: tokens.contractDocumentSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kContractListBorder),
+        border: Border.all(color: tokens.contractDocumentBorder),
       ),
       child: Row(
         children: [
@@ -881,20 +884,20 @@ class _PreviewRow extends StatelessWidget {
             width: 78,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF64748B),
+                color: tokens.contractDocumentText.withValues(alpha: 0.72),
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF111827),
+                color: tokens.contractDocumentText,
               ),
             ),
           ),
@@ -913,38 +916,40 @@ class _EmptyContractList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Center(
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: tokens.cardSurface,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: kContractListBorder),
+          border: Border.all(color: tokens.cardBorder),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.description_outlined,
-              color: kContractListPrimary,
+              color: scheme.secondary,
               size: 36,
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               '아직 저장된 계약서가 없습니다',
               style: TextStyle(
-                color: Color(0xFF111827),
+                color: scheme.onSurface,
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               '새 계약서를 작성하면 임시저장과 완료 계약서가 여기에 표시됩니다.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF6B7280),
+                color: scheme.onSurfaceVariant,
                 fontSize: 12,
                 height: 1.4,
                 fontWeight: FontWeight.w600,
@@ -958,8 +963,8 @@ class _EmptyContractList extends StatelessWidget {
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('새 계약서 작성'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: kContractListPrimary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.secondary,
+                  foregroundColor: scheme.onSecondary,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),

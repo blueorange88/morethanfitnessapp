@@ -18,15 +18,17 @@ class HomeTodayNextLessonsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             '오늘 다음 레슨',
             style: TextStyle(
-              color: Colors.black87,
+              color: colors.onSurface,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -36,26 +38,26 @@ class HomeTodayNextLessonsSection extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.grey.shade200,
+                  color: colors.outline,
                 ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(
                     Icons.check_circle_outline,
                     size: 20,
-                    color: Colors.grey,
+                    color: colors.onSurfaceVariant,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '오늘 남은 레슨이 없습니다.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -82,17 +84,6 @@ class HomeTodayNextLessonsSection extends StatelessWidget {
                   ? data['visualSoftness'] as int
                   : 0;
 
-              final bool isNextAfterOngoing = data['isNextAfterOngoing'] == true;
-
-              final int? gapFromPreviousMinutes = data['gapFromPreviousMinutes'] is int
-                  ? data['gapFromPreviousMinutes'] as int
-                  : null;
-
-              final bool clearNextAfterOngoing =
-                  isNextAfterOngoing &&
-                      minutesToStart <= 90 &&
-                      (gapFromPreviousMinutes == null || gapFromPreviousMinutes <= 60);
-
               int emphasis = 0;
 
               if (isOngoing) {
@@ -117,14 +108,12 @@ class HomeTodayNextLessonsSection extends StatelessWidget {
 
               final bool isFirstVisibleCard = idx == 0;
 
-              final bool isWithinTwoHours =
-                  isOngoing || minutesToStart <= 120;
+              final bool isWithinTwoHours = isOngoing || minutesToStart <= 120;
 
               final bool forceClearCard =
                   isFirstVisibleCard && isWithinTwoHours;
 
-              final bool isPriorityCard =
-                  !forceClearCard && isWithinTwoHours;
+              final bool isPriorityCard = !forceClearCard && isWithinTwoHours;
 
               return Padding(
                 padding: EdgeInsets.only(

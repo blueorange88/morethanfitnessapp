@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../aifc/core/aifc_avatar.dart';
 import '../services/app_tier_access_service.dart';
+import '../theme/app_colors.dart';
 
 enum AifcTierFeatureGateAction {
   later,
@@ -29,8 +30,6 @@ class AifcTierFeatureGateSheet {
       builder: (_) => _AifcTierFeatureGateBody(
         access: access,
         info: info,
-        primaryColor: primaryColor,
-        secondaryColor: secondaryColor,
       ),
     );
   }
@@ -95,17 +94,15 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
   const _AifcTierFeatureGateBody({
     required this.access,
     required this.info,
-    required this.primaryColor,
-    required this.secondaryColor,
   });
 
   final AppTierAccessSnapshot access;
   final AppTierFeatureInfo info;
-  final Color primaryColor;
-  final Color secondaryColor;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
     final currentTier = access.tierLabel;
     final requiredTier = info.requiredTierLabel;
     final requiredItems =
@@ -121,7 +118,7 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
             maxHeight: MediaQuery.of(context).size.height * 0.82,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F4FF),
+            color: tokens.sheetBackground,
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
@@ -139,7 +136,7 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD8D4FF),
+                  color: tokens.cardBorder,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -158,14 +155,11 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                         info: info,
                         currentTier: currentTier,
                         requiredTier: requiredTier,
-                        primaryColor: primaryColor,
-                        secondaryColor: secondaryColor,
                       ),
                       const SizedBox(height: 12),
                       _TierBenefitCard(
                         tierName: requiredTier,
                         items: requiredItems,
-                        primaryColor: primaryColor,
                       ),
                     ],
                   ),
@@ -182,9 +176,9 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                               .pop(AifcTierFeatureGateAction.later);
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF6B7280),
-                          side: const BorderSide(
-                            color: Color(0xFFE0DEFF),
+                          foregroundColor: theme.colorScheme.onSurfaceVariant,
+                          side: BorderSide(
+                            color: tokens.cardBorder,
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
@@ -208,8 +202,8 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                               .pop(AifcTierFeatureGateAction.showTierGuide);
                         },
                         style: FilledButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
+                          backgroundColor: tokens.gradeSheetAccent,
+                          foregroundColor: theme.colorScheme.onSecondary,
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -243,6 +237,8 @@ class _FcMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -256,7 +252,7 @@ class _FcMessageBubble extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: tokens.cardSurface,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(6),
                 topRight: Radius.circular(18),
@@ -264,13 +260,13 @@ class _FcMessageBubble extends StatelessWidget {
                 bottomRight: Radius.circular(18),
               ),
               border: Border.all(
-                color: const Color(0xFFE0DEFF),
+                color: tokens.cardBorder,
               ),
             ),
             child: Text(
               text,
-              style: const TextStyle(
-                color: Color(0xFF1E1B4B),
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
                 fontSize: 12.5,
                 height: 1.45,
                 fontWeight: FontWeight.w700,
@@ -288,24 +284,22 @@ class _FeatureLockCard extends StatelessWidget {
     required this.info,
     required this.currentTier,
     required this.requiredTier,
-    required this.primaryColor,
-    required this.secondaryColor,
   });
 
   final AppTierFeatureInfo info;
   final String currentTier;
   final String requiredTier;
-  final Color primaryColor;
-  final Color secondaryColor;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.cardSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE0DEFF)),
+        border: Border.all(color: tokens.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,19 +310,12 @@ class _FeatureLockCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      primaryColor,
-                      secondaryColor,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: tokens.gradeSheetAccent,
                   borderRadius: BorderRadius.circular(15),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.lock_open_rounded,
-                  color: Colors.white,
+                  color: theme.colorScheme.onSecondary,
                   size: 21,
                 ),
               ),
@@ -339,8 +326,8 @@ class _FeatureLockCard extends StatelessWidget {
                   children: [
                     Text(
                       info.title,
-                      style: const TextStyle(
-                        color: Color(0xFF111827),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
@@ -349,7 +336,7 @@ class _FeatureLockCard extends StatelessWidget {
                     Text(
                       '$currentTier → $requiredTier',
                       style: TextStyle(
-                        color: primaryColor,
+                        color: tokens.gradeSheetAccent,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -362,8 +349,8 @@ class _FeatureLockCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             info.description,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
+            style: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant,
               fontSize: 12.2,
               height: 1.45,
               fontWeight: FontWeight.w700,
@@ -379,22 +366,22 @@ class _TierBenefitCard extends StatelessWidget {
   const _TierBenefitCard({
     required this.tierName,
     required this.items,
-    required this.primaryColor,
   });
 
   final String tierName;
   final List<String> items;
-  final Color primaryColor;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF2FF),
+        color: tokens.drawerSelectedBackground.withOpacity(0.72),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: primaryColor.withOpacity(0.18),
+          color: tokens.gradeSheetAccent.withOpacity(0.44),
         ),
       ),
       child: Column(
@@ -403,7 +390,7 @@ class _TierBenefitCard extends StatelessWidget {
           Text(
             '$tierName에서 열리는 기능',
             style: TextStyle(
-              color: primaryColor,
+              color: theme.colorScheme.onSurface,
               fontSize: 13,
               fontWeight: FontWeight.w900,
             ),
@@ -417,14 +404,14 @@ class _TierBenefitCard extends StatelessWidget {
                   Icon(
                     Icons.check_circle_rounded,
                     size: 15,
-                    color: primaryColor,
+                    color: tokens.gradeSheetAccent,
                   ),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
                       item,
-                      style: const TextStyle(
-                        color: Color(0xFF312E81),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontSize: 11.8,
                         fontWeight: FontWeight.w800,
                         height: 1.3,

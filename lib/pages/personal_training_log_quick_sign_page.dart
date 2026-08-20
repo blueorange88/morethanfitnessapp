@@ -9,14 +9,13 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../services/member_smart_alarm_context_service.dart';
 import '../services/more_care_slot_service.dart';
 import '../services/app_tier_access_service.dart';
+import '../services/member_sign_url_service.dart';
 import '../widgets/personal_training_log_entry_guard.dart';
+import '../theme/app_colors.dart';
 
 const Color kQuickSignPrimaryColor = Color(0xFF4F46E5);
 const Color kQuickSignPrimaryColor2 = Color(0xFF9333EA);
 const Color kQuickSignBgColor = Color(0xFFF3F4F6);
-
-const String kMemberSignBaseUrl =
-    'https://more-than-fitness-f6adb.web.app/sign';
 
 enum _QuickLogMode {
   normalDeduct,
@@ -604,7 +603,7 @@ class _PersonalTrainingQuickLogSignPageState
   }
 
   String _buildMemberSignUrl(String token) {
-    return '$kMemberSignBaseUrl?t=$token';
+    return MemberSignUrlService.build(token).toString();
   }
 
   Future<Map<String, String>?> _createMemberSignRequest() async {
@@ -1553,20 +1552,22 @@ class _PersonalTrainingQuickLogSignPageState
     required ValueChanged<Offset?> onPointAdded,
     bool enabled = true,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Opacity(
       opacity: enabled ? 1 : 0.46,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: tokens.cardSurface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: signed ? const Color(0xFFBBF7D0) : const Color(0xFFE5E7EB),
+            color: signed ? tokens.trainingLogCompleted : tokens.cardBorder,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.035),
+              color: scheme.shadow.withValues(alpha: 0.06),
               blurRadius: 12,
               offset: const Offset(0, 5),
             ),
@@ -1582,18 +1583,16 @@ class _PersonalTrainingQuickLogSignPageState
                   Icon(
                     signed ? Icons.check_circle_rounded : Icons.draw_rounded,
                     size: 20,
-                    color: signed
-                        ? const Color(0xFF059669)
-                        : kQuickSignPrimaryColor,
+                    color: signed ? const Color(0xFF059669) : scheme.secondary,
                   ),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
+                        color: scheme.onSurface,
                       ),
                     ),
                   ),
@@ -1621,11 +1620,11 @@ class _PersonalTrainingQuickLogSignPageState
               const SizedBox(height: 6),
               Text(
                 helper,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.5,
                   height: 1.35,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280),
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 12),
@@ -1633,9 +1632,9 @@ class _PersonalTrainingQuickLogSignPageState
                 height: 150,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: tokens.signatureCanvasSurface,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  border: Border.all(color: tokens.contractDocumentBorder),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(18),
@@ -1774,8 +1773,8 @@ class _PersonalTrainingQuickLogSignPageState
                               onSign();
                             },
                       style: FilledButton.styleFrom(
-                        backgroundColor: kQuickSignPrimaryColor,
-                        foregroundColor: Colors.white,
+                        backgroundColor: scheme.secondary,
+                        foregroundColor: scheme.onSecondary,
                         disabledBackgroundColor: const Color(0xFFE5E7EB),
                         disabledForegroundColor: const Color(0xFF9CA3AF),
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1809,18 +1808,15 @@ class _PersonalTrainingQuickLogSignPageState
             : '잔여 ${remain ?? 0}/$total';
 
     final topInset = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(18, topInset + 6, 18, 14),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [kQuickSignPrimaryColor, kQuickSignPrimaryColor2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(32),
         ),
       ),
@@ -2164,6 +2160,7 @@ class _PersonalTrainingQuickLogSignPageState
   }
 
   Widget _buildMemoSection() {
+    final tokens = context.mtfThemeTokens;
     return TextField(
       controller: _memoC,
       maxLines: 2,
@@ -2172,14 +2169,14 @@ class _PersonalTrainingQuickLogSignPageState
         labelText: '간단 메모',
         hintText: '예: 컨디션 확인, 다음 레슨 참고사항',
         filled: true,
-        fillColor: Colors.white,
+        fillColor: tokens.trainingLogSetRow,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: BorderSide(color: tokens.trainingLogSetDivider),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: BorderSide(color: tokens.trainingLogSetDivider),
         ),
         contentPadding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
       ),
@@ -2241,24 +2238,27 @@ class _PersonalTrainingQuickLogSignPageState
   @override
   Widget build(BuildContext context) {
     if (!_entryAccessResolved || !_entryAccessAllowed) {
-      return const Scaffold(
-        backgroundColor: kQuickSignBgColor,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
     final memberSignatureEnabled = _requiresMemberSignature;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Theme.of(context).colorScheme.surface,
+        systemNavigationBarIconBrightness:
+            Theme.of(context).brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark,
       ),
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        backgroundColor: kQuickSignBgColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
           top: false,
           child: SingleChildScrollView(
@@ -2350,10 +2350,13 @@ class _PersonalTrainingQuickLogSignPageState
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.mtfThemeTokens.cardSurface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .shadow
+                      .withValues(alpha: 0.10),
                   blurRadius: 14,
                   offset: const Offset(0, -4),
                 ),
@@ -2368,10 +2371,10 @@ class _PersonalTrainingQuickLogSignPageState
               style: FilledButton.styleFrom(
                 backgroundColor: _isQuickLogConfirmed
                     ? const Color(0xFFE5E7EB)
-                    : kQuickSignPrimaryColor,
+                    : Theme.of(context).colorScheme.secondary,
                 foregroundColor: _isQuickLogConfirmed
                     ? const Color(0xFF9CA3AF)
-                    : Colors.white,
+                    : Theme.of(context).colorScheme.onSecondary,
                 disabledBackgroundColor: const Color(0xFFE5E7EB),
                 disabledForegroundColor: const Color(0xFF9CA3AF),
                 padding: const EdgeInsets.symmetric(vertical: 15),

@@ -150,7 +150,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kOnboardingBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
@@ -199,6 +199,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget _buildIntroStep() {
+    final colors = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
       child: Column(
@@ -293,8 +295,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
               key: const Key('onboarding_intro_continue'),
               onPressed: _goToNicknameStep,
               style: FilledButton.styleFrom(
-                backgroundColor: kOnboardingPrimary,
-                foregroundColor: Colors.white,
+                backgroundColor: colors.secondary,
+                foregroundColor: colors.onSecondary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -314,6 +316,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget _buildNicknameStep() {
+    final colors = Theme.of(context).colorScheme;
     final nickname = _nicknameController.text.trim();
     final nicknameLabel = aifcNicknameLabel(nickname);
 
@@ -322,10 +325,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             '제가 어떻게\n불러드릴까요?',
             style: TextStyle(
-              color: kOnboardingText,
+              color: colors.onSurface,
               fontSize: 28,
               height: 1.22,
               fontWeight: FontWeight.w900,
@@ -333,10 +336,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             '앱 안에서 AI FC가 사용할 편한 이름을 알려주세요.',
             style: TextStyle(
-              color: kOnboardingMuted,
+              color: colors.onSurfaceVariant,
               fontSize: 14,
               height: 1.45,
               fontWeight: FontWeight.w700,
@@ -354,23 +357,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
               labelText: '닉네임',
               hintText: '예: 민수쌤 / 김팀장 / MAX',
               filled: true,
-              fillColor: Colors.white,
+              fillColor: colors.surface,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 18,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: kOnboardingBorder),
+                borderSide: BorderSide(color: colors.outline),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: kOnboardingBorder),
+                borderSide: BorderSide(color: colors.outline),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(
-                  color: kOnboardingPrimary,
+                borderSide: BorderSide(
+                  color: colors.secondary,
                   width: 1.4,
                 ),
               ),
@@ -397,10 +400,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
               key: const Key('onboarding_save_nickname'),
               onPressed: _canStart && !_isSaving ? _saveAndEnter : null,
               style: FilledButton.styleFrom(
-                backgroundColor: kOnboardingPrimary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFFD1D5DB),
-                disabledForegroundColor: Colors.white,
+                backgroundColor: colors.secondary,
+                foregroundColor: colors.onSecondary,
+                disabledBackgroundColor: colors.surfaceContainerHighest,
+                disabledForegroundColor: colors.onSurfaceVariant,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),

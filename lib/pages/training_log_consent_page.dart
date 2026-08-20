@@ -1,5 +1,8 @@
 // lib/pages/training_log_consent_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../theme/app_colors.dart';
 
 /// 수업일지 / PT 로그용 개인정보 수집·이용 동의 페이지
 /// - 홈 페이지처럼 모바일 기준(최대 480px) 레이아웃
@@ -46,13 +49,19 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
       builder: (context, constraints) {
         final bool isTablet = constraints.maxWidth >= 600;
         final double width = isTablet ? 480 : constraints.maxWidth;
+        final theme = Theme.of(context);
+        final scheme = theme.colorScheme;
 
         return Scaffold(
-          backgroundColor: Colors.grey[100],
+          backgroundColor: theme.scaffoldBackgroundColor,
           appBar: AppBar(
             elevation: 0,
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black87,
+            backgroundColor: context.mtfHeaderGradient.colors.first,
+            foregroundColor: Colors.white,
+            systemOverlayStyle: SystemUiOverlayStyle.light,
+            flexibleSpace: DecoratedBox(
+              decoration: BoxDecoration(gradient: context.mtfHeaderGradient),
+            ),
             title: const Text(
               '수업일지 개인정보 동의',
               style: TextStyle(
@@ -75,11 +84,7 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF4F46E5), Color(0xFF9333EA)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          gradient: context.mtfHeaderGradient,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -136,7 +141,7 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               _SectionTitle('1. 수집 항목'),
                               SizedBox(height: 4),
                               _SectionBody(
@@ -172,7 +177,7 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                                 '이에 동의하시는 경우에만 하단의 동의 버튼을 눌러 주세요.',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.black54,
+                                  color: scheme.onSurfaceVariant,
                                   height: 1.4,
                                 ),
                               ),
@@ -194,8 +199,6 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                                       Navigator.of(context).pop(false);
                                     },
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.black87,
-                                side: BorderSide(color: Colors.grey.shade400),
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 12),
                               ),
@@ -210,17 +213,16 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                             child: ElevatedButton(
                               onPressed: _saving ? null : _submitAgreement,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4F46E5),
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 12),
                               ),
                               child: _saving
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 18,
                                       height: 18,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
+                                        color: scheme.onSecondary,
                                       ),
                                     )
                                   : const Text(
@@ -249,14 +251,14 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                       ],
 
                       const SizedBox(height: 12),
-                      const Center(
+                      Center(
                         child: Text(
                           '언제든지 동의를 철회하실 수 있으며,\n'
                           '철회 시에는 추후 수업일지 열람이 제한될 수 있습니다.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.black54,
+                            color: scheme.onSurfaceVariant,
                             height: 1.4,
                           ),
                         ),
@@ -279,12 +281,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF111827),
+        color: scheme.onSurface,
       ),
     );
   }
@@ -296,11 +299,12 @@ class _SectionBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 11,
-        color: Color(0xFF374151),
+        color: scheme.onSurfaceVariant,
         height: 1.5,
       ),
     );

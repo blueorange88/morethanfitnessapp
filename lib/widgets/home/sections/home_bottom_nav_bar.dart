@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/app_colors.dart';
 
 class HomeBottomNavBar extends StatelessWidget {
   const HomeBottomNavBar({
@@ -19,6 +20,8 @@ class HomeBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double bottomInset = MediaQuery.of(context).padding.bottom;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     return SizedBox(
       height: 100 + bottomInset,
@@ -31,7 +34,10 @@ class HomeBottomNavBar extends StatelessWidget {
             right: 0,
             bottom: 0,
             child: CustomPaint(
-              painter: const _HomeBottomNavNotchPainter(),
+              painter: _HomeBottomNavNotchPainter(
+                backgroundColor: tokens.navigationSheetBackground,
+                shadowColor: scheme.shadow,
+              ),
               child: Container(
                 height: 74 + bottomInset,
                 padding: EdgeInsets.fromLTRB(12, 14, 12, 10 + bottomInset),
@@ -48,6 +54,7 @@ class HomeBottomNavBar extends StatelessWidget {
                               index: 0,
                               activeIndex: activeIndex,
                               primaryColor: primaryColor,
+                              inactiveColor: scheme.onSurfaceVariant,
                               onTap: () => onChanged(0),
                             ),
                           ),
@@ -58,6 +65,7 @@ class HomeBottomNavBar extends StatelessWidget {
                               index: 1,
                               activeIndex: activeIndex,
                               primaryColor: primaryColor,
+                              inactiveColor: scheme.onSurfaceVariant,
                               onTap: () => onChanged(1),
                             ),
                           ),
@@ -76,6 +84,7 @@ class HomeBottomNavBar extends StatelessWidget {
                               index: 2,
                               activeIndex: activeIndex,
                               primaryColor: primaryColor,
+                              inactiveColor: scheme.onSurfaceVariant,
                               onTap: () => onChanged(2),
                             ),
                           ),
@@ -86,6 +95,7 @@ class HomeBottomNavBar extends StatelessWidget {
                               index: 3,
                               activeIndex: activeIndex,
                               primaryColor: primaryColor,
+                              inactiveColor: scheme.onSurfaceVariant,
                               onTap: () => onChanged(3),
                             ),
                           ),
@@ -125,10 +135,10 @@ class HomeBottomNavBar extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.person_add_alt_1,
-                        color: Colors.white,
+                        color: scheme.onSecondary,
                         size: 26,
                       ),
                     ),
@@ -153,7 +163,13 @@ class HomeBottomNavBar extends StatelessWidget {
 }
 
 class _HomeBottomNavNotchPainter extends CustomPainter {
-  const _HomeBottomNavNotchPainter();
+  const _HomeBottomNavNotchPainter({
+    required this.backgroundColor,
+    required this.shadowColor,
+  });
+
+  final Color backgroundColor;
+  final Color shadowColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -162,7 +178,7 @@ class _HomeBottomNavNotchPainter extends CustomPainter {
     const double notchDepth = 31;
 
     final paint = Paint()
-      ..color = Colors.white
+      ..color = backgroundColor
       ..style = PaintingStyle.fill;
 
     final path = Path()
@@ -191,12 +207,15 @@ class _HomeBottomNavNotchPainter extends CustomPainter {
       ..lineTo(0, size.height)
       ..close();
 
-    canvas.drawShadow(path, Colors.black.withOpacity(0.10), 14, false);
+    canvas.drawShadow(path, shadowColor.withOpacity(0.10), 14, false);
     canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _HomeBottomNavNotchPainter oldDelegate) {
+    return oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.shadowColor != shadowColor;
+  }
 }
 
 class _HomeNavItem extends StatelessWidget {
@@ -206,6 +225,7 @@ class _HomeNavItem extends StatelessWidget {
     required this.index,
     required this.activeIndex,
     required this.primaryColor,
+    required this.inactiveColor,
     required this.onTap,
   });
 
@@ -214,6 +234,7 @@ class _HomeNavItem extends StatelessWidget {
   final int index;
   final int activeIndex;
   final Color primaryColor;
+  final Color inactiveColor;
   final VoidCallback onTap;
 
   @override
@@ -233,7 +254,7 @@ class _HomeNavItem extends StatelessWidget {
               Icon(
                 icon,
                 size: 22,
-                color: isActive ? primaryColor : Colors.grey,
+                color: isActive ? primaryColor : inactiveColor,
               ),
               const SizedBox(height: 4),
               Text(
@@ -244,7 +265,7 @@ class _HomeNavItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: isActive ? primaryColor : Colors.grey,
+                  color: isActive ? primaryColor : inactiveColor,
                 ),
               ),
             ],

@@ -1,17 +1,19 @@
+import '../utils/home_schedule_move_plan.dart';
+
 class HomeWeekPasteCandidate {
   const HomeWeekPasteCandidate({
+    required this.sourceIndex,
     required this.day,
     required this.time,
     required this.endTime,
-    required this.copyKey,
     required this.startAt,
     required this.endAt,
   });
 
+  final int sourceIndex;
   final String day;
   final String time;
   final String endTime;
-  final String copyKey;
   final DateTime startAt;
   final DateTime endAt;
 }
@@ -40,15 +42,42 @@ class HomeWeekPasteExistingSchedule {
   final bool isConfirmed;
 }
 
+class HomeWeekPastePlan {
+  const HomeWeekPastePlan({
+    required this.pasteableSchedules,
+    required this.conflictingSchedules,
+  });
+
+  final List<HomeWeekPasteCandidate> pasteableSchedules;
+  final List<HomeWeekPasteCandidate> conflictingSchedules;
+
+  int get pasteableCount => pasteableSchedules.length;
+  int get conflictingCount => conflictingSchedules.length;
+  bool get hasConflicts => conflictingSchedules.isNotEmpty;
+  bool get allConflicting => hasConflicts && pasteableSchedules.isEmpty;
+
+  Set<int> get pasteableSourceIndexes =>
+      pasteableSchedules.map((candidate) => candidate.sourceIndex).toSet();
+
+  Set<int> get conflictingSourceIndexes =>
+      conflictingSchedules.map((candidate) => candidate.sourceIndex).toSet();
+
+  bool hasSameConflicts(HomeWeekPastePlan other) {
+    final current = conflictingSourceIndexes;
+    final next = other.conflictingSourceIndexes;
+    return current.length == next.length && current.containsAll(next);
+  }
+}
+
 class HomeWeekPasteConflictService {
   const HomeWeekPasteConflictService._();
 
-  static List<Map<String, dynamic>> findConflicts({
+  static HomeWeekPastePlan classify({
     required List<HomeWeekPasteCandidate> candidates,
     required List<HomeWeekPasteExistingSchedule> existingSchedules,
+    bool allowOverlappingCandidates = false,
   }) {
-    final conflicts = <Map<String, dynamic>>[];
-    final seenConflictKeys = <String>{};
+    final conflictingSourceIndexes = <int>{};
 
     for (final candidate in candidates) {
       if (!candidate.endAt.isAfter(candidate.startAt)) continue;
@@ -57,49 +86,55 @@ class HomeWeekPasteConflictService {
         if (existing.docId.trim().isEmpty) continue;
         if (existing.day != candidate.day) continue;
 
-        final overlaps = _timeRangeOverlaps(
+        if (!homeScheduleTimeRangesOverlap(
           startA: candidate.startAt,
           endA: candidate.endAt,
           startB: existing.startAt,
           endB: existing.endAt,
-        );
+        )) {
+          continue;
+        }
 
-        if (!overlaps) continue;
-
-        final conflictKey = '${candidate.copyKey}|${existing.docId}';
-        if (seenConflictKeys.contains(conflictKey)) continue;
-
-        seenConflictKeys.add(conflictKey);
-
-        conflicts.add({
-          'docId': existing.docId,
-          'isConfirmed': existing.isConfirmed,
-
-          // 복사해서 붙여넣으려는 일정 정보
-          'copyKey': candidate.copyKey,
-          'copyDay': candidate.day,
-          'copyTime': candidate.time,
-          'copyEndTime': candidate.endTime,
-
-          // 기존에 이미 있는 충돌 일정 정보
-          'day': existing.day,
-          'time': existing.time,
-          'endTime': existing.endTime,
-          'name': existing.name,
-          'memberId': existing.memberId,
-        });
+        conflictingSourceIndexes.add(candidate.sourceIndex);
+        break;
       }
     }
 
-    return conflicts;
-  }
+    if (!allowOverlappingCandidates) {
+      for (var index = 0; index < candidates.length; index++) {
+        final first = candidates[index];
+        for (var otherIndex = index + 1;
+            otherIndex < candidates.length;
+            otherIndex++) {
+          final second = candidates[otherIndex];
+          if (!homeScheduleTimeRangesOverlap(
+            startA: first.startAt,
+            endA: first.endAt,
+            startB: second.startAt,
+            endB: second.endAt,
+          )) {
+            continue;
+          }
+          conflictingSourceIndexes
+            ..add(first.sourceIndex)
+            ..add(second.sourceIndex);
+        }
+      }
+    }
 
-  static bool _timeRangeOverlaps({
-    required DateTime startA,
-    required DateTime endA,
-    required DateTime startB,
-    required DateTime endB,
-  }) {
-    return startA.isBefore(endB) && startB.isBefore(endA);
+    final pasteableSchedules = <HomeWeekPasteCandidate>[];
+    final conflictingSchedules = <HomeWeekPasteCandidate>[];
+    for (final candidate in candidates) {
+      if (conflictingSourceIndexes.contains(candidate.sourceIndex)) {
+        conflictingSchedules.add(candidate);
+      } else {
+        pasteableSchedules.add(candidate);
+      }
+    }
+
+    return HomeWeekPastePlan(
+      pasteableSchedules: List.unmodifiable(pasteableSchedules),
+      conflictingSchedules: List.unmodifiable(conflictingSchedules),
+    );
   }
 }

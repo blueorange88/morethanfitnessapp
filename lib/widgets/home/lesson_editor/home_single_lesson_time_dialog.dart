@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../theme/app_colors.dart';
 import 'home_time_dialog_parts.dart';
 
 class HomeSingleLessonTimeDialog {
@@ -37,9 +38,8 @@ class HomeSingleLessonTimeDialog {
 
     int tempHour = int.tryParse(initialParts.first) ?? 9;
 
-    int tempMinute = initialParts.length > 1
-        ? int.tryParse(initialParts[1]) ?? 0
-        : 0;
+    int tempMinute =
+        initialParts.length > 1 ? int.tryParse(initialParts[1]) ?? 0 : 0;
 
     tempMinute = ((tempMinute / 5).round() * 5).clamp(0, 55).toInt();
 
@@ -120,10 +120,10 @@ class HomeSingleLessonTimeDialog {
     }
 
     Widget buildDurationChip(
-        int minutes,
-        String label,
-        void Function(void Function()) setStateDialog,
-        ) {
+      int minutes,
+      String label,
+      void Function(void Function()) setStateDialog,
+    ) {
       final selected = tempSelectedDuration == minutes;
 
       return GestureDetector(
@@ -217,7 +217,7 @@ class HomeSingleLessonTimeDialog {
 
               Navigator.of(dialogContext).pop({
                 'time':
-                '${nextHour.toString().padLeft(2, '0')}:${nextMinute.toString().padLeft(2, '0')}',
+                    '${nextHour.toString().padLeft(2, '0')}:${nextMinute.toString().padLeft(2, '0')}',
                 'duration': tempSelectedDuration,
               });
             }
@@ -253,7 +253,7 @@ class HomeSingleLessonTimeDialog {
                       Flexible(
                         child: SingleChildScrollView(
                           keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
+                              ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -323,7 +323,7 @@ class HomeSingleLessonTimeDialog {
                                       controller: minuteWheelController,
                                       itemCount: validMinutes.length,
                                       selectedIndex:
-                                      validMinutes.indexOf(tempMinute),
+                                          validMinutes.indexOf(tempMinute),
                                       labelBuilder: (index) =>
                                           validMinutes[index]
                                               .toString()
@@ -345,23 +345,27 @@ class HomeSingleLessonTimeDialog {
                                         controller: hourTextController,
                                         keyboardType: TextInputType.number,
                                         inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly,
-                                          const HomeMaxNumberInputFormatter(max: 23),
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                          const HomeMaxNumberInputFormatter(
+                                              max: 23),
                                         ],
                                         decoration: InputDecoration(
                                           labelText: '시',
                                           hintText: '0~23',
                                           filled: true,
-                                          fillColor: const Color(0xFFF8FAFC),
+                                          fillColor: Theme.of(dialogContext)
+                                              .inputDecorationTheme
+                                              .fillColor,
                                           isDense: true,
                                           contentPadding:
-                                          const EdgeInsets.symmetric(
+                                              const EdgeInsets.symmetric(
                                             horizontal: 10,
                                             vertical: 10,
                                           ),
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -369,7 +373,7 @@ class HomeSingleLessonTimeDialog {
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -377,7 +381,7 @@ class HomeSingleLessonTimeDialog {
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,
@@ -392,23 +396,27 @@ class HomeSingleLessonTimeDialog {
                                         controller: minuteTextController,
                                         keyboardType: TextInputType.number,
                                         inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly,
-                                          const HomeMaxNumberInputFormatter(max: 55),
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                          const HomeMaxNumberInputFormatter(
+                                              max: 55),
                                         ],
                                         decoration: InputDecoration(
                                           labelText: '분',
                                           hintText: '00~55',
                                           filled: true,
-                                          fillColor: const Color(0xFFF8FAFC),
+                                          fillColor: Theme.of(dialogContext)
+                                              .inputDecorationTheme
+                                              .fillColor,
                                           isDense: true,
                                           contentPadding:
-                                          const EdgeInsets.symmetric(
+                                              const EdgeInsets.symmetric(
                                             horizontal: 10,
                                             vertical: 10,
                                           ),
                                           border: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -416,7 +424,7 @@ class HomeSingleLessonTimeDialog {
                                           ),
                                           enabledBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
@@ -424,7 +432,7 @@ class HomeSingleLessonTimeDialog {
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius:
-                                            BorderRadius.circular(9),
+                                                BorderRadius.circular(9),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,
@@ -454,7 +462,8 @@ class HomeSingleLessonTimeDialog {
                                   vertical: 7,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
+                                  color:
+                                      dialogContext.mtfThemeTokens.cardSurface,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(

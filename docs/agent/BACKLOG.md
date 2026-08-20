@@ -1,5 +1,43 @@
 # BACKLOG
 
+## 2026-08-03 AIFC 계약 버튼 조밀 UI·중앙 gate 회귀 완료
+
+- [x] 레슨계약서·회원권계약서를 다른 AIFC quick action과 동일한 `145×34` 공통 카드로 복원
+- [x] 계약 카드 내부 설명·등급·업그레이드 문구 제거, 제목만 유지
+- [x] 웜 앰버 배경·테두리와 네이비 텍스트·앰버 아이콘 정적 강조 유지
+- [x] glow·pulse·배지·과도한 그림자·크기 확대 0
+- [x] AIFC 추천업무 제목과 기존 빠른 작업 유지
+- [x] 카드 내부 tier 비교 제거, 기존 중앙 feature gate 진입 메서드 재사용
+- [x] Amateur 레슨계약서 Semi-Pro gate 및 회원권계약서 Pro gate 확인
+- [x] Semi-Pro 레슨계약서 허용, 회원권계약서 기존 Pro gate 유지
+- [x] Pro 회원권계약서 허용
+- [x] 신규 Personal 계약의 legacy profile/product 및 미존재 member/subcollection read 차단
+- [x] 관련 Flutter 12개, 전체 Flutter 511개, 320/360/384/411dp overflow 0
+- [x] analyze error 0(기존 warning/info 161), diff check, DEV Debug APK 통과
+- [x] Galaxy DEV 동일 카드 물리 크기·제목 전용·amber 가독성·키보드 viewInsets 확인
+- [x] 최종 DEV permission-denied·unhandled·crash·ANR·overflow·PROD marker 0
+- [x] fixture 서버 실제 등급 복원, 회원·일정·계약서 write 0
+- [x] PROD·Firebase 배포·Galaxy PROD package·git commit/push 미작업
+- 다음 백로그로 이동하지 않는다.
+
+## 2026-08-03 레슨 등록 AIFC·회원 추천 UI 회귀 완료
+
+- [x] 신규 레슨 등록에서도 `AIFC 추천업무`와 기존 주요 빠른 작업 표시
+- [x] 계약 카드 2종 정적 웜 앰버 강조, 잠긴 등급 안내·중앙 gate 유지, pulse/glow 0
+- [x] 빈 이름 입력에서만 owner-scoped `members.createdAt` 최신순 `최근 등록 회원` 표시
+- [x] 입력 중 최근 영역 숨김 및 이름 입력칸 바로 아래 `회원 검색 추천` 표시
+- [x] 전체·부분·현재 규칙 초성 검색, 공백 정리, 결과 없음, 마스킹, 스크롤·터치 처리
+- [x] 추천 선택 시 canonical `memberId` 연결, 신규 회원 중복 생성 0
+- [x] 320/360/390/411dp와 키보드 viewInsets widget 회귀 통과
+- [x] 위젯 sync 직렬화로 `personal_widget_owner_readback_failed` unhandled 재발 차단
+- [x] 관련 Flutter 30개, 전체 Flutter 506개, 전체 Emulator suite, Functions build 통과
+- [x] analyze error 0(기존 warning 246/info 955), diff check, DEV Kotlin·Manifest provider 3개·APK 통과
+- [x] P10HD Lite 실제 검색·초성·선택·서버 memberId readback 및 오류 로그 0 확인
+- [x] SM-S926N DEV 실제 폭·키보드·목록 배치·터치·AIFC 카드 가독성 확인
+- [x] 태블릿 fixture 삭제 및 Beginner/managed 0/member 0/schedule 0/lifetime 2 복원
+- [x] PROD·Firebase 배포·Galaxy PROD package·git commit/push 미작업
+- 다음 기능 또는 공개 웹 계약서 묶음으로 이동하지 않는다.
+
 ## 2026-07-27 PROD 1.0.4 코드·저장소 release blocker
 - [x] 1.0.3 실제 `createManagedMember` no-birth payload와 1.0.4 `birthDate` payload 확인
 - [x] 생년월일 미제공 legacy만 허용하고 supplied invalid는 거부하는 compatibility layer 적용
@@ -1217,3 +1255,866 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [x] PROD package 대상 ADB 명령·PROD 앱 실행·홈 좌표 탭·PROD 위젯 조작·PROD Firebase·PROD APK/AAB·Firebase 추가 배포 미작업
 - [x] 최종 판정: `DEV 검증 완료`, `PROD 1.0.4 준비 가능`
 - 다음 회귀 묶음이나 PROD 빌드·배포·설치로 이동하지 않는다.
+
+## 2026-08-03 고객카드 수정·이름 동기화·삭제·Home 메뉴 묶음 완료
+
+- [x] 신규 회원은 `회원 저장`, 기존 회원은 `수정 저장`, 저장 중 중복 탭 차단과 canonical server readback 적용
+- [x] `updateManagedMember` owner/workspace/allowlist/자기 전화번호 제외 중복 검증 유지 및 owner-scoped Personal 일정 이름 동기화
+- [x] DEV `updateManagedMember`만 `more-than-fitness-dev-mft` / `asia-northeast3`에 선택 배포하고 ACTIVE 확인
+- [x] managed member Emulator 53개, 전체 Emulator suite, Functions build, 전체 Flutter 483개, analyze 신규 error 0, diff check, DEV Kotlin·Manifest·APK 통과
+- [x] P10HD Lite에서 수정 저장 callable 1회, 이름·주소·레슨 canonical readback, 재진입·재실행 유지, 자기 번호 유지, 다른 번호 중복 차단
+- [x] 회원 이름 변경 뒤 연결 일정·고객리스트·Home·DEV widget payload 동기화 확인
+- [x] canonical 일정 삭제 server readback → local remove → auxiliary sync 순서와 앱 재실행 뒤 재등장 0 확인
+- [x] 동의 완료 뒤 초기화 control 비노출, 재진입 시 consent callable 재호출 0, Amateur gate와 Semi-Pro fixture 진입 확인
+- [x] SM-S926N 약 384dp에서 상세주소 focus·키보드·수정 저장·재진입 유지·overflow 0 확인
+- [x] Galaxy DEV Home/DEV 위젯 이름 추가·원복 동기화와 drawer `MORE WELLNESS 회원관리`·Semi-Pro 잠김 문구 노출 확인
+- [x] 태블릿 baseline `Beginner / member 0 / schedule 0 / managed 0` 복원
+- [x] Galaxy baseline `Amateur / member 1 / schedule 7 / managed 1 / legacy birth 미존재 / detailAddress 빈 값` 복원
+- [x] permission-denied·fatal crash·실제 ANR·PROD marker 0, Galaxy PROD package·PROD Firebase·추가 Firebase 배포 미작업
+- [ ] 실제 signed contract 역사 snapshot은 실기기에서 새로 만들지 않았으며 Emulator 회귀 근거만 보유
+- 다음 기능 묶음, PROD 빌드·배포·설치로 이동하지 않는다.
+
+## 2026-08-03 출시용 회원 추천 완료·웹 계약 차기 버전 backlog
+
+- [x] 최근 등록 회원을 owner-scoped Personal `members.createdAt` 내림차순으로 분리
+- [x] 입력 중 이름 일부·초성 검색에 기존 smart search helper 재사용
+- [x] 추천 후보 canonical `memberId` 유지와 다른 owner/workspace·중복 후보 차단 테스트
+- [x] AIFC 레슨계약서·회원권계약서 pulse/glow 제거, 정적 웜 앰버 배경·테두리와 짧은 문구 적용
+- [x] DEV/PROD `/sign?t=` Hosting URL 분리와 오류 로그 token/path 원문 차단
+- [x] 관련 Flutter 45개·전체 Flutter 496개, 전체 Emulator suite 단계, Functions build, diff check, DEV Kotlin·Manifest·APK 통과
+- [x] 태블릿에서 추천 제목 전환, 키보드 겹침 0, AIFC 카드 배경·문구·가독성, 오류·overflow 0 확인
+- [x] 태블릿 검증용 DEV 일정 1건 삭제와 owner schedule 0 복원
+- [x] 태블릿 actual tier Amateur 임시 변경과 가짜 회원 3건 준비
+- [x] createdAt 최신순 `DEV한가득 → DEV홍길순 → DEV홍길동` 서버·UI 일치
+- [x] `홍`, `길동`, 앞뒤 공백, 결과 없음 이름 검색 실기기 검증
+- [x] `ㅎㄱㄷ`, `ㅎㄱㅅ` 현재 helper 규칙의 동일 초성·단일 초성 후보 실기기 검증
+- [x] 추천 선택 뒤 canonical memberId 일정 연결, fixture 회원 3건 유지로 중복 생성 0 확인
+- [x] 회원 이름 수정 뒤 새 추천 화면에 최신 canonical 이름 반영
+- [x] 다른 owner 노출 0, owner/workspace readback 통과
+- [x] `/sign?t=`가 레슨일지 빠른서명에만 사용되고 계약서 페이지 공개 링크 UI가 없음을 감사
+- [x] `문자 링크`가 원격 서명이 아니라 `Printing.sharePdf` 기반 계약서 사본 공유임을 분류
+- [x] fixture 회원 3·연결 일정 1 삭제, tier Beginner, managed/member/schedule 0, lifetime 시작값 2 원복
+- [x] 정리 후 permission-denied·unhandled·fatal·ANR·overflow·PROD marker 0
+- [ ] release 전 전체 analyze 재실행: 전체 20분, 변경 범위 10분, 관련 `dart analyze` 15분 timeout으로 최신 error 수 미확정
+- [ ] 차기 버전: 레슨계약서 공개 웹 token 발급·조회·서명·중복/만료/owner 방어 backend 계약 설계 및 Emulator 테스트
+- [ ] 차기 버전: 회원권계약서 공개 웹 token 발급·조회·서명·중복/만료/owner 방어 backend 계약 설계 및 Emulator 테스트
+- [ ] 차기 버전: DEV Web FirebaseOptions·Hosting과 필요한 Functions/Rules 선택 배포를 별도 승인 후 브라우저 E2E·앱 readback 검증
+- [ ] 차기 문구 검토: 계약서 사본 PDF 공유의 `문자 링크`를 실제 동작이 드러나는 표현으로 명확화
+- 공개 웹 계약 원격 서명은 현재 출시 기능 범위에서 제외한다. 이번 검증 이후 release freeze를 유지하고 승인 없이 구현·배포·다음 기능으로 이동하지 않는다.
+
+## 2026-08-03 회원 추천 최종 기기 확인
+- [x] 태블릿 실데이터 `createdAt` 순서·부분/초성 검색·canonical memberId 연결·중복 생성 0·최신 이름 반영 증적 재확인
+- [x] DEV baseline Beginner·managed/member/schedule/fixture 0·lifetime 시작값 2 원복 readback
+- [x] Galaxy DEV 실제 휴대폰 폭과 일반 키보드 표시 확인
+- [x] 키보드가 열린 상태의 추천 목록 가시성·터치·기존 회원 이름 반영 확인
+- [x] 저장 없이 종료해 신규 회원·일정 write 0
+- [x] permission-denied·unhandled·fatal·ANR·overflow·PROD marker 0
+- [x] Galaxy PROD package·기존 PROD 위젯 미조작, Firebase 추가 배포·git commit/push 0
+- 이 묶음은 완료했으며 공개 웹 계약서나 다른 차기 기능으로 이동하지 않는다.
+
+## 2026-08-04 레슨 등록 시트 조밀 레이아웃 회귀 완료
+
+- [x] AIFC 전체 빠른작업의 고정 `145dp` 폭 제거, intrinsic 폭과 공통 `36dp` 높이 복원
+- [x] padding `9×9dp`, 아이콘 `16dp`, 제목 `11dp`, 간격 `5/7dp`, radius `14dp` 통일
+- [x] 레슨계약서·회원권계약서에만 정적 웜 앰버 배경·테두리 적용, 제목 외 문구와 animation 0
+- [x] 레슨 등록 bottom sheet에 신규 maxHeight·고정 높이 0, 기존 viewInsets 구조 유지
+- [x] 최근 등록 회원과 검색 추천을 같은 `HomeRecentMembersSection` 자리에서 상호 교체
+- [x] 공유 본문 최대 `118dp`, 많은 결과 내부 스크롤, 키보드 검색 시 기존 시트 스크롤로 가시성 확보
+- [x] 관련 Flutter 26개·전체 Flutter 512개 통과
+- [x] 변경 범위 analyze error 0·기존 warning/info 68, diff check exit 0, DEV Debug APK 통과
+- [x] Galaxy DEV에서 네 버튼 모두 `135px(36dp)` 높이, 조밀한 자연 폭 배치, 검색 목록·최근 회원 전환·추천 터치 확인
+- [x] 저장 없이 종료, permission-denied·fatal·ANR·overflow·PROD marker 0
+- [x] 태블릿 생략, Galaxy PROD package·Firebase 배포·git commit/push 미작업
+- 이 UI 회귀 묶음에서 중단하며 다음 기능으로 이동하지 않는다.
+
+## 2026-08-04 회원 목록 영역 최종 보정 완료
+
+- [x] 회원 이름이 비어 있으면 기존 공유 공간에 `최근 등록 회원`과 createdAt 최신순 목록 표시
+- [x] 이름 입력 시 같은 위치·같은 `118dp` 최대 높이에서 부분·초성 검색 추천으로 교체
+- [x] 추천 선택 후 canonical `memberId`가 연결돼도 검색 목록 영역 유지
+- [x] 검색어 삭제 시 같은 위치의 최근 등록 회원 목록 즉시 복귀
+- [x] 목록 행 clickable, 많은 결과 내부 스크롤, 키보드·저장 영역과 신규 겹침 0
+- [x] AIFC 추천업무와 기존 빠른작업 유지, 공통 `36dp` 버튼 크기 유지
+- [x] 관련 Flutter 26개·전체 Flutter 512개·analyze error 0·diff check·DEV APK 통과
+- [x] Galaxy DEV 실기기 4상태 확인, 저장 없이 신규 회원·일정 write 0
+- [x] permission-denied·unhandled·fatal·실제 ANR·overflow·PROD marker 0
+- 이 회귀 묶음에서 중단하며 다른 기능으로 이동하지 않는다.
+
+## 2026-08-04 회원 자동완성 Overlay 최종 구조 완료
+
+- [x] 앞선 최근 회원/검색 공유 공간 교체 구조를 최종 요구사항에 맞춰 Overlay 구조로 대체
+- [x] 최근 등록 회원 제목·목록을 기존 `Column` 위치와 최대 `118dp` 높이로 항상 유지
+- [x] 이름/전화번호 입력 시 입력 필드 바로 아래 `OverlayEntry` dropdown 표시
+- [x] dropdown 최대 `118dp`·최대 5건·내부 목록 스크롤, bottom sheet 높이 증가 0
+- [x] 부분·초성·전화번호 검색과 마스킹 표시 유지
+- [x] 추천 선택 시 canonical 기존 `memberId` 연결 후 dropdown 닫힘, 신규 회원 생성 0
+- [x] 입력 삭제·focus 해제·시트 종료 시 dropdown 제거
+- [x] AIFC 전체 빠른작업 유지, 네 버튼 모두 Galaxy hierarchy 높이 `135px(36dp)`
+- [x] 관련 Flutter 26개·전체 Flutter 512개·analyze error 0·diff check·DEV APK 통과
+- [x] Galaxy DEV에서 빈 입력/전화번호 검색/추천 선택/입력 삭제 검증, permission-denied·fatal·ANR·overflow·PROD marker 0
+- [x] 저장·Firebase 배포·PROD package·태블릿·git commit/push 미작업
+- 이 UI 회귀 묶음에서 중단하며 다음 기능으로 이동하지 않는다.
+
+## 2026-08-05 회원 기본정보·AIFC 모드 분리 완료
+
+- [x] 고객카드 기본정보를 320/360/384/411dp 모두 2열 2행으로 복원
+- [x] 320dp 이름:성별 5:4, 생년월일:직업 3:2로 전체 문구와 터치 영역 유지
+- [x] 320/360dp 세로 4행 450dp 분기 제거, 기본정보 page 높이 260dp 통일
+- [x] 이름/번호 추천은 입력칸 하단 Overlay로 유지하고 최근 등록 회원 영역·시트 높이 불변
+- [x] 신규 레슨은 저장 문서 ID가 없어 AIFC 추천업무 전체 비노출
+- [x] 신규 레슨에서 최근 회원 선택 후에도 AIFC 비노출 유지
+- [x] 임시 existingSession 값만 있고 `actualDocumentId`/`docId`가 없으면 기존 일정으로 오인하지 않음
+- [x] 저장된 기존 레슨은 AIFC 추천업무와 네 빠른 작업 표시
+- [x] 기존 레슨 계약 버튼은 공통 크기·앰버 색상 유지 및 중앙 feature gate 정상 연결
+- [x] 관련 Flutter 13개·관련 묶음 53개·전체 Flutter 512개 통과
+- [x] 변경 범위 analyze error 0, diff check, DEV Debug APK 통과
+- [x] Galaxy DEV 두 진입 경로와 Overlay 실기기 확인, permission-denied·fatal·ANR·overflow·PROD marker 0
+- [x] PROD package·Firebase·태블릿·git commit/push 미작업
+- 이 회귀 묶음에서 중단하며 다음 기능으로 이동하지 않는다.
+
+## 2026-08-05 최종 PROD launcher icon 완료
+
+- [x] 기존 `flutter_launcher_icons` 의존성·설정 없음과 main 기본 Flutter icon 확인
+- [x] 사용자 제공 원본 PNG를 hash 동일 상태로 저장소에 보존
+- [x] PROD flavor 전용 mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi 일반·round icon 생성
+- [x] PROD v26 adaptive icon과 round adaptive icon 생성
+- [x] 원형·둥근 사각형 마스크에서 심볼 잘림 0 확인
+- [x] DEV main icon 파일 미변경과 DEV APK hash 일치 확인
+- [x] PROD/DEV Debug APK 빌드 및 package·label·manifest icon 분리 확인
+- [x] PROD APK 내부 legacy/adaptive resource hash와 생성 파일 일치 확인
+- [x] Play Store·Firebase·기기 설치·version 변경·commit/push 미작업
+- 출시 업로드 전에 release signing과 versionCode를 별도 승인 범위에서 확정한다.
+
+## 2026-08-05 Galaxy PROD 아이콘 덮어쓰기 검증 완료
+
+- [x] `app-prod-debug.apk`를 `adb install -r`로 데이터 보존 업데이트
+- [x] firstInstallTime·dataDir 유지와 lastUpdateTime 변경 확인
+- [x] 설치된 base.apk와 빌드 APK SHA-256 일치 확인
+- [x] 홈 화면에서 새 앰버/네이비 `모어댄` 아이콘 표시 확인
+- [x] 앱 서랍에서 새 `모어댄` 일반·별도 user/profile 항목 표시 확인
+- [x] 기존 검정/청록 `More Than Wellness`는 별도 package `com.morethanwellness.app`으로 분류
+- [x] 기존 별도 앱 삭제·PROD 앱 실행·uninstall·`pm clear` 미실행
+- Play 업로드 전 release signing과 versionCode 확정은 기존 blocker로 유지한다.
+
+## 2026-08-05 MORE THAN 브랜드 테마 1차 완료
+
+- [x] 기존 `pref_dark_mode` 저장·복원과 설정 스위치 계약 유지
+- [x] `lib/theme/app_colors.dart`를 라이트·다크 ThemeData canonical source로 중앙화
+- [x] 딥 네이비·웜 옐로우·웜 아이보리 브랜드 ColorScheme 적용
+- [x] 공통 AppBar/Card/Sheet/Dialog/Input/Button/Navigation/Selection 컴포넌트 테마 정의
+- [x] AIFC 퍼플 역할과 계약서 앰버 강조 역할 분리
+- [x] 설정·오프닝·온보딩·홈·레슨 등록·회원카드 외곽의 다크 가독성 보완
+- [x] Galaxy DEV에서 라이트/다크 전환, 재시작 유지, 홈·스케줄·레슨 시트·추천 Overlay·AIFC·회원카드 확인
+- [x] 실기기에서 발견한 다크 홈 고정 검정 제목 회귀 수정
+- [x] 테마 집중 테스트 5개·전체 Flutter 517개·DEV Debug APK·diff check 통과
+- [x] analyze error 0, 종료 로그 permission-denied/crash/ANR/overflow/PROD marker 0
+- [x] 검증 종료 후 DEV 테마를 기존 기본 라이트 상태로 복원
+- 기존 전체 analyze warning/info와 회원카드 내부의 역사적 고정 스타일을 일괄 정리하는 작업은 이번 범위에서 진행하지 않는다.
+
+## 2026-08-05 Galaxy PROD 아이콘 68% 적용 완료
+
+- [x] 승인된 80% 전경만 중심 기준 85% 추가 균등 축소
+- [x] 최초 원본 대비 명목 68%, transform anchor `(215.0, 216.0)` 유지
+- [x] alpha>8 bbox 138×201px, 여백 좌146/상115/우148/하116px 확인
+- [x] 앰버 background hash·adaptive XML·DEV icon 불변
+- [x] PROD 일반·round 10개와 adaptive foreground 재생성 및 픽셀 일치 검증
+- [x] PROD Debug APK 빌드 통과
+- [x] Galaxy `adb install -r` 데이터 보존 업데이트 성공
+- [x] HOME 화면 기존 `모어댄` 바로가기 68% 아이콘 갱신 확인
+- [x] PROD 앱 실행·uninstall·`pm clear`·Firebase·Play·commit/push 미실행
+- Play 업로드 전 release signing과 versionCode 확정은 기존 blocker로 유지한다.
+
+## 2026-08-05 PROD 아이콘 시각 안전 여백 보정 완료
+
+- [x] adaptive icon을 full-bleed 앰버 background와 투명 네이비 foreground로 분리
+- [x] 네이비 심볼만 중심 기준 균등 90% 축소
+- [x] 심볼 비율·우상단 붓끝 유지, 상·하 여백 약 42px 증가
+- [x] 일반·round density PNG 10개와 adaptive XML·레이어 재생성
+- [x] APK 내부 일반·round·adaptive 픽셀 일치 및 마스크 preview 확인
+- [x] PROD Debug APK 재빌드 통과
+- [x] Galaxy `adb install -r` 데이터 보존 업데이트 성공
+- [x] 홈·앱 서랍 일반·별도 profile 항목 시각 여백 증가 확인
+- [x] uninstall·`pm clear`·PROD 앱 실행·Firebase·Play·commit/push 미실행
+- Play 업로드 전 release signing과 versionCode 확정은 기존 blocker로 유지한다.
+
+## 2026-08-05 PROD 아이콘 최종 84.6% 여백 보정 완료
+
+- [x] 승인된 90% 전경만 추가 94% 균등 축소
+- [x] 최초 원본 대비 명목 84.6%, bbox 유효 84.56%/84.57% 확인
+- [x] transform anchor 유지, 상하·좌우 임의 이동 없음
+- [x] 우상단 열린 붓끝·좌하단 붓결·종횡비 보존
+- [x] 앰버 background hash 불변, adaptive 분리 레이어 구조 유지
+- [x] PROD 일반·round 10개와 adaptive foreground 재생성
+- [x] 모든 density 중심·일반/round·APK 추출 픽셀 일치 검증
+- [x] PROD Debug APK 빌드 통과
+- [x] Galaxy `adb install -r` 데이터 보존 업데이트 성공
+- [x] 홈·앱 서랍 90% 대 84.6% 전후 비교 및 안전 여백 증가 확인
+- [x] DEV 아이콘·uninstall·`pm clear`·Firebase·Play·commit/push 미작업
+- Play 업로드 전 release signing과 versionCode 확정은 기존 blocker로 유지한다.
+
+## 2026-08-05 PROD 아이콘 최종 80% 조정 완료
+
+- [x] 승인된 84.6% 전경만 `0.80 / 0.846` 비율로 추가 균등 축소
+- [x] 최초 원본 대비 명목 80%, bbox 유효 80.11%/80.15% 확인
+- [x] transform anchor `(215.0, 216.0)` 유지, 임의 위치 이동 없음
+- [x] 우상단 붓끝·좌하단 붓결·중앙 허리·내부 음영 보존
+- [x] 수정 후 bbox 162×236px, 여백 좌134/상98/우136/하98px 확인
+- [x] 앰버 background hash·adaptive XML·DEV icon 불변
+- [x] PROD 일반·round 10개와 adaptive foreground 재생성
+- [x] density 중심·일반/round·APK 추출 픽셀 일치 검증
+- [x] PROD Debug APK 빌드 통과
+- [x] Galaxy `adb install -r` 데이터 보존 업데이트 성공
+- [x] 홈·앱 서랍 84.6% 대 80% 동일 배경 비교 및 시각 여백 증가 확인
+- [x] PROD 앱 수동 실행·uninstall·`pm clear`·Firebase·Play·commit/push 미실행
+- Play 업로드 전 release signing과 versionCode 확정은 기존 blocker로 유지한다.
+## 2026-08-06 브랜드 테마 2차 1/3 완료
+
+- [x] 회원관리 목록·필터·카드·그룹 메뉴 라이트/다크 브랜드 surface 적용
+- [x] 고객카드 진입 공통 카드·하단 액션 theme token 적용
+- [x] Home 하단 내비게이션·더보기 메뉴 선택/탭 동작 유지
+- [x] Drawer·등급 안내·공통 BottomSheet·확인/삭제 시트 대비 적용
+- [x] 스케줄러 배경·격자·헤더·오늘/선택 강조 token 적용
+- [x] Galaxy 다크 회원 그룹 PopupMenu 고정 회색 대비 회귀 수정
+- [x] 관련 Flutter 18개, 전체 Flutter 527개, analyze error 0, diff check, DEV APK 통과
+- [x] Galaxy DEV 라이트/다크 검증 및 밝은 테마 복원·재시작 유지
+- [x] permission-denied·crash·ANR·overflow·PROD marker 0
+- [ ] 2/3 운동일지·계약서·빠른서명·알림·위젯 테마는 별도 승인 후 진행
+- [ ] 3/3 인사이트·운영통계·차트·목표·DDAY 테마는 별도 승인 후 진행
+- 다음 묶음으로 자동 이동하지 않는다.
+## 2026-08-06 브랜드 테마 2차 2/3 검증 상태
+
+- [x] 관련 Flutter 64개와 Personal training logs Emulator 38개 통과
+- [x] 전체 Flutter 무출력 timeout을 sandbox Flutter SDK/상태 파일 권한 문제로 분리하고 제품 테스트 hang이 아님을 확인
+- [x] 전체 Flutter 4개 shard 148/132/92/162개, 합계 534개 통과
+- [x] 전체 analyze error 0, warning 246, info 912 확인
+- [x] `git diff --check`, DEV Kotlin compile, merged DEV Manifest, DEV Debug APK 통과
+- [x] Galaxy DEV 데이터 보존 업데이트와 라이트·다크 Home/설정/알림/위젯/시트/계약서 작성 surface 확인
+- [x] 기존 레슨 편집 메모 포커스·키보드 표시와 시트 overflow/겹침 0 확인
+- [x] 로컬 Semi-Pro fixture가 Firestore write 없이 적용됨을 확인하고 DEV 재시작으로 해제
+- [x] 라이트 모드 원복·재시작 유지, permission-denied/crash/ANR/overflow/PROD marker 0 확인
+- [ ] Galaxy 레슨일지 목록·작성·세트·서명 상태 실기기 확인: 기존 회원의 동의 선행조건 때문에 저장 없이 진입 불가
+- [ ] Galaxy 빠른서명 캔버스·펜·초기화·취소 실기기 확인: 서명 완료 계약서 fixture 부재
+- [ ] Galaxy 계약서 미리보기 실기기 확인: 필수 계약 입력·저장 없이 미리보기 진입 불가
+- [ ] 위 세 실기기 항목이 확인될 때까지 2/3 완료 처리하지 않음
+- [ ] 3/3은 시작하지 않음
+## 2026-08-06 브랜드 테마 2차 2/3 완료
+
+- [x] Galaxy DEV 레슨일지 본문 라이트·다크 실기기 검증
+- [x] 카테고리형 레슨일지 다크 저대비 surface 누락 최소 수정
+- [x] Galaxy DEV 빠른서명 밝은 캔버스·펜 획·지우기·취소 검증
+- [x] Galaxy DEV 계약서 미리보기 밝은 문서 surface·스크롤·서명란 검증
+- [x] fixture 일정·레슨일지 삭제, baseline count 복원, 서버 tier Amateur 유지
+- [x] 로컬 Semi-Pro fixture 해제 및 최종 밝은 모드 재시작 유지
+- [x] 관련 Flutter 7개·전체 Flutter 534개·diff check·DEV APK 통과, analyze error 0
+- [x] 최종 clean 로그 permission-denied·crash·ANR·overflow·PROD marker 0
+- [ ] 브랜드 테마 2차 3/3은 별도 승인 전 시작하지 않음
+## 2026-08-07 브랜드 테마 2차 3/3 완료
+
+- [x] `pref_app_theme` 3종과 legacy `pref_dark_mode` 하위 호환 migration
+- [x] 앱 테마와 위젯 테마를 단일 source of truth로 동기화
+- [x] 라이트 → `brandLight`, 다크 → `dark`, 룰루랄라 → 기존 `light` 매핑
+- [x] legacy pink/brown/paper 저장값 read 유지 및 설정 UI 비노출
+- [x] 인사이트·통계·차트 palette 중앙화와 데이터 계산/query 무변경
+- [x] 주간 목표·D-DAY surface와 의미색 테마 연결
+- [x] Galaxy DEV 라이트·다크·룰루랄라 전환 및 재시작 유지
+- [x] 다크 회원카드 회차·그룹 배지 대비 실기기 회귀 최소 보정
+- [x] 관련 Flutter 41개, 전체 Flutter 546개, analyze error 0, diff check, DEV APK 통과
+- [x] 최종 라이트·`brandLight` 위젯 복원, 로컬 tier fixture 해제, 안전 로그 0
+- [ ] DEV 주간 위젯 실물 렌더링 확인: provider 등록은 확인했으나 현재 런처에 DEV 주간 위젯 인스턴스가 없음
+- [ ] D-DAY 실제 데이터 카드 3테마 실물 확인: 이번 DEV baseline에 표시 가능한 D-DAY 항목이 없어 widget test 근거만 확보
+- [ ] 분홍빛·브라운히스토리·또박또박 테마의 전체 구현은 차후 테마 확장 후보로 유지
+- 다음 백로그 묶음으로 자동 이동하지 않는다.
+
+## 2026-08-08 고객카드 canonical persistence·목표 assertion 수정 상태
+
+- [x] Personal 회원권 update 누락 원인 확정: UI canonical state가 축약 callable request에서 유실
+- [x] 회원권 1/3/6/12개월·직접 120일·직접 시작/종료일 canonical update 계약 추가
+- [x] `anniversaryDate`·`anniversaryLabel` 저장·제거·readback 계약 추가
+- [x] `updateManagedMember` nested allowlist, 날짜·inclusive 기간 검증, 기존 membership 하위 필드 보존
+- [x] 다음 주 목표 첫 product frame과 controller 조기 dispose 원인 확정
+- [x] 주간 목표 Dialog 입력 lifecycle 자체 소유로 수정, system/light/dark 반복 회귀 통과
+- [x] Personal 회원 삭제를 owner-scoped `transitionManagedMemberState` callable/readback으로 교체
+- [x] canonical pending-delete marker와 다른 owner 삭제 차단 Emulator 검증
+- [x] 관련 Flutter 45개·전체 Flutter 553개·managed member Emulator 59개·Functions build/lint·diff check·DEV APK 통과
+- [ ] DEV 선택 배포 승인 대기: `updateManagedMember`, `transitionManagedMemberState`
+- [ ] 선택 배포 후 Galaxy DEV 회원권 120일/직접 날짜, D-DAY 저장·제거, 목표 반복, canonical 가짜 회원 삭제·baseline 복원 실기기 검증
+- [ ] 위 DEV readback과 안전 로그가 통과하기 전 PROD 진행 금지
+- Firebase 배포·PROD·commit/push는 수행하지 않았고 다음 묶음으로 이동하지 않는다.
+
+## 2026-08-07 브랜드 테마 출시 게이트 차단 항목
+
+- [x] DEV 주간 위젯 라이트·다크·룰루랄라 실제 인스턴스 렌더링 확인
+- [ ] D-DAY 수정 저장 계약 복구: `anniversaryDate`·`anniversaryLabel`을 클라이언트 service, `updateManagedMember` allowlist와 canonical write/readback에 end-to-end로 포함하고 회귀 테스트 추가
+- [ ] 검증용 회원 안전 정리 경로 복구: 고객카드 `_softDeleteMember()`의 직접 Firestore write를 기존 owner-scoped canonical callable 흐름으로 교체하고 권한 회귀 테스트 추가
+- [ ] 남은 DEV 검증용 가짜 회원 1건을 수정·검증 후 canonical 경로로 삭제하고 baseline count 복원
+- [ ] 위 두 결함의 관련·전체 자동 테스트와 DEV 선택 배포 필요 범위를 별도 승인받아 검증
+- [ ] DEV D-DAY 3테마 실물 검증을 다시 통과하기 전 release freeze·PROD 빌드·설치로 진행하지 않음
+- [x] 로컬 tier fixture 해제, 앱 라이트·위젯 `brandLight`, 서버 actual tier Beginner 유지
+- 다음 백로그 묶음으로 자동 이동하지 않는다.
+## 2026-08-08 DEV managed member blocker 실기기 검증 완료
+
+- [x] `updateManagedMember`, `transitionManagedMemberState`만 `more-than-fitness-dev-mft`에 선택 배포하고 `asia-northeast3` `ACTIVE` 확인
+- [x] 직접입력 120일 회원권 저장·canonical readback·재진입 유지
+- [x] 시작일/종료일 직접 선택 저장·canonical readback·재시작 유지
+- [x] membership 하위 pause/contract/history 부가 데이터 비덮어쓰기 확인
+- [x] D-DAY 저장·서버 readback·재진입·재시작·light/dark/lululala 표시
+- [x] D-DAY 날짜 지우기 UI 추가 및 nullable 제거·readback·재진입 확인
+- [x] 다음 주 목표 Dialog light/dark/lululala open/close·save/cancel 반복과 assertion 0 확인
+- [x] 검증용 회원을 `transitionManagedMemberState` 1회로 canonical pending-delete 처리하고 활성 회원 count 2로 복원
+- [x] 로컬 fixture 해제, 앱 `light`, 위젯 `brandLight`, 주간 목표 50 복원
+- [x] 관련 Flutter 7개, 전체 Flutter 553개, managed member Emulator 59개, Functions build/ESLint, analyze error 0, diff check, DEV APK 통과
+- [x] 최종 DEV PID 로그 permission-denied·unhandled·crash·ANR·overflow·PROD marker 0
+- [x] PROD·다른 Firebase 리소스·commit·push 작업 0건
+- [ ] 서버 tier는 요청 예상 `Beginner`가 아니라 시작 readback과 동일한 `Amateur`였다. 이번 승인 범위에서는 변경하지 않았으며 다음 PROD 작업 전 운영 의도만 별도 확인한다.
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-11 스케줄 붙여넣기 충돌 일정 제외
+
+- [x] 대상 주 실제 start/end 기반 overlap 판정과 exact-touch 허용
+- [x] 붙여넣기 후보를 pasteable/conflicting으로 사전 분류하고 후보 기준 충돌 수 계산
+- [x] 후보끼리 충돌 시 기존 단일 시간대 정책에 따라 양쪽 후보 제외
+- [x] 부분 충돌 AIFC sheet의 동적 개수·취소·`N개 제외하고 붙여넣기` UX
+- [x] 모두 충돌 시 확인 전용 sheet와 write 0
+- [x] 확인 직전 owner-scoped 재조회·plan 재계산으로 race 방어
+- [x] pasteable source index만 기존 canonical batch 저장, 기존 일정 delete/overwrite 0
+- [x] 신규 테스트 17개·관련 Flutter 82개·전체 Flutter 4 shard·schedule Emulator 27개 통과
+- [x] 변경 범위 analyze 신규 error/warning 0·`git diff --check`·DEV APK 통과
+- [x] Galaxy DEV 2개 충돌·1개 충돌·전부 충돌·exact-touch·취소/확인·즉시 refresh 검증
+- [x] 고유 marker fixture 17건 정리, schedule baseline 11·tier Amateur·light 복원
+- [x] 최종 안전 로그 0, PROD/Firebase 배포·commit·push 0
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-10 회원 저장 파이프라인 blocker 재오픈
+
+- [x] 기존 회원 update·신규 quick create·canonical readback·회원목록 query/refresh를 하나의 blocker로 재분류
+- [x] 기본정보 name/phone/birthDate/gender 단일·동시 update와 membership·D-DAY 보존 Emulator 검증
+- [x] canonical 저장과 custom lesson/draft 후처리를 분리해 후처리 실패의 저장 실패 오표시 차단
+- [x] Personal Home 빠른등록의 직접 Firestore write·조기 성공 toast를 root cause로 확정
+- [x] quick create callable·memberId·owner/workspace/createdAt readback·owner snapshot 이후 성공 처리 구현
+- [x] 회원목록 owner-scoped query와 기본 전체 필터에서 신규 active 회원이 제외되지 않음을 확인
+- [x] 관련 Flutter 45개·전체 Flutter 571개·managed member Emulator 62개·Functions lint/build 통과
+- [x] 변경 범위 analyze error 0·git diff check·DEV APK 통과
+- [ ] DEV `createManagedMember` 선택 배포 승인 및 `asia-northeast3` ACTIVE 확인
+- [ ] Galaxy DEV 기존 회원 기본정보 5경로 저장·재진입·재실행 readback
+- [ ] Galaxy DEV 빠른등록 create·즉시 회원목록/검색 표시·동일 memberId·중복 0 확인
+- [ ] fixture canonical 삭제와 baseline count·light·brandLight 원복
+- [ ] PROD 반영이 APK와 Function 중 무엇이 필요한지 DEV 실증 후 최종 판정
+- 그룹·`member_groups`·신규 custom-group schema는 계속 보류하고 다음 기능으로 이동하지 않는다.
+
+## 2026-08-08 PROD 1.0.4 데이터 보존 업데이트
+
+- [x] 설치 전 PROD `1.0.3 (4)` package UID·dataDir·firstInstallTime 기준값 확인
+- [x] 설치 APK와 새 PROD APK의 Android Debug 인증서 일치 확인
+- [x] `pubspec.yaml`을 `1.0.4+5`로 최소 변경하고 versionCode 로컬 충돌 0 확인
+- [x] 관련 Flutter 36개·전체 Flutter 553개·managed member Emulator 59개·Kotlin compile·diff check 통과
+- [x] 전체 analyze error 0 확인(기존 warning 240·info 913 유지)
+- [x] PROD release APK package/version/Firebase identity/non-debuggable/DEV marker 0 확인
+- [x] Galaxy에 `adb install -r`로만 데이터 보존 업데이트하고 `1.0.4 (5)` 확인
+- [x] package UID·dataDir·firstInstallTime 및 기존 세션·회원·일정 표시 보존 확인
+- [x] Home·고객리스트·고객카드·신규 레슨 시트·Drawer·설정·알림·위젯 설정 읽기 전용 스모크
+- [x] light/dark/lululala 렌더링 확인 후 최종 light 복원
+- [x] PROD 위젯 provider 3개와 DEV package 보존 확인
+- [x] 최종 PROD 프로세스 로그 permission-denied·unhandled·crash·ANR·overflow·DEV marker 0
+- [x] uninstall·`pm clear`·Firebase 배포·Play 업로드·commit·push 0건
+- [ ] 현재 APK는 기존 설치본과 동일한 Android Debug 인증서다. Play 정식 release signing 전환과 데이터 보존 전략은 별도 승인 후 진행한다.
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-08 1.0.4 이후 잔여 테마 불일치 정리 완료
+
+- [x] 후원·AIFC·스케줄러 잔여 의미색을 `MtfThemeTokens`에 중앙화
+- [x] 고객리스트·레슨일지·마이페이지·계약서·동의 헤더와 주요 CTA 브랜드 테마 연결
+- [x] 레슨일지 작성 방식·빠른등록·상담 시트의 surface/input 대비 정리
+- [x] Home·Drawer 후원 카드와 스케줄러 외곽·경계·오늘 열의 3테마 역할 분리
+- [x] Galaxy 다크 DEV fixture popup 저대비와 라이트 마이페이지 고정 인디고 저장 CTA 실기기 보정
+- [x] 관련 Flutter 38개 및 보정 후 회귀 21개, 전체 Flutter 563개 통과
+- [x] 전체 analyze error 0(기존 warning 235·info 914), `git diff --check`, DEV Debug APK 통과
+- [x] Galaxy DEV light/dark/lululala 주요 화면·키보드·재시작 유지 및 최종 light 복원
+- [x] 서버 실제 등급 선택 복원, actual tier Amateur 유지, 기존 DEV 데이터 write 0
+- [x] 최종 clean 로그 permission-denied·unhandled·crash·실제 ANR·overflow·PROD marker 0
+- [ ] 레슨일지 작성 방식 시트와 개인정보 동의 화면의 Galaxy 실물 확인은 안전한 선행 fixture가 있는 별도 회귀에서 보완한다. 이번에는 정적 경로와 widget test만 통과했다.
+- [ ] AIFC 사용자 말풍선의 Galaxy 실물 확인은 실제 전송 없는 전용 fixture가 준비될 때 보완한다. FC 상담 surface와 자동 widget test는 통과했다.
+- [x] PROD package·Firebase·commit/push 작업 0건
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-08 잔여 테마 3화면 실기기 보완 완료
+
+- [x] 레슨일지 작성 방식 선택 시트 light/dark/lululala 실물 검증
+- [x] 개인정보 동의 화면 3테마 실물 검증 및 저대비 안내 문구·AppBar 최소 보정
+- [x] AIFC 사용자 말풍선 3테마, 긴 문장 wrap, 키보드, typing/loading 실물 검증
+- [x] 기존 DEV 회원 read-only 재사용, 로컬 fixture·미저장 draft만 사용, 서버 write 0건
+- [x] 관련 Flutter 10개·전체 Flutter 563개·변경 범위 analyze error 0·DEV APK 통과
+- [x] `adb install -r` 데이터 보존 설치와 최종 `git diff --check` 통과
+- [x] 서버 actual tier Amateur, member 2, schedules 11, trainingLogs 0 및 consent 상태 원복 확인
+- [x] 로컬 fixture 해제, 최종 앱 light·위젯 brandLight 유지
+- [x] permission-denied·unhandled·crash·실제 ANR·overflow·PROD marker 0
+- [x] PROD package·Firebase·commit·push 작업 0건
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-09 PROD 1.0.4 (6) 데이터 보존 업데이트 완료
+
+- [x] release freeze source/import/DEV guard/PROD identity 감사와 versionCode 6 미사용 확인
+- [x] `pubspec.yaml`만 `1.0.4+6`으로 변경
+- [x] 관련 Flutter 51개·전체 Flutter 563개·Functions build·managed member Emulator 59개 통과
+- [x] 전체 analyze error 0(기존 warning 235·info 928), `git diff --check` 통과
+- [x] PROD release APK package `com.example.mtf_app`, version `1.0.4 (6)`, non-debuggable, PROD projectId 확인
+- [x] 설치본과 새 APK의 Android Debug signer SHA-256 완전 일치
+- [x] Galaxy `R3CX40M6EEM`에 `adb install -r` 성공
+- [x] package UID·dataDir·firstInstallTime, 기존 익명 session, 회원목록 1명, 기존 일정 표시 보존
+- [x] Home·고객리스트·고객카드·Drawer·MyPage·설정·신규/기존 레슨 시트 read-only smoke
+- [x] 레슨계약서·레슨일지·AIFC 상담은 Amateur 중앙 gate 표시 확인, 실제 저장 화면 미진입
+- [x] light/dark/lululala 확인 후 최종 light, 위젯 brandLight 복원
+- [x] PROD 위젯 provider 3개와 bound widget record 5개 유지
+- [x] 사용자 0·보안 폴더 PROD PID 안전 로그 permission-denied·unhandled·crash·ANR·overflow·DEV marker 0
+- [x] DEV package `com.example.mtf_app.dev` 유지
+- [x] uninstall·`pm clear`·Firebase 배포·Play upload·commit·push 0건
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-09 PROD 회원권·기본 그룹 blocker
+
+- [x] PROD/DEV `updateManagedMember` 배포 계약 차이와 `invalid-argument / unknown_fields` 원인 분리
+- [x] 회원권 일수 `120`, `120일`, day/days 변형 정규화 helper와 회귀 테스트 추가
+- [x] 기본 그룹 저장 실패를 성공처럼 반환하던 AIFC 시트 종료 흐름 수정
+- [x] Personal “그룹 추가” 부재를 legacy `member_groups` 차단 정책으로 분류
+- [x] callable 실패 진단 marker 추가, 구버전 allowlist 오류를 `INVALID_ARGUMENT` / `unknown_fields` / details 없음으로 고정 검증
+- [x] 최신 관련 Flutter 17개·전체 Flutter 566개·managed member Emulator 59개·Functions lint/build 통과
+- [x] 변경 범위 analyze error 0·`git diff --check`·DEV APK 통과
+- [x] Galaxy DEV 최신 빌드에서 `120`·`120days` 자동 날짜 저장과 canonical readback 통과
+- [ ] `120일` 실기기 직접 입력은 Android 16 ADB Unicode 입력 제한으로 미확정; 동일 parser Flutter 회귀 테스트는 통과
+- [x] Galaxy DEV 직접 날짜 저장, 재진입·재시작 canonical readback 통과
+- [x] 기본 그룹명 변경·서버 readback·재시작 유지·`MORE THAN GYM` 원복 통과
+- [x] 검증 회원 canonical pending-delete, managed active count 2와 DEV baseline 복원(원문 pending-delete 문서는 7일 정책에 따라 유지)
+- [x] 최종 light·brandLight, server tier Amateur, 안전 로그 0 확인
+- [x] PROD `updateManagedMember`만 `more-than-fitness-f6adb`에 선택 배포, `asia-northeast3` ACTIVE 확인
+- [x] PROD 설치 앱에서 숫자 `120` 저장·재진입 readback, unknown_fields 재발 0 확인
+- [ ] 현재 설치 PROD 앱은 최신 parser가 없어 `120일`·`120days`가 적용되지 않음; 최신 소스 포함 데이터 보존 앱 업데이트 필요
+- [x] AIFC 실패 후 5초 이상 자동 종료 없음·입력 유지·명시적 `나중에` 종료 회귀 테스트와 Galaxy DEV 실증
+- [x] PROD 검증 회원을 원래 기간 미등록 상태로 복원
+- [ ] PROD 앱 업데이트 후 `120일`·`120days` 저장·재진입·canonical readback 재검증
+- [ ] PROD 앱 업데이트 후 D-DAY 계약 최소 회귀 확인
+- [ ] PROD `updatePersonalTrainerProfile` 계약은 실제 source 미확인 상태이므로 별도 승인 전 추가 조사 또는 선택 배포 판단
+- [ ] 그룹 저장 false-success 수정이 포함된 다음 PROD 앱 데이터 보존 업데이트
+- [ ] Personal custom group이 필요하면 legacy 복원이 아니라 별도 canonical schema·UX 작업으로 기획
+- 다음 백로그로 자동 이동하지 않는다.
+## 2026-08-10 PROD 회원권 입력/저장 blocker
+
+- [x] PROD 출시 후보를 `1.0.4+7`로 빌드하고 package/version/non-debuggable/PROD identity 확인
+- [x] 새 APK와 설치본 signer SHA-256 일치 확인
+- [x] Galaxy에 `adb install -r`만 사용해 데이터 보존 업데이트하고 dataDir/firstInstallTime/session 보존 확인
+- [x] 숫자 `120` 적용·저장·재진입 canonical snapshot 확인
+- [x] `120days`를 120일로 정규화하고 저장·재진입 확인
+- [x] Galaxy 키보드 `120일`을 120일로 정규화하고 저장·재진입 확인
+- [x] 실패 후 8초 이상 AIFC 시트·입력·focus 유지 및 명시적 `나중에` 종료 확인
+- [x] 실제 PROD 회원을 원래 기간 미등록 상태로 복원하고 앱 재시작 후 유지 확인
+- [x] 관련 Flutter 11개, 전체 Flutter 567개, managed member Emulator 59개, Functions build/ESLint, analyze error 0, diff check, PROD APK 통과
+- [x] PROD PID 안전 로그 permission-denied·unknown_fields·crash·ANR·overflow·DEV marker 0
+- [x] Firebase 추가 배포·Rules/indexes/Storage/Hosting·그룹/member_groups·Play·commit/push 0건
+- [x] 이전 PROD 실패를 callable 완료 전 Firestore DNS `UNAVAILABLE`로 분류하고 해당 시각 Function 실행 0건 확인
+- [x] 동일 PROD payload 저장 1회 재현에서 Function HTTP 200·canonical readback·재진입 유지 확인
+- [x] PROD/DEV membership·D-DAY payload와 Function allowlist·dot-path write 일치 확인
+- [x] client-only 단계 진단과 네트워크 재시도 안내 추가, 실패 시 고객카드·입력값 유지
+- [x] 관련 Flutter 50개, 전체 Flutter 569개, managed member Emulator 59개, Functions build/ESLint, analyze error 0, diff check, DEV APK 통과
+- [x] Galaxy DEV 120일 저장·재진입·앱 재실행 유지 및 기간 미등록 원복
+- [x] PROD 검증 회원을 원래 기간 미등록 상태로 복원
+- [ ] 새 client UX·진단이 포함된 PROD APK 데이터 보존 업데이트 승인과 성공·네트워크 실패 smoke
+- [ ] 위 PROD 앱 반영 검증 전까지 회원권 저장 blocker를 완료 처리하지 않음
+- [ ] Play 정식 release signing 전환과 업로드는 별도 승인 작업으로 유지
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-10 DEV 빠른등록 canonical create 최종 검증
+
+- [x] 빠른등록 성공을 callable·server readback·owner snapshot 이후로 이동
+- [x] 실패 시 AIFC 시트와 입력값 유지, 네트워크 재시도 안내 및 동일 idempotency key 재사용
+- [x] 관련 Flutter·전체 Flutter shard·managed member Emulator 62개·Functions lint/build·analyze error 0·diff check·DEV APK 통과
+- [ ] `createManagedMember` DEV 선택 배포: 승인 명령이 실행 전 안전 심사에서 차단되어 미배포
+- [ ] 배포 ACTIVE 확인 후 Galaxy DEV 빠른등록·즉시 목록·검색·재실행·중복 0 검증
+- [ ] Galaxy DEV fixture canonical 삭제와 active count baseline 원복
+- 다음 백로그로 자동 이동하지 않는다.
+## 2026-08-10 DEV 빠른등록 canonical create 최종 검증 완료
+
+- [x] 직전 `createManagedMember` DEV 배포 중단 상태를 최신 성공 결과로 폐기
+- [x] `more-than-fitness-dev-mft`의 `createManagedMember`만 선택 배포
+- [x] `asia-northeast3` ACTIVE 및 Node.js 22 함수 목록 readback
+- [x] 다른 함수·Rules·indexes·Storage·Hosting·PROD 배포 0건
+- [x] Galaxy DEV 데이터 보존 업데이트 설치
+- [x] Home 빠른등록 callable → canonical server readback → owner snapshot 이후 성공 처리
+- [x] non-empty 반환 memberId와 readback 문서 ID 일치 확인, 원문 식별자 미기록
+- [x] owner/workspace/active/createdAt 계약 및 groupId/groupName 미생성 확인
+- [x] 저장 직후 회원관리 목록·검색·고객카드 표시
+- [x] DEV 앱 재실행 후 동일 회원 유지
+- [x] 생성 fixture의 기존 회원 update·canonical readback·재진입 회귀
+- [x] 같은 테스트 번호 재시도 `already-exists`, 시트·입력 유지, 중복 생성 0
+- [x] 생성 fixture만 canonical `transitionManagedMemberState`로 삭제
+- [x] active 회원 count 3→기존 2 복원 및 재실행 후 fixture 부재
+- [x] light·brandLight 유지, 로컬 tier fixture 해제, tier write 0
+- [x] 최종 clean 로그 permission-denied·invalid argument·unknown fields·crash·ANR·overflow·PROD marker 0
+- [x] 관련 Flutter 24개 및 `git diff --check` 재통과
+- 다음 백로그로 자동 이동하지 않는다.
+## 2026-08-11 PROD 빠른등록 canonical 저장 파이프라인 1단계
+
+- [x] DEV 실기기 검증 코드와 현재 `createManagedMember` 소스 동일 상태 확인
+- [x] `functions/src/index.ts`의 `createManagedMember` export 확인
+- [x] Functions ESLint·TypeScript build·`git diff --check` 통과
+- [x] Rules·indexes·Storage·Hosting 설정 변경 없음 확인
+- [x] `more-than-fitness-f6adb`에 `createManagedMember`만 선택 배포
+- [x] `asia-northeast3`, Node.js 22 1st Gen, ACTIVE 확인
+- [x] updateTime `2026-08-11T00:06:56.824Z`, versionId 3 확인
+- [x] 배포 전후 함수 13개 유지, 변경 함수 `createManagedMember` 1개 확인
+- [x] CLI exit code 0, cleanup policy 경고 없음
+- [x] 다른 함수·Rules·indexes·Storage·Hosting 배포 0건
+- [x] PROD 데이터 write·migration 0건
+- [x] PROD APK build/install·앱 실행 0건
+- [x] commit·push 0건
+- [ ] 2단계: 별도 승인 후 PROD APK 데이터 보존 업데이트 및 빠른등록 canonical write 검증
+- 다음 단계로 자동 이동하지 않는다.
+## 2026-08-11 PROD 빠른등록 canonical 저장 파이프라인 2단계
+
+- [x] PROD versionCode를 미사용 로컬 값 8로 올리고 `1.0.4 (8)` release APK 빌드
+- [x] package `com.example.mtf_app`, PROD Firebase, non-debuggable, DEV marker 없음 확인
+- [x] 설치 APK와 새 APK signing SHA-256 일치 확인
+- [x] Galaxy `adb install -r` 데이터 보존 업데이트 성공
+- [x] UID·dataDir·firstInstallTime·세션·DEV 패키지 보존 확인
+- [x] Home·기존 일정·회원목록·고객카드 read-only smoke
+- [x] 빠른등록 이름/전화번호 UI와 저장 버튼을 확인하고 저장 미실행
+- [x] 신규 레슨 시트의 회원 검색 입력·최근 등록 회원 영역을 저장 없이 확인
+- [x] Drawer·설정·최종 라이트 확인
+- [x] PROD PID 안전 로그와 저장 callable/write marker 0건 확인
+- [x] 추가 Firebase 배포·PROD 데이터 write·Play·commit·push 0건
+- [ ] 3단계: 별도 승인 후 PROD 빠른등록 실제 1회 create → canonical readback → 목록·재실행 유지 → fixture 정리 검증
+- 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-11 PROD 스케줄 부분 충돌 붙여넣기 반영
+
+- [x] PROD 스케줄 부분 충돌 붙여넣기: `1.0.4 (9)` release APK 빌드 및 기존 signer 일치 확인
+- [x] Galaxy `R3CX40M6EEM`에 `adb install -r` 데이터 보존 업데이트, UID·dataDir·firstInstallTime·세션·DEV 패키지 유지
+- [x] PROD 실제 2개 충돌 시나리오에서 `2개 제외하고 붙여넣기`, 정상 후보 2건만 생성, 충돌 후보 write 0
+- [x] canonical readback과 scheduler 즉시 refresh, 기존 일정 수정·삭제 0 및 비-fixture fingerprint 동일 확인
+- [x] 고유 marker fixture 7건만 정리, 일정 baseline 196·fixture 0·tier Amateur·light 복원
+- [x] PROD clean 로그 permission-denied·invalid argument·unknown fields·crash·ANR·overflow·DEV marker 0
+- [x] Firebase 배포·uninstall·pm clear·Play·commit·push 0
+- 다음 백로그로 자동 이동하지 않는다.
+
+## Personal canonical groups 설계안
+
+### 1. 현재 그룹 구조
+
+- Personal의 canonical 그룹 의미는 아직 “실제 그룹 문서”가 아니라 `trainer_profiles/{uid}.memberDefaultGroupLabel`로 이름을 바꿀 수 있는 가상 기본 그룹 하나다. 앱 내부 식별자는 `__ungrouped__`, 기본 표시값은 `MORE THAN GYM`이다.
+- `client_list_page.dart`의 Personal 분기는 owner-scoped `members`만 구독하고, 기본 그룹 label만 profile stream에서 읽는다. `_groupIds`와 `_memberGroupMap`은 비우며 `member_groups`를 조회하지 않는다.
+- 고객카드 Personal 분기는 그룹 옵션을 기본 그룹 하나로 제한하고, 기존 Personal 회원의 legacy `groupId`를 읽지 않는다. 신규/수정 canonical 저장도 현재 custom group을 저장하지 않는다.
+- `personal_member_card_save_service.dart`에는 default/custom/virtual/legacy/other-owner를 구분하는 normalization 골격이 있으나, 현재 canonical custom ID 집합이 전달되지 않아 custom 선택은 기본 그룹으로 fallback한다.
+- `Member` 모델의 `groupId`는 legacy 필드다. 새 Personal 필드와 이름·의미를 섞지 않고 별도 필드로 추가해야 한다.
+
+### 2. legacy 구조와 재사용 금지 범위
+
+- legacy는 root `member_groups/{groupId}`와 member의 `groupId`/`groupName`을 사용한다. owner UID와 `workspaceType`이 그룹 문서에 없고, `group_N` ID·`order`·system group 문서를 사용한다.
+- Admin/legacy UI는 root `member_groups` 직접 CRUD, owner 조건 없는 `members.where(groupId == ...)`, client batch write를 포함한다. Personal에 재사용하면 다른 trainer 데이터 노출·수정, Rules 거부, denormalized 이름 불일치 위험이 있다.
+- `firestore.rules`의 root `member_groups`는 `isLegacyAdmin()` 전용이며, Personal members의 client create/update/delete는 금지되어 있다. 새 기능은 이 경로와 규칙을 변경해 재활용하지 않는다.
+- Admin 기능은 기존 동작을 유지하고, Personal 여부는 현재처럼 non-empty `personalOwnerUid`로 분리한다.
+
+### 3. 추천 canonical path
+
+- custom group: `trainer_profiles/{uid}/personal_groups/{personalGroupId}`
+- 장점: owner namespace가 경로에 포함되고, 다른 trainer와 문서 ID가 우연히 같아도 충돌하지 않으며, profile과 lifecycle을 함께 관리하기 쉽다.
+- `personalGroupId`는 이름이나 순번을 담지 않는 opaque ID로 한다. create callable이 `uid + idempotencyKey`에서 결정적 ID를 만들어 네트워크 재시도 중복 생성을 막는다.
+
+### 4. 추천 group document schema
+
+- 필수: `name: string`, `normalizedName: string`, `schemaVersion: 1`, `createdAt: server timestamp`, `updatedAt: server timestamp`.
+- 1차 제외: `isDefault`, `sortOrder`, 색상, 태그, member count 복제값, owner UID 복제값, groupName member 복제값.
+- 삭제를 단일 transaction으로 처리하는 1차안에서는 `state`도 불필요하다. 영향을 받는 회원이 transaction 안전 한도(권장 450명)를 넘으면 쓰기 전에 `failed-precondition`으로 중단하고 별도 chunked-delete 설계를 요구한다.
+- 그룹 수는 UI/read 비용과 관리성을 위해 1차 서버 상한을 두되, 값은 제품 정책으로 확정해야 한다. 권장 시작값은 custom 20개이며 Functions와 Flutter에 동일 상수를 둔다.
+
+### 5. 추천 member field
+
+- `members/{memberId}.personalGroupId: string` 하나만 사용한다.
+- member에 `groupName`을 복제하지 않는다. 이름은 owner의 `personal_groups` snapshot에서 한 번 읽어 ID→이름 map으로 렌더링한다.
+- 기본 그룹은 필드를 저장하지 않는다. custom group으로 이동할 때만 `personalGroupId`를 기록하고 기본 그룹으로 이동하면 `FieldValue.delete()`로 제거한다.
+- legacy `groupId`/`groupName`은 읽기·쓰기 모두 Personal 분기에서 계속 무시한다.
+
+### 6. 기본 그룹 null fallback
+
+- 채택한다. `personalGroupId`가 없거나 null/empty이면 `memberDefaultGroupLabel`의 기본 그룹으로 해석한다.
+- 존재하지 않는 custom ID는 UI에서 조용히 “정상 custom group”으로 인정하지 않는다. 그룹 snapshot의 server readback이 끝난 뒤에도 ID가 없으면 기본 그룹 fallback과 진단 marker를 적용하고, 실제 정리는 명시적 저장/이동 또는 group delete callable에서만 한다.
+- 그룹 snapshot 로딩 전에는 임의로 기본 그룹으로 확정하지 않고 loading 상태를 유지해 순간적인 오분류를 피한다.
+
+### 7. 기본 그룹 document 여부
+
+- **안 A(추천)**: 기본 문서 없음 + `personalGroupId` 부재를 기본으로 해석. migration 0, 현재 profile label/`__ungrouped__` UX 유지, 기본 이름 변경 시 member write 0, 기본 삭제 불가 정책이 단순하다.
+- **안 B(비추천)**: 기본 document 생성 + 모든 member에 명시 ID 저장. query는 대칭적이지만 기존 회원 전체 migration, default document bootstrap/복구, profile label과 document 이름의 이중 source of truth가 생긴다.
+- 결론: 안 A를 채택하고 `memberDefaultGroupLabel`을 기본 그룹 이름의 유일한 source of truth로 유지한다.
+
+### 8. 기존 회원 migration
+
+- 필요 없다. 기존 회원은 `personalGroupId` 부재 상태 그대로 기본 그룹에 표시한다.
+- 배포 직후 회원 검색·최근 등록·회원목록에서 기존 회원이 사라지거나 “그룹 없음”으로 분리되지 않아야 한다.
+- custom group으로 실제 이동한 회원만 필드를 갖는다. 기본으로 복귀하면 필드를 삭제한다. 일괄 rewrite와 default ID backfill은 하지 않는다.
+
+### 9. 그룹 생성 UX
+
+- 회원관리 우측 상단 기존 메뉴에서 `회원 추가`와 `그룹 관리`를 제공하고, 현재 chip/필터 구조를 유지한다.
+- 그룹 관리 sheet/page에 기본 그룹을 첫 행으로 표시하고 하단에 `+ 새 그룹 만들기`를 둔다. 입력 즉시 trim/공백/길이/중복을 안내하되 서버 callable validation이 최종 기준이다.
+- 생성 성공은 callable 응답만이 아니라 새 group document server readback과 owner group snapshot 반영 후 표시한다. 실패 시 입력 sheet와 값은 유지한다.
+- 기존 “기본 그룹 이름 변경” shortcut은 한 릴리스 동안 유지하고 그룹 관리 안에도 같은 기능을 제공한 뒤, 사용 로그/UX 확인 후 중복 메뉴 제거를 별도 판단한다.
+
+### 10. 그룹 이름 변경 UX
+
+- 기본 그룹: 기존 `memberDefaultGroupLabel` 변경 흐름을 유지하되 custom group과의 normalized-name 충돌 검사를 서버에 추가한다. 삭제 버튼은 제공하지 않는다.
+- custom group: 그룹 관리의 해당 행에서 이름 변경. group document만 갱신하며 member write는 0이다.
+- list/card/header가 같은 group stream/helper를 사용해 즉시 갱신되고, offline cache 이후 server readback으로 확정한다.
+
+### 11. 회원 이동 UX
+
+- 고객카드의 `소속 그룹`을 Personal에서도 selector로 제공한다. 기본 그룹 + active custom groups를 같은 순서로 보여준다.
+- 회원목록 카드의 기존 빠른 그룹 메뉴도 같은 canonical service를 사용한다. 이동 중에는 해당 member에 중복 요청을 막고, server readback 후 UI를 확정한다.
+- 신규 “전체 고객카드”에는 selector를 제공하되 기본값은 기본 그룹이다. Home 빠른등록은 조밀한 UX를 유지해 1차에서는 selector 없이 기본 그룹으로 생성한다.
+- 이동은 `personalGroupId`만 변경한다. memberId, schedule, training_logs, 계약서, membership, consent, anniversary/D-DAY, 위젯 연결 데이터는 수정하지 않는다.
+
+### 12. 그룹 삭제 UX
+
+- 빈 custom group: “그룹을 삭제할까요?” 확인 후 삭제.
+- 회원이 있는 custom group: owner-scoped count를 표시하고 “삭제하면 ‘현재 기본 그룹명’으로 이동합니다.”를 안내한다. 버튼은 `[취소] [삭제하고 이동]`.
+- 기본 그룹은 삭제 UI를 제공하지 않는다. 삭제 진행 중 중복 탭을 막고, callable 완료 + group/member server readback 뒤 목록을 갱신한다.
+
+### 13. 회원이 있는 그룹 삭제 처리
+
+- client batch와 직접 Firestore write는 사용하지 않는다. `deletePersonalGroup` callable의 Firestore transaction에서 owner profile, group document, `trainerId == uid && workspaceType == personal && personalGroupId == target` 회원을 읽고, 각 member의 `personalGroupId`를 삭제한 뒤 group document를 삭제한다.
+- transaction은 전부 성공하거나 전부 rollback되어 orphan/부분 이동을 만들지 않는다. 다른 owner member는 query와 개별 identity 검증 양쪽에서 제외한다.
+- Firestore transaction write 한도를 고려해 대상 450명 초과 시 쓰기 전 중단한다. 실제 제품이 이 한도를 요구하면 `deleting` 상태 + idempotent chunk 처리 설계를 별도 단계로 도입하며, 1차에서 부분 batch 성공을 허용하지 않는다.
+
+### 14. 정렬 정책
+
+- 1차는 기본 그룹 항상 첫 번째, custom group은 `createdAt ASC`, 동률이면 document ID ASC로 고정한다.
+- drag reorder와 `sortOrder`는 넣지 않는다. 현재 chip row와 그룹 관리 목록만 같은 정렬 helper를 사용한다.
+- 사용자 순서 변경 요구가 확인되면 2차에서 `sortOrder`와 reorder callable을 별도 추가한다.
+
+### 15. 이름 중복 정책
+
+- 표시값: 앞뒤 trim, 내부 연속 공백 1칸, 길이 2~30자, 빈 값 금지.
+- 비교키: Unicode NFC → trim → 내부 공백 축약 → `toLocaleLowerCase('ko-KR')`. 따라서 `VIP`, `vip`, `VIP `는 같은 이름이다.
+- 동일 owner 안에서 custom-custom 중복을 금지하고, 현재 기본 그룹 이름과 custom 이름의 중복도 금지한다.
+- UI 혼동 방지를 위해 `전체`, 현재 시스템 필터 표시명(휴면/만료)과 동일한 이름도 1차에서는 예약어로 차단한다. 최종 정규화와 중복 판정은 transaction 기반 Functions가 수행한다.
+
+### 16. owner security
+
+- 모든 callable은 `request.auth`를 요구하고 path UID를 client에서 받지 않으며 `request.auth.uid`만 사용한다.
+- group CRUD는 `trainer_profiles/{uid}/personal_groups` 안에서만 수행하고 profile의 Personal identity를 검증한다.
+- 회원 이동은 대상 member의 `memberId`, `trainerId == uid`, `workspaceType == personal`을 서버에서 확인하고, target group도 동일 UID 하위에 실제 존재하는 active document인지 확인한다.
+- 다른 trainer의 group ID를 전달해도 read/list/create/rename/delete/assign이 모두 거부되어야 한다. UID/memberId/groupId 원문은 로그에 남기지 않는다.
+
+### 17. 필요한 Functions
+
+- 새 callable 3개: `createPersonalGroup`, `renamePersonalGroup`, `deletePersonalGroup`.
+- `createPersonalGroup`: `idempotencyKey + name`만 허용, 결정적 opaque ID, group 수 상한, 기본/custom 중복 확인, transaction create.
+- `renamePersonalGroup`: `personalGroupId + name`만 허용, owner group 존재/중복 확인, document 이름만 transaction update.
+- `deletePersonalGroup`: owner-scoped member 이동 + group 삭제를 단일 transaction으로 처리.
+- 별도 `assignManagedMemberGroup`은 만들지 않는다. 기존 `createManagedMember`에 optional `personalGroupId`를 추가하고, 기존 `updateManagedMember`에 optional `personalGroupId`와 group-only update 모드를 추가한다. absent=변경 없음, null/empty=기본 그룹으로 이동, string=owner group 존재 검증 후 저장이다.
+- `updateManagedMember`의 group-only 모드는 빠른등록 회원처럼 gender/birth가 아직 없는 회원도 분류만 바꿀 수 있어야 하며, 다른 필드 update validation을 우회하지 않도록 payload key 조합을 명시적으로 제한한다.
+- `updatePersonalTrainerProfile`의 기본 그룹 이름 변경 transaction에 custom group normalized-name 충돌 검사를 추가한다.
+
+### 18. 필요한 Rules
+
+- 신규 match: `trainer_profiles/{uid}/personal_groups/{personalGroupId}`.
+- read: `request.auth != null && request.auth.uid == uid`만 허용. anonymous Personal 세션도 현재 profile/member read 정책과 일치하게 본인 UID면 읽을 수 있다.
+- create/update/delete: 모두 `false`. 쓰기는 Admin SDK를 쓰는 canonical callable만 수행한다.
+- root `member_groups` rule과 legacy Admin 규칙은 변경하지 않는다. Personal member client write 금지도 유지한다.
+
+### 19. 필요한 indexes
+
+- group 목록 `orderBy(createdAt)`와 `normalizedName ==`은 subcollection 단일 필드 자동 index로 충분하다.
+- 현재 회원목록은 owner members 전체를 구독해 client에서 그룹별로 나누므로 기본 그룹(field missing)까지 포함한 별도 query/index가 필요 없다.
+- 삭제 및 향후 server-side group filter를 위해 `members(trainerId ASC, workspaceType ASC, personalGroupId ASC)` composite index를 명시적으로 추가하는 안을 권장한다.
+- 기본 그룹은 field missing이므로 `personalGroupId == null` query에 의존하지 않는다. owner 전체 query + local partition이 1차 source이다.
+
+### 20. 기존 기능 영향
+
+- 변경 필요: `createManagedMember` optional group 계약, `updateManagedMember` group/full update 계약, Personal 회원목록 group stream/map/filter, 고객카드 selector/readback, `Member` 모델에 별도 `personalGroupId`, 기본 label 중복 검증.
+- 변경 없음: `transitionManagedMemberState`(group을 보존), 회원 검색/최근 등록의 owner·createdAt 기준, Home 빠른등록 UI(기본 그룹), schedule, week paste, contracts, training logs, consent, membership, anniversary/D-DAY, widgets, AIFC.
+- 휴면/만료 virtual filter가 화면 분류에서 custom group보다 우선하되 `personalGroupId`는 보존해 활성 복귀 시 원래 group으로 돌아오게 한다.
+- old app은 새 `personalGroupId`를 무시하고 기존처럼 기본 그룹으로 보므로 서버 선배포가 하위 호환된다. 새 앱은 legacy `groupId/groupName`을 계속 무시한다.
+
+### 21. 단일 그룹 장단점
+
+- 장점: member당 필드 하나, 이동 write 1건, 그룹 필터와 삭제 정책이 단순하고 현재 기본 그룹 fallback과 자연스럽게 호환된다. 이름 변경 때 member rewrite가 없다.
+- 단점: 회원을 VIP이면서 재활처럼 동시에 분류할 수 없고, group 이동이 기존 분류를 대체한다. 기본 그룹 missing-field 필터는 server query보다 local partition이 적합하다.
+- 1차 요구에는 단일 그룹이 적합하며 복수 의미는 tag 기능으로 분리한다.
+
+### 22. 차후 태그 확장
+
+- group과 tag를 합치지 않는다. group은 단일 주 소속, tag는 복수 속성이라 삭제·정렬·query·UI 의미가 다르다.
+- 차후 별도 `trainer_profiles/{uid}/personal_tags/{tagId}`와 bounded `members.personalTagIds: string[]` 또는 규모가 커질 때 edge collection을 설계한다.
+- 현재 `personalGroupId`는 그대로 유지되므로 `주 그룹: 오전 회원`, `태그: VIP, 재활`을 migration 없이 추가할 수 있다.
+
+### 23. 구현 단계와 rollback
+
+- 1단계 서버 계약: group model/normalization, 3개 callable, create/update member 확장, profile 기본 이름 중복 검증, Rules/indexes, Functions/Rules Emulator. Blocker는 동시 중복·other-owner·transaction rollback·450명 한도 검증. rollback은 앱 배포 전 이전 Functions/Rules로 복귀하며 생성된 새 필드는 기존 앱에서 무해하게 무시된다.
+- 2단계 Flutter DEV: group service/readback, 회원관리 기존 chip/관리 sheet 확장, 고객카드 selector, 신규 회원 selector, 관련 widget/integration tests, 태블릿/Galaxy DEV 3테마. Blocker는 migration 0 표시, stale group fallback, quick member group-only update, legacy 요청 0. rollback은 DEV APK만 이전 버전으로 되돌리고 서버 계약은 하위 호환 상태로 유지한다.
+- 3단계 출시: index 준비 완료 확인 → PROD Rules 및 필요한 Functions만 선택 배포 → read-only 확인 → PROD APK 데이터 보존 업데이트 → 가짜 owner fixture CRUD/이동/삭제/원복. 기존 회원 rewrite는 하지 않는다. 하나라도 owner mismatch/permission-denied/orphan이면 PROD APK 진행을 중단한다.
+
+### 24. 예상 변경 파일
+
+- Flutter 제품 코드: `lib/models/member.dart`, 신규 `lib/models/personal_member_group.dart`, 신규 `lib/services/personal_member_group_service.dart`, `lib/services/personal_member_card_save_service.dart`, `lib/services/personal_member_preferences_service.dart`, `lib/pages/client_list_page.dart`, `lib/pages/client_card_page.dart`.
+- Functions/보안: 신규 `functions/src/personal_groups.ts`, `functions/src/managed_members.ts`, `functions/src/profile_bootstrap.ts`, `functions/src/index.ts`, `firestore.rules`, `firestore.indexes.json`.
+- 테스트: `test/personal_member_card_save_service_test.dart`, 신규 group service/UI tests, `firebase-emulator-tests/managed_members_limit.test.cjs`, 신규 personal groups Rules/Functions Emulator test.
+- `binder_card_page.dart`와 root legacy group UI는 Personal 구현에 재사용하지 않고 Admin/legacy 전용으로 유지한다.
+
+### 25. 주요 위험 요소
+
+- legacy `groupId/groupName`을 새 필드로 착각하거나 root `member_groups` direct write를 재사용하는 위험.
+- default label과 custom group 이름의 동시 변경에서 중복이 생기는 race. 모든 이름 변경을 transaction으로 검증해야 한다.
+- create 응답 유실 재시도에서 group이 중복 생성되는 위험. idempotencyKey 기반 결정적 ID가 필요하다.
+- group 삭제가 Firestore 500 write 한도를 넘는 위험. 1차는 450명 초과를 쓰기 전 차단하고 부분 batch를 금지한다.
+- group snapshot 로딩 실패를 “기본 그룹”으로 오판해 순간적으로 잘못 표시하는 위험. cache/server 상태를 구분한다.
+- `updateManagedMember` group-only 분기가 기존 identity/phone validation을 우회해 다른 필드를 변경하는 위험. allowlist와 payload shape 테스트가 필요하다.
+- old/new 앱 혼용 기간에 old app이 custom group을 표시하지 못하는 제한은 데이터 손상은 아니지만 출시 안내와 서버 선배포가 필요하다.
+- 새 index 미준비, Rules path 오타, 다른 owner group ID 전달, 삭제 transaction contention은 DEV Emulator와 실제 owner-scoped readback을 통과하기 전 PROD 진행 blocker다.
+- light/dark/lululala는 기존 ColorScheme만 사용하고 group별 색상은 1차에서 넣지 않는다.
+
+- 상태: **설계 완료, 구현 미착수**. Dart/Functions/Rules/Firestore/pubspec 변경, migration, DEV/PROD 배포, UI 추가, commit/push는 이번 작업에서 수행하지 않는다.
+-
+## 2026-08-11 Personal canonical 그룹 + 복수 태그 후속 단계
+
+- 상태: Phase 1 서버 canonical foundation 구현 및 자동 검증 완료. DEV 배포 직전에서 중단했다.
+- DEV Functions 선택 배포 대기: `firebase deploy --project more-than-fitness-dev-mft --only "functions:createPersonalGroup,functions:renamePersonalGroup,functions:deletePersonalGroup,functions:createPersonalTag,functions:renamePersonalTag,functions:deletePersonalTag,functions:createManagedMember,functions:updateManagedMember,functions:updatePersonalTrainerProfile"`
+- DEV Firestore Rules 선택 배포 대기: `firebase deploy --project more-than-fitness-dev-mft --only firestore:rules`
+- Indexes: 추가 배포 불필요. `firestore.indexes.json` 변경 없음.
+- 배포 후 필수 확인: 9개 Functions가 `asia-northeast3` ACTIVE인지, Rules만 갱신됐는지, 다른 Functions/Rules 외 리소스가 배포되지 않았는지 확인한다.
+- Phase 2 미착수: 회원관리 그룹/태그 관리, 고객카드 단일 그룹·복수 태그 picker, 회원목록 그룹·태그 필터, Amateur 태그 gate, Semi-Pro tag access, light/dark/lululala UI와 Galaxy DEV 검증은 별도 승인 후 진행한다.
+- 호환성: 기존 회원은 `personalGroupId` 부재 시 기본 표시명으로 유지한다. migration, default group document, legacy `member_groups`, legacy `groupId/groupName` write는 계속 금지한다.
+- 대규모 owner의 그룹/태그 삭제가 499명 초과 cleanup을 요구하면 부분 batch로 우회하지 않는다. 별도 idempotent chunk 설계 승인을 받아야 한다.
+
+## 2026-08-11 Personal canonical 그룹 + 복수 태그 Phase 1 DEV 검증 완료
+
+- 상태: **Phase 1 DEV 배포·실서버 검증 완료**. 신규 6개 taxonomy 함수와 변경 3개 managed/profile 함수가 `more-than-fitness-dev-mft`, `asia-northeast3`, `ACTIVE`이며 owner-read/client-write-deny Rules도 DEV에 반영됐다.
+- 실서버 완료: Amateur 그룹 CRUD/assignment/default fallback, Semi-Pro 태그 CRUD/복수 assignment, 사용 중 taxonomy 원자 cleanup, 기본 표시명 양방향 중복 차단, 빠른등록/full update 호환 smoke, legacy 신규 write 0을 확인했다.
+- 원복 완료: fixture 회원·그룹·태그 0, 최종 tier `Beginner`, managed member 0, owner member 0, owner schedule 0이며 검증 전 lifetime qualified count와 taxonomy/legacy count를 보존했다. 정상 DEV 앱과 기존 Auth 세션도 데이터 보존 복원했다.
+- owner isolation 근거: 다른 owner 실서버 fixture는 만들지 않았고 taxonomy Emulator 25개와 managed-member Emulator 62개를 source of truth로 사용한다. 실서버에서는 owner read와 client direct write 차단을 확인했다.
+- 다음 단계: Phase 2 회원관리 그룹/태그 관리 UI, 고객카드 picker, 회원목록 필터, 3테마 Galaxy DEV 검증은 **미착수**다. 별도 사용자 승인 전 자동 이동하지 않는다.
+- 계속 금지: PROD 배포·앱 작업, migration, default group document, legacy `member_groups`/`groupId`/`groupName` 신규 write, 499명 초과 delete 우회, commit, push.
+## 2026-08-12 Personal taxonomy Phase 2 UI 후속 검증
+
+- 구현 상태: canonical 그룹·복수 태그 Phase 2 제품 코드와 자동 검증은 완료했다. Functions/Rules/indexes/Storage/Hosting 변경·추가 배포는 없다.
+- Galaxy DEV 직접 완료: 그룹/태그 관리 진입, 그룹 2개 create/rename/delete, 태그 3개 create/rename/delete, Amateur 태그 gate, 그룹/태그 count, 단일 태그 필터, 그룹+태그 결합 결과, 재실행, fixture 삭제와 서버 baseline readback.
+- 출시 전 남은 실기기 확인: 개인정보를 노출하지 않는 전용 fixture 회원으로 고객카드 `personalGroupId` 저장·기본 그룹 복귀·복수 `personalTagIds` 저장/일부 제거·재진입, populated group delete 후 기본 그룹 이동, used tag delete 후 chip 제거를 Galaxy DEV에서 직접 확인한다.
+- Phase 3/PROD 판단: 위 실기기 assignment·cleanup 항목이 미확정이므로 자동으로 Phase 3 또는 PROD 반영으로 이동하지 않는다. 별도 승인 후 전용 fixture로만 마무리한다.
+
+## 2026-08-12 Personal taxonomy Phase 2 fixture 마무리 결과
+
+- 완료: 전용 DEV fixture 회원으로 `personalGroupId` 저장·재진입·재실행, 기본 그룹 fallback, `personalTagIds` 2개/3개 저장과 일부 해제, 태그 및 group+tag 필터를 Galaxy DEV에서 확인했다.
+- 완료: used-tag 삭제 시 taxonomy document와 member 배열의 원자 cleanup, populated group 삭제 시 기본 그룹 이동, stale chip/group 0과 재실행 유지까지 실기기에서 확인했다.
+- 수정 완료: membership 등록 필드가 없는 canonical 회원을 `기간 미등록`으로 복원하고, 기존 태그가 실제 변경된 경우에만 `tagsProvided` patch를 보내도록 고객카드 공통 저장 흐름을 최소 수정했다.
+- 원복 완료: fixture member/group/tag 0, 회원 6, 일정 11, 레슨일지 0, tier Amateur, 기본 그룹 `MORE THAN GYM`, light/brandLight. 실회원 변경 0이다.
+- 검증 완료: 관련 Flutter 50개, 전체 Flutter 4 shard, taxonomy Emulator 25개, managed-member Emulator 62개, 변경 범위 analyze error 0, `git diff --check`, DEV APK, 최종 clean 로그가 통과했다.
+- Amateur gate: 직전 동일 Galaxy Phase 2에서 중앙 Semi-Pro gate와 tag write 0을 확인했고 이번 실행에서 Amateur local-only fixture 복원을 다시 확인했다. fixture cleanup 후 gate sheet 신규 캡처는 만들지 않았다.
+- Phase 3/PROD: Phase 2의 assignment·cleanup blocker는 해소됐다. Phase 3 PROD 진행은 가능하지만 별도 사용자 승인 전에는 시작하지 않는다. PROD 작업·Firebase 추가 배포·commit·push는 계속 0건이다.
+## 2026-08-12 Personal taxonomy Phase 2 태그 관리 고정 접근 완료
+
+- 완료: 회원관리 태그 필터의 관리 톱니바퀴를 수평 스크롤 밖에 고정하고 `전체 태그` 이후 실제 태그만 한 줄 수평 스크롤하도록 변경했다.
+- 완료: 고객카드 태그 제목 오른쪽에 관리 톱니바퀴를 고정하고 `[+ 추가]` 및 선택 태그를 한 줄 수평 스크롤로 유지했다. 20개 태그·320/360/384/411dp 회귀는 widget test로 세로 확장 0을 확인했다.
+- 완료: 태그 관리는 AIFC chatbot BottomSheet로 전환했고 create/rename/delete와 즉시 refresh를 기존 canonical callable/stream으로 유지했다. 그룹 관리는 기존 page를 유지한다.
+- 완료: Galaxy DEV Semi-Pro fixture에서 태그 10개, 회원 태그 5개, 세 테마 고정 gear/수평 이동, chatbot CRUD refresh를 확인했다. Amateur 복원 후 중앙 Semi-Pro gate와 tag write 0을 확인했다.
+- 완료: fixture member/tag 0, tier Amateur, 회원 6, 일정 11, 레슨일지 0, custom group/tag 0, 기본 그룹 `MORE THAN GYM`, light/brandLight baseline을 복원했다.
+- 남은 blocker 없음. Phase 3 PROD 반영은 별도 사용자 승인 전 시작하지 않는다.
+
+## 2026-08-12 Personal taxonomy empty-state 분류 바 완료
+
+- 완료: 회원관리 Personal 상단을 고정 분류 관리 톱니바퀴와 한 줄 horizontal strip으로 통합하고, empty 상태에 실제 기본 그룹 + 약한 group/tag 예시 + 마지막 `전체`를 표시한다.
+- 완료: 예시 칩은 실제 filter/query/write에 참여하지 않으며, 실제 custom group/tag가 생기면 해당 유형의 예시가 실제 데이터로 교체되고 중복되지 않는다. 고객카드에는 예시를 표시하지 않는다.
+- 완료: example group 안내와 기존 그룹 관리 연결, example tag의 중앙 Semi-Pro gate 및 기존 AIFC 태그 관리 연결, 10/20개 고정 높이·gear 고정·3테마·Galaxy DEV 수평 swipe를 확인했다.
+- 자동 검증 완료: 관련 Flutter 52개, 전체 Flutter 648개, taxonomy Emulator 25개, analyze error 0, `git diff --check`, DEV APK. 정상 DEV 앱 복원과 최종 안전 로그도 통과했다.
+- 실기기 확인 구분: Amateur gate는 이번 Galaxy에서 직접 확인했다. Semi-Pro AIFC 태그 관리 시트는 기존 동일 manager의 직전 실기기 통과 결과와 이번 정적/자동 연결 검증을 유지하며, 개인정보 보호를 위해 이번 clean 구간에서 실데이터를 재생성하거나 전체 hierarchy를 저장하지 않았다.
+- 남은 기능 blocker는 없다. PROD 반영은 별도 사용자 승인 전 시작하지 않는다.
+
+## 2026-08-12 Personal taxonomy 상태 분류 후속 보정
+
+- 코드 완료: Personal 휴면·만료를 group pseudo item에서 분리해 독립 상태 행으로 복원했다. `managementState` 우선/legacy `memberStatus` fallback, 상태·그룹·태그·검색 AND, taxonomy strip 한 줄 유지, canonical 상태 callable/readback을 적용했다.
+- 정책 유지: membership 종료일 경고와 명시 회원 상태는 별개이며 새 시간 기반 자동 휴면·만료 규칙은 만들지 않았다. 상태 변경에 따른 group/tag write는 0건이다.
+- 테마 완료: 그룹 관리 page는 공통 branded header와 3테마 token을 사용하며 별도 page navigation을 유지한다. 태그 관리는 기존 AIFC BottomSheet를 유지한다.
+- 자동 검증 완료: 관련 Flutter 130개, 전체 Flutter 658개, taxonomy Emulator 25개, managed-member Emulator 62개, analyze error 0, `git diff --check`, DEV APK 통과.
+- 실기기 확인: Galaxy DEV에서 상태 entry/count, taxonomy 한 줄, 그룹 page light CRUD, Amateur tag gate, cleanup과 안전 로그를 확인했다. fixture 생성은 기존 Amateur 한도에서 `failed-precondition`이 세 번 반복되어 중단했으므로 실제 상태+그룹+태그+검색 AND와 그룹 page/tag sheet dark·lululala 실데이터 렌더는 미확정이다. 자동 widget test는 통과했지만 실기기 확인으로 대체 기록하지 않는다.
+- PROD 반영은 시작하지 않는다. 실기기 미확정 항목을 다시 검증하려면 기존 회원을 건드리지 않는 별도 DEV fixture 여유 또는 승인된 최소 tier/capacity 조건이 필요하다.
+
+## 2026-08-12 Personal taxonomy 통합 한 줄 필터 완료
+
+- 완료: 별도 상태 행을 제거하고 고정 gear 뒤 단일 horizontal strip에 기본/실제/예시 group, tag, `전체`, `휴면`, `만료`를 배치했다. pinned filter 높이는 209px에서 174px로 감소했고 strip 자체 높이는 32px로 유지된다.
+- 완료: group/tag/status 내부 타입과 state는 분리된 채 deterministic AND를 유지한다. `[전체]`는 세 분류 축만 reset하고 검색은 유지한다. status mapping, membership 종료일 경고, taxonomy schema/write 계약은 변경하지 않았다.
+- 자동 검증 완료: 관련 Flutter 126개, 최종 통합 위젯 26개, 전체 Flutter 659개, taxonomy Emulator 25개, managed-member Emulator 62개, analyze error 0, `git diff --check`, DEV APK 통과.
+- Galaxy DEV 확인: 데이터 보존 업데이트 후 별도 상태 행 제거, 단일 32px horizontal strip, gear 고정, 동일 Y 구간의 `전체/휴면/만료`, light theme와 clean 로그 0을 확인했다. 상태 chip 실제 선택 조합은 swipe 자동화가 끝 위치를 반복 재현하지 못해 자동 테스트 확정 항목으로 구분한다.
+- PROD/Firebase/commit/push는 0건이다. PROD 반영은 별도 사용자 승인 전 시작하지 않는다.
+## 2026-08-13 Personal taxonomy PROD 전 최종 UI polish 완료
+
+- 완료: 그룹 관리 기본 `AppBar`를 공통 브랜드 gradient/token 기반 헤더로 교체하고 본문 canonical 동작은 유지했다. Galaxy dark에서 발견한 헤더 전경 대비 결함까지 수정했으며 light/dark/lululala 실제 화면에서 header/card/CTA 가독성을 확인했다.
+- 완료: taxonomy strip의 순서·32px 높이·gear 고정·AND/reset semantics는 유지하고 group/tag/all/dormant/expired 역할별 theme token과 선택 fill+border+weight를 보정했다. 320/360/384/411dp와 동시 selected는 widget test로 통과했다.
+- 완료: AIFC 태그 관리 sheet를 Galaxy DEV 3테마에서 확인했고 light 입력 시트의 키보드/focus/취소까지 실제 확인했다. custom tag 0 상태를 유지했으므로 rename/delete/used-tag confirmation의 이번 실데이터 재현은 수행하지 않았으며 자동 계약 검증 결과와 구분한다.
+- 검증 완료: 관련 Flutter 50개, 전체 Flutter 663개, taxonomy Emulator 25개, managed-member Emulator 62개, 변경 범위 analyze issue 0, `git diff --check`, DEV APK, `adb install -r`, 최종 안전 로그를 통과했다.
+- 원복 완료: local tier fixture는 `서버 실제 등급`으로 해제했고 theme `light`, widget `brandLight`를 확인했다. 서버 write/fixture 생성 0건이며 서버 전체 count는 별도 probe하지 않아 기존 수치를 추측 갱신하지 않는다.
+- 판정: 현재 확인 범위에서 Personal taxonomy PROD 전 UI blocker는 없다. Phase 3 PROD 반영은 별도 사용자 승인 전 시작하지 않는다. PROD/Firebase/commit/push는 0건이다.
+
+## 2026-08-16 Personal taxonomy Phase 3 PROD 삭제 blocker
+
+- 완료: Amateur 빠른등록의 빈 `personalTagIds` 전송을 제거해 canonical 회원 생성, 서버 readback, 회원관리 표시를 복구했다. PROD fixture에서 custom group assignment 저장과 populated group 삭제 후 `MORE THAN GYM` fallback까지 통과했다.
+- blocker: 현재 PROD에 배포된 `transitionManagedMemberState`는 삭제 시 `managementState=deleted`만 기록하고 클라이언트가 canonical 삭제 완료로 검증하는 `isDeleted`, `deleteStatus`, `deletedSource` marker를 기록하지 않는다. callable은 HTTP 200이어도 owner snapshot 검증과 목록 필터가 완료되지 않아 삭제 UX가 실패한다.
+- 필요한 승인 작업: 로컬에서 자동 검증된 현재 함수 코드와 export를 재확인한 뒤 PROD에 `transitionManagedMemberState` 한 개만 선택 배포한다. 예상 명령은 `firebase deploy --project more-than-fitness-f6adb --only "functions:transitionManagedMemberState"`이다. 승인 전 배포하지 않는다.
+- 재검증 기준: 개인정보가 아닌 fixture 1건을 canonical 생성하고 고객카드 삭제 UI로 삭제한 뒤 `managementState=deleted`, `isDeleted=true`, delete marker, owner snapshot, 회원관리 목록 제거, 재실행 유지, count 원복을 모두 확인한다.
+- 원복 완료: 이번 `P3MEMBER` fixture와 `P3GROUP`은 제거됐고 PROD baseline은 owner member 2, active member 2, schedule 236, training log 0, custom group/tag 0, tier Amateur, 기본 그룹 `MORE THAN GYM`이다. 실회원 변경은 0건이다.
+- Phase 3는 blocker 해소 전 완료 처리하지 않는다. Rules/indexes/Storage/Hosting, 다른 Functions, Play, commit, push 작업은 금지 상태를 유지한다.
+
+## 2026-08-16 Personal taxonomy Phase 3 PROD 완료
+
+- 해소: PROD `transitionManagedMemberState` 한 함수만 선택 배포해 최신 deletion marker 계약을 반영했다. `asia-northeast3 / ACTIVE`, 배포 CLI exit 0을 확인했다.
+- 실검증 완료: 개인정보 없는 PROD fixture를 canonical 생성한 뒤 고객카드 삭제 UI로 삭제했다. 함수 HTTP 200, `managementState=deleted`, `isDeleted=true`, `deleteStatus=pending_delete`, `deletedSource=managed_member_function`, 삭제 시각 2종, active 목록 제외와 회원관리 `총 2명` 복원을 확인했다.
+- cleanup 완료: deleted fixture 문서 한 건만 안전 조건으로 물리 제거했고 fixture 검색 0, 기존 회원 2, 일정 236, 레슨일지 0, group/tag 0, tier Amateur, 기본 그룹 fallback `MORE THAN GYM` baseline을 유지했다.
+- 검증 완료: 관련 Flutter 38개, managed-member Emulator 62개, taxonomy Emulator 25개, Functions lint/build, `git diff --check`, 최종 PROD PID 안전 로그를 통과했다.
+- 판정: Personal taxonomy Phase 3 PROD blocker는 종료한다. 다른 Functions/Rules/indexes/Storage/Hosting/client APK/Play/commit/push는 작업하지 않았다. 다음 백로그로 자동 이동하지 않는다.
+## 2026-08-16 일정 형태 변경 후 저장 실패
+- [x] DEV root cause 수정: 빈 schedule source ID에 owner prefix를 붙여 `${ownerUid}--` delete를 생성하던 `homeScheduleScopedDocumentId` 회귀를 차단했다.
+- [x] 자동 회귀: same-type 3종, type transition 8종, 관련 Flutter 78개, 전체 Flutter 675개, Personal schedule Emulator 27개, analyze issue 0, diff check, DEV APK 통과.
+- [x] Galaxy DEV: PT -> 일정 -> 교육 -> PT 동일 document ID update, 형태+시간 move, 형태+요일 move, server verify, 중복 0을 확인했다.
+- [x] fixture 원복: 테스트 일정 삭제 후 baseline 11건, 임시 로컬 형태 `EVENT`/`EDU` 제거, clean safety log 0.
+- [x] PROD 반영: `1.0.4 (12)` release APK를 기존 인증서 일치 확인 후 `adb install -r`로 데이터 보존 업데이트했다. PT -> 일정 -> 교육 -> PT, 형태+시간, 형태+요일, 동일 형태 메모 저장·재진입, 단일 카드 유지와 generic error/permission-denied 0을 확인했다.
+- [x] release 재시작 blocker: R8가 `flutter_local_notifications` Gson `TypeToken` generic signature를 제거해 `ScheduledNotificationBootReceiver`가 crash하던 문제를 공식 plugin release 규칙으로 보정했다. 재빌드·재설치 후 MainActivity 유지, receiver crash 0, 최종 clean 안전 로그 0을 확인했다.
+- [x] fixture/baseline: PROD 검증 fixture 일정만 canonical 삭제했고 fixture 카드 0, 기존 회원 진행값 `4 / 30`, 기존 주간 스케줄, Auth session, light theme를 유지했다. 민감한 PROD 문서 ID와 별도 서버 총량 probe는 기록하지 않았다.
+- [x] 판정: 일정 형태 변경 저장 hotfix의 PROD 반영을 완료했다. Firebase 배포, migration, Play Store, commit, push는 실행하지 않았으며 다음 백로그로 이동하지 않는다.
+
+## 2026-08-19 DEV 앱 부팅·홈 Drawer 성능 개선 완료
+
+- [x] 기존 anonymous profile은 server read를 우선하고 누락 시에만 bootstrap한다. tier reconcile, widget interactivity/sync, notification/timezone 초기화는 첫 frame 이후로 이동했으며 Auth/Firebase/workspace/profile 안전 검증은 유지한다.
+- [x] Drawer neon animation 중 전체 본문 재빌드를 제거하고 장식 완료 시간을 500ms에서 300ms로 줄였다. 회원권계약서 설명은 `회원권 계약서 작성 및 운영 지원`으로 변경했으며 gate/navigation은 유지한다.
+- [x] 전체 Flutter 680개, 전체 analyze error 0, `git diff --check`, DEV APK, Galaxy DEV 데이터 보존 설치와 기능·안전 로그를 통과했다.
+- [x] cold start 평균은 3103ms에서 2982ms, 최악값은 3855ms에서 3283ms로 개선됐다. warm start는 220ms에서 244ms로 개선되지 않아 수치 그대로 기록했다. Hamburger tap-to-first-frame은 screencap 해상도 한계로 정확한 ms를 확정하지 않고 500→300ms animation contract와 실기기 open/close 결과로 구분했다.
+- [ ] PROD 반영은 가능 후보이나 별도 사용자 승인 전 build/install/deploy를 시작하지 않는다. Firebase·PROD·commit/push 작업은 0건이다.
+
+## 2026-08-19 앱 부팅·홈 Drawer 성능 개선 PROD 반영 완료
+
+- [x] PROD `1.0.4 (13)` Release APK를 기존 signing fingerprint 일치 확인 후 `adb install -r`로 데이터 보존 업데이트했다. UID, dataDir, firstInstallTime, Auth session, DEV package를 유지했다.
+- [x] PROD Release cold Home-route 5회 `808/909.6/967ms`, warm 10회 `238/263.4/374ms`를 별도 기록했다. DEV debug와 직접 비교하지 않았고 동일 PROD 사전 baseline이 없는 warm은 개선으로 판정하지 않았다.
+- [x] Drawer 300ms, animation frame별 본문 rebuild 제거, light/dark/lululala 반복 open/close, 정확한 회원권계약서 설명과 기존 계약 gate를 확인하고 light로 복원했다.
+- [x] 관련 Flutter 36개, 전체 Flutter 680개, analyze error 0, `git diff --check`, PROD Release build, clean restart와 PID 안전 로그를 통과했다. Firebase 배포·migration·Play 작업·commit·push는 0건이다.
+- [x] PROD startup + Drawer 성능 hotfix 반영 완료. 다음 단계는 별도 승인 후 Play Store 출시 준비이며 자동 진행하지 않는다.
+
+## 2026-08-19 Home Drawer 주요 기능 설명 통일 완료
+
+- [x] 고객카드, 레슨계약서, 인사이트 설명을 회원권계약서와 같은 고정형 운영지원 문체로 통일했다.
+- [x] 제목·아이콘·순서·콜백과 중앙 feature gate/navigation은 유지했다.
+- [x] 관련 Flutter 5개, 전체 Flutter 4개 순차 shard, 변경 범위 analyze 신규 오류·경고 0, `git diff --check`, DEV Debug APK를 통과했다.
+- [x] 실기기 설치, PROD/Firebase, commit/push는 수행하지 않았으며 다음 백로그로 이동하지 않는다.
+
+## 2026-08-19 Play Store 사전점검 1 완료
+
+- [x] DEV/PROD entrypoint는 공통 `runMtfApp`을 사용하며 최근 startup, Drawer, schedule, taxonomy 변경이 PROD 공통 source에 포함됨을 확인했다.
+- [x] PROD Release APK dry-run은 `com.example.mtf_app`, `1.0.4 (13)`, 앱 이름 `모어댄`, non-debuggable, PROD Firebase identity로 통과했다. 실제 prod R8 configuration에도 Gson `TypeToken` keep rule이 포함된다.
+- [x] 관련 Flutter 170개, 전체 Flutter 679개, analyze error 0, `git diff --check`, PROD Release APK build를 통과했다.
+- [ ] release checkpoint 전에 untracked taxonomy 핵심 UI와 PROD manifest/icon 리소스를 allowlist로 명시 반영해야 한다.
+- [ ] Play용 정식 signing 구성과 AAB 생성·검증은 별도 승인 단계다. 현재 release는 debug signing slot이므로 Play 출시 산출물로 확정하지 않는다.
+- [x] APK 설치, Firebase, Play Store, signing 변경, commit/push는 수행하지 않았다. 다음 단계로 자동 이동하지 않는다.
+
+## 2026-08-20 Play Store 출시 준비 Phase 1 완료
+
+- [x] release checkpoint allowlist를 tracked modified 84개 + 명시적 untracked 제품/backend/test 50개 = 총 134개로 확정했다. untracked 제외 50개는 문서/증적·prompt·telemetry·zip·probe·중첩 0바이트 font이며 삭제하지 않았다.
+- [x] 모든 untracked import target, PROD manifest/icon/resource, widget resource, taxonomy Functions source, pubspec asset, R8 rule, PROD Firebase source가 allowlist에 포함되어 working-tree release 재현성 blocker를 해소했다.
+- [x] repo 밖 `C:\Users\morethan\.android\more_than_upload.jks`에 Play upload key를 생성하고 ignored `android/key.properties`로 secret을 분리했다. 공개 certificate PEM export도 repo 밖에 생성했으며 secret/private key는 로그·Git에 포함하지 않았다.
+- [x] 기본 release는 upload key, 명시적 legacy local PROD APK만 기존 debug key를 사용하도록 분리했다. legacy flag의 AAB build는 차단하며 DEV debug 흐름은 유지한다.
+- [x] upload certificate SHA-1/SHA-256과 기존 Galaxy debug signer가 다름을 확인했다. 새 Play release APK/AAB를 기존 Galaxy PROD 위에 설치하지 않았다.
+- [x] 명시적 `lib/main_prod.dart`로 PROD APK/AAB를 빌드했다. package `com.example.mtf_app`, `1.0.4 (13)`, min/target 24/36, non-debuggable, PROD marker 포함/DEV marker 0, PROD icon과 3개 widget provider, R8 `TypeToken`/`Signature` keep을 확인했다.
+- [x] 관련 Flutter 289개, 전체 Flutter 679개, analyze error 0(기존 warning 239/info 927), `git diff --check`, APK/AAB signing·build를 통과했다.
+- [x] release checkpoint allowlist 134개만 명시적으로 stage했고 staged 경로 일치, secret/generated/probe 0, cached diff check, analyze error 0, upload-signed PROD AAB 재빌드를 통과했다. 이 기록을 포함한 단일 checkpoint commit으로 마무리하며 push하지 않는다.
+- [ ] checkpoint 이후 Play Console 신규 앱 생성, Play App Signing 활성화, app-signing certificate 확인, AAB Internal Testing 업로드는 별도 승인 후 진행한다. 현재 anonymous/email Auth에는 SHA가 즉시 필요하지 않으며 Google Sign-In/App Check 활성화 시 Play app-signing SHA를 Firebase/Google Console에 등록한다.
+- [x] Firebase/PROD data/Galaxy/Play upload/commit/push 작업은 0건이다. 다음 단계로 자동 이동하지 않는다.

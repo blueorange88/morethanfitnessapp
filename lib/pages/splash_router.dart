@@ -29,15 +29,15 @@ class _SplashRouterState extends State<SplashRouter> {
       final onboardingCompleted = data?['onboardingCompleted'] == true;
       final displayName = (data?['displayName'] ?? '').toString().trim();
 
-      final shouldGoHome = doc.exists && onboardingCompleted && displayName.isNotEmpty;
+      final shouldGoHome =
+          doc.exists && onboardingCompleted && displayName.isNotEmpty;
 
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => shouldGoHome
-              ? const HomePage()
-              : const OnboardingPage(),
+          builder: (_) =>
+              shouldGoHome ? const HomePage() : const OnboardingPage(),
         ),
       );
     } catch (e) {
@@ -53,11 +53,12 @@ class _SplashRouterState extends State<SplashRouter> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF3F4F6),
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: CircularProgressIndicator(
-          color: Color(0xFF4F46E5),
+          color: theme.colorScheme.secondary,
         ),
       ),
     );

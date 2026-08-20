@@ -2,6 +2,21 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum Gender { male, female, unknown }
 
+String personalMemberStatusFromCanonical(Map<String, dynamic> data) {
+  final managementState = (data['managementState'] ?? '').toString().trim();
+  switch (managementState) {
+    case 'dormant':
+    case 'paused':
+      return '휴면';
+    case 'expired':
+      return '만료';
+    case 'active':
+      return '활성';
+  }
+  final legacyStatus = (data['memberStatus'] ?? '').toString().trim();
+  return legacyStatus.isEmpty ? '활성' : legacyStatus;
+}
+
 class Member {
   final String id;
   final String? name;
@@ -28,6 +43,8 @@ class Member {
   final DateTime? nextLessonAt;
   final String memberStatus;
   final String? groupId;
+  final String? personalGroupId;
+  final List<String> personalTagIds;
   final Gender gender;
 
   const Member({
@@ -55,6 +72,8 @@ class Member {
     this.lastLogAt,
     this.nextLessonAt,
     this.groupId,
+    this.personalGroupId,
+    this.personalTagIds = const <String>[],
     required this.memberStatus,
     required this.gender,
   });
@@ -125,19 +144,25 @@ class Member {
       nextMoreDayAt: _toDate(d['nextMoreDayAt']),
       nextMoreDayLabel: (d['nextMoreDayLabel'] as String?)?.trim(),
       nextMoreDaySource: (d['nextMoreDaySource'] as String?)?.trim(),
-      femaleConditionEnabled:
-      (femaleCondition['enabled'] as bool?) ?? false,
-      femaleConditionLastStartAt:
-      _toDate(femaleCondition['lastStartAt']),
+      femaleConditionEnabled: (femaleCondition['enabled'] as bool?) ?? false,
+      femaleConditionLastStartAt: _toDate(femaleCondition['lastStartAt']),
       femaleConditionCycleDays:
-      (femaleCondition['cycleDays'] as num?)?.toInt() ?? 28,
-      femaleConditionMemo:
-      (femaleCondition['memo'] as String?)?.trim(),
+          (femaleCondition['cycleDays'] as num?)?.toInt() ?? 28,
+      femaleConditionMemo: (femaleCondition['memo'] as String?)?.trim(),
       lastLogAt: _toDate(d['lastLessonAt'] ?? d['lastLogAt']),
-      nextLessonAt: _toDate(d['nextLessonAt']) ?? _toDate(d['nextReservationAt']),
-      memberStatus: (d['memberStatus'] as String?) ?? '활성',
+      nextLessonAt:
+          _toDate(d['nextLessonAt']) ?? _toDate(d['nextReservationAt']),
+      memberStatus: personalMemberStatusFromCanonical(d),
       gender: _normGender(d['gender'] as String?),
       groupId: d['groupId'] as String?,
+      personalGroupId: (d['personalGroupId'] as String?)?.trim(),
+      personalTagIds: d['personalTagIds'] is Iterable
+          ? (d['personalTagIds'] as Iterable)
+              .map((value) => value.toString().trim())
+              .where((value) => value.isNotEmpty)
+              .toSet()
+              .toList(growable: false)
+          : const <String>[],
     );
   }
 }

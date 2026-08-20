@@ -6,22 +6,17 @@ import 'package:mtf_app/pages/notification_settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/home_repeat_lesson_grouping_mode.dart';
+import '../models/app_theme_mode.dart';
 import '../services/app_account_service.dart';
 import '../services/mtf_home_widget_service.dart';
 import 'password_change_page.dart';
 import '../widgets/home/schedule/home_repeat_lesson_grouping_sheet.dart';
 
 import '../providers/theme_provider.dart';
+import '../theme.dart';
 import 'widget_settings_page.dart';
 import '../widgets/aifc_interaction.dart';
 
-const Color kSettingsPrimary = Color(0xFF4F46E5);
-const Color kSettingsPrimary2 = Color(0xFF9333EA);
-const Color kSettingsBg = Color(0xFFF3F4F6);
-const Color kSettingsCard = Colors.white;
-const Color kSettingsBorder = Color(0xFFE5E7EB);
-const Color kSettingsText = Color(0xFF111827);
-const Color kSettingsMuted = Color(0xFF6B7280);
 const double kSettingsMaxContentWidth = 480;
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -91,7 +86,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final picked = await HomeRepeatLessonGroupingSheet.show(
       context: context,
       currentMode: _repeatLessonGroupingMode,
-      primaryColor: kSettingsPrimary,
+      primaryColor: Theme.of(context).colorScheme.primary,
     );
 
     if (!mounted || picked == null) return;
@@ -157,7 +152,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = ref.watch(darkModeProvider);
+    final appTheme = ref.watch(appThemeProvider);
     final account = AppAccountService.instance.currentSnapshot;
 
     return LayoutBuilder(
@@ -167,7 +162,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             isTablet ? kSettingsMaxContentWidth : constraints.maxWidth;
 
         return Scaffold(
-          backgroundColor: kSettingsBg,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Center(
             child: SizedBox(
               width: width,
@@ -187,16 +182,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             subtitle: '앱 화면과 홈 위젯 표시 방식을 맞춰보세요',
                             icon: Icons.display_settings_rounded,
                             children: [
-                              _SettingsSwitchTile(
-                                icon: Icons.dark_mode_outlined,
-                                title: '다크 모드',
-                                subtitle:
-                                    dark ? '어두운 화면으로 사용 중' : '밝은 화면으로 사용 중',
-                                value: dark,
-                                onChanged: (_) {
-                                  ref.read(darkModeProvider.notifier).toggle();
+                              _SettingsThemeSelector(
+                                selected: appTheme,
+                                onSelected: (mode) async {
+                                  await ref
+                                      .read(appThemeProvider.notifier)
+                                      .setTheme(mode);
+                                  if (!mounted) return;
                                   _showActionToast(
-                                    dark ? '라이트 모드로 변경했어요.' : '다크 모드로 변경했어요.',
+                                    '${_appThemeLabel(mode)} 테마로 변경했어요.',
                                   );
                                 },
                               ),
@@ -335,6 +329,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
+String _appThemeLabel(AppThemeMode mode) {
+  switch (mode) {
+    case AppThemeMode.light:
+      return '라이트';
+    case AppThemeMode.dark:
+      return '다크';
+    case AppThemeMode.lululala:
+      return '룰루랄라';
+  }
+}
+
 // ── 헤더 ────────────────────────────────────────────────────────────────────
 
 class _SettingsHeader extends StatelessWidget {
@@ -349,13 +354,9 @@ class _SettingsHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 18),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [kSettingsPrimary, kSettingsPrimary2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        gradient: context.mtfHeaderGradient,
+        borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(30),
         ),
       ),
@@ -478,16 +479,18 @@ class _SettingsSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       decoration: BoxDecoration(
-        color: kSettingsCard,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: kSettingsBorder),
+        border: Border.all(color: colors.outline),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.035),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -502,10 +505,14 @@ class _SettingsSectionCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
+                    color: colors.secondaryContainer,
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: Icon(icon, size: 19, color: kSettingsPrimary),
+                  child: Icon(
+                    icon,
+                    size: 19,
+                    color: colors.onSecondaryContainer,
+                  ),
                 ),
                 const SizedBox(width: 10),
               ],
@@ -515,8 +522,8 @@ class _SettingsSectionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: kSettingsText,
+                      style: TextStyle(
+                        color: colors.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
@@ -525,8 +532,8 @@ class _SettingsSectionCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
-                          color: kSettingsMuted,
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           height: 1.3,
@@ -567,8 +574,9 @@ class _SettingsMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? const Color(0xFFDC2626) : kSettingsPrimary;
-    final titleColor = danger ? const Color(0xFFDC2626) : kSettingsText;
+    final colors = Theme.of(context).colorScheme;
+    final color = danger ? colors.error : colors.primary;
+    final titleColor = danger ? colors.error : colors.onSurface;
 
     return InkWell(
       onTap: onTap,
@@ -602,8 +610,8 @@ class _SettingsMenuTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: kSettingsMuted,
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       height: 1.3,
@@ -616,16 +624,16 @@ class _SettingsMenuTile extends StatelessWidget {
             if (trailingText != null)
               Text(
                 trailingText!,
-                style: const TextStyle(
-                  color: kSettingsMuted,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                 ),
               )
             else
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: Color(0xFF9CA3AF),
+                color: colors.onSurfaceVariant,
               ),
           ],
         ),
@@ -636,68 +644,131 @@ class _SettingsMenuTile extends StatelessWidget {
 
 // ── 스위치 타일 ──────────────────────────────────────────────────────────────
 
-class _SettingsSwitchTile extends StatelessWidget {
-  const _SettingsSwitchTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
+class _SettingsThemeSelector extends StatelessWidget {
+  const _SettingsThemeSelector({
+    required this.selected,
+    required this.onSelected,
   });
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
+  final AppThemeMode selected;
+  final ValueChanged<AppThemeMode> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    final colors = Theme.of(context).colorScheme;
+
+    const options = [
+      (
+        mode: AppThemeMode.light,
+        label: '라이트',
+        description: 'MORE THAN 네이비와 웜 옐로우',
+        colors: [AppColors.warmIvory, AppColors.deepNavy, AppColors.warmYellow],
+      ),
+      (
+        mode: AppThemeMode.dark,
+        label: '다크',
+        description: '짙은 네이비 기반의 어두운 화면',
+        colors: [
+          AppColors.darkBackground,
+          AppColors.darkSurface,
+          AppColors.warmYellow,
+        ],
+      ),
+      (
+        mode: AppThemeMode.lululala,
+        label: '룰루랄라',
+        description: '기존의 밝고 경쾌한 인디고·퍼플',
+        colors: [
+          AppColors.lululalaSurface,
+          AppColors.lululalaPrimary,
+          AppColors.lululalaSecondary,
+        ],
+      ),
+    ];
+
+    return Column(
+      children: [
+        for (var index = 0; index < options.length; index++) ...[
+          InkWell(
+            onTap: () => onSelected(options[index].mode),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  _ThemeSwatch(colors: options[index].colors),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          options[index].label,
+                          style: TextStyle(
+                            color: colors.onSurface,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          options[index].description,
+                          style: TextStyle(
+                            color: colors.onSurfaceVariant,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    selected == options[index].mode
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    color: selected == options[index].mode
+                        ? colors.secondary
+                        : colors.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (index != options.length - 1) const _SettingsDivider(),
+        ],
+      ],
+    );
+  }
+}
+
+class _ThemeSwatch extends StatelessWidget {
+  const _ThemeSwatch({required this.colors});
+
+  final List<Color> colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 34,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: kSettingsPrimary.withOpacity(0.09),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, size: 20, color: kSettingsPrimary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: kSettingsText,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w900,
-                  ),
+          for (final color in colors)
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(5),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: kSettingsMuted,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Switch.adaptive(
-            value: value,
-            activeColor: kSettingsPrimary,
-            onChanged: onChanged,
-          ),
         ],
       ),
     );
@@ -711,7 +782,7 @@ class _SettingsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(height: 1, color: kSettingsBorder);
+    return const Divider(height: 1);
   }
 }
 
@@ -724,6 +795,8 @@ class _SettingsPremiumBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
@@ -734,16 +807,16 @@ class _SettingsPremiumBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           gradient: const LinearGradient(
             colors: [
-              Color(0xFF111827),
-              Color(0xFF4F46E5),
-              Color(0xFFF97316),
+              AppColors.deepNavy,
+              Color(0xFF163A54),
+              Color(0xFF6D5A1F),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: kSettingsPrimary.withOpacity(0.18),
+              color: colors.secondary.withValues(alpha: 0.18),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),

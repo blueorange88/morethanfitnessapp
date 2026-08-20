@@ -31,6 +31,10 @@ import '../services/inbody_camera_permission_service.dart';
 import '../services/personal_member_card_save_service.dart';
 import '../services/personal_member_consent_service.dart';
 import '../services/personal_member_preferences_service.dart';
+import '../services/personal_member_taxonomy_service.dart';
+import '../models/member.dart' show personalMemberStatusFromCanonical;
+import '../models/personal_member_taxonomy.dart';
+import '../theme/app_colors.dart';
 import '../widgets/aifc_tier_guide_chat_sheet.dart';
 
 import '../aifc/core/aifc_avatar.dart';
@@ -47,6 +51,9 @@ import '../widgets/aifc_contract_history_chat_sheet.dart';
 import '../widgets/aifc_interaction.dart';
 import '../widgets/aifc_confirm_chat_sheet.dart';
 import '../widgets/aifc_badge_chat_sheet.dart';
+import '../widgets/aifc_personal_tag_management_chat_sheet.dart';
+import '../widgets/personal_member_taxonomy_picker.dart';
+import '../widgets/personal_tag_horizontal_strip.dart';
 
 const Color kPagePrimary = Color(0xFF4F46E5);
 const Color kPagePrimary2 = Color(0xFF9333EA);
@@ -121,12 +128,39 @@ double clientCardMemberSetupPageHeight({
 }
 
 @visibleForTesting
-bool clientCardUsesStackedBasicInfoLayout(double viewportWidth) =>
-    viewportWidth <= 360;
+bool clientCardUsesStackedBasicInfoLayout(double _) => false;
 
 @visibleForTesting
-double clientCardBasicInfoPageHeight(double viewportWidth) =>
-    clientCardUsesStackedBasicInfoLayout(viewportWidth) ? 450 : 260;
+double clientCardBasicInfoPageHeight(double _) => 260;
+
+@visibleForTesting
+bool clientCardMembershipNotRegisteredFromCanonical(
+  Map<String, dynamic> membership,
+) {
+  final explicitValue = membership['notRegistered'];
+  if (explicitValue is bool) return explicitValue;
+
+  const registrationFields = <String>{
+    'termMonths',
+    'customDays',
+    'startAt',
+    'endAt',
+    'days',
+    'lastRegisteredAt',
+  };
+  return !registrationFields.any((field) => membership[field] != null);
+}
+
+@visibleForTesting
+bool clientCardPersonalTagsChanged({
+  required Iterable<String> loadedTagIds,
+  required Iterable<String> selectedTagIds,
+}) {
+  return !listEquals(
+    normalizePersonalTagIds(loadedTagIds),
+    normalizePersonalTagIds(selectedTagIds),
+  );
+}
 
 class ClientCardValidationFocusCoordinator {
   int _requestVersion = 0;
@@ -2298,6 +2332,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   final _basicInfoExpansionController = ExpansibleController();
   final _memberSetupExpansionController = ExpansibleController();
   final _validationFocusCoordinator = ClientCardValidationFocusCoordinator();
+  bool _isSaving = false;
 
   final _picker = ImagePicker();
 
@@ -2439,6 +2474,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
   final List<_MemberGroupOption> _groupOptions = [
     _MemberGroupOption(id: '__ungrouped__', label: 'MORE THAN GYM'),
   ];
+  List<PersonalMemberTaxonomyItem> _personalGroupOptions = const [];
+  List<PersonalMemberTaxonomyItem> _personalTagOptions = const [];
+  List<String> _selectedPersonalTagIds = const [];
+  List<String> _loadedPersonalTagIds = const [];
   List<String> _customLessonTypes = const <String>[];
   bool _isEnteringCustomLessonType = false;
 
@@ -2925,13 +2964,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
       if (!mounted) return;
       setState(() {
         _customLessonTypes = preferences.customLessonTypes;
-        _headerGroupLabel = preferences.defaultGroupLabel;
+        if (_selectedGroupId == '__ungrouped__') {
+          _headerGroupLabel = preferences.defaultGroupLabel;
+        }
         _groupOptions
           ..clear()
           ..add(
             _MemberGroupOption(
               id: '__ungrouped__',
               label: preferences.defaultGroupLabel,
+            ),
+          )
+          ..addAll(
+            _personalGroupOptions.map(
+              (item) => _MemberGroupOption(id: item.id, label: item.name),
             ),
           );
       });
@@ -3809,8 +3855,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Future<void> _loadInitialClientCardData() async {
     final startedAt = DateTime.now();
 
+    await _loadMemberGroupOptions();
     await Future.wait([
-      _loadMemberGroupOptions(),
       _loadTierAccess(),
       _loadFromFirestore(),
       _loadCareMilestonesFromFirestore(),
@@ -3835,11 +3881,35 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Future<void> _loadMemberGroupOptions() async {
     if (_isPersonalWorkspace) {
+      final service = PersonalMemberTaxonomyService(uid: _personalOwnerUid);
+      final results = await Future.wait([
+        service.loadFromServer(PersonalMemberTaxonomyKind.group),
+        service.loadFromServer(PersonalMemberTaxonomyKind.tag),
+      ]);
       if (!mounted) return;
       final label = _headerGroupLabel.trim().isEmpty
           ? kPersonalDefaultGroupLabel
           : _headerGroupLabel.trim();
+      final groups = results[0]
+        ..sort((a, b) {
+          final createdAt = a.createdAt.compareTo(b.createdAt);
+          return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
+        });
+      final tags = results[1]
+        ..sort((a, b) {
+          final createdAt = a.createdAt.compareTo(b.createdAt);
+          return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
+        });
       setState(() {
+        _personalGroupOptions = List.unmodifiable(groups);
+        _personalTagOptions = List.unmodifiable(tags);
+        final validTagIds = tags.map((item) => item.id).toSet();
+        _selectedPersonalTagIds = List.unmodifiable(
+          _selectedPersonalTagIds.where(validTagIds.contains),
+        );
+        _loadedPersonalTagIds = List.unmodifiable(
+          _loadedPersonalTagIds.where(validTagIds.contains),
+        );
         _groupOptions
           ..clear()
           ..add(
@@ -3847,9 +3917,18 @@ class _ClientCardPageState extends State<ClientCardPage> {
               id: '__ungrouped__',
               label: label,
             ),
+          )
+          ..addAll(
+            groups.map(
+              (item) => _MemberGroupOption(id: item.id, label: item.name),
+            ),
           );
-        _selectedGroupId = '__ungrouped__';
-        _headerGroupLabel = label;
+        if (!_groupOptions.any((item) => item.id == _selectedGroupId)) {
+          _selectedGroupId = '__ungrouped__';
+        }
+        _headerGroupLabel = _groupOptions
+            .firstWhere((item) => item.id == _selectedGroupId)
+            .label;
       });
       return;
     }
@@ -4273,14 +4352,18 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       String nextGroupLabel = 'MORE THAN GYM';
 
-      final rawStatus = (d['memberStatus'] as String?) ?? _memberStatus;
+      final rawStatus = personalMemberStatusFromCanonical(d);
       final groupId = (d['groupId'] as String?)?.trim();
+      final personalGroupId = (d['personalGroupId'] as String?)?.trim();
+      final personalTagIds = d['personalTagIds'] is Iterable
+          ? normalizePersonalTagIds(d['personalTagIds'] as Iterable)
+          : const <String>[];
       String nextSelectedGroupId = '__ungrouped__';
 
-      if (rawStatus == '휴면') {
+      if (!_isPersonalWorkspace && rawStatus == '휴면') {
         nextGroupLabel = await _loadGroupDisplayName('__system_dormant__');
         nextSelectedGroupId = '__ungrouped__';
-      } else if (rawStatus == '만료') {
+      } else if (!_isPersonalWorkspace && rawStatus == '만료') {
         nextGroupLabel = await _loadGroupDisplayName('__system_expired__');
         nextSelectedGroupId = '__ungrouped__';
       } else if (!_isPersonalWorkspace &&
@@ -4288,6 +4371,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
           groupId.isNotEmpty) {
         nextGroupLabel = await _loadGroupDisplayName(groupId);
         nextSelectedGroupId = groupId;
+      } else if (_isPersonalWorkspace &&
+          personalGroupId != null &&
+          _personalGroupOptions.any((item) => item.id == personalGroupId)) {
+        nextSelectedGroupId = personalGroupId;
+        nextGroupLabel = _personalGroupOptions
+            .firstWhere((item) => item.id == personalGroupId)
+            .name;
       } else {
         nextGroupLabel = await _loadGroupDisplayName('__ungrouped__');
         nextSelectedGroupId = '__ungrouped__';
@@ -4301,6 +4391,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
             : nextGroupLabel.trim();
 
         _selectedGroupId = nextSelectedGroupId;
+        _selectedPersonalTagIds = personalTagIds
+            .where(
+              (id) => _personalTagOptions.any((item) => item.id == id),
+            )
+            .toList(growable: false);
+        _loadedPersonalTagIds = _selectedPersonalTagIds;
 
         _gender = _normalizeGender(d['gender'] as String?) ?? '미입력';
 
@@ -4342,7 +4438,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             _safeMembershipGrade(d['membershipGrade'] as String?);
         _jobC.text = (d['job'] as String?) ?? '';
         _trainerC.text = (d['trainer'] ?? '').toString().trim();
-        _memberStatus = _safeMemberStatus(d['memberStatus'] as String?);
+        _memberStatus = _safeMemberStatus(rawStatus);
         _lessonType = _safeLessonType(d['lessonType'] as String?);
 
         _photoUrl = (d['photoUrl'] ?? '').toString().trim().isEmpty
@@ -4385,7 +4481,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         }
 
         _membershipNotRegistered =
-            (membership['notRegistered'] as bool?) ?? false;
+            clientCardMembershipNotRegisteredFromCanonical(membership);
         _termMonths = (membership['termMonths'] as num?)?.toInt();
         _customDays = (membership['customDays'] as num?)?.toInt();
         _passStart = dt(membership['startAt']);
@@ -4567,7 +4663,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             (m['membershipGrade'] ?? _membershipGrade).toString();
         _jobC.text = (m['job'] ?? '').toString();
         _trainerC.text = (m['trainer'] ?? '').toString();
-        _memberStatus = (m['memberStatus'] ?? _memberStatus).toString();
+        _memberStatus = _safeMemberStatus(personalMemberStatusFromCanonical(m));
         _lessonType = (m['lessonType'] ?? _lessonType).toString();
         _syncCustomLessonTypeControllerIfNeeded();
 
@@ -4681,9 +4777,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
       'anniversaryDate': _formatDate(_anniversaryDate).isEmpty
           ? null
           : _formatDate(_anniversaryDate),
-      'anniversaryLabel': _anniversaryLabelC.text.trim().isEmpty
-          ? '기념일'
-          : _anniversaryLabelC.text.trim(),
+      'anniversaryLabel': _anniversaryDate == null
+          ? null
+          : _anniversaryLabelC.text.trim().isEmpty
+              ? '기념일'
+              : _anniversaryLabelC.text.trim(),
       'specialEvent': _specialEventC.text.trim().isEmpty
           ? null
           : _specialEventC.text.trim(),
@@ -5150,12 +5248,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
     DateTime? last,
   }) async {
     final now = DateTime.now();
+    final firstDate = first ?? DateTime(1900);
+    final lastDate = last ?? now;
+    var initialDate = current ?? now;
+    if (initialDate.isBefore(firstDate)) initialDate = firstDate;
+    if (initialDate.isAfter(lastDate)) initialDate = lastDate;
     final picked = await showDatePicker(
       context: context,
       locale: const Locale('ko', 'KR'),
-      initialDate: current ?? DateTime(now.year - 25, now.month, now.day),
-      firstDate: DateTime(1900),
-      lastDate: now,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
     if (picked != null) onPicked(picked);
   }
@@ -5293,6 +5396,63 @@ class _ClientCardPageState extends State<ClientCardPage> {
     );
 
     return allowed;
+  }
+
+  Future<void> _pickPersonalGroup() async {
+    if (!await _guardTierFeature(AppTierFeatureKey.personalGroup) || !mounted) {
+      return;
+    }
+    final result = await showPersonalGroupPicker(
+      context: context,
+      defaultGroupLabel: _groupOptions.first.label,
+      groups: _personalGroupOptions,
+      selectedGroupId:
+          _selectedGroupId == '__ungrouped__' ? null : _selectedGroupId,
+    );
+    if (result == null || !mounted) return;
+    final nextId = result.personalGroupId ?? '__ungrouped__';
+    final nextLabel = _groupOptions
+        .firstWhere(
+          (item) => item.id == nextId,
+          orElse: () => _groupOptions.first,
+        )
+        .label;
+    setState(() {
+      _selectedGroupId = nextId;
+      _headerGroupLabel = nextLabel;
+    });
+  }
+
+  Future<void> _pickPersonalTags() async {
+    if (!await _guardTierFeature(AppTierFeatureKey.personalTag) || !mounted) {
+      return;
+    }
+    final result = await showPersonalTagPicker(
+      context: context,
+      tags: _personalTagOptions,
+      selectedTagIds: _selectedPersonalTagIds,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _selectedPersonalTagIds = result);
+  }
+
+  Future<void> _managePersonalTags() async {
+    if (!await _guardTierFeature(AppTierFeatureKey.personalTag) || !mounted) {
+      return;
+    }
+    final changed = await AifcPersonalTagManagementChatSheet.show(
+      context: context,
+      ownerUid: _personalOwnerUid,
+    );
+    if (!changed || !mounted) return;
+    await _loadMemberGroupOptions();
+  }
+
+  String _personalTagName(String tagId) {
+    for (final item in _personalTagOptions) {
+      if (item.id == tagId) return item.name;
+    }
+    return tagId;
   }
 
   Future<void> _openTierGuideFromFeatureGate(
@@ -6339,19 +6499,6 @@ class _ClientCardPageState extends State<ClientCardPage> {
     });
   }
 
-  Future<void> _resetTrainingLogConsent() async {
-    try {
-      await _persistTrainingLogConsent(false);
-      if (mounted) {
-        _showAifcToast('개인정보동의 상태를 초기화했어요.');
-      }
-    } catch (_) {
-      if (mounted) {
-        _showAifcToast('개인정보동의 상태를 초기화하지 못했어요.');
-      }
-    }
-  }
-
   Future<void> _scrollToFirstRequiredField(String? firstMissing) async {
     if (firstMissing == null) return;
     final isBasicInfoTarget = firstMissing != '직접입력 레슨 종류';
@@ -6414,6 +6561,22 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _submitAndStay() async {
+    if (_isSaving) return;
+    setState(() {
+      _isSaving = true;
+    });
+    try {
+      await _submitAndStayOnce();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _submitAndStayOnce() async {
     if (!_isEditMode && _isPersonalWorkspace && !_newCardAccessAllowed) {
       return;
     }
@@ -6540,10 +6703,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
           lessonsNotRegistered: _lessonsNotRegistered,
           note: _noteC.text.trim(),
           selectedGroupId: _selectedGroupId,
+          canonicalCustomGroupIds:
+              _personalGroupOptions.map((item) => item.id).toSet(),
+          assignments: PersonalMemberAssignmentPatch.forCreate(
+            personalGroupId:
+                _selectedGroupId == '__ungrouped__' ? null : _selectedGroupId,
+            personalTagIds: _selectedPersonalTagIds,
+          ),
         );
-        await _persistCustomLessonTypeIfNeeded();
-
-        await _clearDraft();
+        await _runPostCanonicalSaveTasks();
         if (!mounted) return;
         if (Navigator.canPop(context)) {
           Navigator.of(context).pop();
@@ -6554,7 +6722,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       }
 
       if (_isPersonalWorkspace && _isEditMode) {
-        await PersonalMemberCardSaveService(
+        final updateResult = await PersonalMemberCardSaveService(
           uid: widget.personalOwnerUid!.trim(),
         ).updateAndVerify(
           memberId: widget.memberId,
@@ -6570,14 +6738,45 @@ class _ClientCardPageState extends State<ClientCardPage> {
           remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
           lessonsNotRegistered: _lessonsNotRegistered,
           note: _noteC.text.trim(),
+          membership: PersonalMemberMembershipUpdate(
+            notRegistered: _membershipNotRegistered,
+            termMonths: _termMonths,
+            customDays: _customDays,
+            startAt: _passStart,
+            endAt: _passEnd,
+            days: _passDays(),
+            lastRegisteredAt: _lastRegisteredAt,
+            reregisterCount: _reregisterCount,
+            lastReregisterAt: _lastReregisterAt,
+          ),
+          anniversaryDate: _anniversaryDate,
+          anniversaryLabel:
+              _anniversaryDate == null ? null : _anniversaryLabelC.text.trim(),
+          assignments: PersonalMemberAssignmentPatch(
+            groupProvided: true,
+            personalGroupId:
+                _selectedGroupId == '__ungrouped__' ? null : _selectedGroupId,
+            tagsProvided: clientCardPersonalTagsChanged(
+              loadedTagIds: _loadedPersonalTagIds,
+              selectedTagIds: _selectedPersonalTagIds,
+            ),
+            personalTagIds: _selectedPersonalTagIds,
+          ),
         );
-        await _persistCustomLessonTypeIfNeeded();
-        await _clearDraft();
+        final postSaveSucceeded = await _runPostCanonicalSaveTasks();
         if (!mounted) return;
         if (Navigator.canPop(context)) {
           Navigator.of(context).pop();
         }
-        _showAifcToast('회원정보를 저장했어요.');
+        await _loadFromFirestore();
+        if (!mounted) return;
+        _showAifcToast(
+          !updateResult.scheduleNameSyncSucceeded
+              ? '회원 정보는 저장했지만 일정 이름 동기화에 실패했어요. 다시 시도해주세요.'
+              : postSaveSucceeded
+                  ? '회원 정보를 저장했어요.'
+                  : '회원 정보는 저장했지만 일부 화면 설정을 정리하지 못했어요.',
+        );
         return;
       }
 
@@ -6637,7 +6836,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         Navigator.of(context).pop();
       }
       if (mounted) {
-        _showAifcToast('저장 중 오류가 발생했어요. 다시 시도해주세요.');
+        _showAifcToast(personalMemberUpdateErrorMessage(e));
       }
     }
   }
@@ -6675,6 +6874,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
       _lessonType = '미입력';
       _headerGroupLabel = 'MORE THAN GYM';
       _selectedGroupId = '__ungrouped__';
+      _selectedPersonalTagIds = const [];
+      _loadedPersonalTagIds = const [];
 
       _lessonsNotRegistered = false;
       _totalSessionsC.text = '0';
@@ -6948,22 +7149,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     try {
-      final memberRef =
-          FirebaseFirestore.instance.collection('members').doc(widget.memberId);
-
-      final now = DateTime.now();
-      final deleteScheduledAt = now.add(const Duration(days: 7));
-
-      await memberRef.set({
-        'isDeleted': true,
-        'deletedAt': Timestamp.fromDate(now),
-        'deleteScheduledAt': Timestamp.fromDate(deleteScheduledAt),
-        'deleteStatus': 'pending_delete',
-        'deletedSource': 'client_card',
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      await _unlinkSchedulesFromDeletedMember(widget.memberId);
+      if (_isPersonalWorkspace) {
+        await PersonalMemberCardSaveService(
+          uid: widget.personalOwnerUid!.trim(),
+        ).deleteAndVerify(memberId: widget.memberId);
+      } else {
+        final memberRef = FirebaseFirestore.instance
+            .collection('members')
+            .doc(widget.memberId);
+        final now = DateTime.now();
+        final deleteScheduledAt = now.add(const Duration(days: 7));
+        await memberRef.set({
+          'isDeleted': true,
+          'deletedAt': Timestamp.fromDate(now),
+          'deleteScheduledAt': Timestamp.fromDate(deleteScheduledAt),
+          'deleteStatus': 'pending_delete',
+          'deletedSource': 'client_card',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        await _unlinkSchedulesFromDeletedMember(widget.memberId);
+      }
 
       if (!mounted) return;
 
@@ -6985,7 +7190,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       if (!mounted) return;
 
-      _showAifcToast('삭제 처리했어요. 복구가 필요하면 고객센터로 문의해주세요.');
+      _showAifcToast('삭제 중 오류가 발생했어요. 다시 시도해주세요.');
     }
   }
 
@@ -7753,6 +7958,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
     ).saveCustomLessonTypes([..._customLessonTypes, value]);
   }
 
+  Future<bool> _runPostCanonicalSaveTasks() async {
+    var succeeded = true;
+    try {
+      await _persistCustomLessonTypeIfNeeded();
+    } catch (error) {
+      succeeded = false;
+      debugPrint(
+        '[MTF_MEMBER_SAVE_POST] task=customLessonType result=failure '
+        'errorCode=${personalMemberUpdateErrorCode(error)}',
+      );
+    }
+    try {
+      await _clearDraft();
+    } catch (error) {
+      succeeded = false;
+      debugPrint(
+        '[MTF_MEMBER_SAVE_POST] task=draftCleanup result=failure '
+        'errorCode=${personalMemberUpdateErrorCode(error)}',
+      );
+    }
+    return succeeded;
+  }
+
   bool _isActiveDuplicateMemberDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -8334,6 +8562,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Widget _contractSummaryCard() {
+    final scheme = Theme.of(context).colorScheme;
     final signedText = _contractSigned ? '서명 완료' : '서명 전';
     final signedColor =
         _contractSigned ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
@@ -8367,8 +8596,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
               icon: const Icon(Icons.edit_document),
               label: Text(_contractSigned ? '레슨계약서 확인 / 재서명' : '레슨계약서 작성 / 서명'),
               style: FilledButton.styleFrom(
-                backgroundColor: kPagePrimary,
-                foregroundColor: Colors.white,
+                backgroundColor: scheme.secondary,
+                foregroundColor: scheme.onSecondary,
                 minimumSize: const Size(0, 46),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -8399,14 +8628,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Widget _trainingLogConsentCard() {
     final needsConsent = !_trainingLogConsentAgreed;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     final card = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.cardSurface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: needsConsent ? const Color(0xFFEF4444) : kPageBorder,
+          color: needsConsent ? const Color(0xFFEF4444) : tokens.cardBorder,
           width: needsConsent ? 1.6 : 1,
         ),
         boxShadow: [
@@ -8428,12 +8659,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: kPagePrimary.withOpacity(0.10),
+                  color: scheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.privacy_tip_outlined,
-                  color: kPagePrimary,
+                  color: scheme.onSecondaryContainer,
                   size: 23,
                 ),
               ),
@@ -8442,14 +8673,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '개인정보동의서',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
-                        color: kPageText,
+                        color: scheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -8459,10 +8690,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           : '동의일 ${DateFormat('yyyy-MM-dd').format(_trainingLogConsentAgreedAt!)}',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
-                        color: kPageMuted,
+                        color: scheme.onSurfaceVariant,
                         height: 1.35,
                       ),
                     ),
@@ -8474,40 +8705,21 @@ class _ClientCardPageState extends State<ClientCardPage> {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _openTrainingLogConsent,
-                  icon: const Icon(Icons.description_outlined),
-                  label: Text(_trainingLogConsentAgreed ? '동의서 확인' : '동의서 작성'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: kPagePrimary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _openTrainingLogConsent,
+              icon: const Icon(Icons.description_outlined),
+              label: Text(_trainingLogConsentAgreed ? '동의서 확인' : '동의서 작성'),
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.secondary,
+                foregroundColor: scheme.onSecondary,
+                minimumSize: const Size(0, 46),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _resetTrainingLogConsent,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('동의 초기화'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: kPageText,
-                    side: const BorderSide(color: kPageBorder),
-                    minimumSize: const Size(0, 46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -8644,8 +8856,6 @@ class _ClientCardPageState extends State<ClientCardPage> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final viewportWidth = constraints.maxWidth;
-          final useStackedLayout =
-              clientCardUsesStackedBasicInfoLayout(viewportWidth);
           return Column(
             children: [
               _buildBasicInfoPagerHeader(),
@@ -8664,31 +8874,21 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       padding: const EdgeInsets.only(top: 6),
                       child: Column(
                         children: [
-                          if (useStackedLayout) ...[
-                            buildNameField(),
-                            const SizedBox(height: 12),
-                            buildGenderField(),
-                            const SizedBox(height: 12),
-                            buildBirthField(),
-                            const SizedBox(height: 12),
-                            buildJobField(),
-                          ] else ...[
-                            Row(
-                              children: [
-                                Expanded(flex: 3, child: buildNameField()),
-                                const SizedBox(width: 10),
-                                Expanded(flex: 2, child: buildGenderField()),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(child: buildBirthField()),
-                                const SizedBox(width: 10),
-                                Expanded(child: buildJobField()),
-                              ],
-                            ),
-                          ],
+                          Row(
+                            children: [
+                              Expanded(flex: 5, child: buildNameField()),
+                              const SizedBox(width: 10),
+                              Expanded(flex: 4, child: buildGenderField()),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(flex: 3, child: buildBirthField()),
+                              const SizedBox(width: 10),
+                              Expanded(flex: 2, child: buildJobField()),
+                            ],
+                          ),
                           const SizedBox(height: 12),
                           buildPhoneField(),
                         ],
@@ -8968,28 +9168,37 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       ),
                       const SizedBox(height: 12),
                       if (_isPersonalWorkspace)
-                        InputDecorator(
-                          decoration: _inputDecoration('소속 그룹'),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.home_work_outlined,
-                                size: 18,
-                                color: kPageMuted,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _headerGroupLabel,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color: kPageText,
+                        InkWell(
+                          onTap: _pickPersonalGroup,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InputDecorator(
+                            decoration: _inputDecoration('소속 그룹'),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.home_work_outlined,
+                                  size: 18,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _headerGroupLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                                const Icon(Icons.arrow_drop_down_rounded),
+                              ],
+                            ),
                           ),
                         )
                       else
@@ -9027,6 +9236,95 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             });
                           },
                         ),
+                      if (_isPersonalWorkspace) ...[
+                        const SizedBox(height: 10),
+                        InputDecorator(
+                          decoration: _inputDecoration('태그'),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.sell_outlined,
+                                    size: 18,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      '복수 태그',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  PersonalTagManagementButton(
+                                    onPressed: _managePersonalTags,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              PersonalTagHorizontalStrip(
+                                scrollKey: const ValueKey(
+                                  'client_card_selected_tag_scroll',
+                                ),
+                                fixedLeading: ActionChip(
+                                  key: const ValueKey(
+                                    'client_card_add_personal_tag',
+                                  ),
+                                  avatar:
+                                      const Icon(Icons.add_rounded, size: 17),
+                                  label: const Text('추가'),
+                                  onPressed: _pickPersonalTags,
+                                ),
+                                children: _selectedPersonalTagIds.isEmpty
+                                    ? [
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(left: 4),
+                                          child: Text(
+                                            '선택된 태그 없음',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ]
+                                    : [
+                                        for (final id
+                                            in _selectedPersonalTagIds)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(right: 6),
+                                            child: Chip(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              label: ConstrainedBox(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                  maxWidth: 124,
+                                                ),
+                                                child: Text(
+                                                  _personalTagName(id),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -9353,6 +9651,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     text: _formatDate(_passStart),
                                     onTap: () => _pickDate(
                                       current: _passStart,
+                                      first: DateTime(1900),
+                                      last: DateTime(DateTime.now().year + 20),
                                       onPicked: (d) => setState(() {
                                         _passStart = d;
                                         if (_termMonths != null) {
@@ -9378,6 +9678,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     text: _formatDate(_passEnd),
                                     onTap: () => _pickDate(
                                       current: _passEnd,
+                                      first: _passStart ?? DateTime(1900),
+                                      last: DateTime(DateTime.now().year + 20),
                                       onPicked: (d) => setState(() {
                                         _passEnd = d;
                                         if (_passStart != null) {
@@ -10736,6 +11038,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             child: _tapDateField(
                               label: 'MORE 데이 날짜',
                               text: _formatDate(_anniversaryDate),
+                              clearKey: const ValueKey(
+                                'client_card_anniversary_clear',
+                              ),
+                              onClear: _anniversaryDate == null
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _anniversaryDate = null;
+                                        _anniversaryLabelC.text = '기념일';
+                                      });
+                                    },
                               onTap: () async {
                                 if (!await _guardTierFeature(
                                     AppTierFeatureKey.moreDay)) return;
@@ -11037,6 +11350,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
     required String label,
     required String text,
     required VoidCallback? onTap,
+    Key? clearKey,
+    VoidCallback? onClear,
   }) {
     return InkWell(
       onTap: onTap,
@@ -11044,7 +11359,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
       child: InputDecorator(
         decoration: _inputDecoration(
           label,
-          suffixIcon: const Icon(Icons.date_range),
+          suffixIcon: onClear == null
+              ? const Icon(Icons.date_range)
+              : IconButton(
+                  key: clearKey,
+                  tooltip: '날짜 지우기',
+                  onPressed: onClear,
+                  icon: const Icon(Icons.clear_rounded),
+                ),
         ),
         child: Text(
           text.isEmpty ? '선택하세요' : text,
@@ -11112,8 +11434,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       skipLabel: '나중에',
       onSkip: () {},
       onSave: (value) async {
-        final raw = value.trim();
-        final days = int.tryParse(raw);
+        final days = normalizePersonalMembershipDaysInput(value);
 
         if (days == null || days <= 0) {
           throw Exception('invalid_days');
@@ -11127,7 +11448,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     if (result == null) return null;
 
-    return selectedDays ?? int.tryParse(result.trim());
+    return selectedDays ?? normalizePersonalMembershipDaysInput(result);
   }
 
   double _calcBmi() {
@@ -11288,8 +11609,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Widget _buildClientCardLoadingHeader() {
     return Container(
       height: 280,
-      decoration: const BoxDecoration(
-        color: kPageBg,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
       ),
       child: const SizedBox.shrink(),
     );
@@ -11304,16 +11625,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Widget _buildClientCardContent(BuildContext context) {
     if (!_newCardAccessResolved) {
-      return const Scaffold(
-        backgroundColor: kPageBg,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
     if (!_newCardAccessAllowed) {
       return Scaffold(
-        backgroundColor: kPageBg,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: kPageBg,
           leading:
               BackButton(onPressed: () => Navigator.of(context).maybePop()),
           title: const Text('고객카드 등록'),
@@ -11331,13 +11651,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
       );
     }
     final gradeTheme = _gradeTheme();
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: kPageBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: kPageBorder)),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border(top: BorderSide(color: colors.outline)),
         ),
         child: SafeArea(
           top: false,
@@ -11362,9 +11683,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
               Expanded(
                 child: _ClientCardBottomActionButton(
                   icon: Icons.save_outlined,
-                  label: '회원저장',
+                  label: _isSaving
+                      ? '저장 중…'
+                      : _isEditMode
+                          ? '수정 저장'
+                          : '회원 저장',
                   filled: true,
-                  onTap: _submitAndStay,
+                  onTap: _isSaving ? null : _submitAndStay,
                 ),
               ),
             ],
@@ -12496,14 +12821,19 @@ class _ExpandableSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeTokens = Theme.of(context).extension<MtfThemeTokens>()!;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeTokens.cardSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: kPageBorder),
+        border: Border.all(color: themeTokens.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.18)
+                : Colors.black.withOpacity(0.03),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -12525,27 +12855,27 @@ class _ExpandableSectionCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: kPagePrimary.withOpacity(0.10),
+              color: colorScheme.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: kPagePrimary, size: 20),
+            child: Icon(icon, color: colorScheme.primary, size: 20),
           ),
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
-              color: kPageText,
+              color: colorScheme.onSurface,
             ),
           ),
           subtitle: subtitle == null
               ? null
               : Text(
                   subtitle!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: kPageMuted,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
           trailing: trailing,
@@ -12766,14 +13096,25 @@ class _ClientCardBottomActionButton extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool filled;
 
   @override
   Widget build(BuildContext context) {
-    final Color bgColor = filled ? kPagePrimary : Colors.white;
-    final Color fgColor = filled ? Colors.white : kPageText;
-    final Color borderColor = filled ? kPagePrimary : kPageBorder;
+    final enabled = onTap != null;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeTokens = Theme.of(context).extension<MtfThemeTokens>()!;
+    final Color bgColor = filled
+        ? enabled
+            ? colorScheme.secondary
+            : colorScheme.secondary.withOpacity(0.55)
+        : themeTokens.cardSurface;
+    final Color fgColor = filled
+        ? colorScheme.onSecondary
+        : enabled
+            ? colorScheme.onSurface
+            : colorScheme.onSurfaceVariant;
+    final Color borderColor = filled ? bgColor : themeTokens.cardBorder;
 
     return Material(
       color: Colors.transparent,

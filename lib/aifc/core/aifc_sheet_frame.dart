@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_colors.dart';
 import 'aifc_sheet_handle.dart';
 import 'aifc_theme.dart';
 
@@ -22,6 +23,7 @@ class AifcSheetFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final tokens = context.mtfThemeTokens;
 
     return SafeArea(
       top: false,
@@ -38,11 +40,11 @@ class AifcSheetFrame extends StatelessWidget {
             constraints: maxHeightFactor == null
                 ? null
                 : BoxConstraints(
-              maxHeight:
-              MediaQuery.of(context).size.height * maxHeightFactor!,
-            ),
+                    maxHeight:
+                        MediaQuery.of(context).size.height * maxHeightFactor!,
+                  ),
             decoration: BoxDecoration(
-              color: AifcColors.sheetBg,
+              color: tokens.sheetBackground,
               borderRadius: BorderRadius.circular(AifcRadius.sheet),
               boxShadow: AifcShadow.sheet,
             ),

@@ -6,6 +6,7 @@ import '../aifc/core/aifc_chat_flow.dart';
 import '../aifc/core/aifc_nickname.dart';
 import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
+import '../theme/app_colors.dart';
 
 enum AifcConsultChecklistAction {
   later,
@@ -297,18 +298,20 @@ class _ConsultIntroBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.aifcSurface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AifcColors.cardBorder),
+        border: Border.all(color: tokens.cardBorder),
       ),
       child: Text(
         '$trainerLabel, 첫 상담이나 OT 때 확인할 내용을 빠르게 체크해볼게요.\n'
         '회원의 목표, 현재 상태, 생활 패턴을 먼저 잡아두면 이후 회원카드와 레슨일지가 훨씬 정확해져요.',
-        style: const TextStyle(
-          color: AifcColors.fcText,
+        style: TextStyle(
+          color: scheme.onSurface,
           fontSize: 12.5,
           height: 1.45,
           fontWeight: FontWeight.w800,
@@ -331,6 +334,8 @@ class _ConsultChecklistBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Column(
       children: sections.map((section) {
         return Padding(
@@ -339,10 +344,10 @@ class _ConsultChecklistBlock extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F7FF),
+              color: tokens.aifcSurface,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: const Color(0xFFE0DEFF),
+                color: tokens.cardBorder,
                 width: 0.7,
               ),
             ),
@@ -359,8 +364,8 @@ class _ConsultChecklistBlock extends StatelessWidget {
                     const SizedBox(width: 7),
                     Text(
                       section.title,
-                      style: const TextStyle(
-                        color: AifcColors.fcText,
+                      style: TextStyle(
+                        color: scheme.onSurface,
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
                       ),
@@ -384,12 +389,14 @@ class _ConsultChecklistBlock extends StatelessWidget {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: selected ? AifcColors.primary : Colors.white,
+                          color: selected
+                              ? AifcColors.primary
+                              : tokens.aifcInputSurface,
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
                             color: selected
                                 ? AifcColors.primary
-                                : const Color(0xFFE0DEFF),
+                                : tokens.cardBorder,
                           ),
                         ),
                         child: Text(
@@ -397,7 +404,7 @@ class _ConsultChecklistBlock extends StatelessWidget {
                           style: TextStyle(
                             color: selected
                                 ? Colors.white
-                                : const Color(0xFF4B5563),
+                                : scheme.onSurfaceVariant,
                             fontSize: 11.5,
                             fontWeight: FontWeight.w900,
                           ),
@@ -424,6 +431,8 @@ class _ConsultMemoField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return TextField(
       controller: controller,
       minLines: 2,
@@ -432,19 +441,19 @@ class _ConsultMemoField extends StatelessWidget {
         labelText: '상담 메모',
         hintText: '예: 주 2회 가능, 허리 불편, 식사 불규칙, 체험 후 등록 상담',
         filled: true,
-        fillColor: Colors.white,
+        fillColor: tokens.aifcInputSurface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE0DEFF)),
+          borderSide: BorderSide(color: tokens.cardBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE0DEFF)),
+          borderSide: BorderSide(color: tokens.cardBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: AifcColors.primary,
+          borderSide: BorderSide(
+            color: scheme.secondary,
             width: 1.3,
           ),
         ),
@@ -464,14 +473,15 @@ class _ConsultActionBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: double.infinity,
       height: 48,
       child: FilledButton.icon(
         onPressed: onSave,
         style: FilledButton.styleFrom(
-          backgroundColor: AifcColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: scheme.secondary,
+          foregroundColor: scheme.onSecondary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AifcRadius.button),
           ),

@@ -6,6 +6,7 @@ import '../aifc/core/aifc_chat_flow.dart';
 import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
 import '../models/personal_tier_progress.dart';
+import '../theme/app_colors.dart';
 
 enum AifcTierGuideAction {
   later,
@@ -785,6 +786,8 @@ class _TierActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -793,13 +796,13 @@ class _TierActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
           color: outlined
-              ? AifcColors.primary.withOpacity(0.07)
-              : AifcColors.primary,
+              ? tokens.drawerSelectedBackground
+              : tokens.gradeSheetAccent,
           borderRadius: BorderRadius.circular(AifcRadius.button),
           border: Border.all(
             color: outlined
-                ? AifcColors.primary.withOpacity(0.18)
-                : AifcColors.primary,
+                ? tokens.gradeSheetAccent.withOpacity(0.5)
+                : tokens.gradeSheetAccent,
             width: 0.8,
           ),
         ),
@@ -807,7 +810,9 @@ class _TierActionButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: outlined ? AifcColors.primary : Colors.white,
+            color: outlined
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.onSecondary,
             fontSize: 13,
             fontWeight: FontWeight.w900,
           ),

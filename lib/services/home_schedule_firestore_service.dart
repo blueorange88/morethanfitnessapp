@@ -6,6 +6,7 @@ import '../utils/home_schedule_move_plan.dart';
 
 String homeScheduleScopedDocumentId(String docId, String? ownerUid) {
   final clean = docId.trim();
+  if (clean.isEmpty) return '';
   final owner = ownerUid?.trim() ?? '';
   if (owner.isEmpty || clean.startsWith('$owner--')) return clean;
   return '$owner--$clean';
@@ -89,7 +90,7 @@ class HomeScheduleFirestoreService {
     required String action,
     required bool expectedExists,
   }) async {
-    for (final sourceDocId in sourceDocIds) {
+    await Future.wait(sourceDocIds.map((sourceDocId) async {
       try {
         final snapshot = await _schedules.doc(sourceDocId).get(
               const GetOptions(source: Source.server),
@@ -126,7 +127,7 @@ class HomeScheduleFirestoreService {
           cause: error,
         );
       }
-    }
+    }));
   }
 
   static Future<void> _commitBatchAndVerify({
@@ -436,8 +437,11 @@ class HomeScheduleFirestoreService {
   static Future<DocumentSnapshot<Map<String, dynamic>>> getSchedule(
     String docId, {
     String? ownerUid,
+    Source source = Source.serverAndCache,
   }) {
-    return _schedules.doc(_scopedDocId(docId, ownerUid)).get();
+    return _schedules
+        .doc(_scopedDocId(docId, ownerUid))
+        .get(GetOptions(source: source));
   }
 
   static Future<bool> isScheduleConfirmed(

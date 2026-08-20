@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/personal_training_log.dart';
 import '../services/personal_training_log_repository.dart';
+import '../theme/app_colors.dart';
 
 class PersonalTrainingLogWorkspacePage extends StatefulWidget {
   const PersonalTrainingLogWorkspacePage({
@@ -111,7 +112,10 @@ class _PersonalTrainingLogWorkspacePageState
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: Text('${widget.memberName} · 레슨일지')),
       floatingActionButton: FloatingActionButton.extended(
         key: const Key('create_personal_training_log'),
@@ -171,23 +175,33 @@ class _PersonalTrainingLogWorkspacePageState
                     ? const Center(child: Text('저장된 레슨일지가 없어요.'))
                     : ListView.separated(
                         itemCount: records.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          color: tokens.trainingLogSetDivider,
+                        ),
                         itemBuilder: (context, index) {
                           final record = records[index];
-                          return ListTile(
-                            key: Key(
-                              'personal_training_log_${record.lessonLogId}',
+                          return ColoredBox(
+                            color: tokens.trainingLogSurface,
+                            child: ListTile(
+                              key: Key(
+                                'personal_training_log_${record.lessonLogId}',
+                              ),
+                              title: Text(
+                                '${_date(record.startAt)} · ${record.lessonType}',
+                                style: TextStyle(color: scheme.onSurface),
+                              ),
+                              subtitle: Text(
+                                '${_statusLabel(record.status)}\n${record.memo}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              isThreeLine: record.memo.isNotEmpty,
+                              onTap: () => _open(record),
                             ),
-                            title: Text(
-                              '${_date(record.startAt)} · ${record.lessonType}',
-                            ),
-                            subtitle: Text(
-                              '${_statusLabel(record.status)}\n${record.memo}',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            isThreeLine: record.memo.isNotEmpty,
-                            onTap: () => _open(record),
                           );
                         },
                       ),
@@ -337,7 +351,9 @@ class _PersonalTrainingLogEditorPageState
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('레슨일지 작성')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -358,7 +374,11 @@ class _PersonalTrainingLogEditorPageState
             decoration: const InputDecoration(labelText: '레슨 메모'),
           ),
           const SizedBox(height: 8),
-          Text(_saveLabel, key: const Key('personal_training_log_save_state')),
+          Text(
+            _saveLabel,
+            key: const Key('personal_training_log_save_state'),
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
           const SizedBox(height: 20),
           if (_isDraft) ...[
             Wrap(

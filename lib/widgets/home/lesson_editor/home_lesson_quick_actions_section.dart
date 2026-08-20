@@ -19,15 +19,13 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
     required this.onLinkExistingMember,
     required this.onRegisterManualMember,
     required this.onCancelConfirmedLesson,
+    this.isPersistedSchedule = true,
     this.canUseLessonContract = false,
     this.canUseMembershipManage = false,
-    this.lessonContractLockedMessage = '레슨계약서는 Semi-Pro부터 사용할 수 있어요.',
-    this.membershipManageLockedMessage = '회원권 관리는 Pro부터 사용할 수 있어요.',
     this.onOpenLessonContract,
     this.onOpenMembershipManage,
     this.onOpenLessonContractFromUnregistered,
     this.onOpenMembershipContractFromUnregistered,
-    this.onOpenTierLockedFeature,
   });
 
   final bool hasLinkedMember;
@@ -48,34 +46,38 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
   final Future<void> Function() onLinkExistingMember;
   final Future<void> Function() onRegisterManualMember;
   final Future<void> Function() onCancelConfirmedLesson;
+  final bool isPersistedSchedule;
 
   final bool canUseLessonContract;
   final bool canUseMembershipManage;
-
-  final String lessonContractLockedMessage;
-  final String membershipManageLockedMessage;
 
   final Future<void> Function()? onOpenLessonContract;
   final Future<void> Function()? onOpenMembershipManage;
   final Future<void> Function()? onOpenLessonContractFromUnregistered;
   final Future<void> Function()? onOpenMembershipContractFromUnregistered;
-  final Future<void> Function(String message)? onOpenTierLockedFeature;
 
   @override
   Widget build(BuildContext context) {
+    if (!isPersistedSchedule) {
+      return const SizedBox.shrink();
+    }
+
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cleanMemberId = (memberId ?? '').trim();
 
     final bool hasUsableLinkedMember =
         hasLinkedMember && !linkedMemberDeleted && cleanMemberId.isNotEmpty;
 
     final canUseLinkedMemberActions = hasUsableLinkedMember;
-    final canUseConfirmActions = hasUsableLinkedMember && !isConfirmedLesson;
+    final canUseConfirmActions =
+        isPersistedSchedule && hasUsableLinkedMember && !isConfirmedLesson;
 
-    final linkedMemberDisabledMessage = isConfirmedLesson
-        ? '이미 확정된 레슨이에요.'
-        : '기존 회원 연결 후 사용할 수 있어요.';
+    final linkedMemberDisabledMessage =
+        isConfirmedLesson ? '이미 확정된 레슨이에요.' : '기존 회원 연결 후 사용할 수 있어요.';
 
     Widget buildQuickAction({
+      Key? actionKey,
       required String label,
       required IconData icon,
       required Future<void> Function() onTap,
@@ -83,48 +85,52 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       String disabledMessage = '이미 확정했습니다',
       Color? foregroundColor,
       Future<void> Function()? onDisabledTap,
-      bool isRecommended = false,
+      bool isContractTask = false,
     }) {
-      final color = enabled
-          ? (foregroundColor ?? const Color(0xFF4F46E5))
-          : const Color(0xFF9CA3AF);
+      final color = isContractTask
+          ? (isDark ? const Color(0xFFFFF4CF) : const Color(0xFF0B1E32))
+          : enabled
+              ? (foregroundColor ?? colors.primary)
+              : colors.onSurfaceVariant;
+      final iconColor = isContractTask
+          ? (isDark ? const Color(0xFFEFCB62) : const Color(0xFF9A6810))
+          : color;
+      final backgroundColor = isContractTask
+          ? (isDark ? const Color(0xFF4A401F) : const Color(0xFFFFF1C2))
+          : enabled
+              ? colors.surface
+              : colors.surfaceContainerHigh;
+      final borderColor = isContractTask
+          ? const Color(0xFFEFCB62)
+          : enabled
+              ? color.withValues(alpha: 0.18)
+              : colors.outline;
 
       final button = InkWell(
         onTap: enabled
             ? () {
-          onTap();
-        }
+                onTap();
+              }
             : () {
-          if (onDisabledTap != null) {
-            onDisabledTap();
-            return;
-          }
+                if (onDisabledTap != null) {
+                  onDisabledTap();
+                  return;
+                }
 
-          onShowToast(disabledMessage);
-        },
+                onShowToast(disabledMessage);
+              },
         borderRadius: BorderRadius.circular(14),
         child: Container(
+          key: actionKey,
+          height: 36,
           padding: const EdgeInsets.symmetric(
             horizontal: 9,
             vertical: 9,
           ),
           decoration: BoxDecoration(
-            color: enabled ? Colors.white : const Color(0xFFF3F4F6),
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: enabled
-                  ? color.withOpacity(isRecommended ? 0.34 : 0.18)
-                  : const Color(0xFFE5E7EB),
-            ),
-            boxShadow: enabled && isRecommended
-                ? [
-              BoxShadow(
-                color: color.withOpacity(0.10),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ]
-                : null,
+            border: Border.all(color: borderColor),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -132,15 +138,16 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: color,
+                color: iconColor,
               ),
               const SizedBox(width: 4),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight:
-                  isRecommended ? FontWeight.w800 : FontWeight.w700,
+                  fontWeight: FontWeight.w700,
                   color: color,
                 ),
               ),
@@ -149,18 +156,12 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
         ),
       );
 
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: _RecommendedActionWash(
-          enabled: enabled && isRecommended,
-          color: color,
-          child: button,
-        ),
-      );
+      return button;
     }
 
     Widget buildMemberCardAction() {
       return buildQuickAction(
+        actionKey: const Key('aifc_member_card_action'),
         label: '회원카드',
         icon: Icons.person_outline,
         enabled: canUseLinkedMemberActions,
@@ -218,24 +219,14 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       final hasCallback = onOpenLessonContract != null;
 
       return buildQuickAction(
+        actionKey: const Key('aifc_lesson_contract_action'),
         label: '레슨계약서',
         icon: Icons.description_outlined,
-        foregroundColor: const Color(0xFF7C3AED),
-        isRecommended: true,
-        enabled: canUseLinkedMemberActions && canUseLessonContract && hasCallback,
+        isContractTask: true,
+        enabled: canUseLinkedMemberActions && hasCallback,
         disabledMessage: canUseLinkedMemberActions
-            ? lessonContractLockedMessage
+            ? '레슨계약서를 열 수 없어요.'
             : linkedMemberDisabledMessage,
-        onDisabledTap: canUseLinkedMemberActions && !canUseLessonContract
-            ? () async {
-          if (onOpenTierLockedFeature != null) {
-            await onOpenTierLockedFeature!(lessonContractLockedMessage);
-            return;
-          }
-
-          onShowToast(lessonContractLockedMessage);
-        }
-            : null,
         onTap: onOpenLessonContract ?? () async {},
       );
     }
@@ -244,25 +235,14 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       final hasCallback = onOpenMembershipManage != null;
 
       return buildQuickAction(
-        label: '회원권 관리',
+        actionKey: const Key('aifc_membership_contract_action'),
+        label: '회원권계약서',
         icon: Icons.card_membership_rounded,
-        foregroundColor: const Color(0xFF9333EA),
-        isRecommended: true,
-        enabled:
-        canUseLinkedMemberActions && canUseMembershipManage && hasCallback,
+        isContractTask: true,
+        enabled: canUseLinkedMemberActions && hasCallback,
         disabledMessage: canUseLinkedMemberActions
-            ? membershipManageLockedMessage
+            ? '회원권계약서를 열 수 없어요.'
             : linkedMemberDisabledMessage,
-        onDisabledTap: canUseLinkedMemberActions && !canUseMembershipManage
-            ? () async {
-          if (onOpenTierLockedFeature != null) {
-            await onOpenTierLockedFeature!(membershipManageLockedMessage);
-            return;
-          }
-
-          onShowToast(membershipManageLockedMessage);
-        }
-            : null,
         onTap: onOpenMembershipManage ?? () async {},
       );
     }
@@ -284,6 +264,7 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
         runSpacing: 7,
         children: [
           buildQuickAction(
+            actionKey: const Key('aifc_link_existing_member_action'),
             label: '기존 회원 연결',
             icon: Icons.link_rounded,
             foregroundColor: const Color(0xFF4F46E5),
@@ -299,6 +280,7 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
             },
           ),
           buildQuickAction(
+            actionKey: const Key('aifc_register_member_action'),
             label: '내 회원으로 등록',
             icon: Icons.person_add_alt_1_rounded,
             foregroundColor: const Color(0xFFEA580C),
@@ -315,18 +297,18 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
           ),
           if (onOpenLessonContractFromUnregistered != null)
             buildQuickAction(
+              actionKey: const Key('aifc_lesson_contract_action'),
               label: '레슨계약서',
               icon: Icons.description_outlined,
-              foregroundColor: const Color(0xFF7C3AED),
-              isRecommended: true,
+              isContractTask: true,
               onTap: onOpenLessonContractFromUnregistered!,
             ),
           if (onOpenMembershipContractFromUnregistered != null)
             buildQuickAction(
+              actionKey: const Key('aifc_membership_contract_action'),
               label: '회원권계약서',
               icon: Icons.assignment_outlined,
-              foregroundColor: const Color(0xFF9333EA),
-              isRecommended: true,
+              isContractTask: true,
               onTap: onOpenMembershipContractFromUnregistered!,
             ),
         ],
@@ -336,10 +318,9 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
     Widget buildLinkedActions({
       required bool hasContract,
     }) {
-      final cancelBlockedByProtectedRecord =
-          isCustomerSignedConfirmedLesson ||
-              isContractLinkedConfirmedLesson ||
-              hasContract;
+      final cancelBlockedByProtectedRecord = isCustomerSignedConfirmedLesson ||
+          isContractLinkedConfirmedLesson ||
+          hasContract;
 
       final cancelDisabledMessage = isCustomerSignedConfirmedLesson
           ? '회원 서명이 포함된 레슨확정은 임의로 확정취소할 수 없어요.'
@@ -349,8 +330,9 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
         spacing: 5,
         runSpacing: 7,
         children: [
-          buildLessonConfirmAction(hasContract: hasContract),
-          if (isConfirmedLesson)
+          if (isPersistedSchedule)
+            buildLessonConfirmAction(hasContract: hasContract),
+          if (isPersistedSchedule && isConfirmedLesson)
             buildQuickAction(
               label: '확정취소',
               icon: cancelBlockedByProtectedRecord
@@ -361,8 +343,9 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
               disabledMessage: cancelDisabledMessage,
               onTap: onCancelConfirmedLesson,
             ),
-          if (hasContract && !isConfirmedLesson) buildSignRequestAction(),
-          buildWorkoutLogAction(),
+          if (isPersistedSchedule && hasContract && !isConfirmedLesson)
+            buildSignRequestAction(),
+          if (isPersistedSchedule) buildWorkoutLogAction(),
           buildMemberCardAction(),
           if (onOpenLessonContract != null) buildLessonContractAction(),
           if (onOpenMembershipManage != null) buildMembershipManageAction(),
@@ -371,10 +354,11 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
     }
 
     return Column(
+      key: const Key('aifc_quick_actions_section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'AI FC 추천 업무',
+          'AIFC 추천업무',
           style: TextStyle(
             fontSize: 12,
             color: Colors.grey,
@@ -415,110 +399,6 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
             },
           ),
       ],
-    );
-  }
-}
-
-class _RecommendedActionWash extends StatefulWidget {
-  const _RecommendedActionWash({
-    required this.enabled,
-    required this.color,
-    required this.child,
-  });
-
-  final bool enabled;
-  final Color color;
-  final Widget child;
-
-  @override
-  State<_RecommendedActionWash> createState() => _RecommendedActionWashState();
-}
-
-class _RecommendedActionWashState extends State<_RecommendedActionWash>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _opacity;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1650),
-    );
-
-    _opacity = Tween<double>(
-      begin: 0.00,
-      end: 0.16,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    if (widget.enabled) {
-      _controller.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _RecommendedActionWash oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.enabled == oldWidget.enabled) return;
-
-    if (widget.enabled) {
-      _controller.repeat(reverse: true);
-    } else {
-      _controller
-        ..stop()
-        ..value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.enabled) {
-      return widget.child;
-    }
-
-    return AnimatedBuilder(
-      animation: _opacity,
-      builder: (context, child) {
-        return Stack(
-          children: [
-            child!,
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: RadialGradient(
-                      center: Alignment.center,
-                      radius: 0.95,
-                      colors: [
-                        widget.color.withOpacity(_opacity.value),
-                        widget.color.withOpacity(_opacity.value * 0.45),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.48, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      child: widget.child,
     );
   }
 }

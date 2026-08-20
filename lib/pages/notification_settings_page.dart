@@ -6,6 +6,7 @@ import '../aifc/core/aifc_nickname.dart';
 
 import '../services/app_tier_access_service.dart';
 import '../services/lesson_notification_prefs.dart';
+import '../theme/app_colors.dart';
 
 const Color kNotifyPrimary = Color(0xFF4F46E5);
 const Color kNotifyPrimary2 = Color(0xFF9333EA);
@@ -300,7 +301,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         final bottomSafe = MediaQuery.of(context).padding.bottom;
 
         return Scaffold(
-          backgroundColor: kNotifyBg,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: Center(
             child: SizedBox(
               width: width,
@@ -597,17 +598,14 @@ class _NotificationHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [kNotifyPrimary, kNotifyPrimary2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(30),
         ),
       ),
@@ -726,6 +724,8 @@ class _HeaderStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 10,
@@ -763,16 +763,18 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<MtfThemeTokens>()!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       decoration: BoxDecoration(
-        color: kNotifyCard,
+        color: tokens.notificationCardSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: kNotifyBorder),
+        border: Border.all(color: scheme.outline),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.035),
+            color: scheme.shadow.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -787,13 +789,13 @@ class _SectionCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
+                    color: scheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: Icon(
                     icon,
                     size: 19,
-                    color: kNotifyPrimary,
+                    color: scheme.onSecondaryContainer,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -804,8 +806,8 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: kNotifyText,
+                      style: TextStyle(
+                        color: scheme.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
@@ -814,8 +816,8 @@ class _SectionCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
-                          color: kNotifyMuted,
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           height: 1.3,
@@ -854,6 +856,7 @@ class _SwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Opacity(
       opacity: enabled ? 1 : 0.48,
       child: Padding(
@@ -864,13 +867,13 @@ class _SwitchTile extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: kNotifyPrimary.withOpacity(0.09),
+                color: scheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 icon,
                 size: 20,
-                color: kNotifyPrimary,
+                color: scheme.onSecondaryContainer,
               ),
             ),
             const SizedBox(width: 12),
@@ -880,8 +883,8 @@ class _SwitchTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: kNotifyText,
+                    style: TextStyle(
+                      color: scheme.onSurface,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w900,
                     ),
@@ -889,8 +892,8 @@ class _SwitchTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: kNotifyMuted,
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       height: 1.3,
@@ -902,7 +905,7 @@ class _SwitchTile extends StatelessWidget {
             const SizedBox(width: 8),
             Switch.adaptive(
               value: value,
-              activeColor: kNotifyPrimary,
+              activeColor: scheme.secondary,
               onChanged: enabled ? onChanged : null,
             ),
           ],
@@ -929,6 +932,7 @@ class _ReminderMinuteSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Opacity(
       opacity: enabled ? 1 : 0.48,
       child: Padding(
@@ -936,19 +940,19 @@ class _ReminderMinuteSelector extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '알림 시간',
               style: TextStyle(
-                color: kNotifyText,
+                color: scheme.onSurface,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(height: 3),
-            const Text(
+            Text(
               '여러 개를 선택하면 각각 알림이 울려요.',
               style: TextStyle(
-                color: kNotifyMuted,
+                color: scheme.onSurfaceVariant,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
                 height: 1.35,
@@ -966,15 +970,15 @@ class _ReminderMinuteSelector extends StatelessWidget {
                   selected: selected,
                   onSelected: enabled ? (_) => onTap(minute) : null,
                   showCheckmark: false,
-                  selectedColor: const Color(0xFFEEF2FF),
-                  backgroundColor: const Color(0xFFF9FAFB),
+                  selectedColor: scheme.secondaryContainer,
+                  backgroundColor: scheme.surfaceContainerHighest,
                   side: BorderSide(
-                    color: selected
-                        ? const Color(0xFFC7D2FE)
-                        : const Color(0xFFE5E7EB),
+                    color: selected ? scheme.secondary : scheme.outline,
                   ),
                   labelStyle: TextStyle(
-                    color: selected ? kNotifyPrimary : kNotifyMuted,
+                    color: selected
+                        ? scheme.onSecondaryContainer
+                        : scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
                   ),
                 );
@@ -983,8 +987,8 @@ class _ReminderMinuteSelector extends StatelessWidget {
             const SizedBox(height: 9),
             Text(
               '선택됨: $summary',
-              style: const TextStyle(
-                color: kNotifyPrimary,
+              style: TextStyle(
+                color: scheme.secondary,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -1018,6 +1022,7 @@ class _ChoiceTile<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = value == groupValue;
+    final scheme = Theme.of(context).colorScheme;
 
     return Opacity(
       opacity: enabled ? 1 : 0.48,
@@ -1033,14 +1038,16 @@ class _ChoiceTile<T> extends StatelessWidget {
                 height: 38,
                 decoration: BoxDecoration(
                   color: selected
-                      ? kNotifyPrimary.withOpacity(0.10)
-                      : const Color(0xFFF3F4F6),
+                      ? scheme.secondaryContainer
+                      : scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
                   size: 20,
-                  color: selected ? kNotifyPrimary : const Color(0xFF9CA3AF),
+                  color: selected
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1051,7 +1058,7 @@ class _ChoiceTile<T> extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        color: selected ? kNotifyPrimary : kNotifyText,
+                        color: selected ? scheme.secondary : scheme.onSurface,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -1059,8 +1066,8 @@ class _ChoiceTile<T> extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        color: kNotifyMuted,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         height: 1.35,
@@ -1074,7 +1081,7 @@ class _ChoiceTile<T> extends StatelessWidget {
                 selected
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_unchecked_rounded,
-                color: selected ? kNotifyPrimary : const Color(0xFF9CA3AF),
+                color: selected ? scheme.secondary : scheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -1116,6 +1123,7 @@ class _GapSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Opacity(
       opacity: enabled ? 1 : 0.48,
       child: Padding(
@@ -1123,19 +1131,19 @@ class _GapSelector extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '빈 시간 기준',
               style: TextStyle(
-                color: kNotifyText,
+                color: scheme.onSurface,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(height: 3),
-            const Text(
+            Text(
               '이 시간 이상 비어 있으면 다음 레슨 전에 알려드려요.',
               style: TextStyle(
-                color: kNotifyMuted,
+                color: scheme.onSurfaceVariant,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
                 height: 1.35,
@@ -1153,15 +1161,15 @@ class _GapSelector extends StatelessWidget {
                   selected: selected,
                   onSelected: enabled ? (_) => onChanged(gap) : null,
                   showCheckmark: false,
-                  selectedColor: const Color(0xFFEEF2FF),
-                  backgroundColor: const Color(0xFFF9FAFB),
+                  selectedColor: scheme.secondaryContainer,
+                  backgroundColor: scheme.surfaceContainerHighest,
                   side: BorderSide(
-                    color: selected
-                        ? const Color(0xFFC7D2FE)
-                        : const Color(0xFFE5E7EB),
+                    color: selected ? scheme.secondary : scheme.outline,
                   ),
                   labelStyle: TextStyle(
-                    color: selected ? kNotifyPrimary : kNotifyMuted,
+                    color: selected
+                        ? scheme.onSecondaryContainer
+                        : scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
                   ),
                 );
@@ -1170,8 +1178,8 @@ class _GapSelector extends StatelessWidget {
             const SizedBox(height: 9),
             Text(
               '현재 기준: $summary',
-              style: const TextStyle(
-                color: kNotifyPrimary,
+              style: TextStyle(
+                color: scheme.secondary,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -1192,20 +1200,22 @@ class _InfoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: tokens.notificationLockedSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: const Color(0xFFE5E7EB),
+          color: scheme.outline,
         ),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: kNotifyMuted,
+        style: TextStyle(
+          color: scheme.onSurfaceVariant,
           fontSize: 11.5,
           height: 1.45,
           fontWeight: FontWeight.w600,
@@ -1220,9 +1230,9 @@ class _SettingsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(
+    return Divider(
       height: 1,
-      color: kNotifyBorder,
+      color: Theme.of(context).colorScheme.outlineVariant,
     );
   }
 }
@@ -1253,6 +1263,8 @@ class _SmartAlarmEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool locked = !canUseSmartAlarm;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     String statusText() {
       if (accessLoading) {
@@ -1316,26 +1328,16 @@ class _SmartAlarmEntryCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: locked
-                  ? const [
-                      Color(0xFFF8FAFC),
-                      Color(0xFFF3F4F6),
-                    ]
-                  : const [
-                      Color(0xFFEEF2FF),
-                      Color(0xFFF5F3FF),
-                    ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: locked
+                ? tokens.notificationLockedSurface
+                : tokens.notificationCardSurface,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: locked ? const Color(0xFFE5E7EB) : const Color(0xFFC7D2FE),
+              color: locked ? scheme.outline : scheme.secondary,
             ),
             boxShadow: [
               BoxShadow(
-                color: kNotifyPrimary.withOpacity(0.06),
+                color: scheme.shadow.withValues(alpha: 0.06),
                 blurRadius: 12,
                 offset: const Offset(0, 5),
               ),
@@ -1348,15 +1350,17 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: locked
-                      ? const Color(0xFFE5E7EB)
-                      : kNotifyPrimary.withOpacity(0.10),
+                      ? scheme.surfaceContainerHighest
+                      : scheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(
                   locked
                       ? Icons.lock_outline_rounded
                       : Icons.auto_awesome_rounded,
-                  color: locked ? const Color(0xFF9CA3AF) : kNotifyPrimary,
+                  color: locked
+                      ? scheme.onSurfaceVariant
+                      : scheme.onSecondaryContainer,
                   size: 22,
                 ),
               ),
@@ -1365,10 +1369,10 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'MORE 스마트 알림',
                       style: TextStyle(
-                        color: kNotifyText,
+                        color: scheme.onSurface,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
@@ -1378,7 +1382,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                       statusText(),
                       style: TextStyle(
                         color:
-                            locked ? const Color(0xFF9CA3AF) : kNotifyPrimary,
+                            locked ? scheme.onSurfaceVariant : scheme.secondary,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
                         height: 1.3,
@@ -1462,11 +1466,11 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                     const SizedBox(height: 5),
                     Text(
                       descriptionText(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         height: 1.35,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF6B7280),
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                     if (enabled &&
@@ -1487,7 +1491,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                 accessLoading
                     ? Icons.hourglass_empty_rounded
                     : Icons.chevron_right_rounded,
-                color: locked ? const Color(0xFF9CA3AF) : kNotifyPrimary,
+                color: locked ? scheme.onSurfaceVariant : scheme.secondary,
               ),
             ],
           ),

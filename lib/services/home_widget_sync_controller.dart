@@ -2,6 +2,8 @@ import 'dart:async';
 
 class HomeWidgetSyncController {
   Timer? _debounce;
+  Future<void> _serial = Future<void>.value();
+  bool _disposed = false;
 
   void queue({
     required Future<void> Function() syncAction,
@@ -9,9 +11,7 @@ class HomeWidgetSyncController {
   }) {
     _debounce?.cancel();
 
-    _debounce = Timer(delay, () {
-      unawaited(syncAction());
-    });
+    _debounce = Timer(delay, () => _run(syncAction));
   }
 
   void runNow({
@@ -20,7 +20,15 @@ class HomeWidgetSyncController {
     _debounce?.cancel();
     _debounce = null;
 
-    unawaited(syncAction());
+    _run(syncAction);
+  }
+
+  void _run(Future<void> Function() syncAction) {
+    _serial = _serial.catchError((Object _) {}).then((_) async {
+      if (_disposed) return;
+      await syncAction();
+    });
+    unawaited(_serial.catchError((Object _) {}));
   }
 
   void cancel() {
@@ -29,6 +37,7 @@ class HomeWidgetSyncController {
   }
 
   void dispose() {
+    _disposed = true;
     cancel();
   }
 }

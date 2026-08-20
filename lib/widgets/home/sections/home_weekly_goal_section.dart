@@ -26,6 +26,7 @@ class HomeWeeklyGoalSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -36,10 +37,10 @@ class HomeWeeklyGoalSection extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Colors.black87,
+                    color: scheme.onSurface,
                   ),
                 ),
               ),
@@ -64,11 +65,11 @@ class HomeWeeklyGoalSection extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         '주간 횟수',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.black87,
+                          color: scheme.onSurface,
                         ),
                       ),
                       Text(

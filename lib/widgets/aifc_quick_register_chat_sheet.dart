@@ -6,6 +6,8 @@ import '../aifc/core/aifc_chat_flow.dart';
 import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
 import '../aifc/core/aifc_nickname.dart';
+import '../theme/app_colors.dart';
+import '../services/personal_member_card_save_service.dart';
 
 class AifcQuickRegisterResult {
   const AifcQuickRegisterResult({
@@ -25,13 +27,16 @@ class AifcQuickRegisterChatSheet extends StatefulWidget {
   const AifcQuickRegisterChatSheet({
     super.key,
     required this.nickname,
+    required this.onFastSave,
   });
 
   final String nickname;
+  final Future<void> Function(AifcQuickRegisterResult result) onFastSave;
 
   static Future<AifcQuickRegisterResult?> show({
     required BuildContext context,
     required String nickname,
+    required Future<void> Function(AifcQuickRegisterResult result) onFastSave,
   }) {
     return showModalBottomSheet<AifcQuickRegisterResult>(
       context: context,
@@ -39,6 +44,7 @@ class AifcQuickRegisterChatSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => AifcQuickRegisterChatSheet(
         nickname: nickname,
+        onFastSave: onFastSave,
       ),
     );
   }
@@ -48,10 +54,10 @@ class AifcQuickRegisterChatSheet extends StatefulWidget {
       _AifcQuickRegisterChatSheetState();
 }
 
-class _AifcQuickRegisterChatSheetState
-    extends State<AifcQuickRegisterChatSheet>
-    with TickerProviderStateMixin, AifcChatFlowMixin<AifcQuickRegisterChatSheet> {
-
+class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
+    with
+        TickerProviderStateMixin,
+        AifcChatFlowMixin<AifcQuickRegisterChatSheet> {
   final _nameC = TextEditingController();
   final _phoneC = TextEditingController();
 
@@ -92,12 +98,12 @@ class _AifcQuickRegisterChatSheetState
             onClearConsultDate: _consultDate == null
                 ? null
                 : () {
-              setState(() {
-                _consultDate = null;
-                _discardPromptVisible = false;
-                _lastValidationMessage = null;
-              });
-            },
+                    setState(() {
+                      _consultDate = null;
+                      _discardPromptVisible = false;
+                      _lastValidationMessage = null;
+                    });
+                  },
           ),
           const SizedBox(height: 12),
           _QuickRegisterActionCard(
@@ -208,11 +214,16 @@ class _AifcQuickRegisterChatSheetState
       userText: goDetail ? '고객카드까지 이어서 작성할게요' : '빠른등록할게요',
       groupKey: 'quick_register_done',
       action: () async {
-        await Future.delayed(const Duration(milliseconds: 250));
+        if (goDetail) {
+          await Future.delayed(const Duration(milliseconds: 250));
+          return;
+        }
+        await widget.onFastSave(result);
       },
       successText: goDetail
           ? '$memberLabel 기본 정보를 먼저 등록하고,\n고객카드 작성으로 이어갈게요.'
-          : '$memberLabel을 빠르게 등록할게요.\n필요하면 나중에 고객카드에서 더 자세히 채울 수 있어요.',
+          : '$memberLabel을 등록했어요.\n필요하면 고객카드에서 더 자세히 채울 수 있어요.',
+      errorTextBuilder: personalMemberUpdateErrorMessage,
       closeAfterReply: true,
       popResult: result,
     );
@@ -257,6 +268,8 @@ class _AifcQuickRegisterChatSheetState
     setState(() {
       _discardPromptVisible = true;
     });
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
 
     await aifcUserThenFc(
       userText: '취소할게요',
@@ -267,9 +280,9 @@ class _AifcQuickRegisterChatSheetState
           Expanded(
             child: _SmallActionButton(
               label: '계속 작성',
-              foregroundColor: AifcColors.textMuted,
-              backgroundColor: Colors.white,
-              borderColor: AifcColors.cardBorder,
+              foregroundColor: theme.colorScheme.onSurfaceVariant,
+              backgroundColor: tokens.aifcInputSurface,
+              borderColor: tokens.cardBorder,
               onTap: () {
                 _handleKeepWriting();
               },
@@ -318,6 +331,7 @@ class _AifcQuickRegisterChatSheetState
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return AifcSheetFrame(
       maxHeightFactor: 0.82,
       children: [
@@ -360,13 +374,13 @@ class _AifcQuickRegisterChatSheetState
           GestureDetector(
             onTap: _handleCancel,
             behavior: HitTestBehavior.opaque,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
               child: Center(
                 child: Text(
                   '취소',
                   style: TextStyle(
-                    color: AifcColors.textHint,
+                    color: colorScheme.onSurfaceVariant,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -396,12 +410,15 @@ class _RegisterInputCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Column(
       children: [
         TextField(
           controller: nameC,
           textInputAction: TextInputAction.next,
           decoration: _inputDecoration(
+            context,
             label: '이름',
             hint: '예: 김모어',
           ),
@@ -416,6 +433,7 @@ class _RegisterInputCard extends StatelessWidget {
             LengthLimitingTextInputFormatter(11),
           ],
           decoration: _inputDecoration(
+            context,
             label: '휴대폰 번호',
             hint: '01012345678',
           ),
@@ -431,19 +449,19 @@ class _RegisterInputCard extends StatelessWidget {
               vertical: 12,
             ),
             decoration: BoxDecoration(
-              color: AifcColors.cardSoftBg,
+              color: tokens.aifcInputSurface,
               borderRadius: BorderRadius.circular(AifcRadius.button),
               border: Border.all(
-                color: AifcColors.cardBorder,
+                color: tokens.cardBorder,
                 width: 0.5,
               ),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.event_available_rounded,
                   size: 18,
-                  color: AifcColors.primary,
+                  color: scheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -451,8 +469,8 @@ class _RegisterInputCard extends StatelessWidget {
                     '상담 예약일 · $consultDateText',
                     style: TextStyle(
                       color: consultDateText == '선택 안 함'
-                          ? AifcColors.textHint
-                          : AifcColors.fcText,
+                          ? scheme.onSurfaceVariant
+                          : scheme.onSurface,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -461,17 +479,17 @@ class _RegisterInputCard extends StatelessWidget {
                 if (onClearConsultDate != null)
                   GestureDetector(
                     onTap: onClearConsultDate,
-                    child: const Icon(
+                    child: Icon(
                       Icons.close_rounded,
                       size: 18,
-                      color: AifcColors.textHint,
+                      color: scheme.onSurfaceVariant,
                     ),
                   )
                 else
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
                     size: 18,
-                    color: AifcColors.textHint,
+                    color: scheme.onSurfaceVariant,
                   ),
               ],
             ),
@@ -481,15 +499,18 @@ class _RegisterInputCard extends StatelessWidget {
     );
   }
 
-  InputDecoration _inputDecoration({
+  InputDecoration _inputDecoration(
+    BuildContext context, {
     required String label,
     required String hint,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return InputDecoration(
       labelText: label,
       hintText: hint,
       filled: true,
-      fillColor: AifcColors.cardSoftBg,
+      fillColor: tokens.aifcInputSurface,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 12,
@@ -497,22 +518,22 @@ class _RegisterInputCard extends StatelessWidget {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: AifcColors.cardBorder,
+        borderSide: BorderSide(
+          color: tokens.cardBorder,
           width: 0.5,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: AifcColors.cardBorder,
+        borderSide: BorderSide(
+          color: tokens.cardBorder,
           width: 0.5,
         ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: AifcColors.primary,
+        borderSide: BorderSide(
+          color: scheme.secondary,
           width: 1.2,
         ),
       ),
@@ -531,22 +552,23 @@ class _QuickRegisterActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SmallActionButton(
           label: '빠른등록',
-          foregroundColor: Colors.white,
-          backgroundColor: AifcColors.primary,
-          borderColor: AifcColors.primary,
+          foregroundColor: scheme.onSecondary,
+          backgroundColor: scheme.secondary,
+          borderColor: scheme.secondary,
           onTap: onFastSave,
         ),
         const SizedBox(height: 8),
         _SmallActionButton(
           label: '고객카드까지 이어서 작성하기',
-          foregroundColor: AifcColors.primary,
-          backgroundColor: AifcColors.primary.withOpacity(0.07),
-          borderColor: AifcColors.primary.withOpacity(0.15),
+          foregroundColor: scheme.primary,
+          backgroundColor: scheme.secondaryContainer,
+          borderColor: scheme.outline,
           onTap: onGoDetail,
         ),
       ],

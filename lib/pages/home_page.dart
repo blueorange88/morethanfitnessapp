@@ -60,9 +60,11 @@ import '../services/lesson_confirmation_service.dart';
 import '../services/lesson_confirm_cancel_service.dart';
 import '../services/app_tier_access_service.dart';
 import '../services/app_environment.dart';
+import '../services/member_sign_url_service.dart';
 import '../services/app_account_service.dart' show AppAccountService;
 import '../services/mtf_firebase_functions.dart';
 import '../services/personal_training_log_repository.dart';
+import '../services/personal_member_card_save_service.dart';
 
 import '../widgets/home/lesson_editor/home_lesson_editor_header.dart';
 import '../widgets/home/lesson_editor/home_lesson_day_selector.dart';
@@ -80,6 +82,7 @@ import '../widgets/home/lesson_editor/home_member_sign_request_sheet.dart';
 import '../widgets/home/sections/home_header_section.dart';
 import '../widgets/home/sections/home_today_next_lessons_section.dart';
 import '../widgets/home/sections/home_weekly_goal_section.dart';
+import '../widgets/home/sections/home_weekly_goal_dialog.dart';
 import '../widgets/home/sections/home_recent_clients_section.dart';
 import '../widgets/home/sections/home_this_week_schedule_section.dart';
 import '../widgets/home/sections/home_support_tier_guide_sheet.dart';
@@ -108,17 +111,18 @@ import '../widgets/aifc_confirm_chat_sheet.dart';
 import '../widgets/premium_banner_widget.dart';
 import '../widgets/aifc_upgrade_chat_sheet.dart';
 import '../widgets/aifc_tier_guide_chat_sheet.dart';
+import '../theme/app_colors.dart';
 import '../widgets/aifc_consult_checklist_chat_sheet.dart';
 import '../aifc/home/aifc_tier_celebration_sheet.dart';
 
 /// ----------------------
 /// 공통 컬러 팔레트 (홈 기준)
 /// ----------------------
-const Color kPrimaryColor = Color(0xFF4F46E5); // 홈 그라데이션 시작
-const Color kPrimaryColor2 = Color(0xFF9333EA); // 홈 그라데이션 끝
-const Color kAccentAmber = Color(0xFFFBBF24);
+const Color kPrimaryColor = AppColors.deepNavy;
+const Color kPrimaryColor2 = Color(0xFF163A54);
+const Color kAccentAmber = AppColors.warmYellow;
 const Color kAccentOrange = Color(0xFFF97316);
-const Color kBgColor = Color(0xFFF3F4F6); // 전체 배경 톤
+const Color kBgColor = AppColors.warmIvory;
 const double kMaxContentWidth = 480;
 
 const double kScheduleRowHeight = 40.0;
@@ -142,9 +146,6 @@ const Color kScheduleTodayHeaderDeep = Color(0xFFF59E0B);
 const Color kScheduleTodayEven = Color(0x33FBBF24);
 const Color kScheduleTodayOdd = Color(0x22FBBF24);
 const Color kScheduleCurrentLine = Color(0xFFE11D48);
-
-const String kMemberSignBaseUrl =
-    'https://more-than-fitness-f6adb.web.app/sign';
 
 // 개인 강사 후원 가격
 const int kAmateurSupportMonthlyPrice = 2900;
@@ -696,14 +697,13 @@ class _HomePageState extends State<HomePage>
     _bindScheduleStream();
     _bindBannerDataStreams();
     unawaited(_loadLessonTypePrefs());
-    _queueHomeWidgetSync(source: 'appStart');
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _queueHomeWidgetSync(source: 'appStart');
       unawaited(HomeWidgetNavigationService.start(_handleWidgetAction));
+      unawaited(NotificationService.instance.initialize());
+      unawaited(_loadNotificationEnabledState());
+      _queueNotificationSync(delay: Duration.zero);
     });
-
-    unawaited(NotificationService.instance.initialize());
-    unawaited(_loadNotificationEnabledState());
-    _queueNotificationSync(delay: Duration.zero);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeClaimPendingTierCelebration(_bannerProfileData);
@@ -844,36 +844,12 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _editWeeklyGoal() async {
-    final controller = TextEditingController(text: '$_weeklyLessonGoal');
     final submitted = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('주간 레슨 목표'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: '목표 레슨 수',
-            hintText: '비우면 기본값 40회',
-            suffixText: '회',
-          ),
-          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('저장'),
-          ),
-        ],
+      builder: (_) => HomeWeeklyGoalDialog(
+        initialValue: '$_weeklyLessonGoal',
       ),
     );
-    controller.dispose();
     if (!mounted || submitted == null) return;
 
     final parsed = parseHomeWeeklyGoalInput(submitted);
@@ -1023,7 +999,7 @@ class _HomePageState extends State<HomePage>
     final picked = await HomeRepeatLessonGroupingSheet.show(
       context: context,
       currentMode: _repeatLessonGroupingMode,
-      primaryColor: kPrimaryColor,
+      primaryColor: Theme.of(context).colorScheme.primary,
     );
 
     if (!mounted || picked == null) return;
@@ -4022,6 +3998,9 @@ class _HomePageState extends State<HomePage>
 
   Future<HomeQuickRegResult?> _openQuickRegistrationDialog() async {
     String nickname = '강사님';
+    final quickRegistrationId =
+        FirebaseFirestore.instance.collection('members').doc().id;
+    final visitDate = DateTime.now();
 
     try {
       final snap = await _trainerProfileRef.get();
@@ -4035,6 +4014,23 @@ class _HomePageState extends State<HomePage>
     final result = await AifcQuickRegisterChatSheet.show(
       context: context,
       nickname: nickname,
+      onFastSave: (result) async {
+        if (!_isPersonalWorkspace) {
+          throw StateError('quick_register_requires_personal_workspace');
+        }
+        final ownerUid = _personalOwnerUid.trim();
+        if (ownerUid.isEmpty) {
+          throw StateError('quick_register_owner_missing');
+        }
+        final note = '최초 방문일: ${DateFormat('yyyy-MM-dd').format(visitDate)}';
+        await PersonalMemberCardSaveService(uid: ownerUid).createQuickAndVerify(
+          idempotencyKey: quickRegistrationId,
+          name: result.name,
+          phone: result.phone,
+          note: note,
+          consultDate: result.consultDate,
+        );
+      },
     );
 
     if (result == null) return null;
@@ -4045,7 +4041,7 @@ class _HomePageState extends State<HomePage>
           : HomeQuickRegAction.fastSave,
       name: result.name,
       phone: result.phone,
-      visitDate: DateTime.now(),
+      visitDate: visitDate,
       consultDate: result.consultDate,
     );
   }
@@ -4075,42 +4071,7 @@ class _HomePageState extends State<HomePage>
     }
 
     if (result.action == HomeQuickRegAction.fastSave) {
-      setState(() => _isSubmitting = true);
-      try {
-        final newId = FirebaseFirestore.instance.collection('members').doc().id;
-        await FirebaseFirestore.instance.collection('members').doc(newId).set({
-          'name': result.name,
-          'phone': result.phone,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          'memberStatus': '활성',
-          'membershipGrade': 'BRONZE',
-          'note':
-              '최초 방문일: ${DateFormat('yyyy-MM-dd').format(result.visitDate)}',
-          if (result.consultDate != null)
-            'nextReservationAt': Timestamp.fromDate(result.consultDate!),
-        }, SetOptions(merge: true));
-
-        if (!mounted) return;
-        final hasConsult = result.consultDate != null;
-
-        _showActionToast(
-          context,
-          hasConsult
-              ? '제가 ${aifcPersonLabel(result.name)}을 빠르게 등록해뒀어요. 상담 일정도 놓치지 않게 챙겨드릴게요.'
-              : '제가 ${aifcPersonLabel(result.name)}을 빠르게 등록해뒀어요. 고객카드는 필요할 때 이어서 채우면 돼요.',
-          bottomOffset: 110,
-        );
-      } catch (e) {
-        if (!mounted) return;
-        _showActionToast(
-          context,
-          '등록에 실패했습니다.',
-          bottomOffset: 110,
-        );
-      } finally {
-        if (mounted) setState(() => _isSubmitting = false);
-      }
+      return;
     }
   }
 
@@ -5927,11 +5888,53 @@ class _HomePageState extends State<HomePage>
         statusText.contains('pending_delete');
   }
 
+  void _queueScheduleDeleteAuxiliarySync({
+    required String memberId,
+    required Stopwatch stopwatch,
+  }) {
+    unawaited(() async {
+      try {
+        if (memberId.isNotEmpty) {
+          await _refreshMemberNextLesson(memberId);
+        }
+        if (mounted) {
+          _queueHomeWidgetSync(delay: Duration.zero);
+          _queueNotificationSync(delay: Duration.zero);
+          _updateBannerState();
+        }
+        await _reconcilePersonalTierAfterServerWrite('scheduleDelete');
+        if (kDebugMode) {
+          debugPrint(
+            '[MTF_SCHEDULE_DELETE_TIMING] '
+            'stage=auxiliary_sync_completed '
+            'elapsedMs=${stopwatch.elapsedMilliseconds}',
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          _showActionToast(
+            context,
+            '일정은 삭제됐지만 위젯·알림 동기화를 완료하지 못했어요.',
+            bottomOffset: 110,
+          );
+        }
+        if (kDebugMode) {
+          debugPrint(
+            '[MTF_SCHEDULE_DELETE_TIMING] '
+            'stage=auxiliary_sync_failed '
+            'elapsedMs=${stopwatch.elapsedMilliseconds}',
+          );
+        }
+      }
+    }());
+  }
+
   Future<bool> _deleteScheduleFromFirestore(
     String docId, {
     Map<String, dynamic>? schedule,
     String? editSessionLogFields,
   }) async {
+    final stopwatch = Stopwatch()..start();
     final cleanDocId = docId.trim();
 
     if (cleanDocId.isEmpty) {
@@ -5972,10 +5975,27 @@ class _HomePageState extends State<HomePage>
     }
 
     try {
-      for (final sourceDocId in sourceDocIds) {
-        final isConfirmed = await _isScheduleDocConfirmed(sourceDocId);
+      final sourceSnapshotById =
+          <String, DocumentSnapshot<Map<String, dynamic>>>{};
+      await Future.wait(sourceDocIds.map((sourceDocId) async {
+        sourceSnapshotById[sourceDocId] =
+            await HomeScheduleFirestoreService.getSchedule(
+          sourceDocId,
+          ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+          source: Source.server,
+        );
+      }));
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_SCHEDULE_DELETE_TIMING] stage=preflight_completed '
+          'elapsedMs=${stopwatch.elapsedMilliseconds} '
+          'sourceCount=${sourceDocIds.length}',
+        );
+      }
 
-        if (isConfirmed) {
+      for (final snapshot in sourceSnapshotById.values) {
+        final sourceData = snapshot.data();
+        if (sourceData != null && _isScheduleLessonConfirmed(sourceData)) {
           _showActionToast(
             context,
             '확정된 레슨은 삭제할 수 없어요.',
@@ -5989,10 +6009,7 @@ class _HomePageState extends State<HomePage>
         _markScheduleDocAsRecentlyDeleted(sourceDocId);
       }
 
-      final snap = await HomeScheduleFirestoreService.getSchedule(
-        cleanDocId,
-        ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-      );
+      final snap = sourceSnapshotById[cleanDocId]!;
 
       if (kDebugMode) {
         debugPrint(
@@ -6015,11 +6032,10 @@ class _HomePageState extends State<HomePage>
           syncWidget: false,
         );
 
-        if (mounted) {
-          _queueHomeWidgetSync();
-        }
-
-        await _reconcilePersonalTierAfterServerWrite('scheduleDelete');
+        _queueScheduleDeleteAuxiliarySync(
+          memberId: '',
+          stopwatch: stopwatch,
+        );
 
         return true;
       }
@@ -6038,6 +6054,13 @@ class _HomePageState extends State<HomePage>
           ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
         );
       }
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_SCHEDULE_DELETE_TIMING] stage=server_delete_verified '
+          'elapsedMs=${stopwatch.elapsedMilliseconds} '
+          'sourceCount=${sourceDocIds.length}',
+        );
+      }
 
       for (final sourceDocId in sourceDocIds) {
         _removeLocalScheduleByDocId(
@@ -6045,18 +6068,17 @@ class _HomePageState extends State<HomePage>
           syncWidget: false,
         );
       }
-
-      if (memberId.isNotEmpty) {
-        await _refreshMemberNextLesson(memberId);
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_SCHEDULE_DELETE_TIMING] stage=local_removed '
+          'elapsedMs=${stopwatch.elapsedMilliseconds} '
+          'sourceCount=${sourceDocIds.length}',
+        );
       }
-
-      if (mounted) {
-        _queueHomeWidgetSync(delay: Duration.zero);
-        _queueNotificationSync(delay: Duration.zero);
-        _updateBannerState();
-      }
-
-      await _reconcilePersonalTierAfterServerWrite('scheduleDelete');
+      _queueScheduleDeleteAuxiliarySync(
+        memberId: memberId,
+        stopwatch: stopwatch,
+      );
 
       return true;
     } catch (e) {
@@ -6066,6 +6088,12 @@ class _HomePageState extends State<HomePage>
         }
       }
       debugPrint('레슨 삭제 실패: $e');
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_SCHEDULE_DELETE_TIMING] stage=failed '
+          'elapsedMs=${stopwatch.elapsedMilliseconds}',
+        );
+      }
       _logTierReconcileSkipped('scheduleDelete');
       return false;
     } finally {
@@ -6692,18 +6720,14 @@ class _HomePageState extends State<HomePage>
           memberName: cleanName,
           trainerName: trainerName,
           initialStage: ContractStage.requiredInfo,
+          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
         ),
       ),
     );
 
     if (!mounted) return;
 
-    final memberSnap = await FirebaseFirestore.instance
-        .collection('members')
-        .doc(newMemberId)
-        .get();
-
-    if (saved != true && !memberSnap.exists) {
+    if (saved != true) {
       _showActionToast(
         context,
         '레슨계약서 작성이 완료되지 않아 미등록 상태로 유지했어요.',
@@ -6834,18 +6858,14 @@ class _HomePageState extends State<HomePage>
           membershipStartAt: null,
           membershipEndAt: null,
           membershipPaused: false,
+          loadExistingDraft: false,
         ),
       ),
     );
 
     if (!mounted) return;
 
-    final memberSnap = await FirebaseFirestore.instance
-        .collection('members')
-        .doc(newMemberId)
-        .get();
-
-    if (ok != true && !memberSnap.exists) {
+    if (ok != true) {
       _showActionToast(
         context,
         '회원권계약서 작성이 완료되지 않아 미등록 상태로 유지했어요.',
@@ -8006,7 +8026,7 @@ class _HomePageState extends State<HomePage>
   }
 
   String _buildMemberSignUrl(String token) {
-    return '$kMemberSignBaseUrl?t=$token';
+    return MemberSignUrlService.build(token).toString();
   }
 
   String _quickSignLogIdFromSchedule({
@@ -9136,6 +9156,7 @@ class _HomePageState extends State<HomePage>
     existingSession = editorInput.safeExistingSession;
 
     final bool isEditMode = editorInput.isEditMode;
+    final bool hasPersistedSchedule = editorInput.hasPersistedSchedule;
     final editSessionId =
         'lesson-edit-${DateTime.now().microsecondsSinceEpoch}';
     final initialActualDocId = existingSession == null
@@ -9249,6 +9270,7 @@ class _HomePageState extends State<HomePage>
     Timer? memberHintTimer;
     bool showLessonTypeEditor = false;
     bool sheetAlive = true;
+    HomeScheduleEditMutationAction? activeMutation;
     String? editingLessonTypeId;
     String editingColorHex = localLessonTypes.first.colorHex;
     final lessonTypeNameController = TextEditingController();
@@ -9541,7 +9563,10 @@ class _HomePageState extends State<HomePage>
               top: Radius.circular(20),
             ),
             child: Material(
-              color: const Color(0xFFF8FAFC),
+              color: Theme.of(sheetContext)
+                      .bottomSheetTheme
+                      .modalBackgroundColor ??
+                  Theme.of(sheetContext).colorScheme.surface,
               child: StatefulBuilder(
                 builder: (sheetContext, setModalState) {
                   void safeSetModalState(VoidCallback fn) {
@@ -9556,7 +9581,6 @@ class _HomePageState extends State<HomePage>
                     memberId: selectedMemberId,
                     phone: selectedMemberPhone,
                   );
-
                   final linkedMemberDeleted =
                       _isLinkedMemberDeletedFromSession(existingSession);
 
@@ -9616,6 +9640,52 @@ class _HomePageState extends State<HomePage>
                       isLinked: true,
                       duration: const Duration(milliseconds: 1200),
                     );
+                  }
+
+                  Future<void> openAllMemberSuggestions() async {
+                    Navigator.of(sheetContext).pop();
+
+                    await Future.delayed(const Duration(milliseconds: 120));
+
+                    if (!mounted) return;
+
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ClientListPage(
+                          personalOwnerUid:
+                              _isPersonalWorkspace ? _personalOwnerUid : null,
+                        ),
+                      ),
+                    );
+                  }
+
+                  void pickSuggestedMember(
+                    String name,
+                    String memberId,
+                    String phone,
+                    String sessionCountText,
+                  ) {
+                    safeSetModalState(() {
+                      nameController.value = TextEditingValue(
+                        text: name,
+                        selection: TextSelection.collapsed(
+                          offset: name.length,
+                        ),
+                      );
+                      selectedMemberId = memberId;
+                      selectedMemberPhone = phone;
+
+                      if (sessionCountText.isNotEmpty) {
+                        sessionCountController.value = TextEditingValue(
+                          text: sessionCountText,
+                          selection: TextSelection.collapsed(
+                            offset: sessionCountText.length,
+                          ),
+                        );
+                      }
+                    });
+
+                    showMemberLinkedHint();
                   }
 
                   void closeLessonEditorBeforeNavigate() {
@@ -9818,7 +9888,28 @@ class _HomePageState extends State<HomePage>
                                         hasLinkedMember: hasLinkedMember ||
                                             isConfirmedLesson,
                                         onNameTap: showMemberInputHintOnce,
-                                        onNameChanged: (_) {
+                                        showAutocompleteDropdown:
+                                            shouldShowHomeMemberSearchSuggestions(
+                                                  searchKeyword: searchKeyword,
+                                                ) &&
+                                                !hasLinkedMember &&
+                                                !isConfirmedLesson,
+                                        autocompleteDropdown:
+                                            HomeMemberSearchSuggestionsOverlay(
+                                          searchKeyword: searchKeyword,
+                                          ownerUid: _isPersonalWorkspace
+                                              ? _personalOwnerUid
+                                              : null,
+                                          onPicked: (member) {
+                                            pickSuggestedMember(
+                                              member.name,
+                                              member.id,
+                                              member.phone,
+                                              member.sessionCountText,
+                                            );
+                                          },
+                                        ),
+                                        onNameChanged: (value) {
                                           safeSetModalState(() {
                                             selectedMemberId = null;
                                             selectedMemberPhone = null;
@@ -9848,60 +9939,46 @@ class _HomePageState extends State<HomePage>
                                         memoController: memoController,
                                       ),
                                     ),
-                                    if (isEditMode) ...[
+                                    if (hasPersistedSchedule) ...[
                                       const SizedBox(height: 8),
                                       HomeLessonQuickActionsSection(
+                                        isPersistedSchedule:
+                                            hasPersistedSchedule,
                                         hasLinkedMember: hasLinkedMember,
                                         memberName: nameController.text.trim(),
                                         memberId: selectedMemberId,
                                         canUseLessonContract:
                                             shouldRecommendLessonContractAction,
-                                        lessonContractLockedMessage:
-                                            '레슨계약서는 Semi-Pro부터 사용할 수 있어요.',
-                                        onOpenLessonContract:
-                                            shouldRecommendLessonContractAction
-                                                ? () async {
-                                                    closeLessonEditorBeforeNavigate();
+                                        onOpenLessonContract: () async {
+                                          closeLessonEditorBeforeNavigate();
 
-                                                    await Future.delayed(
-                                                        const Duration(
-                                                            milliseconds: 120));
+                                          await Future.delayed(const Duration(
+                                              milliseconds: 120));
 
-                                                    if (!mounted) return;
+                                          if (!mounted) return;
 
-                                                    await _openLessonContractFromHomeLesson(
-                                                      memberId:
-                                                          selectedMemberId,
-                                                      memberName: nameController
-                                                          .text
-                                                          .trim(),
-                                                    );
-                                                  }
-                                                : null,
+                                          await _openLessonContractFromHomeLesson(
+                                            memberId: selectedMemberId,
+                                            memberName:
+                                                nameController.text.trim(),
+                                          );
+                                        },
                                         canUseMembershipManage:
                                             shouldRecommendMembershipManageAction,
-                                        membershipManageLockedMessage:
-                                            '회원권 관리는 Pro부터 사용할 수 있어요.',
-                                        onOpenMembershipManage:
-                                            shouldRecommendMembershipManageAction
-                                                ? () async {
-                                                    closeLessonEditorBeforeNavigate();
+                                        onOpenMembershipManage: () async {
+                                          closeLessonEditorBeforeNavigate();
 
-                                                    await Future.delayed(
-                                                        const Duration(
-                                                            milliseconds: 120));
+                                          await Future.delayed(const Duration(
+                                              milliseconds: 120));
 
-                                                    if (!mounted) return;
+                                          if (!mounted) return;
 
-                                                    await _openMembershipManageFromHomeLesson(
-                                                      memberId:
-                                                          selectedMemberId,
-                                                      memberName: nameController
-                                                          .text
-                                                          .trim(),
-                                                    );
-                                                  }
-                                                : null,
+                                          await _openMembershipManageFromHomeLesson(
+                                            memberId: selectedMemberId,
+                                            memberName:
+                                                nameController.text.trim(),
+                                          );
+                                        },
                                         linkedMemberDeleted:
                                             linkedMemberDeleted,
                                         isConfirmedLesson: isConfirmedLesson,
@@ -10217,57 +10294,12 @@ class _HomePageState extends State<HomePage>
                                     ],
                                     const SizedBox(height: 10),
                                     HomeRecentMembersSection(
-                                      searchKeyword: searchKeyword,
                                       ownerUid: _isPersonalWorkspace
                                           ? _personalOwnerUid
                                           : null,
-                                      onOpenAllMembersTap: () async {
-                                        Navigator.of(sheetContext).pop();
-
-                                        await Future.delayed(
-                                          const Duration(milliseconds: 120),
-                                        );
-
-                                        if (!mounted) return;
-
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => ClientListPage(
-                                              personalOwnerUid:
-                                                  _isPersonalWorkspace
-                                                      ? _personalOwnerUid
-                                                      : null,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      onPicked: (name, memberId, phone,
-                                          sessionCountText) {
-                                        safeSetModalState(() {
-                                          nameController.value =
-                                              TextEditingValue(
-                                            text: name,
-                                            selection: TextSelection.collapsed(
-                                              offset: name.length,
-                                            ),
-                                          );
-                                          selectedMemberId = memberId;
-                                          selectedMemberPhone = phone;
-
-                                          if (sessionCountText.isNotEmpty) {
-                                            sessionCountController.value =
-                                                TextEditingValue(
-                                              text: sessionCountText,
-                                              selection:
-                                                  TextSelection.collapsed(
-                                                offset: sessionCountText.length,
-                                              ),
-                                            );
-                                          }
-                                        });
-
-                                        showMemberLinkedHint();
-                                      },
+                                      onOpenAllMembersTap:
+                                          openAllMemberSuggestions,
+                                      onPicked: pickSuggestedMember,
                                     ),
                                     const SizedBox(height: 18),
                                     HomeLessonFooterActions(
@@ -10287,6 +10319,9 @@ class _HomePageState extends State<HomePage>
                                             : Map<String, dynamic>.from(
                                                 existingSession!),
                                       ),
+                                      isBusy: activeMutation != null,
+                                      isDeleting: activeMutation ==
+                                          HomeScheduleEditMutationAction.delete,
                                       onCancel: () =>
                                           Navigator.of(sheetContext).pop(),
                                       onDelete: () async {
@@ -10305,6 +10340,11 @@ class _HomePageState extends State<HomePage>
                                           ignoredReason: attempt.ignoredReason,
                                         );
                                         if (!attempt.allowed) return;
+                                        safeSetModalState(() {
+                                          activeMutation =
+                                              HomeScheduleEditMutationAction
+                                                  .delete;
+                                        });
 
                                         FocusManager.instance.primaryFocus
                                             ?.unfocus();
@@ -10318,6 +10358,9 @@ class _HomePageState extends State<HomePage>
 
                                         if (docId.isEmpty) {
                                           editSessionGuard.fail();
+                                          safeSetModalState(() {
+                                            activeMutation = null;
+                                          });
                                           showSheetToast(
                                             setModalState,
                                             '삭제할 레슨일정을 찾지 못했어요.',
@@ -10358,11 +10401,17 @@ class _HomePageState extends State<HomePage>
                                                 ? 'sheetDisposed'
                                                 : 'state_${editSessionGuard.state.name}',
                                           );
+                                          safeSetModalState(() {
+                                            activeMutation = null;
+                                          });
                                           return;
                                         }
 
                                         if (!deleted) {
                                           editSessionGuard.fail();
+                                          safeSetModalState(() {
+                                            activeMutation = null;
+                                          });
                                           logEditSession(
                                             tag: 'MTF_SCHEDULE_MUTATION',
                                             mutationId: attempt.mutationId,
@@ -10496,6 +10545,11 @@ class _HomePageState extends State<HomePage>
                                           ignoredReason: attempt.ignoredReason,
                                         );
                                         if (!attempt.allowed) return;
+                                        safeSetModalState(() {
+                                          activeMutation =
+                                              HomeScheduleEditMutationAction
+                                                  .save;
+                                        });
 
                                         HomeLessonSaveResult saveResult;
                                         try {
@@ -10537,6 +10591,9 @@ class _HomePageState extends State<HomePage>
                                           );
                                         } catch (error) {
                                           editSessionGuard.fail();
+                                          safeSetModalState(() {
+                                            activeMutation = null;
+                                          });
                                           logEditSession(
                                             tag: 'MTF_SCHEDULE_CALLBACK',
                                             mutationId: attempt.mutationId,
@@ -10570,11 +10627,17 @@ class _HomePageState extends State<HomePage>
                                                 ? 'sheetDisposed'
                                                 : 'state_${editSessionGuard.state.name}',
                                           );
+                                          safeSetModalState(() {
+                                            activeMutation = null;
+                                          });
                                           return;
                                         }
 
                                         if (!saveResult.success) {
                                           editSessionGuard.fail();
+                                          safeSetModalState(() {
+                                            activeMutation = null;
+                                          });
                                           logEditSession(
                                             tag: 'MTF_SCHEDULE_CALLBACK',
                                             mutationId: attempt.mutationId,
@@ -10891,13 +10954,14 @@ class _HomePageState extends State<HomePage>
     return _weekDaysAll.indexOf(day);
   }
 
-  Future<List<Map<String, dynamic>>> _findPasteConflictsForWeek(
+  Future<HomeWeekPastePlan> _findPastePlanForWeek(
     int weekOffset,
     List<Map<String, dynamic>> items,
   ) async {
     final candidates = <HomeWeekPasteCandidate>[];
 
-    for (final item in items) {
+    for (var sourceIndex = 0; sourceIndex < items.length; sourceIndex++) {
+      final item = items[sourceIndex];
       final day = (item['day'] ?? '').toString().trim();
       final time = (item['time'] ?? '').toString().trim();
       final endTimeRaw = (item['endTime'] ?? '').toString().trim();
@@ -10914,21 +10978,25 @@ class _HomePageState extends State<HomePage>
       if (!endAt.isAfter(startAt)) continue;
 
       final copyEndTime = _timeStringFromDateTime(endAt);
-      final copyKey = '$day|$time|$copyEndTime';
 
       candidates.add(
         HomeWeekPasteCandidate(
+          sourceIndex: sourceIndex,
           day: day,
           time: time,
           endTime: copyEndTime,
-          copyKey: copyKey,
           startAt: startAt,
           endAt: endAt,
         ),
       );
     }
 
-    if (candidates.isEmpty) return const [];
+    if (candidates.isEmpty) {
+      return const HomeWeekPastePlan(
+        pasteableSchedules: [],
+        conflictingSchedules: [],
+      );
+    }
 
     final existingSchedules = <HomeWeekPasteExistingSchedule>[];
 
@@ -10969,56 +11037,22 @@ class _HomePageState extends State<HomePage>
       }
     }
 
-    if (existingSchedules.isEmpty) return const [];
-
-    return HomeWeekPasteConflictService.findConflicts(
+    return HomeWeekPasteConflictService.classify(
       candidates: candidates,
       existingSchedules: existingSchedules,
     );
   }
 
-  Future<bool> _confirmWeekPasteOverwrite({
+  Future<bool> _confirmWeekPasteConflicts({
     required String targetLabel,
-    List<Map<String, dynamic>> conflictExamples = const [],
+    required HomeWeekPastePlan plan,
   }) async {
-    final conflictCount = conflictExamples.length;
-    final confirmedCount =
-        conflictExamples.where((e) => e['isConfirmed'] == true).length;
-    final editableCount = conflictCount - confirmedCount;
-
-    String exampleText() {
-      if (conflictExamples.isEmpty) return '';
-
-      final samples = conflictExamples.take(3).map((e) {
-        final day = (e['day'] ?? '').toString();
-        final time = (e['time'] ?? '').toString();
-        final name = (e['name'] ?? '').toString();
-        final isConfirmed = e['isConfirmed'] == true;
-
-        final label = isConfirmed ? '확정 보호' : '덮어쓰기 가능';
-
-        return '· $day $time ${name.isEmpty ? '레슨' : name} ($label)';
-      }).join('\n');
-
-      return '\n\n$samples';
-    }
-
-    final message = conflictCount == 0
-        ? '$targetLabel에 붙여넣을 준비가 되었어요.'
-        : '$targetLabel에 겹치는 레슨일정이 $conflictCount개 있어요.\n'
-            '확정된 레슨 $confirmedCount개는 보호하고, 미확정 일정 $editableCount개만 덮어쓸 수 있어요.'
-            '${exampleText()}\n\n'
-            '복사한 스케줄을 이어서 붙여넣을까요?';
-
-    return _showAifcConfirm(
-      title: '겹치는 레슨일정이 있어요',
-      message: message,
-      cancelText: '취소',
-      confirmText: '붙여넣기',
-      userCancelText: '취소할게요',
-      userConfirmText: '붙여넣을게요',
-      cancelReplyText: '좋아요. 기존 스케줄은 그대로 둘게요.',
-      confirmReplyText: '확인했어요. 확정된 레슨은 보호하고 붙여넣기를 진행할게요.',
+    return HomeWeekPasteOverwriteSheet.show(
+      context: context,
+      targetLabel: targetLabel,
+      conflictCount: plan.conflictingCount,
+      pasteableCount: plan.pasteableCount,
+      primaryColor: Theme.of(context).colorScheme.primary,
     );
   }
 
@@ -11041,8 +11075,6 @@ class _HomePageState extends State<HomePage>
       if (_isScheduleDataDeleted(value)) {
         return;
       }
-
-      final rawStartAt = value['startAt'];
 
       final startAt = value['startAt'];
 
@@ -11122,36 +11154,35 @@ class _HomePageState extends State<HomePage>
 
     final targetLabel = _weekTitleForOffset(weekOffset).replaceAll('\n', ' ');
 
-    final conflicts = await _findPasteConflictsForWeek(
+    var pastePlan = await _findPastePlanForWeek(
       weekOffset,
       _copiedWeekSchedules,
     );
 
-    final confirmedConflicts =
-        conflicts.where((e) => e['isConfirmed'] == true).toList();
+    while (true) {
+      if (pastePlan.hasConflicts) {
+        final confirmed = await _confirmWeekPasteConflicts(
+          targetLabel: targetLabel,
+          plan: pastePlan,
+        );
 
-    final editableConflicts =
-        conflicts.where((e) => e['isConfirmed'] != true).toList();
-
-    final blockedCopyKeys = confirmedConflicts
-        .map((e) => (e['copyKey'] ?? '').toString())
-        .where((e) => e.isNotEmpty)
-        .toSet();
-
-    final overwriteDocIds = editableConflicts
-        .map((e) => (e['docId'] ?? '').toString().trim())
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
-
-    final affectedMemberIds = <String>{};
-
-    for (final conflict in conflicts) {
-      final memberId = (conflict['memberId'] ?? '').toString().trim();
-      if (memberId.isNotEmpty) {
-        affectedMemberIds.add(memberId);
+        if (!confirmed) return;
       }
+
+      final refreshedPlan = await _findPastePlanForWeek(
+        weekOffset,
+        _copiedWeekSchedules,
+      );
+      if (pastePlan.hasSameConflicts(refreshedPlan)) {
+        pastePlan = refreshedPlan;
+        break;
+      }
+      pastePlan = refreshedPlan;
     }
+
+    final pasteableSourceIndexes = pastePlan.pasteableSourceIndexes;
+    final skippedConflictCount = pastePlan.conflictingCount;
+    final affectedMemberIds = <String>{};
 
     final memberActiveCache = <String, bool>{};
 
@@ -11168,68 +11199,15 @@ class _HomePageState extends State<HomePage>
       return active;
     }
 
-    if (conflicts.isNotEmpty) {
-      final confirmed = await _confirmWeekPasteOverwrite(
-        targetLabel: targetLabel,
-        conflictExamples: conflicts,
-      );
-
-      if (!confirmed) return;
-    }
-
-    if (overwriteDocIds.isNotEmpty) {
-      for (final docId in overwriteDocIds) {
-        _markScheduleDocAsRecentlyDeleted(docId);
-      }
-
-      _beginScheduleMutation(overwriteDocIds);
-      try {
-        await HomeScheduleFirestoreService.deleteSchedules(
-          overwriteDocIds,
-          ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        );
-      } catch (e) {
-        if (_shouldClearTombstoneAfterMutationError(e)) {
-          for (final docId in overwriteDocIds) {
-            _clearRecentlyDeletedScheduleDocId(docId);
-          }
-        }
-
-        debugPrint('붙여넣기 덮어쓰기 삭제 실패: $e');
-
-        if (!mounted) return;
-
-        _showSnack('기존 레슨일정을 정리하지 못해 붙여넣기를 중단했어요.');
-        return;
-      } finally {
-        _endScheduleMutation(overwriteDocIds);
-      }
-
-      final removeKeys = <String>[];
-
-      scheduleData.forEach((key, value) {
-        if (value is! Map<String, dynamic>) return;
-
-        final docId = (value['docId'] ?? '').toString().trim();
-        if (overwriteDocIds.contains(docId)) {
-          removeKeys.add(key);
-        }
-      });
-
-      if (removeKeys.isNotEmpty) {
-        _patchScheduleData(
-          removeKeys: removeKeys,
-          syncWidget: false,
-        );
-      }
-    }
-
     int pastedCount = 0;
-    int skippedConfirmedCount = 0;
 
     final pasteWrites = <HomeScheduleEditWrite>[];
 
-    for (final item in _copiedWeekSchedules) {
+    for (var sourceIndex = 0;
+        sourceIndex < _copiedWeekSchedules.length;
+        sourceIndex++) {
+      if (!pasteableSourceIndexes.contains(sourceIndex)) continue;
+      final item = _copiedWeekSchedules[sourceIndex];
       final day = (item['day'] ?? '').toString().trim();
       final time = (item['time'] ?? '').toString().trim();
       final endTime = (item['endTime'] ?? '').toString().trim();
@@ -11245,13 +11223,6 @@ class _HomePageState extends State<HomePage>
                 const Duration(minutes: _defaultLessonDurationMinutes),
               ),
             );
-
-      final copyKey = '$day|$time|$resolvedEndTime';
-
-      if (blockedCopyKeys.contains(copyKey)) {
-        skippedConfirmedCount++;
-        continue;
-      }
 
       final rawMemberId = (item['memberId'] ?? '').toString().trim();
       final rawPhone = _normalizePhone((item['phone'] ?? '').toString());
@@ -11353,15 +11324,15 @@ class _HomePageState extends State<HomePage>
       _queueHomeWidgetSync();
     }
 
-    if (pastedCount == 0 && skippedConfirmedCount > 0) {
-      _showSnack('확정된 레슨과 겹쳐 붙여넣을 수 있는 일정이 없어요.');
+    if (pastedCount == 0 && skippedConflictCount > 0) {
+      _showSnack('겹치는 일정 때문에 붙여넣을 수 있는 일정이 없어요.');
       return;
     }
 
-    if (skippedConfirmedCount > 0) {
+    if (skippedConflictCount > 0) {
       _showSnack(
-        '${_copiedWeekSourceLabel ?? '복사한 레슨일정'} 중 $pastedCount개를 $targetLabel 에 붙여넣었어요. '
-        '확정된 레슨과 겹친 $skippedConfirmedCount개는 제외했어요.',
+        '$pastedCount개 일정을 붙여넣었어요. '
+        '겹치는 $skippedConflictCount개는 제외했어요.',
       );
       return;
     }
@@ -11656,7 +11627,7 @@ class _HomePageState extends State<HomePage>
             child: Scaffold(
               key: _homeScaffoldKey,
               extendBody: true,
-              backgroundColor: kBgColor,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               endDrawer: MtfAnimatedDrawer(
                 trainerName: _bannerTrainerName,
                 shortName: _trainerShortNameFromData(_bannerProfileData),
@@ -11719,7 +11690,7 @@ class _HomePageState extends State<HomePage>
                     bottomOffset: 110,
                   );
                 },
-                onLiveBeta: () => _showComingSoon('실시간 회원관리'),
+                onLiveBeta: () => _showComingSoon('MORE WELLNESS 회원관리'),
               ),
               body: Center(
                 child: SizedBox(
@@ -11754,8 +11725,9 @@ class _HomePageState extends State<HomePage>
                         right: 0,
                         child: HomeBottomNavBar(
                           activeIndex: -1,
-                          primaryColor: kPrimaryColor,
-                          secondaryColor: kPrimaryColor2,
+                          primaryColor: Theme.of(context).colorScheme.secondary,
+                          secondaryColor:
+                              Theme.of(context).colorScheme.secondaryContainer,
                           onChanged: (i) {
                             if (i == 0) {
                               _openThisWeekStats();
@@ -12194,7 +12166,7 @@ class _HomePageState extends State<HomePage>
       progress: progress,
       topFirst: top1,
       topSecond: top2,
-      primaryColor: kPrimaryColor,
+      primaryColor: Theme.of(context).colorScheme.primary,
       onEdit: _isPersonalWorkspace ? _editWeeklyGoal : null,
     );
   }

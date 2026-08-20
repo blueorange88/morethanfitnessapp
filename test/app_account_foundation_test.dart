@@ -5,12 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/pages/account_gate.dart';
 import 'package:mtf_app/pages/home_page.dart';
 import 'package:mtf_app/pages/my_page.dart';
-import 'package:mtf_app/pages/onboarding_page.dart';
 import 'package:mtf_app/services/account_claims_service.dart';
 import 'package:mtf_app/services/app_account_service.dart';
 import 'package:mtf_app/services/linked_account_access_service.dart';
 import 'package:mtf_app/services/personal_profile_start_reader.dart';
 import 'package:mtf_app/aifc/core/aifc_avatar.dart';
+import 'package:mtf_app/theme.dart';
 
 void main() {
   const linkedUser = AppAccountUser(
@@ -185,6 +185,12 @@ void main() {
       (tester) async {
     final gateway = _FakeAccountGateway();
     final profile = _FakeAnonymousProfileGateway();
+    final profileReader = _SequencePersonalProfileStartReader([
+      const PersonalProfileReadException(
+        PersonalProfileReadErrorCode.profileNotFound,
+      ),
+      null,
+    ]);
     await tester.pumpWidget(
       MaterialApp(
         home: AppAccountGate(
@@ -194,7 +200,7 @@ void main() {
             profileGateway: profile,
           ),
           accessGateway: _FakeLinkedAccessGateway(),
-          profileReader: const _FakePersonalProfileStartReader(),
+          profileReader: profileReader,
           personalWorkspaceBuilder: (user) => Text('personal ${user.uid}'),
         ),
       ),
@@ -208,12 +214,12 @@ void main() {
     expect(profile.bootstrapCalls, 1);
   });
 
-  testWidgets('personal 준비 화면은 Onboarding 배경과 기존 AI FC 로딩을 재사용한다',
-      (tester) async {
+  testWidgets('personal 준비 화면은 브랜드 배경과 기존 AI FC 로딩을 재사용한다', (tester) async {
     final gateway = _FakeAccountGateway();
     final delayedReader = _DelayedPersonalProfileStartReader();
     await tester.pumpWidget(
       MaterialApp(
+        theme: lightTheme(),
         home: AppAccountGate(
           service: AppAccountService(
             gateway: gateway,
@@ -230,7 +236,7 @@ void main() {
     final scaffold = tester.widget<Scaffold>(
       find.byKey(const Key('personal_start_progress')),
     );
-    expect(scaffold.backgroundColor, kOnboardingBg);
+    expect(scaffold.backgroundColor, AppColors.warmIvory);
     expect(find.byKey(const Key('personal_start_brand_name')), findsOneWidget);
     expect(find.text('모어댄'), findsOneWidget);
     expect(
@@ -262,7 +268,8 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
-  testWidgets('기존 anonymous user는 같은 UID로 멱등 bootstrap 후 진입한다', (tester) async {
+  testWidgets('기존 anonymous user는 profile을 먼저 읽고 bootstrap을 생략한다',
+      (tester) async {
     final gateway = _FakeAccountGateway(
       currentUser: const AppAccountUser(
         uid: 'saved-anonymous-uid',
@@ -289,13 +296,21 @@ void main() {
 
     expect(find.text('personal saved-anonymous-uid'), findsOneWidget);
     expect(gateway.anonymousCalls, 0);
-    expect(profile.bootstrapCalls, 1);
+    expect(profile.bootstrapCalls, 0);
   });
 
-  testWidgets('bootstrap 실패는 가짜 홈 대신 재시도 화면을 유지하고 재시도할 수 있다', (tester) async {
-    final gateway = _FakeAccountGateway();
+  testWidgets('등급 self-heal 완료를 기다리지 않고 기존 anonymous 홈을 표시한다', (tester) async {
+    final reconcileCompleter = Completer<Map<String, dynamic>>();
+    final gateway = _FakeAccountGateway(
+      currentUser: const AppAccountUser(
+        uid: 'saved-anonymous-uid',
+        email: '',
+        emailVerified: false,
+        isAnonymous: true,
+      ),
+    );
     final profile = _FakeAnonymousProfileGateway(
-      error: const AppAccountException(AppAccountErrorCode.network),
+      reconcileFuture: reconcileCompleter.future,
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -306,6 +321,44 @@ void main() {
             profileGateway: profile,
           ),
           profileReader: const _FakePersonalProfileStartReader(),
+          personalWorkspaceBuilder: (user) => Text('personal ${user.uid}'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('personal saved-anonymous-uid'), findsOneWidget);
+    expect(profile.bootstrapCalls, 0);
+    expect(profile.reconcileCalls, 1);
+
+    reconcileCompleter.complete(const <String, dynamic>{'changed': false});
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('bootstrap 실패는 가짜 홈 대신 재시도 화면을 유지하고 재시도할 수 있다', (tester) async {
+    final gateway = _FakeAccountGateway();
+    final profile = _FakeAnonymousProfileGateway(
+      error: const AppAccountException(AppAccountErrorCode.network),
+    );
+    final profileReader = _SequencePersonalProfileStartReader([
+      const PersonalProfileReadException(
+        PersonalProfileReadErrorCode.profileNotFound,
+      ),
+      const PersonalProfileReadException(
+        PersonalProfileReadErrorCode.profileNotFound,
+      ),
+      null,
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AppAccountGate(
+          service: AppAccountService(
+            gateway: gateway,
+            anonymousGateway: gateway,
+            profileGateway: profile,
+          ),
+          profileReader: profileReader,
           personalWorkspaceBuilder: (user) => Text('personal ${user.uid}'),
         ),
       ),
@@ -498,6 +551,13 @@ void main() {
       anonymousGateway: gateway,
       profileGateway: profile,
     );
+    final profileReader = _SequencePersonalProfileStartReader([
+      null,
+      const PersonalProfileReadException(
+        PersonalProfileReadErrorCode.profileNotFound,
+      ),
+      null,
+    ]);
     await tester.pumpWidget(
       MaterialApp(
         home: AppAccountGate(
@@ -505,7 +565,7 @@ void main() {
           accessGateway: _FakeLinkedAccessGateway(
             status: LinkedAccountAccessStatus.personalWorkspaceReady,
           ),
-          profileReader: const _FakePersonalProfileStartReader(),
+          profileReader: profileReader,
           personalWorkspaceBuilder: (user) => _WorkspaceProbe(
             uid: user.uid,
             events: workspaceEvents,
@@ -758,10 +818,12 @@ class _FakeAccountGateway
 }
 
 class _FakeAnonymousProfileGateway implements AnonymousProfileGateway {
-  _FakeAnonymousProfileGateway({this.error});
+  _FakeAnonymousProfileGateway({this.error, this.reconcileFuture});
 
   Object? error;
+  final Future<Map<String, dynamic>>? reconcileFuture;
   int bootstrapCalls = 0;
+  int reconcileCalls = 0;
 
   @override
   Future<void> bootstrapAnonymousBeginnerProfile() async {
@@ -773,13 +835,18 @@ class _FakeAnonymousProfileGateway implements AnonymousProfileGateway {
   Future<void> transitionAnonymousProfileToLinked() async {}
 
   @override
-  Future<Map<String, dynamic>> reconcilePersonalTier() async => const {
-        'tier': 'Beginner',
-        'amateurConditionCount': 0,
-        'amateurConditionTotal': 2,
-        'eligible': false,
-        'changed': false,
-      };
+  Future<Map<String, dynamic>> reconcilePersonalTier() async {
+    reconcileCalls++;
+    final pending = reconcileFuture;
+    if (pending != null) return pending;
+    return const {
+      'tier': 'Beginner',
+      'amateurConditionCount': 0,
+      'amateurConditionTotal': 2,
+      'eligible': false,
+      'changed': false,
+    };
+  }
 }
 
 class _FakePersonalProfileStartReader implements PersonalProfileStartReader {
@@ -797,6 +864,23 @@ class _FakePersonalProfileStartReader implements PersonalProfileStartReader {
   Future<PersonalProfileStartResult> read(AppAccountUser user) async {
     if (error case final value?) throw value;
     return result;
+  }
+}
+
+class _SequencePersonalProfileStartReader
+    implements PersonalProfileStartReader {
+  _SequencePersonalProfileStartReader(this._outcomes);
+
+  final List<Object?> _outcomes;
+  int _index = 0;
+
+  @override
+  Future<PersonalProfileStartResult> read(AppAccountUser user) async {
+    final outcome = _outcomes[_index++];
+    if (outcome case final Object error) throw error;
+    return const PersonalProfileStartResult.onboardingCompleted(
+      nickname: '테스트',
+    );
   }
 }
 

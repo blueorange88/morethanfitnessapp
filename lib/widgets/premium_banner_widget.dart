@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 // ── 등급 enum ─────────────────────────────────────────────────────────────────
 enum AppTier { beginner, amateur, semiPro, pro, master, grandPrix }
 
@@ -192,14 +194,17 @@ class _MiniLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: bgGradient == null ? bg : null,
-          gradient: bgGradient,
+          color: tokens.donationSurface,
           borderRadius: BorderRadius.circular(13),
-          border: border,
+          border: Border.all(
+            color: tokens.donationAccent.withOpacity(0.35),
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -237,10 +242,14 @@ class _MiniLayout extends StatelessWidget {
                         width: 30,
                         height: 30,
                         decoration: BoxDecoration(
-                          color: iconBg,
+                          color: tokens.donationAccent.withOpacity(0.14),
                           borderRadius: BorderRadius.circular(9),
                         ),
-                        child: Icon(icon, color: iconColor, size: 15),
+                        child: Icon(
+                          icon,
+                          color: tokens.donationAccent,
+                          size: 15,
+                        ),
                       ),
                       const SizedBox(width: 9),
                       Expanded(
@@ -253,7 +262,7 @@ class _MiniLayout extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: titleColor,
+                                color: tokens.donationForeground,
                                 fontSize: 12.2,
                                 fontWeight: FontWeight.w900,
                                 height: 1.2,
@@ -265,7 +274,8 @@ class _MiniLayout extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: subColor,
+                                color:
+                                    tokens.donationForeground.withOpacity(0.70),
                                 fontSize: 10.3,
                                 fontWeight: FontWeight.w700,
                                 height: 1.2,
@@ -286,14 +296,14 @@ class _MiniLayout extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: btnBg,
+                          color: tokens.donationAccent,
                           borderRadius: BorderRadius.circular(999),
                           border: btnBorder,
                         ),
                         child: Text(
                           btnLabel,
                           style: TextStyle(
-                            color: btnTextColor,
+                            color: scheme.onSecondary,
                             fontSize: 10.8,
                             fontWeight: FontWeight.w900,
                           ),
@@ -456,6 +466,8 @@ class _BeginnerBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return AnimatedBuilder(
       animation: pulseAnim,
       builder: (context, child) {
@@ -467,7 +479,7 @@ class _BeginnerBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.3 + glow * 0.3),
+                  color: tokens.donationAccent.withOpacity(0.20 + glow * 0.18),
                   blurRadius: 16 + glow * 20,
                   spreadRadius: glow * 4,
                 ),
@@ -480,13 +492,14 @@ class _BeginnerBanner extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Color(0xFFE6B800),
-                Color(0xFFFFD700),
-                Color(0xFFFFE500),
-                Color(0xFFFFF59D)
+                tokens.donationSurface,
+                Color.alphaBlend(
+                  tokens.donationAccent.withOpacity(0.12),
+                  tokens.donationSurface,
+                ),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -501,14 +514,17 @@ class _BeginnerBanner extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.1),
+                      color: tokens.donationAccent.withOpacity(0.14),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.rocket_launch_rounded,
-                        color: Color(0xFF7A5C00), size: 22),
+                    child: Icon(
+                      Icons.rocket_launch_rounded,
+                      color: tokens.donationAccent,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 11),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -516,7 +532,7 @@ class _BeginnerBanner extends StatelessWidget {
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF1A1200),
+                                color: tokens.donationForeground,
                                 height: 1.45)),
                       ],
                     ),
@@ -530,19 +546,19 @@ class _BeginnerBanner extends StatelessWidget {
                   Text('Amateur 달성까지',
                       style: TextStyle(
                           fontSize: 10.5,
-                          color: Colors.black.withOpacity(0.5))),
+                          color: tokens.donationForeground.withOpacity(0.66))),
                   Text('$_doneCount / $_totalCount 완료',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF7A5C00))),
+                          color: tokens.donationAccent)),
                 ],
               ),
               const SizedBox(height: 5),
               _ShimmerProgressBar(
                 progress: _progress,
-                trackColor: Colors.black.withOpacity(0.15),
-                fillColor: const Color(0xFF7A5C00),
+                trackColor: tokens.donationForeground.withOpacity(0.14),
+                fillColor: tokens.donationProgress,
                 shimmerColor: Colors.white.withOpacity(0.6),
                 shimmerDuration: const Duration(milliseconds: 1400),
               ),
@@ -554,14 +570,15 @@ class _BeginnerBanner extends StatelessWidget {
                     child: Text(
                       '레슨 일정 ${data.scheduleCount} / 10 · 선생님 정보 입력',
                       style: TextStyle(
-                          fontSize: 10.5, color: Colors.black.withOpacity(0.5)),
+                          fontSize: 10.5,
+                          color: tokens.donationForeground.withOpacity(0.66)),
                     ),
                   ),
                   const SizedBox(width: 10),
                   _BannerButton(
                     label: '후원하기',
-                    textColor: const Color(0xFFFFD700),
-                    bgColor: const Color(0xFF1A1200),
+                    textColor: scheme.onSecondary,
+                    bgColor: tokens.donationAccent,
                     onTap: onTap,
                   ),
                 ],
@@ -590,6 +607,8 @@ class _AmateurBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return AnimatedBuilder(
       animation: pulseAnim,
       builder: (context, child) {
@@ -600,8 +619,8 @@ class _AmateurBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFF5500)
-                      .withOpacity(0.25 + pulseAnim.value * 0.25),
+                  color: tokens.donationAccent
+                      .withOpacity(0.18 + pulseAnim.value * 0.16),
                   blurRadius: 14 + pulseAnim.value * 14,
                 ),
               ],
@@ -615,12 +634,14 @@ class _AmateurBanner extends StatelessWidget {
         child: Stack(
           children: [
             Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFFFF5500),
-                    Color(0xFFFF7A00),
-                    Color(0xFFFFAA00)
+                    tokens.donationSurface,
+                    Color.alphaBlend(
+                      tokens.donationAccent.withOpacity(0.12),
+                      tokens.donationSurface,
+                    ),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -655,14 +676,17 @@ class _AmateurBanner extends StatelessWidget {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: tokens.donationAccent.withOpacity(0.14),
                           borderRadius: BorderRadius.circular(13),
                         ),
-                        child: const Icon(Icons.groups_rounded,
-                            color: Colors.white, size: 20),
+                        child: Icon(
+                          Icons.groups_rounded,
+                          color: tokens.donationAccent,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 11),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -670,7 +694,7 @@ class _AmateurBanner extends StatelessWidget {
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w900,
-                                    color: Colors.white,
+                                    color: tokens.donationForeground,
                                     height: 1.45)),
                           ],
                         ),
@@ -684,22 +708,23 @@ class _AmateurBanner extends StatelessWidget {
                       Text('Semi-Pro 달성까지',
                           style: TextStyle(
                               fontSize: 10.5,
-                              color: Colors.white.withOpacity(0.85))),
+                              color:
+                                  tokens.donationForeground.withOpacity(0.72))),
                       Text('${data.memberCount} / 30명',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF60A5FA))),
+                              color: tokens.donationAccent)),
                     ],
                   ),
                   const SizedBox(height: 5),
                   _ShimmerProgressBar(
                     progress: _progress,
-                    trackColor: Colors.white.withOpacity(0.2),
-                    fillColor: const Color(0xFF3B82F6),
+                    trackColor: tokens.donationForeground.withOpacity(0.14),
+                    fillColor: tokens.donationProgress,
                     shimmerColor: Colors.white.withOpacity(0.9),
                     shimmerDuration: const Duration(milliseconds: 1600),
-                    glowColor: const Color(0xFF3B82F6),
+                    glowColor: tokens.donationProgress,
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -710,14 +735,15 @@ class _AmateurBanner extends StatelessWidget {
                           '작은 후원으로 모어댄의 멋진 한걸음을 응원해주세요',
                           style: TextStyle(
                               fontSize: 10.5,
-                              color: Colors.white.withOpacity(0.8)),
+                              color:
+                                  tokens.donationForeground.withOpacity(0.72)),
                         ),
                       ),
                       const SizedBox(width: 10),
                       _BannerButton(
                         label: '후원하기',
-                        textColor: const Color(0xFFFF5500),
-                        bgColor: Colors.white,
+                        textColor: scheme.onSecondary,
+                        bgColor: tokens.donationAccent,
                         onTap: onTap,
                       ),
                     ],
@@ -743,22 +769,26 @@ class _SemiProBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             colors: [
-              Color(0x72FF5500),
-              Color(0x61FFAA00),
-              Color(0x8CF3F4F6),
+              tokens.donationSurface,
+              Color.alphaBlend(
+                tokens.donationAccent.withOpacity(0.10),
+                tokens.donationSurface,
+              ),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           border: Border.all(
-            color: const Color(0xFFFF5500).withOpacity(0.18),
+            color: tokens.donationAccent.withOpacity(0.30),
           ),
         ),
         padding: const EdgeInsets.all(13),
@@ -770,19 +800,22 @@ class _SemiProBanner extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF5500).withOpacity(0.15),
+                    color: tokens.donationAccent.withOpacity(0.14),
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: const Icon(Icons.bar_chart_rounded,
-                      color: Color(0xFFFF5500), size: 18),
+                  child: Icon(
+                    Icons.bar_chart_rounded,
+                    color: tokens.donationAccent,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 11),
-                const Expanded(
+                Expanded(
                   child: Text('더 강화된 AI 기능과\n체계적인 관리 시스템을 써보세요',
                       style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF111827),
+                          color: tokens.donationForeground,
                           height: 1.45)),
                 ),
               ],
@@ -791,20 +824,23 @@ class _SemiProBanner extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Pro 달성까지',
-                    style: TextStyle(fontSize: 10.5, color: Color(0xFF6B7280))),
+                Text('Pro 달성까지',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: tokens.donationForeground.withOpacity(0.70),
+                    )),
                 Text('${data.memberCount} / 50명',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFFFF5500))),
+                        color: tokens.donationAccent)),
               ],
             ),
             const SizedBox(height: 5),
             _ShimmerProgressBar(
               progress: _progress,
-              trackColor: const Color(0xFFFF5500).withOpacity(0.12),
-              fillColor: const Color(0xFFFF5500).withOpacity(0.55),
+              trackColor: tokens.donationForeground.withOpacity(0.12),
+              fillColor: tokens.donationProgress,
               shimmerColor: Colors.white.withOpacity(0.5),
               shimmerDuration: const Duration(milliseconds: 2800),
             ),
@@ -812,18 +848,21 @@ class _SemiProBanner extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     '작은 후원으로 모어댄의 멋진 한걸음을 응원해주세요',
-                    style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: tokens.donationForeground.withOpacity(0.66),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 _BannerButton(
                   label: '후원하기',
-                  textColor: const Color(0xFFFF5500),
-                  bgColor: const Color(0xFFFF5500).withOpacity(0.08),
-                  borderColor: const Color(0xFFFF5500).withOpacity(0.22),
+                  textColor: scheme.onSecondary,
+                  bgColor: tokens.donationAccent,
+                  borderColor: tokens.donationAccent,
                   onTap: onTap,
                 ),
               ],
@@ -843,25 +882,32 @@ class _ProBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: tokens.donationSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: tokens.donationAccent.withOpacity(0.30)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         child: Row(
           children: [
-            const Icon(Icons.volunteer_activism_rounded,
-                size: 16, color: Color(0xFFFF6B00)),
+            Icon(
+              Icons.volunteer_activism_rounded,
+              size: 16,
+              color: tokens.donationAccent,
+            ),
             const SizedBox(width: 8),
-            const Expanded(
+            Expanded(
               child: Text(
                 '작은 후원으로 모어댄의 멋진 한걸음을 응원해주세요',
                 style: TextStyle(
-                    fontSize: 11.5, color: Color(0xFF6B7280), height: 1.4),
+                    fontSize: 11.5,
+                    color: tokens.donationForeground,
+                    height: 1.4),
               ),
             ),
             const SizedBox(width: 10),
@@ -872,13 +918,13 @@ class _ProBanner extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                      color: const Color(0xFFFF6B00).withOpacity(0.28)),
+                  color: tokens.donationAccent,
+                  border: Border.all(color: tokens.donationAccent),
                 ),
-                child: const Text('후원',
+                child: Text('후원',
                     style: TextStyle(
                         fontSize: 10.5,
-                        color: Color(0xFFFF6B00),
+                        color: scheme.onSecondary,
                         fontWeight: FontWeight.w700)),
               ),
             ),

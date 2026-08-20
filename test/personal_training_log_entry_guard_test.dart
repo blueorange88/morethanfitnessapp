@@ -217,7 +217,7 @@ void main() {
     );
   });
 
-  test('동의 완료 후에도 고객카드 완료 표시와 초기화 동작을 유지한다', () {
+  test('동의 완료 후 고객카드 완료 표시만 유지하고 초기화는 숨긴다', () {
     final source = File('lib/pages/client_card_page.dart').readAsStringSync();
 
     expect(
@@ -229,6 +229,7 @@ void main() {
     );
     expect(
         source, contains("if (_trainingLogConsentAgreed) return '개인정보동의 완료';"));
-    expect(source, contains('onPressed: _resetTrainingLogConsent'));
+    expect(source, isNot(contains('_resetTrainingLogConsent')));
+    expect(source, isNot(contains('동의 초기화')));
   });
 }

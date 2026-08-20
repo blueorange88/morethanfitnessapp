@@ -4,6 +4,11 @@ import 'package:mtf_app/services/home_schedule_firestore_service.dart';
 
 void main() {
   group('HomeScheduleMovePlan', () {
+    test('삭제할 source가 없으면 personal owner prefix만 생성하지 않는다', () {
+      expect(homeScheduleScopedDocumentId('', 'owner-a'), isEmpty);
+      expect(homeScheduleScopedDocumentId('   ', 'owner-a'), isEmpty);
+    });
+
     test('personal target ID는 owner scope를 한 번만 적용한다', () {
       expect(
         homeScheduleScopedDocumentId('20260724-1400-금', 'owner-a'),
@@ -101,6 +106,32 @@ void main() {
       expect(plan.sourceIsRetained, isTrue);
       expect(plan.deleteSource, isFalse);
     });
+
+    for (final transition in const <(String, String)>[
+      ('PT', 'PT'),
+      ('일정', '일정'),
+      ('교육', '교육'),
+      ('PT', '일정'),
+      ('PT', '교육'),
+      ('일정', 'PT'),
+      ('일정', '교육'),
+      ('교육', 'PT'),
+      ('교육', '일정'),
+      ('그룹레슨', '일정'),
+      ('일정', '그룹레슨'),
+    ]) {
+      test('${transition.$1} → ${transition.$2} 동일 슬롯 편집은 source를 유지한다', () {
+        final plan = HomeScheduleEditPlan.resolve(
+          sourceActualDocId: source,
+          targetActualDocIds: {source},
+        );
+
+        expect(plan.branch, HomeScheduleEditBranch.update);
+        expect(plan.sourceIsRetained, isTrue);
+        expect(plan.deleteSource, isFalse);
+        expect(homeScheduleScopedDocumentId('', 'owner-a'), isEmpty);
+      });
+    }
 
     test('원래 요일과 추가 요일은 copyMany이며 source를 유지한다', () {
       final plan = HomeScheduleEditPlan.resolve(

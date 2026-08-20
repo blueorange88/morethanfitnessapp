@@ -25,6 +25,7 @@ class _AppEnvironmentBannerState extends State<AppEnvironmentBanner> {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
+    final colorScheme = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -45,7 +46,8 @@ class _AppEnvironmentBannerState extends State<AppEnvironmentBanner> {
               child: Material(
                 key: const Key('dev_tier_fixture_panel'),
                 elevation: 10,
-                color: Colors.white,
+                color: colorScheme.surface,
+                shadowColor: colorScheme.shadow,
                 borderRadius: BorderRadius.circular(14),
                 child: ValueListenableBuilder<DevTierFixture>(
                   valueListenable: DevTierFixtureController.selection,
@@ -56,13 +58,14 @@ class _AppEnvironmentBannerState extends State<AppEnvironmentBanner> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(8, 4, 8, 6),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                             child: Text(
                               'DEV 등급 fixture',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
+                                color: colorScheme.onSurface,
                               ),
                             ),
                           ),
@@ -89,12 +92,15 @@ class _AppEnvironmentBannerState extends State<AppEnvironmentBanner> {
                                           ? Icons.radio_button_checked
                                           : Icons.radio_button_off,
                                       size: 16,
-                                      color: const Color(0xFF4F46E5),
+                                      color: colorScheme.secondary,
                                     ),
                                     const SizedBox(width: 7),
                                     Text(
                                       fixture.label,
-                                      style: const TextStyle(fontSize: 12),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: colorScheme.onSurface,
+                                      ),
                                     ),
                                   ],
                                 ),

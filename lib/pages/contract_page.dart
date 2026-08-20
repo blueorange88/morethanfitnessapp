@@ -25,6 +25,7 @@ import '../widgets/mtf_floating_more_menu.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 
 import '../aifc/core/aifc_nickname.dart';
+import '../theme/app_colors.dart';
 
 const Color kContractBgColor = Color(0xFFF3F4F6);
 const Color kContractCardColor = Colors.white;
@@ -1663,7 +1664,11 @@ class _ContractPageState extends State<ContractPage>
 
     _trainerNameController.addListener(_handleTrainerNameEditedManually);
 
-    unawaited(_loadTrainerNameFromProfileForContract());
+    final isPersonalContract =
+        (widget.personalOwnerUid ?? '').trim().isNotEmpty;
+    if (!isPersonalContract) {
+      unawaited(_loadTrainerNameFromProfileForContract());
+    }
 
     final now = DateTime.now();
     final end = DateTime(now.year, now.month + 3, now.day);
@@ -1674,7 +1679,9 @@ class _ContractPageState extends State<ContractPage>
 
     _supportMessage = _pickRandomSupportMessage();
     _fillHybridClausesFromTemplate(force: true);
-    _loadProducts();
+    if (!isPersonalContract) {
+      _loadProducts();
+    }
 
     _livePulseController = AnimationController(
       vsync: this,
@@ -1871,9 +1878,9 @@ class _ContractPageState extends State<ContractPage>
     final requiresGate = (widget.personalOwnerUid ?? '').trim().isNotEmpty &&
         (widget.contractId ?? '').trim().isEmpty;
     if (requiresGate && !_creationGateResolved) {
-      return const Scaffold(
-        backgroundColor: kContractBgColor,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
     return LayoutBuilder(
@@ -1892,7 +1899,7 @@ class _ContractPageState extends State<ContractPage>
             onWillPop: _handleContractWillPop,
             child: Scaffold(
               extendBody: true,
-              backgroundColor: kContractBgColor,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               body: Center(
                 child: SizedBox(
                   width: width,
@@ -1917,6 +1924,7 @@ class _ContractPageState extends State<ContractPage>
 
   Widget _buildHeader() {
     final double topInset = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return MtfHeaderNeonOverlay(
       isExpanded: false,
@@ -1930,16 +1938,9 @@ class _ContractPageState extends State<ContractPage>
           right: 24,
           bottom: 14,
         ),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF4F46E5),
-              Color(0xFF9333EA),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.vertical(
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: const BorderRadius.vertical(
             bottom: Radius.circular(32),
           ),
         ),
@@ -2491,8 +2492,9 @@ class _ContractPageState extends State<ContractPage>
                             });
                           },
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onSecondary,
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),

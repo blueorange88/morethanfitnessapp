@@ -62,6 +62,7 @@ class AppAccountGate extends StatefulWidget {
 
 class _AppAccountGateState extends State<AppAccountGate> {
   bool _debugLegacyWorkspaceOpen = false;
+  bool _tierReconcileScheduled = false;
   Future<_PersonalStartResult>? _personalStart;
 
   AppAccountService get _accountService =>
@@ -70,26 +71,50 @@ class _AppAccountGateState extends State<AppAccountGate> {
   PersonalProfileStartReader get _profileReader =>
       widget.profileReader ?? FirebasePersonalProfileStartReader();
 
-  Future<_PersonalStartResult> _preparePersonalStart() async {
-    final user = await PersonalStartDiagnostics.run(
-      PersonalStartStage.ensureAnonymousSession,
-      _accountService.ensureAnonymousSession,
-    );
-    if (user.isAnonymous) {
-      await PersonalStartDiagnostics.run(
-        PersonalStartStage.bootstrapAnonymousBeginnerProfile,
-        _accountService.bootstrapAnonymousBeginnerProfile,
-      );
-    }
+  void _scheduleTierReconcile() {
+    if (_tierReconcileScheduled) return;
+    _tierReconcileScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_reconcilePersonalTier());
+    });
+  }
+
+  Future<void> _reconcilePersonalTier() async {
     try {
       await _accountService.reconcilePersonalTier();
     } catch (_) {
       // 등급 self-heal 실패는 시작을 막지 않고 다음 재진입/저장 시 재시도한다.
     }
-    final profile = await PersonalStartDiagnostics.run(
-      PersonalStartStage.personalProfileRead,
-      () => _profileReader.read(user),
+  }
+
+  Future<_PersonalStartResult> _preparePersonalStart() async {
+    final user = await PersonalStartDiagnostics.run(
+      PersonalStartStage.ensureAnonymousSession,
+      _accountService.ensureAnonymousSession,
     );
+    late PersonalProfileStartResult profile;
+    try {
+      profile = await PersonalStartDiagnostics.run(
+        PersonalStartStage.personalProfileRead,
+        () => _profileReader.read(user),
+      );
+    } on PersonalStartException catch (error) {
+      final cause = error.cause;
+      if (!user.isAnonymous ||
+          cause is! PersonalProfileReadException ||
+          cause.code != PersonalProfileReadErrorCode.profileNotFound) {
+        rethrow;
+      }
+      await PersonalStartDiagnostics.run(
+        PersonalStartStage.bootstrapAnonymousBeginnerProfile,
+        _accountService.bootstrapAnonymousBeginnerProfile,
+      );
+      profile = await PersonalStartDiagnostics.run(
+        PersonalStartStage.personalProfileRead,
+        () => _profileReader.read(user),
+      );
+    }
+    _scheduleTierReconcile();
     if (kDebugMode) {
       debugPrint(
         '[MTF_PERSONAL_IDENTITY] uid=${user.uid} '
@@ -342,17 +367,21 @@ class _PersonalStartProgressState extends State<_PersonalStartProgress> {
 
   @override
   Widget build(BuildContext context) {
-    const overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: kOnboardingBg,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: kOnboardingBg,
-      systemNavigationBarIconBrightness: Brightness.dark,
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: theme.scaffoldBackgroundColor,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: theme.scaffoldBackgroundColor,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlayStyle,
       child: Scaffold(
         key: const Key('personal_start_progress'),
-        backgroundColor: kOnboardingBg,
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -360,11 +389,11 @@ class _PersonalStartProgressState extends State<_PersonalStartProgress> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     '모어댄',
-                    key: Key('personal_start_brand_name'),
+                    key: const Key('personal_start_brand_name'),
                     style: TextStyle(
-                      color: kOnboardingText,
+                      color: colors.onSurface,
                       fontSize: 34,
                       height: 1.05,
                       fontWeight: FontWeight.w900,
@@ -372,11 +401,11 @@ class _PersonalStartProgressState extends State<_PersonalStartProgress> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'MORE THAN',
-                    key: Key('personal_start_brand_english'),
+                    key: const Key('personal_start_brand_english'),
                     style: TextStyle(
-                      color: kOnboardingMuted,
+                      color: colors.onSurfaceVariant,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 2.3,
@@ -386,11 +415,11 @@ class _PersonalStartProgressState extends State<_PersonalStartProgress> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const AifcAvatar(
-                        key: Key('personal_start_aifc_avatar'),
+                      AifcAvatar(
+                        key: const Key('personal_start_aifc_avatar'),
                         size: 68,
                         isAnimating: true,
-                        backgroundColor: kOnboardingBg,
+                        backgroundColor: theme.scaffoldBackgroundColor,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -412,8 +441,8 @@ class _PersonalStartProgressState extends State<_PersonalStartProgress> {
                                 key: ValueKey(_messageIndex),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: kOnboardingText,
+                                style: TextStyle(
+                                  color: colors.onSurface,
                                   fontSize: 15,
                                   height: 1.4,
                                   fontWeight: FontWeight.w800,

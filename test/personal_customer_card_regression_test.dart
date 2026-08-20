@@ -24,6 +24,58 @@ void main() {
     );
   }
 
+  test('canonical membership이 없는 회원은 기간 미등록으로 복원한다', () {
+    expect(
+      clientCardMembershipNotRegisteredFromCanonical(<String, dynamic>{}),
+      isTrue,
+    );
+    expect(
+      clientCardMembershipNotRegisteredFromCanonical(<String, dynamic>{
+        'notRegistered': true,
+      }),
+      isTrue,
+    );
+  });
+
+  test('기존 membership 기간 데이터와 명시 상태는 그대로 복원한다', () {
+    expect(
+      clientCardMembershipNotRegisteredFromCanonical(<String, dynamic>{
+        'notRegistered': false,
+      }),
+      isFalse,
+    );
+    expect(
+      clientCardMembershipNotRegisteredFromCanonical(<String, dynamic>{
+        'customDays': 120,
+      }),
+      isFalse,
+    );
+  });
+
+  test('태그 assignment는 실제 선택값이 바뀐 경우에만 update patch를 보낸다', () {
+    expect(
+      clientCardPersonalTagsChanged(
+        loadedTagIds: const <String>[],
+        selectedTagIds: const <String>[],
+      ),
+      isFalse,
+    );
+    expect(
+      clientCardPersonalTagsChanged(
+        loadedTagIds: const <String>['tag_b', 'tag_a'],
+        selectedTagIds: const <String>['tag_a', 'tag_b'],
+      ),
+      isFalse,
+    );
+    expect(
+      clientCardPersonalTagsChanged(
+        loadedTagIds: const <String>[],
+        selectedTagIds: const <String>['tag_a'],
+      ),
+      isTrue,
+    );
+  });
+
   test('주소 검색 callback은 도로명·지번·우편번호·건물명을 보존한다', () {
     final result = parsePostcodeSearchMessage(
       '{"zonecode":"06236","roadAddress":"서울특별시 강남구 테헤란로 1",'
@@ -97,13 +149,19 @@ void main() {
     );
   });
 
-  test('320dp와 360dp 기본정보는 저장값이 잘리지 않도록 세로 배치한다', () {
-    expect(clientCardUsesStackedBasicInfoLayout(320), isTrue);
-    expect(clientCardUsesStackedBasicInfoLayout(360), isTrue);
-    expect(clientCardUsesStackedBasicInfoLayout(390), isFalse);
-    expect(clientCardUsesStackedBasicInfoLayout(411), isFalse);
-    expect(clientCardBasicInfoPageHeight(320), 450);
-    expect(clientCardBasicInfoPageHeight(390), 260);
+  test('320·360·384·411dp 기본정보는 모두 2열 2행 높이를 유지한다', () {
+    for (final width in const [320.0, 360.0, 384.0, 411.0]) {
+      expect(
+        clientCardUsesStackedBasicInfoLayout(width),
+        isFalse,
+        reason: 'width=$width',
+      );
+      expect(
+        clientCardBasicInfoPageHeight(width),
+        260,
+        reason: 'width=$width',
+      );
+    }
   });
 
   testWidgets('동의 저장 실패 시 화면과 재시도 입력 상태를 유지한다', (tester) async {
@@ -541,7 +599,7 @@ void main() {
     expect(currentKeyboardShowCount, 1);
   });
 
-  test('기본정보 PageView는 주소 페이지의 자연 높이를 수용한다', () {
+  test('기본정보 PageView는 2열 2행과 주소 페이지의 자연 높이를 수용한다', () {
     final source = File('lib/pages/client_card_page.dart').readAsStringSync();
     final methodStart = source.indexOf('Widget _basicInfoSection()');
     final methodEnd = source.indexOf(
@@ -553,6 +611,23 @@ void main() {
     expect(
       methodSource,
       contains('height: clientCardBasicInfoPageHeight(viewportWidth),'),
+    );
+    expect(methodSource, isNot(contains('if (useStackedLayout)')));
+    expect(
+      methodSource,
+      contains('Expanded(flex: 5, child: buildNameField())'),
+    );
+    expect(
+      methodSource,
+      contains('Expanded(flex: 4, child: buildGenderField())'),
+    );
+    expect(
+      methodSource,
+      contains('Expanded(flex: 3, child: buildBirthField())'),
+    );
+    expect(
+      methodSource,
+      contains('Expanded(flex: 2, child: buildJobField())'),
     );
     expect(methodSource, isNot(contains('height: 236,')));
   });

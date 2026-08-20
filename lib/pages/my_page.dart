@@ -33,6 +33,7 @@ import '../widgets/premium_banner_widget.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 import '../widgets/mtf_floating_more_menu.dart';
 import '../widgets/aifc_upgrade_chat_sheet.dart';
+import '../theme/app_colors.dart';
 
 import '../aifc/core/aifc_chat_sheet.dart';
 import '../aifc/core/aifc_nickname.dart';
@@ -2485,25 +2486,31 @@ class _MyPageState extends State<MyPage> {
                 : SafeArea(
                     top: false,
                     child: Container(
-                      color: kMyBg,
+                      color: Theme.of(context).scaffoldBackgroundColor,
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                       child: SizedBox(
                         height: 52,
                         child: FilledButton.icon(
                           onPressed: _isSaving ? null : () => _saveProfile(),
                           style: FilledButton.styleFrom(
-                            backgroundColor: kMyPrimary,
-                            foregroundColor: Colors.white,
+                            backgroundColor:
+                                Theme.of(context).colorScheme.secondary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onSecondary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           label: _isSaving
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
+                                    strokeWidth: 2,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondary,
+                                  ),
                                 )
                               : const Text('저장하기',
                                   style: TextStyle(
@@ -2845,6 +2852,7 @@ class _MyPageState extends State<MyPage> {
     required String address,
   }) {
     final topInset = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return MtfHeaderNeonOverlay(
       isExpanded: _isHeaderCardExpanded,
@@ -2871,13 +2879,10 @@ class _MyPageState extends State<MyPage> {
             right: 24,
             bottom: _isHeaderCardExpanded ? 10 : 6,
           ),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF4F46E5), Color(0xFF9333EA)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(32)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

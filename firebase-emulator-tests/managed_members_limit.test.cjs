@@ -95,6 +95,12 @@ async function create(user, index, prefix = "010") {
   );
 }
 
+function endDateForInclusiveDays(startDate, days) {
+  const date = new Date(`${startDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days - 1);
+  return date.toISOString().slice(0, 10);
+}
+
 function context(env, uid, anonymous) {
   return env.authenticatedContext(uid, {
     ...(anonymous ? {} : {email: `${uid}@example.com`}),
@@ -484,6 +490,65 @@ async function main() {
       assert.equal(data.birthAt.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
     });
 
+    const quickOwner = await signUpAnonymous();
+    await bootstrapAnonymous(quickOwner);
+    await promoteAnonymousToAmateur(env, quickOwner, "quick-register");
+    const quickCreated = await callFunction(
+      "createManagedMember",
+      quickOwner.idToken,
+      {
+        idempotencyKey: "quick-register-1",
+        registrationMode: "quick",
+        name: "Quick Register",
+        phone: "010-5555-0001",
+        note: "quick fixture",
+        nextReservationAt: "2026-08-20",
+      },
+    );
+    await scenario("quick registration creates an owner-scoped canonical member", async () => {
+      assert.equal(quickCreated.status, 200, JSON.stringify(quickCreated.body));
+      assert.equal(quickCreated.body.result.created, true);
+      const db = context(env, quickOwner.localId, true).firestore();
+      const memberId = quickCreated.body.result.memberId;
+      const snapshot = await getDoc(doc(db, "members", memberId));
+      const data = snapshot.data();
+      assert.equal(data.memberId, memberId);
+      assert.equal(data.trainerId, quickOwner.localId);
+      assert.equal(data.workspaceType, "personal");
+      assert.equal(data.managementState, "active");
+      assert.equal(data.name, "Quick Register");
+      assert.equal(data.phoneNormalized, "01055550001");
+      assert.equal(data.gender, undefined);
+      assert.equal(data.birth, undefined);
+      assert.equal(data.groupId, undefined);
+      assert.equal(data.groupName, undefined);
+      assert.ok(data.createdAt);
+      assert.equal(
+        data.nextReservationAt.toDate().toISOString().slice(0, 10),
+        "2026-08-20",
+      );
+      const ownerList = await getDocs(query(
+        collection(db, "members"),
+        where("trainerId", "==", quickOwner.localId),
+        where("workspaceType", "==", "personal"),
+      ));
+      assert.equal(ownerList.docs.some((item) => item.id === memberId), true);
+    });
+    await scenario("unknown quick registration mode is rejected", async () => {
+      const rejected = await callFunction(
+        "createManagedMember",
+        quickOwner.idToken,
+        {
+          idempotencyKey: "quick-register-invalid",
+          registrationMode: "unknown",
+          name: "Invalid Quick",
+          phone: "010-5555-0002",
+        },
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+      assert.equal(rejected.body.error.message, "registration_mode_invalid");
+    });
+
     const first = await create(owner, 1);
     await scenario("Amateur anonymous first valid member succeeds", async () => {
       assert.equal(first.status, 200);
@@ -508,6 +573,63 @@ async function main() {
       assert.equal(data.countsTowardLifetimeQualification, true);
       assert.ok(data.qualifiedAt);
     });
+    await scenario("basic fields update independently without rewriting optional state", async () => {
+      const ownerDb = context(env, owner.localId, true).firestore();
+      const seededMembership = {
+        notRegistered: false,
+        termMonths: null,
+        customDays: 30,
+        startAt: new Date("2026-08-01T00:00:00.000Z"),
+        endAt: new Date("2026-08-30T00:00:00.000Z"),
+        days: 30,
+        lastRegisteredAt: new Date("2026-08-01T00:00:00.000Z"),
+        reregisterCount: 2,
+        lastReregisterAt: new Date("2026-08-01T00:00:00.000Z"),
+      };
+      await env.withSecurityRulesDisabled(async (admin) => {
+        await updateDoc(doc(admin.firestore(), "members", firstId), {
+          membership: seededMembership,
+          anniversaryDate: new Date("2026-12-24T00:00:00.000Z"),
+          anniversaryLabel: "Keep Anniversary",
+        });
+      });
+      const updates = [
+        {name: "Name Only"},
+        {phone: "010-7777-0001"},
+        {birthDate: "1991-03-04"},
+        {gender: "female"},
+        {
+          name: "All Basic",
+          phone: "010-7777-0002",
+          birthDate: "1992-05-06",
+          gender: "male",
+        },
+      ];
+      for (const update of updates) {
+        const result = await callFunction(
+          "updateManagedMember",
+          owner.idToken,
+          {memberId: firstId, ...update},
+        );
+        assert.equal(result.status, 200, JSON.stringify(result.body));
+        assert.equal(result.body.result.updated, true);
+      }
+      const snapshot = await getDoc(doc(ownerDb, "members", firstId));
+      const data = snapshot.data();
+      assert.equal(data.name, "All Basic");
+      assert.equal(data.phoneNormalized, "01077770002");
+      assert.equal(data.birthDisplay, "1992-05-06");
+      assert.equal(data.gender, "male");
+      assert.equal(data.membership.customDays, 30);
+      assert.equal(data.membership.reregisterCount, 2);
+      assert.equal(data.anniversaryLabel, "Keep Anniversary");
+      const restored = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, phone: memberPayload(1).phone},
+      );
+      assert.equal(restored.status, 200, JSON.stringify(restored.body));
+    });
     await scenario("member gender and birth update persist for owner readback", async () => {
       const updated = await callFunction(
         "updateManagedMember",
@@ -520,6 +642,8 @@ async function main() {
       );
       assert.equal(updated.status, 200, JSON.stringify(updated.body));
       assert.equal(updated.body.result.updated, true);
+      assert.equal(updated.body.result.scheduleNameSyncSucceeded, true);
+      assert.equal(updated.body.result.scheduleNameUpdatedCount, 0);
       const db = context(env, owner.localId, true).firestore();
       const snapshot = await getDoc(doc(db, "members", firstId));
       const data = snapshot.data();
@@ -527,6 +651,79 @@ async function main() {
       assert.equal(data.birthDisplay, "1992-02-29");
       assert.equal(data.birth.toDate().toISOString(), "1992-02-29T00:00:00.000Z");
       assert.equal(data.birthAt.toDate().toISOString(), "1992-02-29T00:00:00.000Z");
+    });
+    await scenario("member name update synchronizes only owned personal schedules", async () => {
+      const ownedScheduleIds = ["name-sync-1", "name-sync-2"];
+      const foreignScheduleId = "name-sync-foreign";
+      const contractId = "name-sync-contract";
+      await env.withSecurityRulesDisabled(async (admin) => {
+        for (const scheduleId of ownedScheduleIds) {
+          await setDoc(doc(admin.firestore(), "schedules", scheduleId), {
+            trainerId: owner.localId,
+            workspaceType: "personal",
+            memberId: firstId,
+            name: "Before Name",
+          });
+        }
+        await setDoc(doc(admin.firestore(), "schedules", foreignScheduleId), {
+          trainerId: "another-owner",
+          workspaceType: "personal",
+          memberId: firstId,
+          name: "Foreign Snapshot",
+        });
+        await setDoc(doc(admin.firestore(), "contracts", contractId), {
+          trainerId: owner.localId,
+          workspaceType: "personal",
+          memberId: firstId,
+          memberName: "Signed Snapshot",
+          status: "signed",
+        });
+      });
+
+      const updated = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, name: "Updated Name"},
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      assert.equal(updated.body.result.updated, true);
+      assert.equal(updated.body.result.scheduleNameSyncSucceeded, true);
+      assert.equal(updated.body.result.scheduleNameUpdatedCount, 2);
+
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const db = admin.firestore();
+        for (const scheduleId of ownedScheduleIds) {
+          const snapshot = await getDoc(doc(db, "schedules", scheduleId));
+          assert.equal(snapshot.data().name, "Updated Name");
+        }
+        const foreignSchedule = await getDoc(
+          doc(db, "schedules", foreignScheduleId),
+        );
+        assert.equal(foreignSchedule.data().name, "Foreign Snapshot");
+        const contract = await getDoc(doc(db, "contracts", contractId));
+        assert.equal(contract.data().memberName, "Signed Snapshot");
+      });
+
+      await env.withSecurityRulesDisabled(async (admin) => {
+        await updateDoc(
+          doc(admin.firestore(), "schedules", ownedScheduleIds[0]),
+          {name: "Stale Again"},
+        );
+      });
+      const retried = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, note: "retry schedule sync"},
+      );
+      assert.equal(retried.status, 200, JSON.stringify(retried.body));
+      assert.equal(retried.body.result.scheduleNameSyncSucceeded, true);
+      assert.equal(retried.body.result.scheduleNameUpdatedCount, 1);
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const snapshot = await getDoc(
+          doc(admin.firestore(), "schedules", ownedScheduleIds[0]),
+        );
+        assert.equal(snapshot.data().name, "Updated Name");
+      });
     });
     await scenario("invalid birth update is rejected without changing stored data", async () => {
       const rejected = await callFunction(
@@ -538,6 +735,165 @@ async function main() {
       const db = context(env, owner.localId, true).firestore();
       const snapshot = await getDoc(doc(db, "members", firstId));
       assert.equal(snapshot.data().birthDisplay, "1992-02-29");
+    });
+    await scenario("membership month presets persist canonical dates and days", async () => {
+      for (const termMonths of [1, 3, 6, 12]) {
+        const days = termMonths * 30;
+        const startAt = "2026-08-01";
+        const endAt = endDateForInclusiveDays(startAt, days);
+        const updated = await callFunction(
+          "updateManagedMember",
+          owner.idToken,
+          {
+            memberId: firstId,
+            membership: {
+              notRegistered: false,
+              termMonths,
+              customDays: null,
+              startAt,
+              endAt,
+              days,
+              lastRegisteredAt: startAt,
+              reregisterCount: 0,
+              lastReregisterAt: null,
+            },
+          },
+        );
+        assert.equal(updated.status, 200, JSON.stringify(updated.body));
+        const db = context(env, owner.localId, true).firestore();
+        const snapshot = await getDoc(doc(db, "members", firstId));
+        const membership = snapshot.data().membership;
+        assert.equal(membership.termMonths, termMonths);
+        assert.equal(membership.customDays, null);
+        assert.equal(membership.days, days);
+        assert.equal(membership.startAt.toDate().toISOString().slice(0, 10), startAt);
+        assert.equal(membership.endAt.toDate().toISOString().slice(0, 10), endAt);
+      }
+    });
+    await scenario("membership custom 120 days persist after update", async () => {
+      const startAt = "2026-08-15";
+      const days = 120;
+      const endAt = endDateForInclusiveDays(startAt, days);
+      const updated = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {
+          memberId: firstId,
+          membership: {
+            notRegistered: false,
+            termMonths: null,
+            customDays: days,
+            startAt,
+            endAt,
+            days,
+            lastRegisteredAt: startAt,
+            reregisterCount: 1,
+            lastReregisterAt: startAt,
+          },
+        },
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      const db = context(env, owner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", firstId));
+      const membership = snapshot.data().membership;
+      assert.equal(membership.termMonths, null);
+      assert.equal(membership.customDays, 120);
+      assert.equal(membership.days, 120);
+      assert.equal(membership.startAt.toDate().toISOString().slice(0, 10), startAt);
+      assert.equal(membership.endAt.toDate().toISOString().slice(0, 10), endAt);
+    });
+    await scenario("membership direct start and end persist canonical period", async () => {
+      const startAt = "2026-10-10";
+      const endAt = "2026-11-25";
+      const days = 47;
+      const updated = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {
+          memberId: firstId,
+          membership: {
+            notRegistered: false,
+            termMonths: null,
+            customDays: days,
+            startAt,
+            endAt,
+            days,
+            lastRegisteredAt: startAt,
+            reregisterCount: 0,
+            lastReregisterAt: null,
+          },
+        },
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      const db = context(env, owner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", firstId));
+      const membership = snapshot.data().membership;
+      assert.equal(membership.customDays, days);
+      assert.equal(membership.days, days);
+      assert.equal(membership.startAt.toDate().toISOString().slice(0, 10), startAt);
+      assert.equal(membership.endAt.toDate().toISOString().slice(0, 10), endAt);
+    });
+    await scenario("D-DAY persists and removes canonical fields", async () => {
+      const saved = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {
+          memberId: firstId,
+          anniversaryDate: "2026-12-24",
+          anniversaryLabel: "테스트 기념일",
+        },
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      let db = context(env, owner.localId, true).firestore();
+      let snapshot = await getDoc(doc(db, "members", firstId));
+      assert.equal(
+        snapshot.data().anniversaryDate.toDate().toISOString().slice(0, 10),
+        "2026-12-24",
+      );
+      assert.equal(snapshot.data().anniversaryLabel, "테스트 기념일");
+      const removed = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {
+          memberId: firstId,
+          anniversaryDate: null,
+          anniversaryLabel: null,
+        },
+      );
+      assert.equal(removed.status, 200, JSON.stringify(removed.body));
+      db = context(env, owner.localId, true).firestore();
+      snapshot = await getDoc(doc(db, "members", firstId));
+      assert.equal(snapshot.data().anniversaryDate, null);
+      assert.equal(snapshot.data().anniversaryLabel, null);
+    });
+    const deleteOwner = await signUpAnonymous();
+    await bootstrapAnonymous(deleteOwner);
+    await promoteAnonymousToAmateur(env, deleteOwner, "canonical-delete");
+    const deleteCandidate = await create(deleteOwner, 1, "012");
+    const deleteCandidateId = deleteCandidate.body.result.memberId;
+    await scenario("other trainer cannot canonically delete member", async () => {
+      const rejected = await callFunction(
+        "transitionManagedMemberState",
+        owner.idToken,
+        {memberId: deleteCandidateId, nextState: "deleted"},
+      );
+      assert.equal(rejected.body.error.status, "PERMISSION_DENIED");
+    });
+    await scenario("owner canonical delete persists pending delete markers", async () => {
+      const deleted = await callFunction(
+        "transitionManagedMemberState",
+        deleteOwner.idToken,
+        {memberId: deleteCandidateId, nextState: "deleted"},
+      );
+      assert.equal(deleted.status, 200, JSON.stringify(deleted.body));
+      const db = context(env, deleteOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", deleteCandidateId));
+      const data = snapshot.data();
+      assert.equal(data.managementState, "deleted");
+      assert.equal(data.isDeleted, true);
+      assert.equal(data.deleteStatus, "pending_delete");
+      assert.ok(data.deletedAt);
+      assert.ok(data.deleteScheduledAt);
     });
     await scenario("create identity fields cannot be supplied by the client", async () => {
       const rejected = await callFunction(
@@ -563,6 +919,8 @@ async function main() {
         },
       );
       assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+      assert.equal(rejected.body.error.message, "unknown_fields");
+      assert.equal(rejected.body.error.details, undefined);
     });
     await scenario("other trainer cannot update an owned member", async () => {
       const other = await signUpAnonymous();
@@ -907,8 +1265,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 52);
-    process.stdout.write("All 52 anonymous member and tier scenarios passed.\n");
+    assert.equal(passed, 62);
+    process.stdout.write("All 62 anonymous member and tier scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

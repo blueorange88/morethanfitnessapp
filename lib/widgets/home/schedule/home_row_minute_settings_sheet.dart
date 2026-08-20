@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../theme/app_colors.dart';
+
 class HomeRowMinuteSettingsSheet {
   const HomeRowMinuteSettingsSheet._();
 
@@ -12,7 +14,7 @@ class HomeRowMinuteSettingsSheet {
   }) {
     final validMinutes = [0, 10, 20, 30, 40, 50];
     int selectedMinute =
-    validMinutes.contains(currentMinute) ? currentMinute : 0;
+        validMinutes.contains(currentMinute) ? currentMinute : 0;
 
     return showModalBottomSheet<int>(
       context: context,
@@ -21,14 +23,16 @@ class HomeRowMinuteSettingsSheet {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (sheetContext, setModalState) {
+            final theme = Theme.of(sheetContext);
+            final tokens = sheetContext.mtfThemeTokens;
             return SafeArea(
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF8F7FF),
-                    borderRadius: BorderRadius.vertical(
+                  decoration: BoxDecoration(
+                    color: tokens.sheetBackground,
+                    borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(24),
                     ),
                   ),
@@ -41,12 +45,11 @@ class HomeRowMinuteSettingsSheet {
                           width: 44,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFD8D4FF),
+                            color: tokens.cardBorder,
                             borderRadius: BorderRadius.circular(999),
                           ),
                         ),
                         const SizedBox(height: 14),
-
                         Row(
                           children: [
                             Container(
@@ -69,18 +72,18 @@ class HomeRowMinuteSettingsSheet {
                                 children: [
                                   Text(
                                     '$hourLabel 줄 시작 분 변경',
-                                    style: const TextStyle(
-                                      color: Color(0xFF111827),
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface,
                                       fontSize: 15,
                                       fontWeight: FontWeight.w900,
                                       height: 1.25,
                                     ),
                                   ),
                                   const SizedBox(height: 3),
-                                  const Text(
+                                  Text(
                                     '이 시간 줄에 있는 미확정 레슨은 가능한 경우 함께 옮겨드려요.',
                                     style: TextStyle(
-                                      color: Color(0xFF6B7280),
+                                      color: theme.colorScheme.onSurfaceVariant,
                                       fontSize: 11.2,
                                       fontWeight: FontWeight.w600,
                                       height: 1.35,
@@ -103,17 +106,15 @@ class HomeRowMinuteSettingsSheet {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 16),
-
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.fromLTRB(12, 13, 12, 13),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: tokens.cardSurface,
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                              color: const Color(0xFFE5E7EB),
+                              color: tokens.cardBorder,
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -147,32 +148,32 @@ class HomeRowMinuteSettingsSheet {
                                   ),
                                   decoration: BoxDecoration(
                                     color: selected
-                                        ? primaryColor
-                                        : const Color(0xFFF8FAFC),
+                                        ? tokens.gradeSheetAccent
+                                        : tokens.cardSurface,
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
                                       color: selected
-                                          ? primaryColor
-                                          : const Color(0xFFE5E7EB),
+                                          ? tokens.scheduleSelectedBorder
+                                          : tokens.cardBorder,
                                       width: selected ? 1.2 : 0.9,
                                     ),
                                     boxShadow: selected
                                         ? [
-                                      BoxShadow(
-                                        color:
-                                        primaryColor.withOpacity(0.22),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ]
+                                            BoxShadow(
+                                              color: primaryColor
+                                                  .withOpacity(0.22),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ]
                                         : null,
                                   ),
                                   child: Text(
                                     '${minute.toString().padLeft(2, '0')}분',
                                     style: TextStyle(
                                       color: selected
-                                          ? Colors.white
-                                          : const Color(0xFF64748B),
+                                          ? theme.colorScheme.onSecondary
+                                          : theme.colorScheme.onSurfaceVariant,
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w900,
                                     ),
@@ -182,20 +183,19 @@ class HomeRowMinuteSettingsSheet {
                             }).toList(),
                           ),
                         ),
-
                         const SizedBox(height: 13),
-
                         Row(
                           children: [
                             Expanded(
                               child: OutlinedButton(
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF6B7280),
-                                  side: const BorderSide(
-                                    color: Color(0xFFE5E7EB),
+                                  foregroundColor:
+                                      theme.colorScheme.onSurfaceVariant,
+                                  side: BorderSide(
+                                    color: tokens.cardBorder,
                                   ),
                                   padding:
-                                  const EdgeInsets.symmetric(vertical: 13),
+                                      const EdgeInsets.symmetric(vertical: 13),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -263,9 +263,7 @@ class HomeRowMinuteSettingsSheet {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 9),
-
                         const Text(
                           '확정된 레슨은 움직이지 않고, 겹치는 일정이 있으면 이 줄은 유지돼요.',
                           textAlign: TextAlign.center,

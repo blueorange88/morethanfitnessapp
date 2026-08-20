@@ -1,8 +1,7 @@
-
 import 'package:flutter/material.dart';
 
 import '../../../aifc/core/aifc_chat_bubble.dart';
-import '../sections/home_paste_conflict_summary_card.dart';
+import '../../../theme/app_colors.dart';
 
 class HomeWeekPasteOverwriteSheet {
   const HomeWeekPasteOverwriteSheet._();
@@ -10,40 +9,25 @@ class HomeWeekPasteOverwriteSheet {
   static Future<bool> show({
     required BuildContext context,
     required String targetLabel,
-    required List<Map<String, dynamic>> conflictExamples,
+    required int conflictCount,
+    required int pasteableCount,
     required Color primaryColor,
   }) async {
-    final confirmedConflicts =
-    conflictExamples.where((e) => e['isConfirmed'] == true).toList();
-
-    final editableConflicts =
-    conflictExamples.where((e) => e['isConfirmed'] != true).toList();
-
-    final confirmedCount = confirmedConflicts.length;
-    final editableCount = editableConflicts.length;
-
-    String mainText;
-    String subText;
-
-    if (confirmedCount > 0 && editableCount > 0) {
-      mainText = '$targetLabel 에 겹치는 레슨일정이 있어요.';
-      subText = '미확정 일정 $editableCount개는 덮어쓸 수 있고,\n'
-          '확정된 일정 $confirmedCount개는 보호해서 제외할게요.';
-    } else if (confirmedCount > 0) {
-      mainText = '$targetLabel 에 확정된 레슨일정과 겹치는 일정이 있어요.';
-      subText = '확정된 레슨은 삭제하거나 덮어쓸 수 없어요.\n'
-          '겹치는 복사 일정은 제외하고 나머지만 붙여넣을게요.';
-    } else {
-      mainText = '$targetLabel 에 같은 시간의 레슨일정이 있어요.';
-      subText = '기존 미확정 일정 $editableCount개를 삭제하고\n'
-          '복사한 일정으로 덮어쓸 수 있어요.';
-    }
+    final allConflicting = pasteableCount == 0;
+    final title =
+        allConflicting ? '붙여넣을 수 있는 일정이 없어요' : '겹치는 일정이 $conflictCount개 있어요';
+    final body = allConflicting
+        ? '$conflictCount개 일정이 모두 기존 일정과 겹쳐요.'
+        : '기존 일정과 겹치는 $conflictCount개를 제외하고\n'
+            '나머지 $pasteableCount개 일정을 $targetLabel에 붙여넣을까요?';
 
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final tokens = sheetContext.mtfThemeTokens;
         return SafeArea(
           top: false,
           child: Padding(
@@ -53,16 +37,16 @@ class HomeWeekPasteOverwriteSheet {
                 maxHeight: MediaQuery.of(sheetContext).size.height * 0.78,
               ),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F4FF),
+                color: tokens.sheetBackground,
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.14),
+                    color: primaryColor.withValues(alpha: 0.14),
                     blurRadius: 32,
                     offset: const Offset(0, 12),
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
+                    color: Colors.black.withValues(alpha: 0.10),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -77,7 +61,7 @@ class HomeWeekPasteOverwriteSheet {
                       width: 36,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0DEFF),
+                        color: tokens.cardBorder,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -85,104 +69,79 @@ class HomeWeekPasteOverwriteSheet {
                   Flexible(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AifcChatBubble(
-                            side: AifcBubbleSide.fc,
-                            text: mainText,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  subText,
-                                  style: const TextStyle(
-                                    color: Color(0xFF6B7280),
-                                    fontSize: 11.5,
-                                    height: 1.4,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                HomePasteConflictSummaryCard(
-                                  conflictExamples: conflictExamples,
-                                  confirmedCount: confirmedCount,
-                                  editableCount: editableCount,
-                                  primaryColor: primaryColor,
-                                ),
-                              ],
+                      child: AifcChatBubble(
+                        side: AifcBubbleSide.fc,
+                        text: title,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              body,
+                              key: const Key('week_paste_conflict_body'),
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                                height: 1.45,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          AifcChatBubble(
-                            side: AifcBubbleSide.user,
-                            text: confirmedCount > 0
-                                ? '확정된 일정은 제외하고 붙여넣을게요'
-                                : '겹치는 일정은 덮어쓰고 붙여넣을게요',
-                          ),
-                          const SizedBox(height: 10),
-                          AifcChatBubble(
-                            side: AifcBubbleSide.fc,
-                            text: confirmedCount > 0
-                                ? '좋아요. 확정된 레슨은 안전하게 보호하고 진행할게요.'
-                                : '좋아요. 기존 미확정 일정은 정리하고 새 일정으로 넣어둘게요.',
-                          ),
-                        ],
+                            const SizedBox(height: 10),
+                            Text(
+                              '기존 일정은 변경되지 않아요.',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontSize: 11.5,
+                                height: 1.4,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () =>
-                                Navigator.of(sheetContext).pop(false),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF7C7ABB),
-                              side: const BorderSide(
-                                color: Color(0xFFE0DEFF),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                    child: allConflicting
+                        ? SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              key: const Key('week_paste_conflict_ack'),
+                              onPressed: () =>
+                                  Navigator.of(sheetContext).pop(false),
+                              child: const Text('확인'),
                             ),
-                            child: const Text(
-                              '취소',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  key: const Key('week_paste_conflict_cancel'),
+                                  onPressed: () =>
+                                      Navigator.of(sheetContext).pop(false),
+                                  child: const Text('취소'),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                flex: 2,
+                                child: FilledButton(
+                                  key: const Key('week_paste_conflict_confirm'),
+                                  onPressed: () =>
+                                      Navigator.of(sheetContext).pop(true),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: tokens.gradeSheetAccent,
+                                    foregroundColor:
+                                        theme.colorScheme.onSecondary,
+                                  ),
+                                  child: Text(
+                                    '$conflictCount개 제외하고 붙여넣기',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton(
-                            onPressed: () =>
-                                Navigator.of(sheetContext).pop(true),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text(
-                              '붙여넣기',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),

@@ -6,6 +6,7 @@ enum WidgetThemeType {
   pinkperfume,
   brownHistory,
   ttobak,
+  brandLight,
 }
 
 class MtfWidgetThemeData {
@@ -55,6 +56,25 @@ class MtfWidgetThemeData {
 }
 
 const Map<WidgetThemeType, MtfWidgetThemeData> kMtfWidgetThemes = {
+  WidgetThemeType.brandLight: MtfWidgetThemeData(
+    type: WidgetThemeType.brandLight,
+    label: '라이트',
+    headerStartColor: '#0B1E32',
+    headerEndColor: '#163A54',
+    bodyBgColor: '#F7F5EF',
+    timeColBgColor: '#F1EEE6',
+    rowEvenColor: '#FBFAF6',
+    rowOddColor: '#FFFFFF',
+    todayColColor: '#33EFCB62',
+    todayHeaderColor: '#EFCB62',
+    todayBorderColor: '#0B1E32',
+    gridLineColor: '#E8E4DA',
+    timeColLineColor: '#D9D3C7',
+    dayTextColor: '#0B1E32',
+    timeTextColor: '#52606D',
+    headerTextColor: '#FFFFFF',
+    iconColor: '#EFCB62',
+  ),
   WidgetThemeType.light: MtfWidgetThemeData(
     type: WidgetThemeType.light,
     label: '라이트',
@@ -74,7 +94,6 @@ const Map<WidgetThemeType, MtfWidgetThemeData> kMtfWidgetThemes = {
     headerTextColor: '#FFFFFF',
     iconColor: '#FFFFFF',
   ),
-
   WidgetThemeType.dark: MtfWidgetThemeData(
     type: WidgetThemeType.dark,
     label: '다크',
@@ -95,7 +114,6 @@ const Map<WidgetThemeType, MtfWidgetThemeData> kMtfWidgetThemes = {
     iconColor: '#E8C97A',
     isDark: true,
   ),
-
   WidgetThemeType.pinkperfume: MtfWidgetThemeData(
     type: WidgetThemeType.pinkperfume,
     label: '핑크퍼퓸',
@@ -115,7 +133,6 @@ const Map<WidgetThemeType, MtfWidgetThemeData> kMtfWidgetThemes = {
     headerTextColor: '#FFFFFF',
     iconColor: '#FFFFFF',
   ),
-
   WidgetThemeType.brownHistory: MtfWidgetThemeData(
     type: WidgetThemeType.brownHistory,
     label: '브라운히스토리',
@@ -135,7 +152,6 @@ const Map<WidgetThemeType, MtfWidgetThemeData> kMtfWidgetThemes = {
     headerTextColor: '#FFF5E0',
     iconColor: '#FFF5E0',
   ),
-
   WidgetThemeType.ttobak: MtfWidgetThemeData(
     type: WidgetThemeType.ttobak,
     label: '또박또박',
@@ -160,7 +176,7 @@ const Map<WidgetThemeType, MtfWidgetThemeData> kMtfWidgetThemes = {
 
 WidgetThemeType widgetThemeTypeFromRaw(String raw) {
   return WidgetThemeType.values.firstWhere(
-        (e) => e.name == raw,
+    (e) => e.name == raw,
     orElse: () => WidgetThemeType.light,
   );
 }

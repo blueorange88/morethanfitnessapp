@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/aifc_interaction.dart';
+import '../theme/app_colors.dart';
 
 class PersonalTrainingLogTextVoicePage extends StatefulWidget {
   final String? initialName;
@@ -233,15 +234,13 @@ class _PersonalTrainingLogTextVoicePageState
     const sampleVoiceText =
         '오늘은 하체 근력 위주로 시작했는데 스쿼트 중 오른쪽 무릎 안쪽 통증을 이야기해서 깊이를 줄였고, 런지는 제외했습니다. 이후 체스트프레스와 로우로 상체 운동을 진행했고 마지막에 고관절 스트레칭을 했습니다.';
 
-    const sampleDraft =
-        '하체 운동 중 무릎 통증 확인\n'
+    const sampleDraft = '하체 운동 중 무릎 통증 확인\n'
         '- 스쿼트 깊이 조절\n'
         '- 런지 제외\n'
         '- 상체 운동으로 전환\n'
         '- 마무리 고관절 스트레칭';
 
-    const samplePublicSummary =
-        '하체 운동 중 무릎 통증으로 강도를 조절하고 상체 운동으로 전환했습니다.';
+    const samplePublicSummary = '하체 운동 중 무릎 통증으로 강도를 조절하고 상체 운동으로 전환했습니다.';
 
     setState(() {
       _usedVoiceDraft = true;
@@ -273,6 +272,7 @@ class _PersonalTrainingLogTextVoicePageState
         ? '$_memberName 님 수업일지'
         : '$_memberName 님 $sessionLabel 수업일지';
 
+    final gradient = context.mtfHeaderGradient;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(
@@ -282,14 +282,7 @@ class _PersonalTrainingLogTextVoicePageState
         bottom: 18,
       ),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF9333EA),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: gradient,
         borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(32),
         ),
@@ -362,22 +355,25 @@ class _PersonalTrainingLogTextVoicePageState
     required String title,
     required Widget child,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.trainingLogSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: tokens.trainingLogSetDivider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
+              color: scheme.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -393,12 +389,14 @@ class _PersonalTrainingLogTextVoicePageState
     required VoidCallback onToggle,
     required Widget child,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.trainingLogSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: tokens.trainingLogSetDivider),
       ),
       child: Column(
         children: [
@@ -412,10 +410,10 @@ class _PersonalTrainingLogTextVoicePageState
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: Colors.black87,
+                        color: scheme.onSurface,
                       ),
                     ),
                   ),
@@ -423,7 +421,7 @@ class _PersonalTrainingLogTextVoicePageState
                     expanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: Colors.black45,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -435,9 +433,8 @@ class _PersonalTrainingLogTextVoicePageState
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: child,
             ),
-            crossFadeState: expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState:
+                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 180),
           ),
         ],
@@ -573,7 +570,7 @@ class _PersonalTrainingLogTextVoicePageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           _buildBlueHeader(),
@@ -602,17 +599,20 @@ class _PersonalTrainingLogTextVoicePageState
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: context.mtfThemeTokens.trainingLogSetRow,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFFE5E7EB),
+                              color:
+                                  context.mtfThemeTokens.trainingLogSetDivider,
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             '음성은 편하게 길게 말해도 괜찮아요. 저장 시에는 핵심 내용만 짧게 정리하고, 원문은 따로 보관됩니다.',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.black54,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               height: 1.4,
                             ),
                           ),
@@ -652,8 +652,7 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['공복', '가볍게 먹음', '충분히 먹음'],
                                 selectedValue: _preMeal,
-                                onChanged: (v) =>
-                                    setState(() => _preMeal = v),
+                                onChanged: (v) => setState(() => _preMeal = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -667,8 +666,7 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['부족', '보통', '충분'],
                                 selectedValue: _preSleep,
-                                onChanged: (v) =>
-                                    setState(() => _preSleep = v),
+                                onChanged: (v) => setState(() => _preSleep = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -682,8 +680,7 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['없음', '있음'],
                                 selectedValue: _prePain,
-                                onChanged: (v) =>
-                                    setState(() => _prePain = v),
+                                onChanged: (v) => setState(() => _prePain = v),
                               ),
                               if (_prePain == '있음') ...[
                                 const SizedBox(height: 10),
@@ -720,8 +717,8 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '수업 내용 작성',
                           expanded: _contentExpanded,
-                          onToggle: () =>
-                              setState(() => _contentExpanded = !_contentExpanded),
+                          onToggle: () => setState(
+                              () => _contentExpanded = !_contentExpanded),
                           child: Column(
                             children: [
                               TextField(
@@ -730,7 +727,7 @@ class _PersonalTrainingLogTextVoicePageState
                                 decoration: InputDecoration(
                                   labelText: '수업 내용 / 메모',
                                   hintText:
-                                  '텍스트로 직접 입력하거나 오른쪽 마이크 버튼으로 초안을 넣어요.',
+                                      '텍스트로 직접 입력하거나 오른쪽 마이크 버튼으로 초안을 넣어요.',
                                   alignLabelWithHint: true,
                                   border: const OutlineInputBorder(),
                                   suffixIcon: Padding(
@@ -765,7 +762,7 @@ class _PersonalTrainingLogTextVoicePageState
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         '음성 원문',
@@ -794,8 +791,8 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '수업 중 체크',
                           expanded: _duringExpanded,
-                          onToggle: () =>
-                              setState(() => _duringExpanded = !_duringExpanded),
+                          onToggle: () => setState(
+                              () => _duringExpanded = !_duringExpanded),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -808,7 +805,13 @@ class _PersonalTrainingLogTextVoicePageState
                               ),
                               const SizedBox(height: 8),
                               _multiSelect(
-                                options: const ['교정', '통증관리', '근력', '가동성', '체형'],
+                                options: const [
+                                  '교정',
+                                  '통증관리',
+                                  '근력',
+                                  '가동성',
+                                  '체형'
+                                ],
                                 selectedValues: _duringGoals,
                                 onToggle: (v) {
                                   setState(() {
@@ -827,7 +830,8 @@ class _PersonalTrainingLogTextVoicePageState
                                   maxLines: 2,
                                   decoration: const InputDecoration(
                                     labelText: '수업 중 통증 메모',
-                                    hintText: '예: 런지 시 왼쪽 무릎 전면 압박감 / 스쿼트 하강구간 불편',
+                                    hintText:
+                                        '예: 런지 시 왼쪽 무릎 전면 압박감 / 스쿼트 하강구간 불편',
                                     border: OutlineInputBorder(),
                                     alignLabelWithHint: true,
                                   ),
@@ -958,7 +962,13 @@ class _PersonalTrainingLogTextVoicePageState
                               ),
                               const SizedBox(height: 8),
                               _singleSelect(
-                                options: const ['없음', '스트레칭', '복습운동', '걷기', '영상확인'],
+                                options: const [
+                                  '없음',
+                                  '스트레칭',
+                                  '복습운동',
+                                  '걷기',
+                                  '영상확인'
+                                ],
                                 selectedValue: _postHomework,
                                 onChanged: (v) =>
                                     setState(() => _postHomework = v),
@@ -971,7 +981,7 @@ class _PersonalTrainingLogTextVoicePageState
                           title: '내부 메모',
                           expanded: _internalExpanded,
                           onToggle: () => setState(
-                                () => _internalExpanded = !_internalExpanded,
+                            () => _internalExpanded = !_internalExpanded,
                           ),
                           child: TextField(
                             controller: _internalMemoC,
@@ -988,9 +998,9 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '회원 공개 메모',
                           expanded: _publicExpanded,
-                          onToggle: () =>
-                              setState(() => _publicExpanded = !_publicExpanded),
-                          child:                               Column(
+                          onToggle: () => setState(
+                              () => _publicExpanded = !_publicExpanded),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
@@ -1010,7 +1020,8 @@ class _PersonalTrainingLogTextVoicePageState
                                         _applyAutoSummary(force: true);
                                       });
                                     },
-                                    icon: const Icon(Icons.auto_awesome, size: 16),
+                                    icon: const Icon(Icons.auto_awesome,
+                                        size: 16),
                                     label: const Text('자동 요약'),
                                   ),
                                 ],
@@ -1020,7 +1031,8 @@ class _PersonalTrainingLogTextVoicePageState
                                 controller: _publicSummaryC,
                                 maxLines: 2,
                                 decoration: const InputDecoration(
-                                  hintText: '운동 내용을 기반으로 자동 요약되며, 직접 수정할 수 있어요.',
+                                  hintText:
+                                      '운동 내용을 기반으로 자동 요약되며, 직접 수정할 수 있어요.',
                                   border: OutlineInputBorder(),
                                   alignLabelWithHint: true,
                                 ),
@@ -1033,7 +1045,7 @@ class _PersonalTrainingLogTextVoicePageState
                           title: '수업 체크사항',
                           expanded: _lessonEtcExpanded,
                           onToggle: () => setState(
-                                () => _lessonEtcExpanded = !_lessonEtcExpanded,
+                            () => _lessonEtcExpanded = !_lessonEtcExpanded,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1051,7 +1063,7 @@ class _PersonalTrainingLogTextVoicePageState
                                 runSpacing: 8,
                                 children: _issueChipOptions.map((chip) {
                                   final selected =
-                                  _selectedIssueChips.contains(chip);
+                                      _selectedIssueChips.contains(chip);
                                   return InkWell(
                                     onTap: () {
                                       setState(() {
@@ -1072,7 +1084,8 @@ class _PersonalTrainingLogTextVoicePageState
                                         color: selected
                                             ? const Color(0xFFEEF2FF)
                                             : Colors.white,
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
                                         border: Border.all(
                                           color: selected
                                               ? const Color(0xFF4F46E5)
@@ -1106,7 +1119,7 @@ class _PersonalTrainingLogTextVoicePageState
                                 spacing: 8,
                                 runSpacing: 8,
                                 children:
-                                ['없음', '완료', '일부', '미수행'].map((value) {
+                                    ['없음', '완료', '일부', '미수행'].map((value) {
                                   final selected = _homeworkStatus == value;
                                   return InkWell(
                                     onTap: () =>
@@ -1121,7 +1134,8 @@ class _PersonalTrainingLogTextVoicePageState
                                         color: selected
                                             ? const Color(0xFFEEF2FF)
                                             : Colors.white,
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
                                         border: Border.all(
                                           color: selected
                                               ? const Color(0xFF4F46E5)

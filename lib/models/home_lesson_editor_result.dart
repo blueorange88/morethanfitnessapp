@@ -13,6 +13,16 @@ class HomeLessonEditorInput {
 
   bool get isEditMode => existingSession != null;
 
+  bool get hasPersistedSchedule {
+    final raw = existingSession;
+    if (raw == null) return false;
+
+    return (raw['actualDocumentId'] ?? raw['docId'] ?? '')
+        .toString()
+        .trim()
+        .isNotEmpty;
+  }
+
   Map<String, dynamic>? get safeExistingSession {
     final raw = existingSession;
     if (raw == null) return null;

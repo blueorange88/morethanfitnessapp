@@ -1,8 +1,11 @@
 // lib/main.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mtf_app/pages/client_list_page.dart';
 
+import 'models/app_theme_mode.dart';
 import 'theme.dart';
 import 'providers/theme_provider.dart';
 
@@ -41,14 +44,6 @@ Future<void> runMtfApp({required AppEnvironment environment}) async {
     firebaseEmulatorStartupError = error;
   }
 
-  if (firebaseEmulatorStartupError == null && !kIsWeb) {
-    try {
-      await registerMtfWidgetInteractivity();
-    } catch (e) {
-      debugPrint('위젯 인터랙션 등록 실패: $e');
-    }
-  }
-
   runApp(
     ProviderScope(
       child: MyApp(
@@ -56,6 +51,20 @@ Future<void> runMtfApp({required AppEnvironment environment}) async {
       ),
     ),
   );
+
+  if (firebaseEmulatorStartupError == null && !kIsWeb) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_registerWidgetInteractivity());
+    });
+  }
+}
+
+Future<void> _registerWidgetInteractivity() async {
+  try {
+    await registerMtfWidgetInteractivity();
+  } catch (error) {
+    debugPrint('위젯 인터랙션 등록 실패: $error');
+  }
 }
 
 class MyApp extends ConsumerWidget {
@@ -68,7 +77,7 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dark = ref.watch(darkModeProvider);
+    final appTheme = ref.watch(appThemeProvider);
     return MaterialApp(
       locale: const Locale('ko', 'KR'),
       supportedLocales: const [
@@ -83,9 +92,10 @@ class MyApp extends ConsumerWidget {
       title: '모어댄',
       debugShowCheckedModeBanner: false,
       navigatorObservers: [mtfRouteObserver],
-      theme: lightTheme(),
+      theme: appTheme == AppThemeMode.lululala ? lululalaTheme() : lightTheme(),
       darkTheme: darkTheme(),
-      themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+      themeMode:
+          appTheme == AppThemeMode.dark ? ThemeMode.dark : ThemeMode.light,
       builder: (context, child) {
         Widget result = child ?? const SizedBox.shrink();
         result = FirebaseEmulatorBanner(

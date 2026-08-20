@@ -9,6 +9,7 @@ import '../utils/lesson_insights_stats.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
 import '../widgets/mtf_floating_more_menu.dart';
 import 'monthly_lesson_history_page.dart';
+import '../theme/app_colors.dart';
 
 import '../aifc/core/aifc_avatar.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
@@ -344,8 +345,9 @@ class _LessonInsightsPageState extends State<StatsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           Column(
@@ -414,21 +416,22 @@ class _LessonInsightsPageState extends State<StatsPage> {
           if (_isTierAccessLoading)
             Positioned.fill(
               child: Container(
-                color: const Color(0xFFF3F4F6).withOpacity(0.74),
+                color:
+                    Theme.of(context).scaffoldBackgroundColor.withOpacity(0.74),
                 child: const Center(child: CircularProgressIndicator()),
               ),
             )
           else if (_tierAccessFailed)
             Positioned.fill(
               child: Container(
-                color: const Color(0xFFF3F4F6),
+                color: Theme.of(context).scaffoldBackgroundColor,
                 alignment: Alignment.center,
                 padding: const EdgeInsets.all(24),
-                child: const Text(
+                child: Text(
                   '등급 정보를 확인하지 못했어요.\n잠시 후 다시 시도해주세요.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF374151),
+                    color: scheme.onSurface,
                     fontSize: 14,
                     height: 1.5,
                     fontWeight: FontWeight.w800,
@@ -444,7 +447,9 @@ class _LessonInsightsPageState extends State<StatsPage> {
               child: IgnorePointer(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),
-                  child: Container(color: Colors.white.withOpacity(0.04)),
+                  child: Container(
+                    color: scheme.surface.withValues(alpha: 0.04),
+                  ),
                 ),
               ),
             ),
@@ -476,7 +481,10 @@ class _LessonInsightsPageState extends State<StatsPage> {
       title: '조회 기간',
       trailing: Text(
         _periodLabel,
-        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+        style: TextStyle(
+          fontSize: 11,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
       child: Wrap(
         spacing: 8,
@@ -508,6 +516,7 @@ class _LessonInsightsPageState extends State<StatsPage> {
 
   Widget _buildSummary() {
     final stats = _stats!;
+    final palette = context.mtfChartPalette;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -526,28 +535,28 @@ class _LessonInsightsPageState extends State<StatsPage> {
               value: '${stats.completedLessons}회',
               subtitle: '선택 기간 확정 완료',
               icon: Icons.task_alt_rounded,
-              colors: const [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+              colors: [palette.primarySeries, palette.tertiarySeries],
             ),
             _KpiCard(
               title: '예정 레슨',
               value: '${stats.upcomingLessons}회',
               subtitle: '현재 시각 이후 미확정',
               icon: Icons.upcoming_rounded,
-              colors: const [Color(0xFF0284C7), Color(0xFF06B6D4)],
+              colors: [palette.secondarySeries, palette.primarySeries],
             ),
             _KpiCard(
               title: '실제 수업률',
               value: _rateText(stats.actualLessonRate),
               subtitle: '확정 결과 기준',
               icon: Icons.insights_rounded,
-              colors: const [Color(0xFFEA580C), Color(0xFFF59E0B)],
+              colors: [palette.warningSeries, palette.tertiarySeries],
             ),
             _KpiCard(
               title: '활성 회원',
               value: '${stats.activeMembers}명',
               subtitle: '현재 회원 상태 기준',
               icon: Icons.groups_rounded,
-              colors: const [Color(0xFF059669), Color(0xFF10B981)],
+              colors: [palette.positiveSeries, palette.secondarySeries],
             ),
           ],
         ),
@@ -649,31 +658,32 @@ class _LessonInsightsPageState extends State<StatsPage> {
     String unit, {
     bool isLast = false,
   }) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
         border: isLast
             ? null
-            : const Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+            : Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF374151),
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ),
           Text(
             '$value$unit',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
+              color: scheme.onSurface,
             ),
           ),
         ],
@@ -691,10 +701,10 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 17,
         fontWeight: FontWeight.w900,
-        color: Color(0xFF111827),
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
@@ -709,10 +719,10 @@ class _EmptyMetricText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         height: 1.5,
         fontSize: 13,
-        color: Color(0xFF6B7280),
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         fontWeight: FontWeight.w700,
       ),
     );
@@ -735,6 +745,7 @@ class _StatsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final tokens = context.mtfThemeTokens;
 
     return MtfHeaderNeonOverlay(
       isExpanded: false,
@@ -750,7 +761,7 @@ class _StatsHeader extends StatelessWidget {
           bottom: 14,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFF5B4BDB),
+          color: tokens.drawerHeaderBackground,
           borderRadius: const BorderRadius.vertical(
             bottom: Radius.circular(28),
           ),
@@ -842,16 +853,18 @@ class _DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.cardSurface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: tokens.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: scheme.shadow.withOpacity(0.04),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -865,10 +878,10 @@ class _DashboardCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
+                    color: scheme.onSurface,
                   ),
                 ),
               ),
@@ -900,6 +913,10 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final foreground =
+        ThemeData.estimateBrightnessForColor(colors.first) == Brightness.dark
+            ? Colors.white
+            : const Color(0xFF0B1E32);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -929,8 +946,8 @@ class _KpiCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: foreground,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -940,8 +957,8 @@ class _KpiCard extends StatelessWidget {
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: foreground,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
@@ -949,8 +966,8 @@ class _KpiCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: foreground.withValues(alpha: 0.86),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -964,10 +981,10 @@ class _KpiCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: foreground.withOpacity(0.18),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 24),
+            child: Icon(icon, color: foreground, size: 24),
           ),
         ],
       ),
@@ -986,6 +1003,7 @@ class _WeekdayBarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     const labels = ['월', '화', '수', '목', '금', '토', '일'];
     final maxValue = math.max(1, values.fold<int>(0, math.max));
+    final palette = context.mtfChartPalette;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -999,10 +1017,10 @@ class _WeekdayBarChart extends StatelessWidget {
               children: [
                 Text(
                   '${values[index]}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: Colors.black54,
+                    color: palette.axisText,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1013,8 +1031,8 @@ class _WeekdayBarChart extends StatelessWidget {
                     height: 120 * ratio.clamp(0.0, 1.0),
                     decoration: BoxDecoration(
                       color: index >= 5
-                          ? const Color(0xFFA855F7)
-                          : const Color(0xFF4F46E5),
+                          ? palette.tertiarySeries
+                          : palette.primarySeries,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -1022,9 +1040,10 @@ class _WeekdayBarChart extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   labels[index],
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
+                    color: palette.axisText,
                   ),
                 ),
               ],
@@ -1049,13 +1068,8 @@ class _SessionTypeDonut extends StatelessWidget {
     final entries = typeCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final colors = <Color>[
-      const Color(0xFF4F46E5),
-      const Color(0xFF06B6D4),
-      const Color(0xFFF97316),
-      const Color(0xFF10B981),
-      const Color(0xFFA855F7),
-    ];
+    final palette = context.mtfChartPalette;
+    final colors = palette.categoricalSeries;
 
     return Row(
       children: [
@@ -1070,9 +1084,10 @@ class _SessionTypeDonut extends StatelessWidget {
             child: Center(
               child: Text(
                 '$total회',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -1103,17 +1118,18 @@ class _SessionTypeDonut extends StatelessWidget {
                     Expanded(
                       child: Text(
                         item.key,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
                     Text(
                       '${item.value}회 · ${rate.toStringAsFixed(1)}%',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: palette.axisText,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1182,6 +1198,8 @@ class _StatsProGateChatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -1190,7 +1208,8 @@ class _StatsProGateChatCard extends StatelessWidget {
         ),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F4FF),
+          color: tokens.cardSurface,
+          border: Border.all(color: tokens.cardBorder),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
@@ -1199,7 +1218,7 @@ class _StatsProGateChatCard extends StatelessWidget {
               offset: const Offset(0, 12),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: scheme.shadow.withOpacity(0.12),
               blurRadius: 22,
               offset: const Offset(0, 10),
             ),
@@ -1211,33 +1230,31 @@ class _StatsProGateChatCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AifcAvatar(
+                AifcAvatar(
                   size: 34,
                   isAnimating: true,
-                  backgroundColor: Color(0xFFF5F4FF),
+                  backgroundColor: tokens.cardSurface,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: scheme.surface,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(6),
                         topRight: Radius.circular(18),
                         bottomLeft: Radius.circular(18),
                         bottomRight: Radius.circular(18),
                       ),
-                      border: Border.all(
-                        color: const Color(0xFFE0DEFF),
-                      ),
+                      border: Border.all(color: tokens.cardBorder),
                     ),
                     child: Text(
                       '인사이트는 Pro부터 열려요.\n\n'
                       '현재 등급은 $currentTierLabel 입니다.\n'
                       '완료·예정 레슨, 회원 현황, 요일별 레슨 패턴처럼 실제 데이터로 확인되는 지표를 볼 수 있어요.',
-                      style: const TextStyle(
-                        color: Color(0xFF1E1B4B),
+                      style: TextStyle(
+                        color: scheme.onSurface,
                         fontSize: 13,
                         height: 1.45,
                         fontWeight: FontWeight.w800,
@@ -1252,11 +1269,9 @@ class _StatsProGateChatCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.72),
+                color: scheme.surface.withOpacity(0.72),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: const Color(0xFFE0DEFF),
-                ),
+                border: Border.all(color: tokens.cardBorder),
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1285,8 +1300,8 @@ class _StatsProGateChatCard extends StatelessWidget {
               child: FilledButton(
                 onPressed: onTap,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F46E5),
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),

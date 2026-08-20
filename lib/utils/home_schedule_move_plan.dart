@@ -77,6 +77,18 @@ class HomeScheduleEditPlan {
   }
 }
 
+bool homeScheduleTimeRangesOverlap({
+  required DateTime startA,
+  required DateTime endA,
+  required DateTime startB,
+  required DateTime endB,
+}) {
+  if (!endA.isAfter(startA) || !endB.isAfter(startB)) {
+    return false;
+  }
+  return startA.isBefore(endB) && startB.isBefore(endA);
+}
+
 bool isHomeScheduleConflictCandidate({
   required String candidateDocId,
   required DateTime candidateStartAt,
@@ -94,8 +106,12 @@ bool isHomeScheduleConflictCandidate({
       ignoreDocIds.contains(candidateDocId.trim())) {
     return false;
   }
-  return targetStartAt.isBefore(candidateEndAt) &&
-      candidateStartAt.isBefore(targetEndAt);
+  return homeScheduleTimeRangesOverlap(
+    startA: targetStartAt,
+    endA: targetEndAt,
+    startB: candidateStartAt,
+    endB: candidateEndAt,
+  );
 }
 
 bool isHomeScheduleSourceVerificationSuccessful({

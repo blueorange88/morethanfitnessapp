@@ -63,7 +63,7 @@ class AifcAnimatedChatMessage extends StatelessWidget {
 }
 
 mixin AifcChatFlowMixin<T extends StatefulWidget>
-on State<T>, TickerProviderStateMixin<T> {
+    on State<T>, TickerProviderStateMixin<T> {
   final ScrollController aifcScrollController = ScrollController();
 
   final List<AifcChatFlowMessage> aifcMessages = [];
@@ -168,9 +168,9 @@ on State<T>, TickerProviderStateMixin<T> {
   }
 
   Future<void> aifcShowTypingThen(
-      Future<void> Function() action, {
-        Duration? duration,
-      }) async {
+    Future<void> Function() action, {
+    Duration? duration,
+  }) async {
     if (!mounted) return;
 
     setState(() {
@@ -228,6 +228,7 @@ on State<T>, TickerProviderStateMixin<T> {
     required Future<void> Function() action,
     required String successText,
     String errorText = '처리 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.',
+    String Function(Object error)? errorTextBuilder,
     Widget? successChild,
     Object? groupKey,
     bool closeAfterReply = false,
@@ -260,7 +261,7 @@ on State<T>, TickerProviderStateMixin<T> {
         Future.delayed(aifcTypingDuration),
         action(),
       ]);
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
 
       setState(() {
@@ -269,7 +270,7 @@ on State<T>, TickerProviderStateMixin<T> {
       });
 
       aifcAddFcMessage(
-        text: errorText,
+        text: errorTextBuilder?.call(error) ?? errorText,
         groupKey: groupKey,
       );
 

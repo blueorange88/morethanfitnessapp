@@ -7,30 +7,7 @@ import '../../../theme/app_colors.dart';
 const double _kScheduleRowHeight = 40.0;
 const double _kScheduleHeaderCellHeight = 34.0;
 
-const Color _kPrimaryColor = Color(0xFF4F46E5);
-
-const Color _kScheduleLightBg = Color(0xFFFFFFFF);
-const Color _kScheduleRowEven = Color(0xFFEFF6FF);
-const Color _kScheduleRowOdd = Color(0xFFFFFFFF);
-
-const Color _kScheduleTimeColTop = Color(0xFFFFFFFF);
-const Color _kScheduleTimeColMid = Color(0xFFF8FAFC);
-const Color _kScheduleTimeColBottom = Color(0xFFEFF6FF);
-
-const Color _kScheduleGridLine = Color(0xFFE5E7EB);
-const Color _kScheduleTimeColLine = Color(0xFFD1D5DB);
-const Color _kScheduleTimeText = Color(0xFF475569);
-
-const Color _kScheduleTodayHeader = Color(0xFFFBBF24);
-const Color _kScheduleTodayHeaderDeep = Color(0xFFF59E0B);
-const Color _kScheduleTodayEven = Color(0x33FBBF24);
-const Color _kScheduleTodayOdd = Color(0x22FBBF24);
 const Color _kScheduleCurrentLine = Color(0xFFE11D48);
-
-const Color _kScheduleSoftTodayHeader = Color(0xFFFFF3C4);
-const Color _kScheduleSoftTodayHeaderDeep = Color(0xFFF6D97B);
-const Color _kScheduleSoftTodayEven = Color(0xFFFFFAEB);
-const Color _kScheduleSoftTodayOdd = Color(0xFFFFFDF5);
 
 class HomeWeeklyScheduleTable extends StatelessWidget {
   const HomeWeeklyScheduleTable({
@@ -186,9 +163,9 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
   }
 
   String _scheduleBlockDisplayName(
-      Map<String, dynamic> session,
-      Map<String, int> duplicateNameIndexMap,
-      ) {
+    Map<String, dynamic> session,
+    Map<String, int> duplicateNameIndexMap,
+  ) {
     final rawName = (session['name'] ?? '').toString().trim();
     if (rawName.isEmpty) return '';
 
@@ -283,9 +260,9 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
   }
 
   bool _sessionsOverlap(
-      Map<String, dynamic> a,
-      Map<String, dynamic> b,
-      ) {
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
     final aStart = a['startAt'];
     final bStart = b['startAt'];
 
@@ -298,8 +275,8 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> _buildSessionLayouts(
-      List<Map<String, dynamic>> sessions,
-      ) {
+    List<Map<String, dynamic>> sessions,
+  ) {
     if (sessions.isEmpty) return [];
 
     final sorted = List<Map<String, dynamic>>.from(sessions)
@@ -436,10 +413,10 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
     }
 
     final top = _topFromStartAt(
-      startAt: startAt,
-      firstHour: firstHour,
-      rowHeight: rowHeight,
-    ) +
+          startAt: startAt,
+          firstHour: firstHour,
+          rowHeight: rowHeight,
+        ) +
         verticalPadding;
 
     final rawHeight = _heightFromDuration(
@@ -477,7 +454,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
         blockColor = parsed != null ? Color(parsed) : AppColors.lessonPt;
       } else {
         final typeName =
-        (session['typeName'] ?? session['type'] ?? '').toString();
+            (session['typeName'] ?? session['type'] ?? '').toString();
 
         blockColor = AppColors.lessonBlockColor(typeName);
       }
@@ -492,7 +469,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
         (session['trainingLogId'] ?? '').toString().trim().isNotEmpty;
 
     final confirmStatus =
-    (session['lessonConfirmStatus'] ?? '').toString().trim();
+        (session['lessonConfirmStatus'] ?? '').toString().trim();
 
     final isNoShow = confirmStatus == 'no_show_deducted' ||
         confirmStatus == 'no_show_not_deducted' ||
@@ -540,15 +517,15 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
     })();
 
     final confirmedTextColor =
-    lessonConfirmed ? Colors.white.withOpacity(0.92) : Colors.white;
+        lessonConfirmed ? Colors.white.withOpacity(0.92) : Colors.white;
 
     final confirmedOpacity = lessonConfirmed ? 0.86 : 1.0;
 
     final blockOpacity = isExample
         ? 0.42
         : isDone
-        ? AppColors.schedulerDoneOpacity
-        : 1.0;
+            ? AppColors.schedulerDoneOpacity
+            : 1.0;
 
     final showName = durationMinutes >= 20 && rawName.isNotEmpty;
 
@@ -574,9 +551,8 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                   : confirmedBlockColor.withOpacity(confirmedOpacity),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isExample
-                    ? const Color(0xFFD1D5DB)
-                    : confirmedBorderColor,
+                color:
+                    isExample ? const Color(0xFFD1D5DB) : confirmedBorderColor,
                 width: lessonConfirmed ? 1.1 : 0.7,
               ),
             ),
@@ -615,8 +591,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                           child: Text(
                             '예시용',
                             style: TextStyle(
-                              color:
-                              const Color(0xFF111827).withOpacity(0.13),
+                              color: const Color(0xFF111827).withOpacity(0.13),
                               fontSize: 13,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 1.2,
@@ -635,11 +610,13 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
   }
 
   Widget _buildDayHeaderCell(
-      String day, {
-        required double width,
-        required bool isToday,
-        bool isSoftToday = false,
-      }) {
+    String day, {
+    required double width,
+    required bool isToday,
+    required MtfThemeTokens tokens,
+    required Color onHeader,
+    bool isSoftToday = false,
+  }) {
     final bool showSoftToday = !isToday && isSoftToday;
 
     return Container(
@@ -647,43 +624,18 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
       height: _kScheduleHeaderCellHeight,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        gradient: isToday
-            ? const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            _kScheduleTodayHeaderDeep,
-            _kScheduleTodayHeader,
-          ],
-        )
-            : showSoftToday
-            ? const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            _kScheduleSoftTodayHeaderDeep,
-            _kScheduleSoftTodayHeader,
-          ],
-        )
-            : const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            _kPrimaryColor,
-            Color(0xFF9333EA),
-          ],
-        ),
+        color: isToday || showSoftToday
+            ? tokens.scheduleTodayHighlight
+            : tokens.scheduleHeaderBackground,
         border: Border(
           right: BorderSide(
-            color: Colors.white.withOpacity(0.14),
+            color: tokens.scheduleGridLine,
             width: 0.5,
           ),
           bottom: BorderSide(
-            color: isToday
-                ? const Color(0xFFD97706).withOpacity(0.35)
-                : showSoftToday
-                ? const Color(0xFFB45309).withOpacity(0.16)
-                : _kPrimaryColor.withOpacity(0.35),
+            color: isToday || showSoftToday
+                ? tokens.scheduleSelectedBorder
+                : tokens.scheduleGridLine,
             width: 0.8,
           ),
         ),
@@ -693,8 +645,10 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: showSoftToday
-              ? const Color(0xFF92400E).withOpacity(0.78)
-              : Colors.white,
+              ? tokens.scheduleTimeText
+              : isToday
+                  ? AppColors.deepNavy
+                  : onHeader,
           fontSize: 11,
           fontWeight: FontWeight.w800,
           height: 1.0,
@@ -702,13 +656,15 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildTimeHeaderCell(
-      String label, {
-        double width = 70,
-        double height = _kScheduleHeaderCellHeight,
-        VoidCallback? onTap,
-        VoidCallback? onLongPress,
-      }) {
+    String label, {
+    required MtfThemeTokens tokens,
+    double width = 70,
+    double height = _kScheduleHeaderCellHeight,
+    VoidCallback? onTap,
+    VoidCallback? onLongPress,
+  }) {
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -716,24 +672,24 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
         width: width,
         height: height,
         alignment: Alignment.center,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _kScheduleTimeColTop,
-              _kScheduleTimeColMid,
-              _kScheduleTimeColBottom,
+              tokens.cardSurface,
+              tokens.scheduleBackground,
+              tokens.scheduleEmptySlot,
             ],
             stops: [0.0, 0.45, 1.0],
           ),
           border: Border(
             right: BorderSide(
-              color: _kScheduleTimeColLine,
+              color: tokens.scheduleGridLine,
               width: 1.6,
             ),
             bottom: BorderSide(
-              color: _kScheduleGridLine,
+              color: tokens.scheduleGridLine,
               width: 0.8,
             ),
           ),
@@ -741,8 +697,8 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: _kScheduleTimeText,
+          style: TextStyle(
+            color: tokens.scheduleTimeText,
             fontSize: 11.2,
             fontWeight: FontWeight.w900,
             height: 1.0,
@@ -753,45 +709,46 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
   }
 
   Widget _buildTimeCell(
-      String time, {
-        double width = 70,
-        double height = 40,
-        VoidCallback? onLongPress,
-      }) {
+    String time, {
+    required MtfThemeTokens tokens,
+    double width = 70,
+    double height = 40,
+    VoidCallback? onLongPress,
+  }) {
     return GestureDetector(
       onLongPress: onLongPress,
       child: Container(
         width: width,
         height: height,
         alignment: Alignment.center,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              _kScheduleTimeColTop,
-              _kScheduleTimeColMid,
-              _kScheduleTimeColBottom,
+              tokens.cardSurface,
+              tokens.scheduleBackground,
+              tokens.scheduleEmptySlot,
             ],
             stops: [0.0, 0.45, 1.0],
           ),
           border: Border(
             right: BorderSide(
-              color: _kScheduleTimeColLine,
+              color: tokens.scheduleGridLine,
               width: 1.6,
             ),
             bottom: BorderSide(
-              color: _kScheduleGridLine,
+              color: tokens.scheduleGridLine,
               width: 0.6,
             ),
           ),
         ),
         child: Text(
           time,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11.2,
             fontWeight: FontWeight.w800,
-            color: _kScheduleTimeText,
+            color: tokens.scheduleTimeText,
             height: 1.0,
           ),
         ),
@@ -801,6 +758,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.mtfThemeTokens;
     final weekDays = _filteredDays();
     final duplicateNameIndexMap = _buildScheduleDuplicateNameIndexMap();
     final bool isCurrentWeek = weekOffset == 0;
@@ -812,9 +770,13 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
 
     const rowHeight = _kScheduleRowHeight;
 
-    return Card(
-      elevation: 1,
-      margin: EdgeInsets.zero,
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: tokens.schedulerOuterSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tokens.schedulerBorder),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isWeekendMode = weekDays.length == 2;
@@ -838,6 +800,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                 children: [
                   _buildTimeHeaderCell(
                     '시간',
+                    tokens: tokens,
                     width: timeColWidth,
                     height: _kScheduleHeaderCellHeight,
                     onTap: onTimeHeaderTap,
@@ -855,6 +818,8 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                       width: dayColWidth,
                       isToday: isTodayCol,
                       isSoftToday: isSoftTodayCol,
+                      tokens: tokens,
+                      onHeader: AppColors.darkTextPrimary,
                     );
                   }),
                 ],
@@ -869,6 +834,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                         children: timeSlots.map((time) {
                           return _buildTimeCell(
                             time,
+                            tokens: tokens,
                             width: timeColWidth,
                             height: rowHeight,
                             onLongPress: onTimeRowLongPress == null
@@ -879,14 +845,16 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                       ),
                     ),
                     ...weekDays.map((day) {
-                      final isTodayColumn =
-                          isCurrentWeek && todayName != null && day == todayName;
+                      final isTodayColumn = isCurrentWeek &&
+                          todayName != null &&
+                          day == todayName;
 
-                      final isSoftTodayColumn =
-                          !isCurrentWeek && todayName != null && day == todayName;
+                      final isSoftTodayColumn = !isCurrentWeek &&
+                          todayName != null &&
+                          day == todayName;
 
                       final daySessions = _collectDaySessions(day).where(
-                            (session) {
+                        (session) {
                           final rawStartAt = session['startAt'];
                           if (rawStartAt is! DateTime) return false;
 
@@ -917,8 +885,8 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                       return Container(
                         width: dayColWidth,
                         height: bodyHeight,
-                        decoration: const BoxDecoration(
-                          color: _kScheduleLightBg,
+                        decoration: BoxDecoration(
+                          color: tokens.scheduleBackground,
                         ),
                         child: Stack(
                           children: [
@@ -937,23 +905,31 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: isTodayColumn
-                                          ? (i % 2 == 0
-                                          ? _kScheduleTodayEven
-                                          : _kScheduleTodayOdd)
+                                          ? Color.alphaBlend(
+                                              tokens.scheduleTodayHighlight
+                                                  .withOpacity(
+                                                i.isEven ? 0.42 : 0.30,
+                                              ),
+                                              tokens.scheduleBackground,
+                                            )
                                           : isSoftTodayColumn
-                                          ? (i % 2 == 0
-                                          ? _kScheduleSoftTodayEven
-                                          : _kScheduleSoftTodayOdd)
-                                          : (i % 2 == 0
-                                          ? _kScheduleRowEven
-                                          : _kScheduleRowOdd),
-                                      border: const Border(
+                                              ? Color.alphaBlend(
+                                                  tokens.scheduleTodayHighlight
+                                                      .withOpacity(
+                                                    i.isEven ? 0.24 : 0.16,
+                                                  ),
+                                                  tokens.scheduleBackground,
+                                                )
+                                              : i.isEven
+                                                  ? tokens.scheduleEmptySlot
+                                                  : tokens.scheduleBackground,
+                                      border: Border(
                                         right: BorderSide(
-                                          color: _kScheduleGridLine,
+                                          color: tokens.scheduleGridLine,
                                           width: 0.5,
                                         ),
                                         bottom: BorderSide(
-                                          color: _kScheduleGridLine,
+                                          color: tokens.scheduleGridLine,
                                           width: 0.6,
                                         ),
                                       ),
@@ -968,7 +944,8 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                                     layout['session'] as Map,
                                   );
 
-                                  final isExample = session['isExample'] == true;
+                                  final isExample =
+                                      session['isExample'] == true;
 
                                   return _buildEventBlock(
                                     session: session,
@@ -978,12 +955,12 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                                     rowHeight: rowHeight,
                                     firstHour: firstHour,
                                     duplicateNameIndexMap:
-                                    duplicateNameIndexMap,
+                                        duplicateNameIndexMap,
                                     onTap: isExample
                                         ? onExampleTap
                                         : onEventTap == null
-                                        ? null
-                                        : () => onEventTap!(session),
+                                            ? null
+                                            : () => onEventTap!(session),
                                   );
                                 },
                               ),
@@ -1013,23 +990,26 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       color: isTodayColumn
                                           ? _kScheduleCurrentLine
-                                          : _kScheduleCurrentLine.withOpacity(0.34),
+                                          : _kScheduleCurrentLine
+                                              .withOpacity(0.34),
                                       borderRadius: BorderRadius.circular(999),
                                       boxShadow: isTodayColumn
                                           ? [
-                                        BoxShadow(
-                                          color: _kScheduleCurrentLine.withOpacity(0.35),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 1),
-                                        ),
-                                      ]
+                                              BoxShadow(
+                                                color: _kScheduleCurrentLine
+                                                    .withOpacity(0.35),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ]
                                           : [
-                                        BoxShadow(
-                                          color: _kScheduleCurrentLine.withOpacity(0.12),
-                                          blurRadius: 2.5,
-                                          offset: const Offset(0, 0.5),
-                                        ),
-                                      ],
+                                              BoxShadow(
+                                                color: _kScheduleCurrentLine
+                                                    .withOpacity(0.12),
+                                                blurRadius: 2.5,
+                                                offset: const Offset(0, 0.5),
+                                              ),
+                                            ],
                                     ),
                                   ),
                                 );

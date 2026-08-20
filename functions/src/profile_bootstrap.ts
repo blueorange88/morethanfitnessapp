@@ -16,6 +16,7 @@ import {
   normalizeActivityRegions,
   tierRank,
 } from "./tier_qualification.js";
+import {normalizePersonalTaxonomyName} from "./personal_member_taxonomy.js";
 
 const PROFILE_SCHEMA_VERSION = 1;
 const RECENT_AUTH_MAX_AGE_SECONDS = 5 * 60;
@@ -739,14 +740,10 @@ export function createUpdatePersonalTrainerProfileHandler(
       updates,
       "memberDefaultGroupLabel",
     )) {
-      const label = String(updates.memberDefaultGroupLabel).trim();
-      if (label.length < 2 || label.length > 30) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "member_default_group_label_invalid",
-        );
-      }
-      updates.memberDefaultGroupLabel = label;
+      updates.memberDefaultGroupLabel = normalizePersonalTaxonomyName(
+        updates.memberDefaultGroupLabel,
+        "member_default_group_label_invalid",
+      ).name;
     }
 
     const validateOptional = (
@@ -850,6 +847,26 @@ export function createUpdatePersonalTrainerProfileHandler(
             "permission-denied",
             "workspace_not_eligible",
           );
+        }
+        if (Object.prototype.hasOwnProperty.call(
+          updates,
+          "memberDefaultGroupLabel",
+        )) {
+          const normalizedDefaultName = normalizePersonalTaxonomyName(
+            updates.memberDefaultGroupLabel,
+            "member_default_group_label_invalid",
+          ).normalizedName;
+          const duplicateGroups = await transaction.get(
+            profileRef.collection("personal_groups")
+              .where("normalizedName", "==", normalizedDefaultName)
+              .limit(1),
+          );
+          if (!duplicateGroups.empty) {
+            throw new functions.https.HttpsError(
+              "already-exists",
+              "duplicate_group_name",
+            );
+          }
         }
         const merged = {...current, ...updates};
         const contractPatch: Record<string, unknown> = {};

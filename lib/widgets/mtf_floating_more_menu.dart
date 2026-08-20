@@ -1,17 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
-const Color _kMoreBg = Color(0xFFEDEFFA);
-const Color _kMoreText = Color(0xFF111827);
-const Color _kMoreSubText = Color(0xFF6B7280);
-const Color _kMoreBorder = Color(0xFFD8D5EA);
-const Color _kMoreIconBg = Color(0xFFFFFFFF);
-const Color _kMoreIconBorder = Color(0xFFDAD7EE);
-const Color _kMorePrimary = Color(0xFF4F46E5);
-const Color _kMoreNeonStart = Color(0x554F46E5);
-const Color _kMoreNeonMid = Color(0xFF5B21B6);
-const Color _kMoreNeonEnd = Color(0xFF7C3AED);
-const Color _kMoreNeonGlow = Color(0xFF7C3AED);
+const Color _kMoreNeonStart = Color(0x55EFCB62);
+const Color _kMoreNeonMid = Color(0xFFEFCB62);
+const Color _kMoreNeonEnd = Color(0xFFC99D32);
+const Color _kMoreNeonGlow = Color(0xFFEFCB62);
 
 class MtfMoreMenuItem<T> {
   const MtfMoreMenuItem({
@@ -275,6 +269,9 @@ class _MtfMoreMenuCard<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
+
     return SizedBox(
       width: width,
       child: Stack(
@@ -282,20 +279,20 @@ class _MtfMoreMenuCard<T> extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(9, 9, 9, 9),
             decoration: BoxDecoration(
-              color: _kMoreBg,
+              color: tokens.navigationSheetBackground,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: _kMoreBorder,
+                color: tokens.cardBorder,
                 width: 0.8,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF111827).withOpacity(0.20),
+                  color: scheme.shadow.withOpacity(0.20),
                   blurRadius: 24,
                   offset: const Offset(-8, 10),
                 ),
                 BoxShadow(
-                  color: _kMorePrimary.withOpacity(0.10),
+                  color: scheme.secondary.withOpacity(0.10),
                   blurRadius: 18,
                   offset: const Offset(-4, 4),
                 ),
@@ -349,11 +346,13 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     final Color accent = item.isDanger
         ? const Color(0xFFDC2626)
         : item.isSelected
-            ? _kMorePrimary
-            : const Color(0xFF6D28D9);
+            ? scheme.onSecondaryContainer
+            : scheme.primary;
 
     return InkWell(
       onTap: () => onSelected(item.value),
@@ -365,7 +364,7 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: item.isSelected
-              ? Colors.white.withOpacity(0.62)
+              ? tokens.navigationSelectedBackground
               : Colors.transparent,
           borderRadius: BorderRadius.circular(13),
         ),
@@ -375,10 +374,10 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
               width: 31,
               height: 31,
               decoration: BoxDecoration(
-                color: _kMoreIconBg.withOpacity(0.92),
+                color: tokens.cardSurface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: _kMoreIconBorder,
+                  color: tokens.cardBorder,
                   width: 0.6,
                 ),
               ),
@@ -399,8 +398,9 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color:
-                          item.isDanger ? const Color(0xFFB91C1C) : _kMoreText,
+                      color: item.isDanger
+                          ? const Color(0xFFB91C1C)
+                          : scheme.onSurface,
                       fontSize: 12.7,
                       fontWeight:
                           item.isSelected ? FontWeight.w900 : FontWeight.w800,
@@ -413,8 +413,8 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
                       item.subLabel!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _kMoreSubText,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
                         fontSize: 10.2,
                         fontWeight: FontWeight.w600,
                         height: 1.1,
@@ -425,16 +425,16 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
               ),
             ),
             if (item.isSelected)
-              const Icon(
+              Icon(
                 Icons.check_rounded,
                 size: 16,
-                color: _kMorePrimary,
+                color: scheme.onSecondaryContainer,
               )
             else
               Icon(
                 Icons.chevron_right_rounded,
                 size: 16,
-                color: _kMoreSubText.withOpacity(0.48),
+                color: scheme.onSurfaceVariant.withOpacity(0.48),
               ),
           ],
         ),

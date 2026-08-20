@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../aifc/core/aifc_avatar.dart';
+import '../../../theme/app_colors.dart';
 
 class HomeSupportTierGuideSheet {
   const HomeSupportTierGuideSheet._();
@@ -193,6 +194,8 @@ class HomeSupportTierGuideSheet {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final tokens = sheetContext.mtfThemeTokens;
         final maxSheetHeight = MediaQuery.of(sheetContext).size.height * 0.86;
 
         return SafeArea(
@@ -206,7 +209,7 @@ class HomeSupportTierGuideSheet {
               ),
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: tokens.sheetBackground,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
@@ -231,11 +234,11 @@ class HomeSupportTierGuideSheet {
                           backgroundColor: Colors.white,
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'MORE THAN의 다음 걸음을 응원해주실 수 있어요',
                             style: TextStyle(
-                              color: Color(0xFF111827),
+                              color: theme.colorScheme.onSurface,
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.3,
@@ -245,11 +248,11 @@ class HomeSupportTierGuideSheet {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    const Text(
+                    Text(
                       '기능은 계속 넓혀가되, 강사님들이 부담 없이 사용할 수 있는 방향으로 운영하려고 해요.\n'
                       '도움이 되셨다면 선택후원으로 AI FC의 개발을 응원해주세요.',
                       style: TextStyle(
-                        color: Color(0xFF6B7280),
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 13,
                         height: 1.45,
                         fontWeight: FontWeight.w600,
@@ -303,9 +306,10 @@ class HomeSupportTierGuideSheet {
                               Navigator.of(sheetContext).pop();
                             },
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF6B7280),
-                              side: const BorderSide(
-                                color: Color(0xFFE5E7EB),
+                              foregroundColor:
+                                  theme.colorScheme.onSurfaceVariant,
+                              side: BorderSide(
+                                color: tokens.cardBorder,
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
@@ -328,8 +332,8 @@ class HomeSupportTierGuideSheet {
                               onSponsorTap(selectedSupportTier);
                             },
                             style: FilledButton.styleFrom(
-                              backgroundColor: primaryColor,
-                              foregroundColor: Colors.white,
+                              backgroundColor: tokens.gradeSheetAccent,
+                              foregroundColor: theme.colorScheme.onSecondary,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),

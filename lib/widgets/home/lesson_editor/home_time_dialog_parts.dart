@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../theme/app_colors.dart';
+
 class HomeTimeDialogHeader extends StatelessWidget {
   const HomeTimeDialogHeader({
     super.key,
@@ -19,16 +21,16 @@ class HomeTimeDialogHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.mtfThemeTokens;
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF7C3AED),
-            Color(0xFF9333EA),
+            tokens.drawerHeaderBackground,
+            AppColors.deepNavy,
           ],
-          stops: [0.0, 0.55, 1.0],
+          stops: const [0.0, 1.0],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -139,8 +141,6 @@ class HomeDialWheel extends StatelessWidget {
   final String Function(int index) labelBuilder;
   final ValueChanged<int> onChanged;
 
-  static const Color _primaryColor = Color(0xFF4F46E5);
-
   double _opacityForDistance(int distance) {
     switch (distance) {
       case 0:
@@ -173,6 +173,8 @@ class HomeDialWheel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -197,7 +199,7 @@ class HomeDialWheel extends StatelessWidget {
                 top: 43,
                 child: Container(
                   height: 1,
-                  color: _primaryColor.withOpacity(0.12),
+                  color: tokens.gradeSheetAccent.withOpacity(0.28),
                 ),
               ),
               Positioned(
@@ -206,7 +208,7 @@ class HomeDialWheel extends StatelessWidget {
                 bottom: 43,
                 child: Container(
                   height: 1,
-                  color: _primaryColor.withOpacity(0.12),
+                  color: tokens.gradeSheetAccent.withOpacity(0.28),
                 ),
               ),
               ListWheelScrollView.useDelegate(
@@ -238,8 +240,8 @@ class HomeDialWheel extends StatelessWidget {
                             fontWeight: fontWeight,
                             letterSpacing: isSelected ? 0.7 : 0,
                             color: isSelected
-                                ? _primaryColor
-                                : const Color(0xFF64748B),
+                                ? tokens.gradeSheetAccent
+                                : theme.colorScheme.onSurfaceVariant,
                           ),
                           child: Text(labelBuilder(index)),
                         ),
@@ -272,6 +274,8 @@ class HomeDialogFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
       child: Row(
@@ -280,8 +284,8 @@ class HomeDialogFooter extends StatelessWidget {
             child: TextButton(
               onPressed: onCancel,
               style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFFF3F4F6),
-                foregroundColor: const Color(0xFF6B7280),
+                backgroundColor: tokens.cardSurface,
+                foregroundColor: theme.colorScheme.onSurfaceVariant,
                 padding: const EdgeInsets.symmetric(vertical: 9),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(9),
@@ -301,14 +305,7 @@ class HomeDialogFooter extends StatelessWidget {
             flex: 2,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF4F46E5),
-                    Color(0xFF9333EA),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: tokens.gradeSheetAccent,
                 borderRadius: BorderRadius.circular(9),
               ),
               child: ElevatedButton(
@@ -316,7 +313,7 @@ class HomeDialogFooter extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: theme.colorScheme.onSecondary,
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(9),
@@ -350,9 +347,9 @@ class HomeMaxNumberInputFormatter extends TextInputFormatter {
 
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue,
-      TextEditingValue newValue,
-      ) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final text = newValue.text;
 
     if (text.isEmpty) {

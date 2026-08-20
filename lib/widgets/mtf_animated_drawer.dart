@@ -1,28 +1,17 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
 import 'premium_banner_widget.dart';
 
-// ── 색상 ───────────────────────────────────────────────────────────────────────
-// ── 색상 ───────────────────────────────────────────────────────────────────────
-const Color _kPrimary = Color(0xFF4F46E5);
-const Color _kPrimary2 = Color(0xFF9333EA);
-
-// 라이트 블루퍼플 그레이 패널
-const Color _kPanelBg = Color(0xFFEDEFFA);
-const Color _kPanelText = Color(0xFF111827);
-const Color _kPanelSubText = Color(0xFF4B5563);
-const Color _kPanelMutedText = Color(0xFF6B7280);
-const Color _kPanelBorder = Color(0xFFD8D5EA);
-const Color _kPanelIconBg = Color(0xFFFFFFFF);
-const Color _kPanelIconBorder = Color(0xFFDAD7EE);
-const Color _kDivider = Color(0xFFE1DDEF);
+const Color _kPrimary = AppColors.deepNavy;
+const Color _kPrimary2 = Color(0xFF163A54);
 
 // 상단은 흐릿하게, 측면/하단은 진하게
-const Color _kNeonStart = Color(0x554F46E5);
-const Color _kNeonMid = Color(0xFF5B21B6);
-const Color _kNeonEnd = Color(0xFF7C3AED);
-const Color _kNeonGlow = Color(0xFF7C3AED);
+const Color _kNeonStart = Color(0x55EFCB62);
+const Color _kNeonMid = AppColors.warmYellow;
+const Color _kNeonEnd = AppColors.goldLight;
+const Color _kNeonGlow = AppColors.warmYellow;
 
 // LIVE 포인트
 const Color _kLiveDot = Color(0xFFDC2626);
@@ -164,54 +153,22 @@ class _MtfGlassPanel extends StatefulWidget {
 
 class _MtfGlassPanelState extends State<_MtfGlassPanel>
     with TickerProviderStateMixin {
-  // 슬라이드 인
-  late final AnimationController _slideCtrl;
-  late final Animation<Offset> _slideAnim;
-
   // L자 네온라인 (왼쪽 + 하단)
   late final AnimationController _neonCtrl;
   late final Animation<double> _neonAnim;
-
-  // 메뉴 stagger
-  late final AnimationController _contentCtrl;
-
-  // LIVE 펄스
-  late final AnimationController _livePulseCtrl;
 
   @override
   void initState() {
     super.initState();
 
-    _slideCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 340),
-    );
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideCtrl,
-      curve: Curves.easeOutCubic,
-    ));
-
     _neonCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 300),
     );
     _neonAnim = CurvedAnimation(
       parent: _neonCtrl,
       curve: Curves.easeOutCubic,
     );
-
-    _contentCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 460),
-    );
-
-    _livePulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1300),
-    )..repeat(reverse: true);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startSequence();
@@ -220,65 +177,44 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
 
   @override
   void dispose() {
-    _slideCtrl.dispose();
     _neonCtrl.dispose();
-    _contentCtrl.dispose();
-    _livePulseCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _startSequence() async {
-    _slideCtrl.forward(from: 0);
-
-    await Future.delayed(const Duration(milliseconds: 80));
-    if (!mounted) return;
-
+  void _startSequence() {
     _neonCtrl.forward(from: 0);
-    _contentCtrl.forward(from: 0);
   }
 
-  Animation<double> _staggerAnim(int index) {
-    final start = 0.04 + index * 0.06;
-    final end = (start + 0.36).clamp(0.0, 1.0);
-    return CurvedAnimation(
-      parent: _contentCtrl,
-      curve: Interval(start, end, curve: Curves.easeOutCubic),
-    );
+  Animation<double> _staggerAnim(int ignoredIndex) {
+    return const AlwaysStoppedAnimation<double>(1);
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([
-        _slideAnim,
-        _neonAnim,
-        _contentCtrl,
-        _livePulseCtrl,
-      ]),
-      builder: (context, _) {
-        return SlideTransition(
-          position: _slideAnim,
-          child: Stack(
-            children: [
-              // ── 패널 본체 ────────────────────────────────────────────────
-              _buildBody(),
+      animation: _neonAnim,
+      child: _buildBody(),
+      builder: (context, child) {
+        return Stack(
+          children: [
+            // ── 패널 본체 ────────────────────────────────────────────────
+            child!,
 
-              // ── L자 네온라인 (왼쪽 + 하단) ──────────────────────────────
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _LNeonPainter(
-                      progress: _neonAnim.value,
-                      startColor: _kNeonStart,
-                      midColor: _kNeonMid,
-                      endColor: _kNeonEnd,
-                      glowColor: _kNeonGlow,
-                    ),
+            // ── L자 네온라인 (왼쪽 + 하단) ──────────────────────────────
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _LNeonPainter(
+                    progress: _neonAnim.value,
+                    startColor: _kNeonStart,
+                    midColor: _kNeonMid,
+                    endColor: _kNeonEnd,
+                    glowColor: _kNeonGlow,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
@@ -287,21 +223,22 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
   Widget _buildBody() {
     final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
+    final tokens = context.mtfThemeTokens;
 
     return Container(
       decoration: BoxDecoration(
-        color: _kPanelBg,
+        color: tokens.drawerBackground,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(26),
           bottomLeft: Radius.circular(26),
         ),
-        border: const Border(
-          left: BorderSide(color: _kPanelBorder, width: 0.8),
+        border: Border(
+          left: BorderSide(color: tokens.cardBorder, width: 0.8),
         ),
         boxShadow: [
           // 왼쪽으로 깊게 떨어지는 메인 그림자
           BoxShadow(
-            color: const Color(0xFF111827).withOpacity(0.22),
+            color: Colors.black.withOpacity(0.22),
             blurRadius: 34,
             spreadRadius: 0,
             offset: const Offset(-14, 10),
@@ -354,7 +291,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                       index: 2,
                       icon: Icons.people_outline_rounded,
                       label: '고객카드',
-                      sub: 'AI FC로 더 섬세한 회원관리를 경험해보세요',
+                      sub: '회원 정보 확인 및 관리 지원',
                       onTap: () {
                         Navigator.of(context).pop();
                         widget.onMembers?.call();
@@ -364,7 +301,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                       index: 3,
                       icon: Icons.description_outlined,
                       label: '레슨계약서',
-                      sub: '정교하고 확실한 레슨계약서 작성해보세요',
+                      sub: '레슨 계약서 작성 및 운영 지원',
                       onTap: () {
                         Navigator.of(context).pop();
                         widget.onContract?.call();
@@ -374,7 +311,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                       index: 4,
                       icon: Icons.assignment_outlined,
                       label: '회원권계약서',
-                      sub: '많은 회원분들 하나도 놓치지 않고 회원권기록 남겨요',
+                      sub: '회원권 계약서 작성 및 운영 지원',
                       onTap: () {
                         Navigator.of(context).pop();
                         widget.onMembershipContract?.call();
@@ -384,7 +321,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                       index: 5,
                       icon: Icons.bar_chart_rounded,
                       label: '인사이트',
-                      sub: '더 간편하고 똑똑하게 주간,월간,연간 계획구성에 활용해보세요',
+                      sub: '레슨 및 회원 운영 분석 지원',
                       onTap: () {
                         Navigator.of(context).pop();
                         widget.onStats?.call();
@@ -436,6 +373,9 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
 
   // ── 프로필 ────────────────────────────────────────────────────────────────────
   Widget _buildProfile(Animation<double> anim) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
+
     return FadeTransition(
       opacity: anim,
       child: SlideTransition(
@@ -443,102 +383,111 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
           begin: const Offset(0.06, 0),
           end: Offset.zero,
         ).animate(anim),
-        child: InkWell(
-          onTap: () {
-            Navigator.of(context).pop();
-            widget.onMyPage?.call();
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-            child: Row(
-              children: [
-                // 아바타
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [_kPrimary, _kPrimary2],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+        child: ColoredBox(
+          color: tokens.drawerHeaderBackground,
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).pop();
+              widget.onMyPage?.call();
+            },
+            overlayColor: WidgetStatePropertyAll(
+              tokens.drawerSelectedBackground.withOpacity(0.18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              child: Row(
+                children: [
+                  // 아바타
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [_kPrimary, _kPrimary2],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.20),
+                        width: 1.5,
+                      ),
                     ),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.20),
-                      width: 1.5,
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.shortName.isEmpty ? '강' : widget.shortName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    widget.shortName.isEmpty ? '강' : widget.shortName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.trainerName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _kPanelText,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.trainerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            height: 1.1,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _kPrimary.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: _kPrimary.withOpacity(0.28),
-                                width: 0.5,
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    tokens.gradeSheetAccent.withOpacity(0.16),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color:
+                                      tokens.gradeSheetAccent.withOpacity(0.36),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Text(
+                                widget.tierName,
+                                style: TextStyle(
+                                  color: tokens.gradeSheetAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              widget.tierName,
-                              style: const TextStyle(
-                                color: Color(0xFFA78BFA),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                            const SizedBox(width: 6),
+                            Text(
+                              '회원 ${widget.memberCount}명',
+                              style: TextStyle(
+                                color: theme.colorScheme.onPrimary
+                                    .withOpacity(0.72),
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '회원 ${widget.memberCount}명',
-                            style: const TextStyle(
-                              color: _kPanelMutedText,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: _kPanelMutedText,
-                ),
-              ],
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: theme.colorScheme.onPrimary.withOpacity(0.72),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -555,6 +504,8 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
     required VoidCallback onTap,
   }) {
     final anim = _staggerAnim(index);
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
 
     return FadeTransition(
       opacity: anim,
@@ -566,6 +517,9 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(13),
+          overlayColor: WidgetStatePropertyAll(
+            tokens.drawerSelectedBackground.withOpacity(0.55),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
             child: Row(
@@ -574,14 +528,14 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                   width: 31,
                   height: 31,
                   decoration: BoxDecoration(
-                    color: _kPanelIconBg,
+                    color: tokens.cardSurface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: _kPanelIconBorder,
+                      color: tokens.cardBorder,
                       width: 0.5,
                     ),
                   ),
-                  child: Icon(icon, color: const Color(0xFF8B83F7), size: 17),
+                  child: Icon(icon, color: theme.colorScheme.primary, size: 17),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
@@ -590,8 +544,8 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                     children: [
                       Text(
                         label,
-                        style: const TextStyle(
-                          color: _kPanelText,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           height: 1.1,
@@ -600,8 +554,8 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                       const SizedBox(height: 2),
                       Text(
                         sub,
-                        style: const TextStyle(
-                          color: _kPanelMutedText,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
                           height: 1.1,
@@ -612,7 +566,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: _kPanelMutedText.withOpacity(0.5),
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
                   size: 17,
                 ),
               ],
@@ -652,8 +606,6 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
 
   // ── LIVE 카드 ─────────────────────────────────────────────────────────────────
   Widget _buildLiveCard(Animation<double> anim) {
-    final pulseVal = _livePulseCtrl.value;
-
     return FadeTransition(
       opacity: anim,
       child: SlideTransition(
@@ -698,7 +650,6 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                     children: List.generate(5, (i) {
                       return _WaveBar(
                         index: i,
-                        pulseVal: pulseVal,
                       );
                     }),
                   ),
@@ -747,11 +698,21 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                       ),
                       const SizedBox(height: 3),
                       const Text(
-                        '실시간 회원관리',
+                        'MORE WELLNESS 회원관리',
                         style: TextStyle(
                           color: Color(0xFFFED7AA),
                           fontSize: 12.5,
                           fontWeight: FontWeight.w800,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        '회원 관리 화면으로 이동',
+                        style: TextStyle(
+                          color: Color(0xFFFDBA74),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
                           height: 1.1,
                         ),
                       ),
@@ -775,7 +736,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
     return Container(
       height: 0.5,
       margin: const EdgeInsets.symmetric(horizontal: 14),
-      color: _kDivider,
+      color: context.mtfThemeTokens.cardBorder,
     );
   }
 
@@ -784,6 +745,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
     required String label,
     required VoidCallback onTap,
   }) {
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(11),
@@ -791,12 +753,12 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
         child: Row(
           children: [
-            Icon(icon, color: _kPanelMutedText, size: 18),
+            Icon(icon, color: color, size: 18),
             const SizedBox(width: 10),
             Text(
               label,
-              style: const TextStyle(
-                color: _kPanelMutedText,
+              style: TextStyle(
+                color: color,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -812,9 +774,8 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
 //  파형 막대 위젯
 // ════════════════════════════════════════════════════════════════════════════════
 class _WaveBar extends StatefulWidget {
-  const _WaveBar({required this.index, required this.pulseVal});
+  const _WaveBar({required this.index});
   final int index;
-  final double pulseVal;
 
   @override
   State<_WaveBar> createState() => _WaveBarState();
@@ -935,6 +896,9 @@ class _GlitchMenuTileState extends State<_GlitchMenuTile>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
+
     return GestureDetector(
       onTap: _handleTap,
       child: AnimatedBuilder(
@@ -954,16 +918,16 @@ class _GlitchMenuTileState extends State<_GlitchMenuTile>
                 height: 34,
                 decoration: BoxDecoration(
                   // 스캔라인 효과로 "미완성" 느낌
-                  color: Colors.white.withOpacity(0.04),
+                  color: tokens.cardSurface.withOpacity(0.72),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.08),
+                    color: tokens.cardBorder,
                     width: 0.5,
                   ),
                 ),
                 child: Icon(
                   widget.icon,
-                  color: _kPanelMutedText.withOpacity(0.55),
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.55),
                   size: 17,
                 ),
               ),
@@ -975,7 +939,7 @@ class _GlitchMenuTileState extends State<_GlitchMenuTile>
                     Text(
                       widget.label,
                       style: TextStyle(
-                        color: _kPanelText.withOpacity(0.45),
+                        color: theme.colorScheme.onSurface.withOpacity(0.45),
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         height: 1.1,
@@ -990,17 +954,18 @@ class _GlitchMenuTileState extends State<_GlitchMenuTile>
                             vertical: 1,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.06),
+                            color: tokens.drawerSelectedBackground
+                                .withOpacity(0.24),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.10),
+                              color: tokens.cardBorder,
                               width: 0.5,
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             '소규모 퍼스널 브랜딩 굿즈',
                             style: TextStyle(
-                              color: _kPanelMutedText,
+                              color: theme.colorScheme.onSurfaceVariant,
                               fontSize: 9.5,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.3,
@@ -1014,7 +979,7 @@ class _GlitchMenuTileState extends State<_GlitchMenuTile>
               ),
               Icon(
                 Icons.lock_outline_rounded,
-                color: _kPanelMutedText.withOpacity(0.3),
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
                 size: 15,
               ),
             ],

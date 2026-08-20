@@ -2,27 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../theme/app_colors.dart';
 import '../core/aifc_chat_bubble.dart';
 import '../core/aifc_sheet_frame.dart';
-import '../core/aifc_theme.dart';
 import '../core/aifc_typing_dots.dart';
-
-// ─────────────────────────────────────────────
-// AI FC ChatSheet Colors
-// ─────────────────────────────────────────────
-
-const Color _kSheetBg = Color(0xFFF5F4FF);
-const Color _kFcBubbleBg = Color(0xFFFFFFFF);
-const Color _kFcBubbleBdr = Color(0xFFE0DEFF);
-const Color _kFcText = Color(0xFF1E1B4B);
-const Color _kUserBubble = Color(0xFF4F46E5);
-const Color _kInputBg = Color(0xFFFFFFFF);
-const Color _kInputBdr = Color(0xFFC7C4FF);
-const Color _kInputBdrFocus = Color(0xFF4F46E5);
-const Color _kInputHint = Color(0xFFA5A3C8);
-const Color _kSkipColor = Color(0xFFA5A3C8);
-const Color _kDotColor = Color(0xFF4F46E5);
-const Color _kPrimary = Color(0xFF4F46E5);
 
 class AifcChatSheet extends StatefulWidget {
   const AifcChatSheet({
@@ -122,9 +105,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
   void initState() {
     super.initState();
 
-    if (widget.initialValue
-        .trim()
-        .isNotEmpty) {
+    if (widget.initialValue.trim().isNotEmpty) {
       _inputCtrl.text = widget.initialValue.trim();
     }
 
@@ -183,9 +164,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
 
     _typingDebounce?.cancel();
 
-    final hasText = _inputCtrl.text
-        .trim()
-        .isNotEmpty;
+    final hasText = _inputCtrl.text.trim().isNotEmpty;
 
     setState(() {
       _userIsTyping = hasText;
@@ -229,9 +208,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
     _focusNode.requestFocus();
 
     setState(() {
-      _userIsTyping = value
-          .trim()
-          .isNotEmpty;
+      _userIsTyping = value.trim().isNotEmpty;
       _fcIsTyping = false;
     });
   }
@@ -271,9 +248,11 @@ class _AifcChatSheetState extends State<AifcChatSheet>
     _scrollToBottom();
 
     String replyText = '';
+    var saveSucceeded = false;
 
     try {
       replyText = await widget.onSave(value);
+      saveSucceeded = true;
     } catch (_) {
       replyText = '저장하지 못했어요.\n다시 시도해주세요.';
     }
@@ -294,6 +273,18 @@ class _AifcChatSheetState extends State<AifcChatSheet>
             : '$value(으)로 안내할게요 😊\n언제든 마이페이지에서 바꿀 수 있어요.',
       ),
     );
+
+    if (!saveSucceeded) {
+      setState(() {
+        _answered = false;
+      });
+      _inputCtrl.value = TextEditingValue(
+        text: value,
+        selection: TextSelection.collapsed(offset: value.length),
+      );
+      _focusNode.requestFocus();
+      return;
+    }
 
     await Future.delayed(const Duration(milliseconds: 1300));
     if (!mounted) return;
@@ -319,16 +310,11 @@ class _AifcChatSheetState extends State<AifcChatSheet>
     _addBubble(
       _Bubble(
         type: _BubbleType.user,
-        text: widget.skipLabel
-            .trim()
-            .isEmpty
+        text: widget.skipLabel.trim().isEmpty
             ? '나중에 알려드릴게요'
-            : widget.skipLabel
-            .replaceAll('알려드릴게요', '')
-            .trim()
-            .isEmpty
-            ? '나중에 알려드릴게요'
-            : '나중에 알려드릴게요',
+            : widget.skipLabel.replaceAll('알려드릴게요', '').trim().isEmpty
+                ? '나중에 알려드릴게요'
+                : '나중에 알려드릴게요',
       ),
     );
 
@@ -416,16 +402,16 @@ class _AifcChatSheetState extends State<AifcChatSheet>
             GestureDetector(
               onTap: widget.skipClosesImmediately
                   ? () {
-                widget.onSkip?.call();
-                Navigator.of(context).pop(null);
-              }
+                      widget.onSkip?.call();
+                      Navigator.of(context).pop(null);
+                    }
                   : _skip,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   widget.skipLabel,
-                  style: const TextStyle(
-                    color: AifcColors.textHint,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -441,9 +427,8 @@ class _AifcChatSheetState extends State<AifcChatSheet>
   }
 
   Widget _buildBubble(_Bubble bubble) {
-    final side = bubble.type == _BubbleType.fc
-        ? AifcBubbleSide.fc
-        : AifcBubbleSide.user;
+    final side =
+        bubble.type == _BubbleType.fc ? AifcBubbleSide.fc : AifcBubbleSide.user;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -462,6 +447,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
   }
 
   Widget _buildUserTypingBubble() {
+    final tokens = context.mtfThemeTokens;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Align(
@@ -472,7 +458,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
             vertical: 12,
           ),
           decoration: BoxDecoration(
-            color: AifcColors.userBubble,
+            color: tokens.aifcUserBubble,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
@@ -481,14 +467,14 @@ class _AifcChatSheetState extends State<AifcChatSheet>
             ),
             boxShadow: [
               BoxShadow(
-                color: AifcColors.userBubble.withOpacity(0.24),
+                color: tokens.aifcUserBubble.withOpacity(0.24),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: const AifcTypingDots(
-            color: Colors.white,
+          child: AifcTypingDots(
+            color: tokens.aifcUserBubbleForeground,
           ),
         ),
       ),
@@ -497,6 +483,8 @@ class _AifcChatSheetState extends State<AifcChatSheet>
 
   Widget _buildAutoCompleteHints() {
     final matches = _autoCompleteMatches();
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
 
     if (matches.isEmpty) {
       return const SizedBox.shrink();
@@ -508,17 +496,17 @@ class _AifcChatSheetState extends State<AifcChatSheet>
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.72),
+          color: tokens.aifcSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _kFcBubbleBdr),
+          border: Border.all(color: tokens.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '자동완성',
               style: TextStyle(
-                color: _kInputHint,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -535,26 +523,26 @@ class _AifcChatSheetState extends State<AifcChatSheet>
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.auto_awesome_rounded,
                         size: 14,
-                        color: _kPrimary,
+                        color: theme.colorScheme.primary,
                       ),
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
                           item,
-                          style: const TextStyle(
-                            color: _kFcText,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
                             fontSize: 12.5,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.north_west_rounded,
                         size: 13,
-                        color: _kInputHint,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ],
                   ),
@@ -568,57 +556,59 @@ class _AifcChatSheetState extends State<AifcChatSheet>
   }
 
   Widget _buildInputRow() {
-    final hasText = _inputCtrl.text
-        .trim()
-        .isNotEmpty;
+    final hasText = _inputCtrl.text.trim().isNotEmpty;
+
+    final theme = Theme.of(context);
+    final tokens = context.mtfThemeTokens;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       decoration: BoxDecoration(
-        color: _kInputBg,
+        color: tokens.aifcInputSurface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: _inputFocused || hasText ? _kInputBdrFocus : _kInputBdr,
+          color: _inputFocused || hasText
+              ? theme.colorScheme.secondary
+              : theme.colorScheme.outline,
           width: _inputFocused || hasText ? 1.5 : 1,
         ),
         boxShadow: _inputFocused
             ? [
-          BoxShadow(
-            color: _kPrimary.withOpacity(0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ]
+                BoxShadow(
+                  color: theme.colorScheme.secondary.withOpacity(0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ]
             : [],
       ),
       child: Row(
         children: [
           Expanded(
               child: TextField(
-                controller: _inputCtrl,
-                focusNode: _focusNode,
-                maxLines: widget.maxLines,
-                keyboardType: widget.keyboardType,
-                autofocus: true,
-                textInputAction:
-                widget.maxLines == 1 ? TextInputAction.send : TextInputAction
-                    .newline,
-                onSubmitted: widget.maxLines == 1 ? (_) => _submit() : null,
-                decoration: InputDecoration(
-                  hintText: widget.inputLabel,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  hintStyle: const TextStyle(
-                    color: _kInputHint,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              )
-          ),
+            controller: _inputCtrl,
+            focusNode: _focusNode,
+            maxLines: widget.maxLines,
+            keyboardType: widget.keyboardType,
+            autofocus: true,
+            textInputAction: widget.maxLines == 1
+                ? TextInputAction.send
+                : TextInputAction.newline,
+            onSubmitted: widget.maxLines == 1 ? (_) => _submit() : null,
+            decoration: InputDecoration(
+              hintText: widget.inputLabel,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              hintStyle: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )),
           AnimatedOpacity(
             opacity: hasText ? 1.0 : 0.28,
             duration: const Duration(milliseconds: 60),
@@ -629,21 +619,22 @@ class _AifcChatSheetState extends State<AifcChatSheet>
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: _kPrimary,
+                  color: theme.colorScheme.secondary,
                   shape: BoxShape.circle,
                   boxShadow: hasText
                       ? [
-                    BoxShadow(
-                      color: _kPrimary.withOpacity(0.30),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
+                          BoxShadow(
+                            color:
+                                theme.colorScheme.secondary.withOpacity(0.30),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
                       : [],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_forward_rounded,
-                  color: Colors.white,
+                  color: theme.colorScheme.onSecondary,
                   size: 17,
                 ),
               ),

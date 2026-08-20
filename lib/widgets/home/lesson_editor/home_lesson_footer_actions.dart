@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../theme/app_colors.dart';
-
 class HomeLessonFooterActions extends StatelessWidget {
   const HomeLessonFooterActions({
     super.key,
@@ -9,6 +7,8 @@ class HomeLessonFooterActions extends StatelessWidget {
     required this.isLocked,
     required this.isCustomerSignedConfirmedLesson,
     required this.isContractLinkedConfirmedLesson,
+    this.isBusy = false,
+    this.isDeleting = false,
     required this.onCancel,
     required this.onDelete,
     required this.onSave,
@@ -18,17 +18,20 @@ class HomeLessonFooterActions extends StatelessWidget {
   final bool isLocked;
   final bool isCustomerSignedConfirmedLesson;
   final bool isContractLinkedConfirmedLesson;
+  final bool isBusy;
+  final bool isDeleting;
   final VoidCallback onCancel;
   final Future<void> Function() onDelete;
   final Future<void> Function() onSave;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final lockedGuideText = isCustomerSignedConfirmedLesson
         ? '고객서명이 들어간 레슨확정은 임의로 확정취소 할 수 없어요.'
         : isContractLinkedConfirmedLesson
-        ? '계약서와 연결된 레슨확정은 홈에서 임의로 수정하거나 삭제할 수 없어요.'
-        : '확정된 레슨은 일정을 수정하거나 삭제할 수 없어요.';
+            ? '계약서와 연결된 레슨확정은 홈에서 임의로 수정하거나 삭제할 수 없어요.'
+            : '확정된 레슨은 일정을 수정하거나 삭제할 수 없어요.';
 
     if (isLocked) {
       return Padding(
@@ -40,31 +43,29 @@ class HomeLessonFooterActions extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: colors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFE5E7EB),
-                ),
+                border: Border.all(color: colors.outline),
               ),
               child: Row(
                 children: [
                   Icon(
                     isCustomerSignedConfirmedLesson ||
-                        isContractLinkedConfirmedLesson
+                            isContractLinkedConfirmedLesson
                         ? Icons.block_rounded
                         : Icons.lock_outline_rounded,
                     size: 16,
-                    color: const Color(0xFF6B7280),
+                    color: colors.onSurfaceVariant,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       lockedGuideText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         height: 1.35,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF6B7280),
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -77,10 +78,8 @@ class HomeLessonFooterActions extends StatelessWidget {
               child: OutlinedButton(
                 onPressed: onCancel,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.lightTextSecondary,
-                  side: const BorderSide(
-                    color: AppColors.lightBorder,
-                  ),
+                  foregroundColor: colors.onSurfaceVariant,
+                  side: BorderSide(color: colors.outline),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -104,9 +103,9 @@ class HomeLessonFooterActions extends StatelessWidget {
       child: Row(
         children: [
           TextButton(
-            onPressed: onCancel,
+            onPressed: isBusy ? null : onCancel,
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.lightTextSecondary,
+              foregroundColor: colors.onSurfaceVariant,
               padding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 11,
@@ -120,17 +119,24 @@ class HomeLessonFooterActions extends StatelessWidget {
           const Spacer(),
           if (isEditMode) ...[
             OutlinedButton.icon(
-              onPressed: () {
-                onDelete();
-              },
-              icon: const Icon(Icons.delete_outline_rounded, size: 16),
-              label: const Text(
-                '삭제',
-                style: TextStyle(fontWeight: FontWeight.w600),
+              onPressed: isBusy
+                  ? null
+                  : () async {
+                      await onDelete();
+                    },
+              icon: isBusy && isDeleting
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_outline_rounded, size: 16),
+              label: Text(
+                isBusy && isDeleting ? '삭제 중…' : '삭제',
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
-                side: BorderSide(color: Colors.red.withOpacity(0.4)),
+                side: BorderSide(color: Colors.red.withValues(alpha: 0.4)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,
@@ -142,49 +148,35 @@ class HomeLessonFooterActions extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  AppColors.lightGradientStart,
-                  AppColors.lightGradientEnd,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          ElevatedButton.icon(
+            onPressed: isBusy
+                ? null
+                : () async {
+                    await onSave();
+                  },
+            icon: isBusy && !isDeleting
+                ? SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.onSecondary,
+                    ),
+                  )
+                : const Icon(Icons.check_rounded, size: 16),
+            label: Text(
+              isBusy && !isDeleting ? '저장 중…' : '저장',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.lightGradientStart.withOpacity(0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
             ),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                onSave();
-              },
-              icon: const Icon(Icons.check_rounded, size: 16),
-              label: const Text(
-                '저장',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 10,
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),

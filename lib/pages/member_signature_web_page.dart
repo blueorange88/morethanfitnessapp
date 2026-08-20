@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 const Color kMemberSignPrimaryColor = Color(0xFF4F46E5);
 const Color kMemberSignPrimaryColor2 = Color(0xFF9333EA);
@@ -175,8 +176,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         await _loadMemberSessionSummary(memberId);
         await _loadSignatureHistory(memberId);
       }
-    } catch (e) {
-      debugPrint('회원 서명 요청 불러오기 실패: $e');
+    } catch (error) {
+      debugPrint('회원 서명 요청 불러오기 실패: ${error.runtimeType}');
 
       if (!mounted) return;
       setState(() {
@@ -238,8 +239,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           _memberDoneSessions = (total - remain).clamp(0, total);
         }
       });
-    } catch (e) {
-      debugPrint('회원 회차 요약 불러오기 실패: $e');
+    } catch (error) {
+      debugPrint('회원 회차 요약 불러오기 실패: ${error.runtimeType}');
     }
   }
 
@@ -316,8 +317,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         _signatureHistory = numbered;
         _loadingHistory = false;
       });
-    } catch (e) {
-      debugPrint('회원 서명 내역 불러오기 실패: $e');
+    } catch (error) {
+      debugPrint('회원 서명 내역 불러오기 실패: ${error.runtimeType}');
 
       if (!mounted) return;
 
@@ -547,8 +548,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
       } else {
         _showToast('서명이 완료되었어요. 강사 확인 후 레슨에 반영됩니다.');
       }
-    } catch (e) {
-      debugPrint('회원 웹서명 저장 실패: $e');
+    } catch (error) {
+      debugPrint('회원 웹서명 저장 실패: ${error.runtimeType}');
 
       if (!mounted) return;
       setState(() {
@@ -638,8 +639,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
       });
 
       _showToast('다음 등록 준비 요청을 보냈어요.');
-    } catch (e) {
-      debugPrint('재등록 요청 실패: $e');
+    } catch (error) {
+      debugPrint('재등록 요청 실패: ${error.runtimeType}');
       _showToast('요청을 보내지 못했어요. 강사에게 직접 문의해주세요.');
     }
   }
@@ -658,9 +659,9 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
   }
 
   Widget _buildLoading() {
-    return const Scaffold(
-      backgroundColor: kMemberSignBgColor,
-      body: Center(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: const Center(
         child: CircularProgressIndicator(),
       ),
     );
@@ -670,8 +671,10 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     required String title,
     required String body,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Scaffold(
-      backgroundColor: kMemberSignBgColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -680,36 +683,36 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
             constraints: const BoxConstraints(maxWidth: 420),
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: tokens.cardSurface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: tokens.cardBorder),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.info_outline_rounded,
                   size: 38,
-                  color: Color(0xFF6B7280),
+                  color: scheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
+                    color: scheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   body,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF6B7280),
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -736,17 +739,14 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     final remainText = total > 0 ? '잔여 ${remain}회' : '회차정보 확인 중';
 
     final topInset = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(20, topInset + 10, 20, 18),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [kMemberSignPrimaryColor, kMemberSignPrimaryColor2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(32),
         ),
       ),
@@ -902,13 +902,14 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
   }
 
   Widget _buildSignatureBox() {
+    final tokens = context.mtfThemeTokens;
     return Container(
       width: double.infinity,
       height: 230,
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: tokens.signatureCanvasSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: tokens.contractDocumentBorder),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
@@ -1308,7 +1309,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     final data = _requestData ?? <String, dynamic>{};
 
     return Scaffold(
-      backgroundColor: kMemberSignBgColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         top: false,
         child: Center(
@@ -1333,19 +1334,20 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
                           const SizedBox(height: 14),
                         Text(
                           '${_currentSignNumber}회차 레슨 확인',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           '레슨 내용을 확인했다면 아래 칸에 손으로 서명해주세요.',
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.4,
-                            color: Color(0xFF6B7280),
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

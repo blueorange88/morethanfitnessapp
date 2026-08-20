@@ -8,6 +8,12 @@ import {
   isTrainerProfileComplete,
   tierRank,
 } from "./tier_qualification.js";
+import {
+  applyPersonalMemberTaxonomyUpdate,
+  parsePersonalMemberTaxonomyAssignments,
+  personalMemberTaxonomyCreateFields,
+  validatePersonalMemberTaxonomyAssignments,
+} from "./personal_member_taxonomy.js";
 
 const BEGINNER_MEMBER_THRESHOLD = 10;
 const MEMBER_SCHEMA_VERSION = 2;
@@ -16,6 +22,18 @@ const GENDERS = ["male", "female"] as const;
 
 type ManagedState = typeof MANAGED_STATES[number];
 type Gender = typeof GENDERS[number];
+
+type ManagedMembershipUpdate = {
+  notRegistered: boolean;
+  termMonths: number | null;
+  customDays: number | null;
+  startAt: Timestamp | null;
+  endAt: Timestamp | null;
+  days: number | null;
+  lastRegisteredAt: Timestamp | null;
+  reregisterCount: number;
+  lastReregisterAt: Timestamp | null;
+};
 
 type ProfileUsage = {
   managedCount: number;
@@ -60,6 +78,128 @@ function optionalString(data: Record<string, unknown>, key: string): string {
     throw new functions.https.HttpsError("invalid-argument", `${key}_invalid`);
   }
   return value.trim();
+}
+
+function hasOwn(data: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(data, key);
+}
+
+function nullableString(
+  data: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = data[key];
+  if (value == null) return null;
+  if (typeof value !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", `${key}_invalid`);
+  }
+  const normalized = value.trim();
+  return normalized.length === 0 ? null : normalized;
+}
+
+function nullableInteger(
+  data: Record<string, unknown>,
+  key: string,
+  minimum = 0,
+): number | null {
+  const value = data[key];
+  if (value == null) return null;
+  if (!Number.isInteger(value) || Number(value) < minimum) {
+    throw new functions.https.HttpsError("invalid-argument", `${key}_invalid`);
+  }
+  return Number(value);
+}
+
+function nullableCalendarDate(
+  data: Record<string, unknown>,
+  key: string,
+): Timestamp | null {
+  const raw = data[key];
+  if (raw == null) return null;
+  if (typeof raw !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", `${key}_invalid`);
+  }
+  const display = raw.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(display);
+  if (!match) {
+    throw new functions.https.HttpsError("invalid-argument", `${key}_invalid`);
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw new functions.https.HttpsError("invalid-argument", `${key}_invalid`);
+  }
+  return Timestamp.fromDate(date);
+}
+
+function managedMembershipUpdate(value: unknown): ManagedMembershipUpdate {
+  const data = objectData(value);
+  allowOnly(data, [
+    "notRegistered", "termMonths", "customDays", "startAt", "endAt",
+    "days", "lastRegisteredAt", "reregisterCount", "lastReregisterAt",
+  ]);
+  if (typeof data.notRegistered !== "boolean") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "membership_notRegistered_invalid",
+    );
+  }
+  const termMonths = nullableInteger(data, "termMonths", 1);
+  const customDays = nullableInteger(data, "customDays", 1);
+  const startAt = nullableCalendarDate(data, "startAt");
+  const endAt = nullableCalendarDate(data, "endAt");
+  const days = nullableInteger(data, "days", 1);
+  const lastRegisteredAt = nullableCalendarDate(data, "lastRegisteredAt");
+  const reregisterCount = nullableInteger(data, "reregisterCount") ?? 0;
+  const lastReregisterAt = nullableCalendarDate(data, "lastReregisterAt");
+  if (termMonths != null && ![1, 3, 6, 12].includes(termMonths)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "membership_termMonths_invalid",
+    );
+  }
+  if (termMonths != null && customDays != null) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "membership_period_mode_invalid",
+    );
+  }
+  const hasStart = startAt != null;
+  const hasEnd = endAt != null;
+  if (hasStart !== hasEnd || (hasStart && days == null) ||
+      (!hasStart && days != null)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "membership_period_invalid",
+    );
+  }
+  if (startAt != null && endAt != null && days != null) {
+    const expectedDays = Math.floor(
+      (endAt.toMillis() - startAt.toMillis()) / 86400000,
+    ) + 1;
+    if (expectedDays <= 0 || expectedDays !== days ||
+        (termMonths != null && days !== termMonths * 30) ||
+        (customDays != null && days !== customDays)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "membership_period_invalid",
+      );
+    }
+  }
+  return {
+    notRegistered: data.notRegistered,
+    termMonths,
+    customDays,
+    startAt,
+    endAt,
+    days,
+    lastRegisteredAt,
+    reregisterCount,
+    lastReregisterAt,
+  };
 }
 
 function requireMaxLength(value: string, key: string, maxLength: number): void {
@@ -258,14 +398,26 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "idempotencyKey", "name", "gender", "birthDate", "phone", "note",
       "postal", "address", "detailAddress", "lessonType",
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
-      "activityRegion",
+      "activityRegion", "registrationMode", "nextReservationAt",
+      "personalGroupId", "personalTagIds",
     ]);
+    const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
+    const registrationMode = optionalString(data, "registrationMode") || "full";
+    if (registrationMode !== "full" && registrationMode !== "quick") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "registration_mode_invalid",
+      );
+    }
     const idempotencyKey = requiredString(data, "idempotencyKey");
     const name = requiredString(data, "name");
-    const gender = requiredGender(data);
+    const gender = registrationMode === "quick" && !hasOwn(data, "gender") ?
+      null : requiredGender(data);
     const birthDate = optionalCreateBirthDate(data);
     const phone = requiredString(data, "phone");
     const phoneNormalized = normalizedPhone(phone);
+    const nextReservationAt = hasOwn(data, "nextReservationAt") ?
+      nullableCalendarDate(data, "nextReservationAt") : null;
     const note = optionalString(data, "note");
     const activityRegion = optionalString(data, "activityRegion");
     const postal = optionalString(data, "postal");
@@ -328,6 +480,13 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           );
         }
         enforceBeyondBeginnerThreshold(profile);
+        await validatePersonalMemberTaxonomyAssignments({
+          transaction,
+          db,
+          uid,
+          tier: profile.tier,
+          assignments: taxonomyAssignments,
+        });
 
         const now = FieldValue.serverTimestamp();
         const nextManagedCount = profile.managedCount + 1;
@@ -342,7 +501,7 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           countsTowardLifetimeQualification: true,
           qualifiedAt: now,
           name,
-          gender,
+          ...(gender == null ? {} : {gender}),
           ...(birthDate == null ? {} : {
             birth: birthDate.timestamp,
             birthDisplay: birthDate.display,
@@ -364,6 +523,8 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
             remain: remainingSessions,
           },
           note,
+          ...(nextReservationAt == null ? {} : {nextReservationAt}),
+          ...personalMemberTaxonomyCreateFields(taxonomyAssignments),
           createdAt: now,
           updatedAt: now,
         });
@@ -437,9 +598,26 @@ export function transitionManagedMemberStateHandler(db: FirebaseFirestore.Firest
           throw new functions.https.HttpsError("failed-precondition", "member_count_conflict");
         }
         const now = FieldValue.serverTimestamp();
+        const deletedAt = Timestamp.now();
+        const deletionFields = nextState === "deleted" ? {
+          isDeleted: true,
+          deletedAt,
+          deleteScheduledAt: Timestamp.fromMillis(
+            deletedAt.toMillis() + 7 * 24 * 60 * 60 * 1000,
+          ),
+          deleteStatus: "pending_delete",
+          deletedSource: "managed_member_function",
+        } : currentState === "deleted" ? {
+          isDeleted: FieldValue.delete(),
+          deletedAt: FieldValue.delete(),
+          deleteScheduledAt: FieldValue.delete(),
+          deleteStatus: FieldValue.delete(),
+          deletedSource: FieldValue.delete(),
+        } : {};
         transaction.update(memberRef, {
           managementState: nextState,
           countsTowardLimit: countsTowardManaged(nextState),
+          ...deletionFields,
           updatedAt: now,
           managementStateHistory: FieldValue.arrayUnion({
             previousState: currentState,
@@ -462,6 +640,36 @@ export function transitionManagedMemberStateHandler(db: FirebaseFirestore.Firest
   };
 }
 
+async function syncManagedMemberNameToSchedules(
+  db: FirebaseFirestore.Firestore,
+  uid: string,
+  memberId: string,
+  name: string,
+): Promise<number> {
+  const snapshot = await db.collection("schedules")
+    .where("trainerId", "==", uid)
+    .where("workspaceType", "==", "personal")
+    .where("memberId", "==", memberId)
+    .get();
+  const documents = snapshot.docs.filter((document) =>
+    String(document.data().name ?? "").trim() !== name,
+  );
+  let updatedCount = 0;
+  for (let index = 0; index < documents.length; index += 450) {
+    const batch = db.batch();
+    const chunk = documents.slice(index, index + 450);
+    for (const document of chunk) {
+      batch.update(document.ref, {
+        name,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+    updatedCount += chunk.length;
+  }
+  return updatedCount;
+}
+
 export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
   return async (raw: unknown, ctx: functions.https.CallableContext) => {
     const uid = requireUid(ctx);
@@ -470,13 +678,37 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "memberId", "name", "gender", "birthDate", "phone", "note",
       "postal", "address", "detailAddress", "lessonType",
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
-      "activityRegion",
+      "activityRegion", "membership", "anniversaryDate", "anniversaryLabel",
+      "personalGroupId", "personalTagIds",
     ]);
+    const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
+    const taxonomyOnly =
+      (taxonomyAssignments.groupProvided || taxonomyAssignments.tagsProvided) &&
+      Object.keys(data).every((key) => [
+        "memberId",
+        "personalGroupId",
+        "personalTagIds",
+      ].includes(key));
     const memberId = requiredString(data, "memberId");
+    const membership = hasOwn(data, "membership") ?
+      managedMembershipUpdate(data.membership) : null;
+    const anniversaryDate = hasOwn(data, "anniversaryDate") ?
+      nullableCalendarDate(data, "anniversaryDate") : undefined;
+    const anniversaryLabel = hasOwn(data, "anniversaryLabel") ?
+      nullableString(data, "anniversaryLabel") : undefined;
+    if (anniversaryLabel != null) {
+      requireMaxLength(anniversaryLabel, "anniversaryLabel", 40);
+    }
+    if (anniversaryDate === null && anniversaryLabel != null) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "anniversary_pair_invalid",
+      );
+    }
     const profileRef = db.collection("trainer_profiles").doc(uid);
     const memberRef = db.collection("members").doc(memberId);
     try {
-      return await db.runTransaction(async (transaction) => {
+      const updateResult = await db.runTransaction(async (transaction) => {
         const [profileSnapshot, memberSnapshot] = await Promise.all([
           transaction.get(profileRef), transaction.get(memberRef),
         ]);
@@ -488,6 +720,29 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         if (current.memberId !== memberId || current.trainerId !== uid ||
             current.workspaceType !== "personal") {
           throw new functions.https.HttpsError("permission-denied", "member_owner_mismatch");
+        }
+        await validatePersonalMemberTaxonomyAssignments({
+          transaction,
+          db,
+          uid,
+          tier: profile.tier,
+          assignments: taxonomyAssignments,
+        });
+        if (taxonomyOnly) {
+          const taxonomyUpdate: Record<string, unknown> = {
+            updatedAt: FieldValue.serverTimestamp(),
+          };
+          applyPersonalMemberTaxonomyUpdate(
+            taxonomyUpdate,
+            taxonomyAssignments,
+          );
+          transaction.update(memberRef, taxonomyUpdate);
+          return {
+            updated: true,
+            memberId,
+            lifetimeQualifiedMemberCount: profile.lifetimeCount,
+            updatedName: null,
+          };
         }
         const merged = {...current, ...data};
         const name = requiredString(merged, "name");
@@ -530,7 +785,7 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         if (firstQualification) enforceBeyondBeginnerThreshold(profile);
         const nextLifetimeCount = profile.lifetimeCount + Number(firstQualification);
         const now = FieldValue.serverTimestamp();
-        transaction.update(memberRef, {
+        const canonicalUpdate: Record<string, unknown> = {
           name,
           gender,
           birth: birthDate.timestamp,
@@ -555,7 +810,32 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           countsTowardLifetimeQualification: true,
           ...(firstQualification ? {qualifiedAt: now} : {}),
           updatedAt: now,
-        });
+        };
+        if (membership != null) {
+          canonicalUpdate["membership.notRegistered"] = membership.notRegistered;
+          canonicalUpdate["membership.termMonths"] = membership.termMonths;
+          canonicalUpdate["membership.customDays"] = membership.customDays;
+          canonicalUpdate["membership.startAt"] = membership.startAt;
+          canonicalUpdate["membership.endAt"] = membership.endAt;
+          canonicalUpdate["membership.days"] = membership.days;
+          canonicalUpdate["membership.lastRegisteredAt"] =
+            membership.lastRegisteredAt;
+          canonicalUpdate["membership.reregisterCount"] =
+            membership.reregisterCount;
+          canonicalUpdate["membership.lastReregisterAt"] =
+            membership.lastReregisterAt;
+        }
+        if (anniversaryDate !== undefined) {
+          canonicalUpdate.anniversaryDate = anniversaryDate;
+        }
+        if (anniversaryLabel !== undefined) {
+          canonicalUpdate.anniversaryLabel = anniversaryLabel;
+        }
+        applyPersonalMemberTaxonomyUpdate(
+          canonicalUpdate,
+          taxonomyAssignments,
+        );
+        transaction.update(memberRef, canonicalUpdate);
         if (firstQualification) {
           transaction.update(profileRef, {
             ...profilePromotionUpdate(profile, nextLifetimeCount),
@@ -567,8 +847,40 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           updated: true,
           memberId,
           lifetimeQualifiedMemberCount: nextLifetimeCount,
+          updatedName: name,
         };
       });
+      const {
+        updatedName,
+        ...response
+      } = updateResult;
+      if (updatedName == null) {
+        return {
+          ...response,
+          scheduleNameSyncSucceeded: true,
+          scheduleNameUpdatedCount: 0,
+        };
+      }
+      try {
+        const scheduleNameUpdatedCount =
+          await syncManagedMemberNameToSchedules(
+            db,
+            uid,
+            memberId,
+            updatedName,
+          );
+        return {
+          ...response,
+          scheduleNameSyncSucceeded: true,
+          scheduleNameUpdatedCount,
+        };
+      } catch (_) {
+        return {
+          ...response,
+          scheduleNameSyncSucceeded: false,
+          scheduleNameUpdatedCount: 0,
+        };
+      }
     } catch (error) {
       return translateError(error, "updateManagedMember");
     }

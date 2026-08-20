@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_colors.dart';
 import 'aifc_avatar.dart';
 import 'aifc_theme.dart';
 import 'aifc_typing_dots.dart';
@@ -17,6 +18,7 @@ class AifcChatBubble extends StatelessWidget {
     this.child,
     this.dimmed = false,
     this.showAvatar = true,
+    this.useThemeSurface = false,
   });
 
   final AifcBubbleSide side;
@@ -24,12 +26,14 @@ class AifcChatBubble extends StatelessWidget {
   final Widget? child;
   final bool dimmed;
   final bool showAvatar;
+  final bool useThemeSurface;
 
   bool get _isUser => side == AifcBubbleSide.user;
 
   @override
   Widget build(BuildContext context) {
-    final bubble = _isUser ? _buildUserBubble() : _buildFcBubble();
+    final bubble =
+        _isUser ? _buildUserBubble(context) : _buildFcBubble(context);
 
     return AnimatedOpacity(
       opacity: dimmed ? 0.55 : 1.0,
@@ -38,7 +42,8 @@ class AifcChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildUserBubble() {
+  Widget _buildUserBubble(BuildContext context) {
+    final tokens = context.mtfThemeTokens;
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -51,7 +56,7 @@ class AifcChatBubble extends StatelessWidget {
               vertical: 11,
             ),
             decoration: BoxDecoration(
-              color: AifcColors.userBubble,
+              color: tokens.aifcUserBubble,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -60,7 +65,7 @@ class AifcChatBubble extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AifcColors.userBubble.withOpacity(0.24),
+                  color: tokens.aifcUserBubble.withOpacity(0.24),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -68,8 +73,8 @@ class AifcChatBubble extends StatelessWidget {
             ),
             child: Text(
               text ?? '',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: tokens.aifcUserBubbleForeground,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 height: 1.45,
@@ -81,15 +86,23 @@ class AifcChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildFcBubble() {
+  Widget _buildFcBubble(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
+    final backgroundColor = useThemeSurface
+        ? colorScheme.surfaceContainerHighest
+        : tokens.aifcSurface;
+    final borderColor =
+        useThemeSurface ? colorScheme.outlineVariant : tokens.cardBorder;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (showAvatar) ...[
-          const AifcAvatar(
+          AifcAvatar(
             size: 30,
             isAnimating: false,
-            backgroundColor: AifcColors.sheetBg,
+            backgroundColor: tokens.aifcBackground,
           ),
           const SizedBox(width: 9),
         ] else
@@ -97,7 +110,7 @@ class AifcChatBubble extends StatelessWidget {
         Flexible(
           child: Container(
             decoration: BoxDecoration(
-              color: AifcColors.fcBubbleBg,
+              color: backgroundColor,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -105,7 +118,7 @@ class AifcChatBubble extends StatelessWidget {
                 bottomRight: Radius.circular(16),
               ),
               border: Border.all(
-                color: AifcColors.fcBubbleBorder,
+                color: borderColor,
                 width: 0.5,
               ),
               boxShadow: AifcShadow.soft,
@@ -123,7 +136,9 @@ class AifcChatBubble extends StatelessWidget {
                     ),
                     child: Text(
                       text!,
-                      style: AifcText.body,
+                      style: AifcText.body.copyWith(
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 if (child != null) ...[
@@ -154,14 +169,15 @@ class AifcTypingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.mtfThemeTokens;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (showAvatar) ...[
-          const AifcAvatar(
+          AifcAvatar(
             size: 30,
             isAnimating: true,
-            backgroundColor: AifcColors.sheetBg,
+            backgroundColor: tokens.aifcBackground,
           ),
           const SizedBox(width: 9),
         ] else
@@ -172,7 +188,7 @@ class AifcTypingBubble extends StatelessWidget {
             vertical: 13,
           ),
           decoration: BoxDecoration(
-            color: AifcColors.fcBubbleBg,
+            color: tokens.aifcSurface,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
@@ -180,7 +196,7 @@ class AifcTypingBubble extends StatelessWidget {
               bottomRight: Radius.circular(16),
             ),
             border: Border.all(
-              color: AifcColors.fcBubbleBorder,
+              color: tokens.cardBorder,
               width: 0.5,
             ),
             boxShadow: AifcShadow.soft,

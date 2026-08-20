@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'aifc_theme.dart';
+import '../../theme/app_colors.dart';
 
 class AifcSheetHandle extends StatelessWidget {
   const AifcSheetHandle({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.mtfThemeTokens;
     return Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 4),
       child: Center(
@@ -14,7 +15,7 @@ class AifcSheetHandle extends StatelessWidget {
           width: 36,
           height: 4,
           decoration: BoxDecoration(
-            color: AifcColors.cardBorder,
+            color: tokens.cardBorder,
             borderRadius: BorderRadius.circular(2),
           ),
         ),

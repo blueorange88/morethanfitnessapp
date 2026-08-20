@@ -85,10 +85,6 @@ class _AifcConfirmChatSheetState extends State<AifcConfirmChatSheet>
 
   String get _safeNicknameLabel => aifcNicknameLabel(_safeNickname);
 
-  Color get _confirmColor {
-    return widget.danger ? AifcColors.noShowDeducted : AifcColors.primary;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -113,9 +109,7 @@ class _AifcConfirmChatSheetState extends State<AifcConfirmChatSheet>
               Expanded(
                 child: _ConfirmActionButton(
                   label: widget.cancelText,
-                  foregroundColor: AifcColors.textMuted,
-                  backgroundColor: Colors.white,
-                  borderColor: AifcColors.cardBorder,
+                  role: _ConfirmActionRole.cancel,
                   onTap: _handleCancelChoice,
                 ),
               ),
@@ -123,9 +117,9 @@ class _AifcConfirmChatSheetState extends State<AifcConfirmChatSheet>
               Expanded(
                 child: _ConfirmActionButton(
                   label: widget.confirmText,
-                  foregroundColor: Colors.white,
-                  backgroundColor: _confirmColor,
-                  borderColor: _confirmColor,
+                  role: widget.danger
+                      ? _ConfirmActionRole.danger
+                      : _ConfirmActionRole.confirm,
                   onTap: _handleConfirmChoice,
                 ),
               ),
@@ -201,6 +195,7 @@ class _AifcConfirmChatSheetState extends State<AifcConfirmChatSheet>
                       child: AifcChatBubble(
                         side: aifcMessages[i].side,
                         text: aifcMessages[i].text,
+                        useThemeSurface: true,
                         child: aifcMessages[i].child,
                       ),
                     ),
@@ -255,16 +250,16 @@ class _ConfirmMessageBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor =
-    danger ? AifcColors.noShowDeducted : AifcColors.primary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final accentColor = danger ? AifcColors.noShowDeducted : AifcColors.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: AifcColors.fcText,
+          style: TextStyle(
+            color: colorScheme.onSurface,
             fontSize: 15,
             fontWeight: FontWeight.w900,
             height: 1.35,
@@ -274,8 +269,8 @@ class _ConfirmMessageBlock extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           message,
-          style: const TextStyle(
-            color: AifcColors.textMuted,
+          style: TextStyle(
+            color: colorScheme.onSurfaceVariant,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             height: 1.5,
@@ -325,23 +320,41 @@ class _ConfirmMessageBlock extends StatelessWidget {
   }
 }
 
+enum _ConfirmActionRole {
+  cancel,
+  confirm,
+  danger,
+}
+
 class _ConfirmActionButton extends StatelessWidget {
   const _ConfirmActionButton({
     required this.label,
-    required this.foregroundColor,
-    required this.backgroundColor,
-    required this.borderColor,
+    required this.role,
     required this.onTap,
   });
 
   final String label;
-  final Color foregroundColor;
-  final Color backgroundColor;
-  final Color borderColor;
+  final _ConfirmActionRole role;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDanger = role == _ConfirmActionRole.danger;
+    final isConfirm = role == _ConfirmActionRole.confirm;
+    final backgroundColor = isDanger
+        ? AifcColors.noShowDeducted
+        : isConfirm
+            ? colorScheme.secondary
+            : colorScheme.surfaceContainerHighest;
+    final foregroundColor = isDanger
+        ? Colors.white
+        : isConfirm
+            ? colorScheme.onSecondary
+            : colorScheme.onSurface;
+    final borderColor =
+        isDanger || isConfirm ? backgroundColor : colorScheme.outlineVariant;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,

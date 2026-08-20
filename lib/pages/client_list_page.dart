@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../models/member.dart';
+import '../models/personal_member_taxonomy.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,8 +13,11 @@ import '../utils/korean_search_utils.dart' as search_utils;
 import '../services/app_tier_access_service.dart';
 import '../services/personal_member_card_save_service.dart';
 import '../services/personal_member_preferences_service.dart';
+import '../services/personal_member_taxonomy_service.dart';
+import 'personal_member_taxonomy_management_page.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
 import '../widgets/personal_training_log_entry_guard.dart';
+import '../theme/app_colors.dart';
 
 import '../widgets/aifc_interaction.dart';
 import '../aifc/core/aifc_nickname.dart';
@@ -22,8 +26,11 @@ import '../aifc/core/aifc_chat_bubble.dart';
 import '../aifc/core/aifc_sheet_frame.dart';
 import '../widgets/aifc_confirm_chat_sheet.dart';
 import '../widgets/aifc_info_chat_sheet.dart';
+import '../widgets/aifc_personal_tag_management_chat_sheet.dart';
 import '../aifc/core/aifc_theme.dart';
 import '../widgets/aifc_option_chat_sheet.dart';
+import '../widgets/personal_member_status_filter.dart';
+import '../widgets/personal_taxonomy_filter_strip.dart';
 import '../widgets/mtf_floating_more_menu.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 
@@ -73,6 +80,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
   static const String _lastSelectedGroupFilterKey =
       'client_list_last_selected_group_filter_v1';
+  static const String _lastSelectedStatusFilterKey =
+      'client_list_last_selected_status_filter_v1';
 
   static const String _allGroupId = '__all__';
 
@@ -146,28 +155,34 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _ungroupedGroupId: 'MORE THAN GYM',
   };
 
-  List<_MemberCardGroupMenuItem> _buildHeaderGroupFilterItems() {
+  List<_MemberCardGroupMenuItem> _buildHeaderGroupFilterItems(
+    List<Member> members,
+  ) {
+    final counts = _buildGroupCounts(members);
     return <_MemberCardGroupMenuItem>[
       _MemberCardGroupMenuItem(
         id: _ungroupedGroupId,
-        label: _groupLabel(_ungroupedGroupId),
+        label:
+            '${_groupLabel(_ungroupedGroupId)} ${counts[_ungroupedGroupId] ?? 0}',
         icon: Icons.home_rounded,
       ),
       ..._groupIds.map(
         (groupId) => _MemberCardGroupMenuItem(
           id: groupId,
-          label: _groupLabel(groupId),
+          label: '${_groupLabel(groupId)} ${counts[groupId] ?? 0}',
           icon: Icons.folder_open_rounded,
         ),
       ),
       _MemberCardGroupMenuItem(
         id: _systemDormantGroupId,
-        label: _groupLabel(_systemDormantGroupId),
+        label:
+            '${_groupLabel(_systemDormantGroupId)} ${counts[_systemDormantGroupId] ?? 0}',
         icon: Icons.bedtime_rounded,
       ),
       _MemberCardGroupMenuItem(
         id: _systemExpiredGroupId,
-        label: _groupLabel(_systemExpiredGroupId),
+        label:
+            '${_groupLabel(_systemExpiredGroupId)} ${counts[_systemExpiredGroupId] ?? 0}',
         icon: Icons.warning_amber_rounded,
       ),
       const _MemberCardGroupMenuItem(
@@ -178,8 +193,34 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     ];
   }
 
+  List<PersonalTaxonomyFilterEntry> _buildPersonalTaxonomyFilterEntries(
+    List<Member> members,
+  ) {
+    return buildPersonalTaxonomyFilterEntries(
+      defaultGroupId: _ungroupedGroupId,
+      defaultGroupLabel: _groupLabel(_ungroupedGroupId),
+      customGroups: {
+        for (final group in _personalGroups) group.id: group.name,
+      },
+      tags: {
+        for (final tag in _personalTags) tag.id: tag.name,
+      },
+      visibleSystemGroups: const {},
+      allId: _allGroupId,
+      dormantCount: members.where(_isDormantMember).length,
+      expiredCount: members.where(_isExpiredMember).length,
+    );
+  }
+
   final ValueNotifier<String?> _selectedGroupIdNotifier =
       ValueNotifier<String?>(null);
+
+  final ValueNotifier<String?> _selectedPersonalTagIdNotifier =
+      ValueNotifier<String?>(null);
+
+  final ValueNotifier<PersonalMemberStatusFilter>
+      _selectedPersonalStatusFilterNotifier =
+      ValueNotifier<PersonalMemberStatusFilter>(PersonalMemberStatusFilter.all);
 
   final ValueNotifier<_DashboardCareFilter?> _dashboardCareFilterNotifier =
       ValueNotifier<_DashboardCareFilter?>(null);
@@ -197,10 +238,19 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   String _aifcTrainerNameSourceText = '';
   StreamSubscription<PersonalMemberPreferences>?
       _personalMemberPreferencesSubscription;
+  StreamSubscription<List<PersonalMemberTaxonomyItem>>?
+      _personalGroupSubscription;
+  StreamSubscription<List<PersonalMemberTaxonomyItem>>?
+      _personalTagSubscription;
+  List<PersonalMemberTaxonomyItem> _personalGroups = const [];
+  List<PersonalMemberTaxonomyItem> _personalTags = const [];
+  AppTierAccessSnapshot? _personalTierAccess;
 
   @override
   void dispose() {
     _personalMemberPreferencesSubscription?.cancel();
+    _personalGroupSubscription?.cancel();
+    _personalTagSubscription?.cancel();
     _searchController.dispose();
     _searchKeywordNotifier.dispose();
     _scrollController.dispose();
@@ -208,6 +258,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _pinnedMemberIdsNotifier.dispose();
     _isListViewNotifier.dispose();
     _selectedGroupIdNotifier.dispose();
+    _selectedPersonalTagIdNotifier.dispose();
+    _selectedPersonalStatusFilterNotifier.dispose();
     _dashboardCareFilterNotifier.dispose();
     _alertFilterMemberIdsNotifier.dispose();
     _memberGroupMapNotifier.dispose();
@@ -229,6 +281,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _loadAifcTrainerNameSource();
     _loadViewMode();
     _loadGroups();
+    _loadPersonalTierAccess();
   }
 
   String _compactDuplicateDisplayName({
@@ -432,6 +485,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     if (_isPersonalWorkspace) {
       final owner = widget.personalOwnerUid!.trim();
+      final service = PersonalMemberTaxonomyService(uid: owner);
       _personalMemberPreferencesSubscription ??=
           PersonalMemberPreferencesService(uid: owner).watch().listen(
         (preferences) {
@@ -439,15 +493,48 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           final nextNames = _defaultGroupNames()
             ..[_ungroupedGroupId] = preferences.defaultGroupLabel;
           setState(() {
-            _groupIds.clear();
             _groupNames
               ..clear()
-              ..addAll(nextNames);
-            _memberGroupMapNotifier.value = const <String, String>{};
+              ..addAll(nextNames)
+              ..addEntries(
+                _personalGroups.map((item) => MapEntry(item.id, item.name)),
+              );
             _groupNamesVersionNotifier.value++;
           });
         },
       );
+      _personalGroupSubscription ??=
+          service.watch(PersonalMemberTaxonomyKind.group).listen((items) {
+        if (!mounted) return;
+        final sorted = _sortPersonalTaxonomyItems(items);
+        setState(() {
+          _personalGroups = sorted;
+          _groupIds
+            ..clear()
+            ..addAll(sorted.map((item) => item.id));
+          _groupNames.removeWhere(
+            (key, value) =>
+                key != _ungroupedGroupId && !_systemGroupIds.contains(key),
+          );
+          _groupNames.addEntries(
+            sorted.map((item) => MapEntry(item.id, item.name)),
+          );
+          _groupNamesVersionNotifier.value++;
+        });
+        _loadLastSelectedGroupFilter();
+      });
+      _personalTagSubscription ??=
+          service.watch(PersonalMemberTaxonomyKind.tag).listen((items) {
+        if (!mounted) return;
+        final sorted = _sortPersonalTaxonomyItems(items);
+        setState(() {
+          _personalTags = sorted;
+        });
+        final selected = _selectedPersonalTagIdNotifier.value;
+        if (selected != null && !sorted.any((item) => item.id == selected)) {
+          _selectedPersonalTagIdNotifier.value = null;
+        }
+      });
       if (!mounted) return;
       setState(() {
         _groupIds.clear();
@@ -564,11 +651,53 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     }
   }
 
+  List<PersonalMemberTaxonomyItem> _sortPersonalTaxonomyItems(
+    Iterable<PersonalMemberTaxonomyItem> items,
+  ) {
+    final sorted = items.toList();
+    sorted.sort((a, b) {
+      final createdAt = a.createdAt.compareTo(b.createdAt);
+      return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
+    });
+    return List.unmodifiable(sorted);
+  }
+
+  Future<void> _loadPersonalTierAccess() async {
+    if (!_isPersonalWorkspace) return;
+    try {
+      final access = await AppTierAccessService.loadPersonalTrainerAccess(
+        uid: widget.personalOwnerUid!.trim(),
+      );
+      if (!mounted) return;
+      setState(() => _personalTierAccess = access);
+    } catch (_) {}
+  }
+
   bool get _isListView => _isListViewNotifier.value;
 
   List<String> get _pinnedMemberIds => _pinnedMemberIdsNotifier.value;
 
   String? get _selectedGroupId => _selectedGroupIdNotifier.value;
+
+  String? get _selectedPersonalTagId => _selectedPersonalTagIdNotifier.value;
+
+  PersonalMemberStatusFilter get _selectedPersonalStatusFilter =>
+      _selectedPersonalStatusFilterNotifier.value;
+
+  String? _memberCanonicalGroupId(Member member) {
+    if (!_isPersonalWorkspace) return _memberGroupMap[member.id];
+    return resolvePersonalMemberGroupId(
+      personalGroupId: member.personalGroupId,
+      availableGroupIds: _groupIds.toSet(),
+    );
+  }
+
+  String _personalTagLabel(String tagId) {
+    for (final item in _personalTags) {
+      if (item.id == tagId) return item.name;
+    }
+    return '';
+  }
 
   String get _aifcNicknameLabel {
     return aifcNicknameLabel(_aifcTrainerNameSourceText);
@@ -608,6 +737,24 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _scrollListToTop();
   }
 
+  void _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter value) {
+    if (_selectedPersonalStatusFilterNotifier.value == value) return;
+    _selectedPersonalStatusFilterNotifier.value = value;
+    _saveLastSelectedStatusFilter(value);
+    _scrollListToTop();
+  }
+
+  Future<void> _saveLastSelectedStatusFilter(
+    PersonalMemberStatusFilter filter,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastSelectedStatusFilterKey, filter.name);
+    } catch (_) {
+      // 상태 필터 저장 실패는 화면 동작에 영향을 주지 않습니다.
+    }
+  }
+
   Future<void> _saveLastSelectedGroupFilter(String? groupId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -625,6 +772,15 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   Future<void> _loadLastSelectedGroupFilter() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (_isPersonalWorkspace) {
+        final savedStatus = prefs.getString(_lastSelectedStatusFilterKey);
+        for (final filter in PersonalMemberStatusFilter.values) {
+          if (filter.name == savedStatus) {
+            _selectedPersonalStatusFilterNotifier.value = filter;
+            break;
+          }
+        }
+      }
       final saved = prefs.getString(_lastSelectedGroupFilterKey);
 
       if (!mounted || saved == null || saved.trim().isEmpty) return;
@@ -633,6 +789,27 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       if (_initialQuickFilter != ClientListInitialFilter.none) return;
 
       final normalized = saved == _allGroupId ? null : saved;
+
+      if (_isPersonalWorkspace && normalized == _systemDormantGroupId) {
+        _selectedPersonalStatusFilterNotifier.value =
+            PersonalMemberStatusFilter.dormant;
+        _selectedGroupIdNotifier.value = null;
+        await _saveLastSelectedStatusFilter(
+          PersonalMemberStatusFilter.dormant,
+        );
+        await _saveLastSelectedGroupFilter(null);
+        return;
+      }
+      if (_isPersonalWorkspace && normalized == _systemExpiredGroupId) {
+        _selectedPersonalStatusFilterNotifier.value =
+            PersonalMemberStatusFilter.expired;
+        _selectedGroupIdNotifier.value = null;
+        await _saveLastSelectedStatusFilter(
+          PersonalMemberStatusFilter.expired,
+        );
+        await _saveLastSelectedGroupFilter(null);
+        return;
+      }
 
       final isAllowed = normalized == null ||
           normalized == _ungroupedGroupId ||
@@ -897,7 +1074,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             isTablet ? kClientMaxContentWidth : constraints.maxWidth;
 
         final scaffold = Scaffold(
-          backgroundColor: kClientBgColor,
+          backgroundColor: context.mtfThemeTokens.memberListBackground,
           body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: _membersQuery.snapshots(),
             builder: (context, snapshot) {
@@ -1002,6 +1179,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                           onAddCustomer: _openCreate,
                           onToggleListView: _toggleListViewMode,
                           onCreateGroup: _handleHeaderCreateGroup,
+                          onManageTags: () => _openPersonalTaxonomyManagement(
+                            PersonalMemberTaxonomyKind.tag,
+                          ),
                           onResetFilters: _resetQuickFilters,
                           onRestoreDeletedMembers:
                               _openDeletedMembersRestoreSheet,
@@ -1019,11 +1199,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _PinnedSearchHeaderDelegate(
-                        minExtentValue: 136,
-                        maxExtentValue: 136,
+                        minExtentValue: _isPersonalWorkspace ? 174 : 136,
+                        maxExtentValue: _isPersonalWorkspace ? 174 : 136,
                         child: RepaintBoundary(
                           child: Container(
-                            color: kClientBgColor,
+                            color: context.mtfThemeTokens.memberListBackground,
                             padding: const EdgeInsets.fromLTRB(
                               kClientPageHorizontalPadding,
                               10,
@@ -1033,6 +1213,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                             child: ListenableBuilder(
                               listenable: Listenable.merge([
                                 _selectedGroupIdNotifier,
+                                _selectedPersonalTagIdNotifier,
+                                _selectedPersonalStatusFilterNotifier,
                                 _groupNamesVersionNotifier,
                               ]),
                               builder: (context, _) {
@@ -1123,32 +1305,35 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                                       },
                                     ),
                                     const SizedBox(height: 6),
-                                    _GroupFilterChipRow(
-                                      items: _buildHeaderGroupFilterItems(),
-                                      selectedGroupId: _selectedGroupId,
-                                      accentColorForGroupId:
-                                          _memberDisplayGroupAccentColorForGroupId,
-                                      textColorForGroupId:
-                                          _memberDisplayGroupTextColorForGroupId,
-                                      onSelected: (groupId) {
-                                        _clearAlertFilter();
-                                        _clearDashboardCareFilter();
-
-                                        setState(() {
-                                          _selectedLessonDate = null;
-                                          _membershipFilter = null;
-                                          _initialQuickFilter =
-                                              ClientListInitialFilter.none;
-                                        });
-
-                                        _setSelectedGroupId(
-                                          groupId == _allGroupId
-                                              ? null
-                                              : groupId,
-                                        );
-                                      },
-                                      onSettingsTap: _showGroupManagementSheet,
-                                    ),
+                                    if (_isPersonalWorkspace)
+                                      PersonalTaxonomyFilterStrip(
+                                        entries:
+                                            _buildPersonalTaxonomyFilterEntries(
+                                          allMembers,
+                                        ),
+                                        selectedGroupId: _selectedGroupId,
+                                        selectedTagId: _selectedPersonalTagId,
+                                        selectedStatus:
+                                            _selectedPersonalStatusFilter,
+                                        onManage:
+                                            _showPersonalTaxonomyManagementMenu,
+                                        onSelected:
+                                            _handlePersonalTaxonomyFilterEntry,
+                                      )
+                                    else
+                                      _GroupFilterChipRow(
+                                        items: _buildHeaderGroupFilterItems(
+                                          allMembers,
+                                        ),
+                                        selectedGroupId: _selectedGroupId,
+                                        accentColorForGroupId:
+                                            _memberDisplayGroupAccentColorForGroupId,
+                                        textColorForGroupId:
+                                            _memberDisplayGroupTextColorForGroupId,
+                                        onSelected: _handleGroupFilter,
+                                        onSettingsTap:
+                                            _showGroupManagementSheet,
+                                      ),
                                   ],
                                 );
                               },
@@ -1164,6 +1349,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                           _memberGroupMapNotifier,
                           _groupNamesVersionNotifier,
                           _selectedGroupIdNotifier,
+                          _selectedPersonalTagIdNotifier,
+                          _selectedPersonalStatusFilterNotifier,
                           _dashboardCareFilterNotifier,
                           _alertFilterMemberIdsNotifier,
                           _isListViewNotifier,
@@ -1251,6 +1438,14 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       return _membershipListFilterLabel(_membershipFilter!);
     }
 
+    if (_selectedPersonalStatusFilter != PersonalMemberStatusFilter.all) {
+      return personalMemberStatusFilterLabel(_selectedPersonalStatusFilter);
+    }
+
+    if (_selectedPersonalTagId != null) {
+      return _personalTagLabel(_selectedPersonalTagId!);
+    }
+
     final selectedGroupId = _selectedGroupId;
 
     if (selectedGroupId == null) {
@@ -1269,6 +1464,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       allMembers,
       searchKeyword,
       groupFilterId: _selectedGroupId,
+      tagFilterId: _selectedPersonalTagId,
+      statusFilter: _selectedPersonalStatusFilter,
       dashboardCareFilter: _selectedDashboardCareFilter,
       alertFilterMemberIds: _alertFilterMemberIds,
       membershipMetaById: membershipMetaById,
@@ -1292,9 +1489,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             child: Center(
               child: Text(
                 '${_activeFilterTitle()}에 표시할 회원이 없어요',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
-                  color: Colors.black54,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1345,9 +1542,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             member: member,
             displayName: displayName,
             trainerNameSourceText: _aifcTrainerNameSourceText,
-            groupLabel: _memberGroupMap[member.id] == null
+            groupLabel: _memberCanonicalGroupId(member) == null
                 ? null
-                : _groupLabel(_memberGroupMap[member.id]!),
+                : _groupLabel(_memberCanonicalGroupId(member)!),
             displayGroupLabel: _memberDisplayGroupLabel(member),
             displayGroupAccentColor: _memberDisplayGroupAccentColor(member),
             displayGroupTextColor: _memberDisplayGroupTextColor(member),
@@ -1690,6 +1887,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     List<Member> members,
     String rawQuery, {
     String? groupFilterId,
+    String? tagFilterId,
+    PersonalMemberStatusFilter statusFilter = PersonalMemberStatusFilter.all,
     _DashboardCareFilter? dashboardCareFilter,
     Set<String> alertFilterMemberIds = const <String>{},
     required Map<String, _MemberMembershipMeta> membershipMetaById,
@@ -1701,8 +1900,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       final matchesAlertFilter =
           !isAlertFilterActive || alertFilterMemberIds.contains(member.id);
 
-      final memberGroupId = _memberGroupMap[member.id];
+      final memberGroupId = _memberCanonicalGroupId(member);
       final groupLabel = _memberDisplayGroupLabel(member);
+      final tagLabels = member.personalTagIds.map(_personalTagLabel).toList();
 
       final matchesSearch = search_utils.matchesSmartMemberSearch(
         rawQuery: rawQuery,
@@ -1712,6 +1912,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           member.trainer ?? '',
           member.grade ?? '',
           groupLabel,
+          ...tagLabels,
         ],
       );
 
@@ -1720,19 +1921,29 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           : (member.lastLogAt != null &&
               _isSameDate(member.lastLogAt!, _selectedLessonDate!));
 
-      final matchesGroup = isAlertFilterActive
+      final matchesClassification = isAlertFilterActive
           ? true
-          : switch (groupFilterId) {
-              null => true,
-              _ungroupedGroupId => !_isExpiredMember(member) &&
-                  !_isDormantMember(member) &&
-                  memberGroupId == null,
-              _systemDormantGroupId => _isDormantMember(member),
-              _systemExpiredGroupId => _isExpiredMember(member),
-              _ => !_isExpiredMember(member) &&
-                  !_isDormantMember(member) &&
-                  memberGroupId == groupFilterId,
-            };
+          : _isPersonalWorkspace
+              ? matchesPersonalMemberListClassification(
+                  memberStatus: member.memberStatus,
+                  memberGroupId: memberGroupId,
+                  memberTagIds: member.personalTagIds,
+                  statusFilter: statusFilter,
+                  selectedGroupId: groupFilterId,
+                  defaultGroupId: _ungroupedGroupId,
+                  selectedTagId: tagFilterId,
+                )
+              : switch (groupFilterId) {
+                  null => true,
+                  _ungroupedGroupId => !_isExpiredMember(member) &&
+                      !_isDormantMember(member) &&
+                      memberGroupId == null,
+                  _systemDormantGroupId => _isDormantMember(member),
+                  _systemExpiredGroupId => _isExpiredMember(member),
+                  _ => !_isExpiredMember(member) &&
+                      !_isDormantMember(member) &&
+                      memberGroupId == groupFilterId,
+                };
 
       final matchesDashboardCare = isAlertFilterActive
           ? true
@@ -1743,7 +1954,6 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         membershipMetaById[member.id],
         _membershipFilter,
       );
-
       if (_initialQuickFilter == ClientListInitialFilter.lowRemaining &&
           !_isLowRemainingMember(member)) {
         return false;
@@ -1757,7 +1967,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       return matchesAlertFilter &&
           matchesSearch &&
           matchesDate &&
-          matchesGroup &&
+          matchesClassification &&
           matchesDashboardCare &&
           matchesMembershipFilter;
     }).toList();
@@ -1920,7 +2130,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
   Future<void> _showCreateGroupDialog() async {
     if (_isPersonalWorkspace) {
-      await _showRenameGroupDialog(_ungroupedGroupId);
+      await _openPersonalTaxonomyManagement(
+        PersonalMemberTaxonomyKind.group,
+      );
       return;
     }
 
@@ -2124,15 +2336,15 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     for (final member in allMembers) {
       if (_isExpiredMember(member)) {
         counts[_systemExpiredGroupId] = counts[_systemExpiredGroupId]! + 1;
-        continue;
+        if (!_isPersonalWorkspace) continue;
       }
 
       if (_isDormantMember(member)) {
         counts[_systemDormantGroupId] = counts[_systemDormantGroupId]! + 1;
-        continue;
+        if (!_isPersonalWorkspace) continue;
       }
 
-      final groupId = _memberGroupMap[member.id];
+      final groupId = _memberCanonicalGroupId(member);
       if (groupId == null) {
         counts[_ungroupedGroupId] = counts[_ungroupedGroupId]! + 1;
       } else if (counts.containsKey(groupId)) {
@@ -2158,15 +2370,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   String _memberDisplayGroupLabel(Member member) {
-    if (_isExpiredMember(member)) {
+    if (!_isPersonalWorkspace && _isExpiredMember(member)) {
       return _groupLabel(_systemExpiredGroupId);
     }
-
-    if (_isDormantMember(member)) {
+    if (!_isPersonalWorkspace && _isDormantMember(member)) {
       return _groupLabel(_systemDormantGroupId);
     }
-
-    final groupId = _memberGroupMap[member.id];
+    final groupId = _memberCanonicalGroupId(member);
 
     if (groupId != null && groupId.trim().isNotEmpty) {
       return _groupLabel(groupId);
@@ -2176,14 +2386,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Color _memberDisplayGroupAccentColor(Member member) {
-    if (_isExpiredMember(member)) {
+    if (!_isPersonalWorkspace && _isExpiredMember(member)) {
       return const Color(0xFF6B7280);
     }
-    if (_isDormantMember(member)) {
+    if (!_isPersonalWorkspace && _isDormantMember(member)) {
       return const Color(0xFFD1D5DB);
     }
-
-    final groupId = _memberGroupMap[member.id];
+    final groupId = _memberCanonicalGroupId(member);
     if (groupId == null) {
       return const Color(0xFFE5E7EB);
     }
@@ -2202,14 +2411,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Color _memberDisplayGroupTextColor(Member member) {
-    if (_isExpiredMember(member)) {
+    if (!_isPersonalWorkspace && _isExpiredMember(member)) {
       return const Color(0xFFF9FAFB);
     }
-    if (_isDormantMember(member)) {
+    if (!_isPersonalWorkspace && _isDormantMember(member)) {
       return const Color(0xFF4B5563);
     }
-
-    final groupId = _memberGroupMap[member.id];
+    final groupId = _memberCanonicalGroupId(member);
     if (groupId == null) {
       return const Color(0xFF4B5563);
     }
@@ -2300,22 +2508,50 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           icon: Icons.folder_open_rounded,
         ),
       ),
-      _MemberCardGroupMenuItem(
-        id: _systemDormantGroupId,
-        label: _groupLabel(_systemDormantGroupId),
-        icon: Icons.bedtime_rounded,
-      ),
-      _MemberCardGroupMenuItem(
-        id: _systemExpiredGroupId,
-        label: _groupLabel(_systemExpiredGroupId),
-        icon: Icons.warning_amber_rounded,
-      ),
+      if (!_isPersonalWorkspace) ...[
+        _MemberCardGroupMenuItem(
+          id: _systemDormantGroupId,
+          label: _groupLabel(_systemDormantGroupId),
+          icon: Icons.bedtime_rounded,
+        ),
+        _MemberCardGroupMenuItem(
+          id: _systemExpiredGroupId,
+          label: _groupLabel(_systemExpiredGroupId),
+          icon: Icons.warning_amber_rounded,
+        ),
+      ],
     ];
   }
 
   Future<void> _handleMemberQuickGroupChange(
       Member member, String targetGroupId) async {
     _closeHeaderOverlayIfNeeded();
+
+    if (_isPersonalWorkspace && !_systemGroupIds.contains(targetGroupId)) {
+      final allowed = await _guardPersonalTaxonomyFeature(
+        AppTierFeatureKey.personalGroup,
+        entryPoint: 'client_list_quick_group_assignment',
+      );
+      if (!allowed || !mounted) return;
+      try {
+        await PersonalMemberTaxonomyService(
+          uid: widget.personalOwnerUid!.trim(),
+        ).assignMemberAndVerify(
+          memberId: member.id,
+          assignments: PersonalMemberAssignmentPatch(
+            groupProvided: true,
+            personalGroupId:
+                targetGroupId == _ungroupedGroupId ? null : targetGroupId,
+          ),
+        );
+        if (!mounted) return;
+        _showSnack('${aifcPersonLabel(member.name)} 그룹이 변경됐어요.');
+      } catch (_) {
+        if (!mounted) return;
+        _showSnack('그룹을 변경하지 못했어요. 다시 시도해 주세요.');
+      }
+      return;
+    }
 
     final memberRef =
         FirebaseFirestore.instance.collection('members').doc(member.id);
@@ -2387,7 +2623,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _closeHeaderOverlayIfNeeded();
 
     if (_isPersonalWorkspace) {
-      await _showRenameGroupDialog(_ungroupedGroupId);
+      await _openPersonalTaxonomyManagement(
+        PersonalMemberTaxonomyKind.group,
+      );
       return;
     }
 
@@ -2410,6 +2648,168 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     );
   }
 
+  void _handleGroupFilter(String groupId) {
+    _clearAlertFilter();
+    _clearDashboardCareFilter();
+    setState(() {
+      _selectedLessonDate = null;
+      _membershipFilter = null;
+      _initialQuickFilter = ClientListInitialFilter.none;
+    });
+    _setSelectedGroupId(groupId == _allGroupId ? null : groupId);
+  }
+
+  Future<void> _showPersonalTaxonomyManagementMenu() async {
+    final selection =
+        await AifcOptionChatSheet.show<PersonalMemberTaxonomyKind>(
+      context: context,
+      nickname: _aifcNicknameLabel,
+      title: '회원 분류를 관리해볼까요?',
+      message: '그룹은 센터·반처럼 한 곳에 소속시키고, 태그는 여러 기준을 함께 표시할 때 사용해요.',
+      selectedValue: null,
+      closeText: '닫기',
+      guidanceText: '관리할 분류를 선택해주세요.',
+      items: const [
+        AifcOptionItem(
+          value: PersonalMemberTaxonomyKind.group,
+          title: '그룹 관리',
+          subtitle: '센터, 반, 소속처럼 한 곳으로 분류해요.',
+          icon: Icons.folder_open_rounded,
+        ),
+        AifcOptionItem(
+          value: PersonalMemberTaxonomyKind.tag,
+          title: '태그 관리',
+          subtitle: 'VIP, 통증, 목표처럼 여러 기준을 함께 표시해요.',
+          icon: Icons.sell_outlined,
+        ),
+      ],
+    );
+    if (selection == null || !mounted) return;
+    await _openPersonalTaxonomyManagement(selection);
+  }
+
+  Future<void> _handlePersonalTaxonomyExample(
+    PersonalTaxonomyFilterEntry entry,
+  ) async {
+    final isGroup = entry.role == PersonalTaxonomyFilterRole.exampleGroup;
+    final kind = isGroup
+        ? PersonalMemberTaxonomyKind.group
+        : PersonalMemberTaxonomyKind.tag;
+    if (!isGroup) {
+      final allowed = await _guardPersonalTaxonomyFeature(
+        AppTierFeatureKey.personalTag,
+        entryPoint: 'client_list_example_tag',
+      );
+      if (!allowed || !mounted) return;
+    }
+    final selection = await AifcOptionChatSheet.show<String>(
+      context: context,
+      nickname: _aifcNicknameLabel,
+      title: isGroup ? '그룹으로 나눠볼까요?' : '태그로 세분화해볼까요?',
+      message: isGroup
+          ? '새 그룹을 만들어 회원을 센터나 반별로 나눌 수 있어요.'
+          : '이런 태그를 직접 만들어 회원을 여러 기준으로 분류할 수 있어요.',
+      selectedValue: null,
+      closeText: '닫기',
+      guidanceText: '예시 칩은 안내용이며 자동으로 저장되지 않아요.',
+      items: [
+        AifcOptionItem(
+          value: 'manage',
+          title: isGroup ? '그룹 만들기' : '태그 만들기',
+          subtitle:
+              isGroup ? '기존 그룹 관리 화면에서 추가해요.' : '기존 AIFC 태그 관리 시트에서 추가해요.',
+          icon: isGroup ? Icons.add_business_rounded : Icons.new_label_rounded,
+        ),
+      ],
+    );
+    if (selection != 'manage' || !mounted) return;
+    await _openPersonalTaxonomyManagement(kind);
+  }
+
+  Future<void> _handlePersonalTaxonomyFilterEntry(
+    PersonalTaxonomyFilterEntry entry,
+  ) async {
+    if (entry.isExample) {
+      await _handlePersonalTaxonomyExample(entry);
+      return;
+    }
+    if (entry.role == PersonalTaxonomyFilterRole.all) {
+      _handleGroupFilter(_allGroupId);
+      _selectedPersonalTagIdNotifier.value = null;
+      _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.all);
+      return;
+    }
+    if (entry.role == PersonalTaxonomyFilterRole.statusDormant) {
+      _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.dormant);
+      return;
+    }
+    if (entry.role == PersonalTaxonomyFilterRole.statusExpired) {
+      _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.expired);
+      return;
+    }
+    if (entry.role == PersonalTaxonomyFilterRole.tag) {
+      await _handlePersonalTagFilter(entry.id);
+      return;
+    }
+    _handleGroupFilter(entry.id);
+  }
+
+  Future<bool> _guardPersonalTaxonomyFeature(
+    AppTierFeatureKey feature, {
+    required String entryPoint,
+  }) async {
+    if (!_isPersonalWorkspace) return false;
+    final allowed = await AifcTierFeatureGateSheet.guard(
+      context: context,
+      access: _personalTierAccess,
+      feature: feature,
+      loadAccess: () => AppTierAccessService.loadPersonalTrainerAccess(
+        uid: widget.personalOwnerUid!.trim(),
+      ),
+      entryPoint: entryPoint,
+    );
+    if (allowed) await _loadPersonalTierAccess();
+    return allowed;
+  }
+
+  Future<void> _openPersonalTaxonomyManagement(
+    PersonalMemberTaxonomyKind kind,
+  ) async {
+    final feature = kind == PersonalMemberTaxonomyKind.group
+        ? AppTierFeatureKey.personalGroup
+        : AppTierFeatureKey.personalTag;
+    final allowed = await _guardPersonalTaxonomyFeature(
+      feature,
+      entryPoint: 'client_list_${kind.name}_management',
+    );
+    if (!allowed || !mounted) return;
+    if (kind == PersonalMemberTaxonomyKind.tag) {
+      await AifcPersonalTagManagementChatSheet.show(
+        context: context,
+        ownerUid: widget.personalOwnerUid!.trim(),
+      );
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => PersonalMemberTaxonomyManagementPage(
+          ownerUid: widget.personalOwnerUid!.trim(),
+          kind: kind,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handlePersonalTagFilter(String? tagId) async {
+    final allowed = await _guardPersonalTaxonomyFeature(
+      AppTierFeatureKey.personalTag,
+      entryPoint: 'client_list_tag_filter',
+    );
+    if (!allowed || !mounted) return;
+    _selectedPersonalTagIdNotifier.value = tagId;
+    _scrollListToTop();
+  }
+
   void _resetQuickFilters() {
     _closeHeaderOverlayIfNeeded();
 
@@ -2419,6 +2819,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _clearAlertFilter();
     _clearDashboardCareFilter();
     _setSelectedGroupId(null);
+    _selectedPersonalTagIdNotifier.value = null;
+    _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.all);
 
     setState(() {
       _selectedLessonDate = null;
@@ -2588,6 +2990,22 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
   Future<void> _updateMemberStatus(Member member, String newStatus) async {
     try {
+      if (_isPersonalWorkspace) {
+        final nextState = switch (newStatus) {
+          '휴면' => 'dormant',
+          '만료' => 'expired',
+          _ => 'active',
+        };
+        await PersonalMemberCardSaveService(
+          uid: widget.personalOwnerUid!.trim(),
+        ).transitionStateAndVerify(
+          memberId: member.id,
+          nextState: nextState,
+        );
+        if (!mounted) return;
+        _showSnack('${aifcPersonLabel(member.name)} 활동상태가 변경되었어요.');
+        return;
+      }
       final memberRef =
           FirebaseFirestore.instance.collection('members').doc(member.id);
 
@@ -3422,9 +3840,11 @@ class DashboardHeaderData {
 }
 
 enum _DashboardHeaderMenuAction {
+  addMember,
   viewCard,
   viewList,
   createGroup,
+  manageTags,
   resetFilters,
   restoreDeletedMembers,
 }
@@ -3440,6 +3860,7 @@ class DashboardBlueHeader extends StatefulWidget {
     required this.onAddCustomer,
     required this.onToggleListView,
     required this.onCreateGroup,
+    required this.onManageTags,
     required this.onResetFilters,
     required this.onRestoreDeletedMembers,
     required this.selectedCareFilterListenable,
@@ -3453,6 +3874,7 @@ class DashboardBlueHeader extends StatefulWidget {
   final VoidCallback onBackTap;
   final VoidCallback onAddCustomer;
   final VoidCallback onCreateGroup;
+  final VoidCallback onManageTags;
   final VoidCallback onResetFilters;
   final VoidCallback onRestoreDeletedMembers;
   final ValueListenable<bool> isListViewListenable;
@@ -3507,6 +3929,10 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
 
   void _handleMenuSelected(_DashboardHeaderMenuAction action) {
     switch (action) {
+      case _DashboardHeaderMenuAction.addMember:
+        widget.onAddCustomer();
+        break;
+
       case _DashboardHeaderMenuAction.viewCard:
         if (widget.isListViewListenable.value) {
           widget.onToggleListView();
@@ -3521,6 +3947,10 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
 
       case _DashboardHeaderMenuAction.createGroup:
         widget.onCreateGroup();
+        break;
+
+      case _DashboardHeaderMenuAction.manageTags:
+        widget.onManageTags();
         break;
 
       case _DashboardHeaderMenuAction.resetFilters:
@@ -3684,6 +4114,7 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
   Widget build(BuildContext context) {
     final data = widget.data;
     final topPadding = MediaQuery.of(context).padding.top;
+    final gradient = context.mtfHeaderGradient;
 
     return MtfHeaderNeonOverlay(
       isExpanded: _expanded,
@@ -3704,7 +4135,7 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
             bottom: 14,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFF5B4BDB),
+            gradient: gradient,
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(_expanded ? 22 : 28),
             ),
@@ -3793,17 +4224,41 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                                   offset: const Offset(0, 8),
                                   onSelected: _handleMenuSelected,
                                   items: [
-                                    MtfMoreMenuItem(
-                                      value: _DashboardHeaderMenuAction
-                                          .createGroup,
-                                      icon: Icons.add_box_rounded,
-                                      label: widget.isPersonalWorkspace
-                                          ? '기본 그룹 이름 변경'
-                                          : '새 그룹 만들기',
-                                      subLabel: widget.isPersonalWorkspace
-                                          ? '모든 Personal 회원 표시명'
-                                          : '회원 분류 추가',
-                                    ),
+                                    if (widget.isPersonalWorkspace) ...[
+                                      const MtfMoreMenuItem(
+                                        value: _DashboardHeaderMenuAction
+                                            .addMember,
+                                        icon: Icons.person_add_alt_1_rounded,
+                                        label: '회원 추가',
+                                        subLabel: '새 고객카드 등록',
+                                      ),
+                                      const MtfMoreMenuItem(
+                                        value: _DashboardHeaderMenuAction
+                                            .createGroup,
+                                        icon: Icons.folder_open_rounded,
+                                        label: '그룹 관리',
+                                        subLabel: '기본·사용자 그룹 관리',
+                                      ),
+                                      const MtfMoreMenuItem(
+                                        value: _DashboardHeaderMenuAction
+                                            .manageTags,
+                                        icon: Icons.sell_outlined,
+                                        label: '태그 관리',
+                                        subLabel: 'Semi-Pro 복수 태그 관리',
+                                      ),
+                                    ],
+                                    if (!widget.isPersonalWorkspace)
+                                      MtfMoreMenuItem(
+                                        value: _DashboardHeaderMenuAction
+                                            .createGroup,
+                                        icon: Icons.add_box_rounded,
+                                        label: widget.isPersonalWorkspace
+                                            ? '기본 그룹 이름 변경'
+                                            : '새 그룹 만들기',
+                                        subLabel: widget.isPersonalWorkspace
+                                            ? '모든 Personal 회원 표시명'
+                                            : '회원 분류 추가',
+                                      ),
                                     MtfMoreMenuItem(
                                       value: _DashboardHeaderMenuAction
                                           .resetFilters,
@@ -5028,16 +5483,18 @@ class _SearchAndFilterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool hasDateFilter = selectedLessonDate != null;
     final bool hasMembershipFilter = membershipFilter != null;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
-        color: kClientCardColor,
+        color: tokens.memberListCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: kClientBorderColor),
+        border: Border.all(color: tokens.memberListCardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: scheme.shadow.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -5058,7 +5515,7 @@ class _SearchAndFilterCard extends StatelessWidget {
                         : '이름/전화번호/그룹명 검색',
                 prefixIcon: const Icon(Icons.search_rounded),
                 filled: true,
-                fillColor: const Color(0xFFF8FAFC),
+                fillColor: scheme.surfaceContainerHighest,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
@@ -5078,9 +5535,9 @@ class _SearchAndFilterCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: kClientBorderColor),
+                border: Border.all(color: tokens.memberListCardBorder),
               ),
               child: Icon(
                 sortAscending
@@ -5094,7 +5551,7 @@ class _SearchAndFilterCard extends StatelessWidget {
           PopupMenuButton<_SearchMenuAction>(
             onSelected: onMenuSelected,
             tooltip: '검색 옵션',
-            color: Colors.white,
+            color: tokens.navigationSheetBackground,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -5123,8 +5580,8 @@ class _SearchAndFilterCard extends StatelessWidget {
                       Icons.folder_open_rounded,
                       size: 18,
                       color: sortOption == SortOption.group
-                          ? const Color(0xFF5B4BDB)
-                          : const Color(0xFF4B5563),
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 10),
                     Text(
@@ -5149,13 +5606,13 @@ class _SearchAndFilterCard extends StatelessWidget {
                   child: Text('레슨일 해제'),
                 ),
               const PopupMenuDivider(),
-              const PopupMenuItem<_SearchMenuAction>(
+              PopupMenuItem<_SearchMenuAction>(
                 enabled: false,
                 child: Text(
                   '회원권',
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF6B7280),
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -5173,10 +5630,10 @@ class _SearchAndFilterCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 color: hasDateFilter
-                    ? const Color(0xFFEFF6FF)
-                    : const Color(0xFFF8FAFC),
+                    ? tokens.memberListSelected
+                    : scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: kClientBorderColor),
+                border: Border.all(color: tokens.memberListCardBorder),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -5236,40 +5693,39 @@ class _GroupFilterChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chips = <Widget>[
+      ...items.map((item) {
+        final bool isSelected = item.id == _MemberDashboardPageState._allGroupId
+            ? selectedGroupId == null
+            : selectedGroupId == item.id;
+
+        return Padding(
+          padding: const EdgeInsets.only(right: 7),
+          child: _GroupFilterChip(
+            label: item.label,
+            icon: item.icon,
+            isSelected: isSelected,
+            selectedBgColor: accentColorForGroupId(item.id),
+            selectedTextColor: textColorForGroupId(item.id),
+            onTap: () => onSelected(item.id),
+          ),
+        );
+      }),
+      _GroupFilterChip(
+        icon: Icons.settings_rounded,
+        isSelected: false,
+        selectedBgColor: const Color(0xFF5B4BDB),
+        selectedTextColor: Colors.white,
+        onTap: onSettingsTap,
+      ),
+    ];
+
     return SizedBox(
       height: 32,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        child: Row(
-          children: [
-            ...items.map((item) {
-              final bool isSelected =
-                  item.id == _MemberDashboardPageState._allGroupId
-                      ? selectedGroupId == null
-                      : selectedGroupId == item.id;
-
-              return Padding(
-                padding: const EdgeInsets.only(right: 7),
-                child: _GroupFilterChip(
-                  label: item.label,
-                  icon: item.icon,
-                  isSelected: isSelected,
-                  selectedBgColor: accentColorForGroupId(item.id),
-                  selectedTextColor: textColorForGroupId(item.id),
-                  onTap: () => onSelected(item.id),
-                ),
-              );
-            }),
-            _GroupFilterChip(
-              icon: Icons.settings_rounded,
-              isSelected: false,
-              selectedBgColor: const Color(0xFF5B4BDB),
-              selectedTextColor: Colors.white,
-              onTap: onSettingsTap,
-            ),
-          ],
-        ),
+        child: Row(children: chips),
       ),
     );
   }
@@ -5294,9 +5750,12 @@ class _GroupFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color bgColor = isSelected ? selectedBgColor : Colors.white;
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
+    final Color bgColor =
+        isSelected ? tokens.memberListSelected : tokens.memberListCard;
     final Color fgColor =
-        isSelected ? selectedTextColor : const Color(0xFF6B7280);
+        isSelected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant;
 
     return Material(
       color: Colors.transparent,
@@ -5312,12 +5771,12 @@ class _GroupFilterChip extends StatelessWidget {
             color: bgColor,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: isSelected ? selectedBgColor : const Color(0xFFE5E7EB),
+              color: isSelected ? selectedBgColor : tokens.memberListCardBorder,
               width: isSelected ? 1.2 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
+                color: scheme.shadow.withValues(alpha: 0.06),
                 blurRadius: 7,
                 offset: const Offset(0, 2),
               ),
@@ -5868,6 +6327,27 @@ class _MemberCardGroupMenuItem {
   final IconData icon;
 }
 
+Color _memberGroupMenuItemColor(BuildContext context, String groupId) {
+  final colorScheme = Theme.of(context).colorScheme;
+  if (Theme.of(context).brightness == Brightness.dark) {
+    if (groupId == _MemberDashboardPageState._systemDormantGroupId) {
+      return colorScheme.onSurfaceVariant;
+    }
+    if (groupId == _MemberDashboardPageState._systemExpiredGroupId) {
+      return colorScheme.onSurface.withValues(alpha: 0.82);
+    }
+    return colorScheme.onSurface;
+  }
+
+  if (groupId == _MemberDashboardPageState._systemDormantGroupId) {
+    return const Color(0xFF6B7280);
+  }
+  if (groupId == _MemberDashboardPageState._systemExpiredGroupId) {
+    return const Color(0xFF374151);
+  }
+  return const Color(0xFF4B5563);
+}
+
 class MemberListRow extends StatelessWidget {
   const MemberListRow({
     super.key,
@@ -6166,27 +6646,29 @@ class MemberListRow extends StatelessWidget {
     return items.take(2).toList();
   }
 
-  Color _sessionSummaryTextColor() {
+  Color _sessionSummaryTextColor(BuildContext context) {
     return _isMembershipExpiryWithinDays(member, 10)
         ? const Color(0xFFEF4444)
-        : const Color(0xFF374151);
+        : Theme.of(context).colorScheme.onSurfaceVariant;
   }
 
   @override
   Widget build(BuildContext context) {
     final statusColor = _statusBarColor(member);
     final eventChips = _listEventChips();
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
 
     return Container(
       height: 114,
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.memberListCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kClientBorderColor),
+        border: Border.all(color: tokens.memberListCardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: scheme.shadow.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -6232,10 +6714,10 @@ class MemberListRow extends StatelessWidget {
                                       _resolvedName,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14.8,
                                         fontWeight: FontWeight.w900,
-                                        color: Colors.black87,
+                                        color: scheme.onSurface,
                                         letterSpacing: -0.2,
                                         height: 1.0,
                                       ),
@@ -6259,10 +6741,10 @@ class MemberListRow extends StatelessWidget {
                               _nextLessonInlineText(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10.8,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF6B7280),
+                                color: scheme.onSurfaceVariant,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -6281,7 +6763,7 @@ class MemberListRow extends StatelessWidget {
                                   size: 18,
                                   color: isPinned
                                       ? const Color(0xFFE06A5F)
-                                      : Colors.black45,
+                                      : scheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -6300,7 +6782,7 @@ class MemberListRow extends StatelessWidget {
                                 fontSize: 11.4,
                                 fontWeight: FontWeight.w800,
                                 height: 1.05,
-                                color: _sessionSummaryTextColor(),
+                                color: _sessionSummaryTextColor(context),
                               ),
                             ),
                           ),
@@ -6310,10 +6792,10 @@ class MemberListRow extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.right,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11.2,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black45,
+                              color: scheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -6323,21 +6805,16 @@ class MemberListRow extends StatelessWidget {
                         children: [
                           PopupMenuButton<String>(
                             onSelected: onQuickGroupChanged,
-                            color: Colors.white,
+                            color: tokens.navigationSheetBackground,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                             itemBuilder: (context) {
                               return groupMenuItems.map((item) {
-                                final Color itemColor = item.id ==
-                                        _MemberDashboardPageState
-                                            ._systemDormantGroupId
-                                    ? const Color(0xFF6B7280)
-                                    : item.id ==
-                                            _MemberDashboardPageState
-                                                ._systemExpiredGroupId
-                                        ? const Color(0xFF374151)
-                                        : const Color(0xFF4B5563);
+                                final itemColor = _memberGroupMenuItemColor(
+                                  context,
+                                  item.id,
+                                );
 
                                 return PopupMenuItem<String>(
                                   value: item.id,
@@ -6384,7 +6861,10 @@ class MemberListRow extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w900,
-                                  color: displayGroupTextColor,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? scheme.onSurface
+                                      : displayGroupTextColor,
                                   letterSpacing: _groupLabelLetterSpacing,
                                 ),
                               ),
@@ -6511,6 +6991,10 @@ class MemberSimpleCard extends StatelessWidget {
     final chips = _buildIssueChips(member);
     final visibleChips = chips.take(2).toList();
     final hiddenChipCount = chips.length - visibleChips.length;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tokens = context.mtfThemeTokens;
+    final isDark = theme.brightness == Brightness.dark;
 
     void handleCardTap() {
       onAnyInteraction();
@@ -6520,14 +7004,17 @@ class MemberSimpleCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: _cardBackgroundColor(member),
+          color: isDark ? tokens.memberListCard : _cardBackgroundColor(member),
           border: Border.all(
-            color: _cardBorderColor(member),
+            color:
+                isDark ? tokens.memberListCardBorder : _cardBorderColor(member),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: _cardShadowColor(member),
+              color: isDark
+                  ? scheme.shadow.withValues(alpha: 0.18)
+                  : _cardShadowColor(member),
               blurRadius: 12,
               spreadRadius: 0,
               offset: const Offset(0, 5),
@@ -6578,12 +7065,12 @@ class MemberSimpleCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: isPinned
                                 ? const Color(0xFFFFF3F1)
-                                : Colors.white.withValues(alpha: 0.96),
+                                : tokens.cardSurface,
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: isPinned
                                   ? const Color(0xFFF2B2A6)
-                                  : kClientBorderColor,
+                                  : tokens.memberListCardBorder,
                             ),
                           ),
                           child: Icon(
@@ -6591,7 +7078,7 @@ class MemberSimpleCard extends StatelessWidget {
                             size: 18,
                             color: isPinned
                                 ? const Color(0xFFE06A5F)
-                                : Colors.black54,
+                                : scheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -6616,10 +7103,10 @@ class MemberSimpleCard extends StatelessWidget {
                                 children: [
                                   Text(
                                     _resolvedName,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w900,
-                                      color: Colors.black87,
+                                      color: scheme.onSurface,
                                     ),
                                   ),
                                   if (_isActiveMember(member) &&
@@ -6630,8 +7117,7 @@ class MemberSimpleCard extends StatelessWidget {
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.94),
+                                        color: tokens.cardSurface,
                                         borderRadius:
                                             BorderRadius.circular(999),
                                       ),
@@ -6703,7 +7189,7 @@ class MemberSimpleCard extends StatelessWidget {
             Container(
               height: 42,
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: scheme.surfaceContainerHighest,
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(22),
                 ),
@@ -6713,20 +7199,17 @@ class MemberSimpleCard extends StatelessWidget {
               child: PopupMenuButton<String>(
                 enabled: true,
                 onSelected: onQuickGroupChanged,
-                color: Colors.white,
+                color: tokens.navigationSheetBackground,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
                 offset: const Offset(0, -8),
                 itemBuilder: (context) {
                   return groupMenuItems.map((item) {
-                    final Color itemColor = item.id ==
-                            _MemberDashboardPageState._systemDormantGroupId
-                        ? const Color(0xFF6B7280)
-                        : item.id ==
-                                _MemberDashboardPageState._systemExpiredGroupId
-                            ? const Color(0xFF374151)
-                            : const Color(0xFF4B5563);
+                    final itemColor = _memberGroupMenuItemColor(
+                      context,
+                      item.id,
+                    );
 
                     return PopupMenuItem<String>(
                       value: item.id,
@@ -6800,17 +7283,19 @@ class MemberSimpleCard extends StatelessWidget {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        final tokens = ctx.mtfThemeTokens;
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.96),
+              color: tokens.dialogBackground,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.10),
+                  color: scheme.shadow.withValues(alpha: 0.18),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -6827,10 +7312,10 @@ class MemberSimpleCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             _resolvedName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
-                              color: Colors.black87,
+                              color: scheme.onSurface,
                             ),
                           ),
                         ),
@@ -7120,19 +7605,21 @@ class _MoreChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
+        color: tokens.cardSurface,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: kClientBorderColor),
+        border: Border.all(color: tokens.cardBorder),
       ),
       child: Text(
         '+$count',
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w800,
-          color: Colors.black87,
+          color: scheme.onSurface,
         ),
       ),
     );
@@ -7152,6 +7639,8 @@ class _SideQuickButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.mtfThemeTokens;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -7161,10 +7650,10 @@ class _SideQuickButton extends StatelessWidget {
           width: double.infinity,
           height: 36,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.90),
+            color: tokens.cardSurface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFFE5E7EB),
+              color: tokens.cardBorder,
             ),
           ),
           child: Padding(
@@ -7176,7 +7665,7 @@ class _SideQuickButton extends StatelessWidget {
                   Icon(
                     icon,
                     size: 15,
-                    color: const Color(0xFF6B7280),
+                    color: scheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 4),
                 ],
@@ -7186,8 +7675,8 @@ class _SideQuickButton extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF374151),
+                    style: TextStyle(
+                      color: scheme.onSurface,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.1,
@@ -7214,12 +7703,13 @@ class _CardMetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Icon(
           icon,
           size: 14,
-          color: Colors.black87,
+          color: scheme.onSurface,
         ),
         const SizedBox(width: 5),
         Expanded(
@@ -7227,9 +7717,9 @@ class _CardMetaRow extends StatelessWidget {
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.2,
-              color: Colors.black87,
+              color: scheme.onSurface,
               fontWeight: FontWeight.w600,
               height: 1.18,
             ),
@@ -7251,6 +7741,7 @@ class _OverlayInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -7260,20 +7751,20 @@ class _OverlayInfoRow extends StatelessWidget {
             width: 92,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Colors.black54,
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Colors.black87,
+                color: scheme.onSurface,
               ),
             ),
           ),
@@ -7290,18 +7781,19 @@ class _EmptyInfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
+        color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: Colors.black54,
+          color: scheme.onSurfaceVariant,
         ),
       ),
     );
