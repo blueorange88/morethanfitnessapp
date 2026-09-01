@@ -38,31 +38,36 @@ class PersonalMemberConsentService {
     }
     final memberRef = _firestore.collection('members').doc(normalizedMemberId);
     final snapshotObserved = Completer<void>();
+    Object? snapshotError;
     late final StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>
         subscription;
-    subscription =
-        memberRef.snapshots(includeMetadataChanges: true).listen((snapshot) {
-      final data = snapshot.data();
-      if (!snapshot.exists ||
-          data == null ||
-          snapshot.metadata.isFromCache ||
-          data['trainerId'] != uid ||
-          data['workspaceType'] != 'personal') {
-        return;
-      }
-      if ((data['trainingLogConsentAgreed'] == true) == agreed &&
-          !snapshotObserved.isCompleted) {
-        snapshotObserved.complete();
-      }
-    });
+    subscription = memberRef.snapshots(includeMetadataChanges: true).listen(
+      (snapshot) {
+        final data = snapshot.data();
+        if (!snapshot.exists ||
+            data == null ||
+            snapshot.metadata.isFromCache ||
+            data['trainerId'] != uid ||
+            data['workspaceType'] != 'personal') {
+          return;
+        }
+        if ((data['trainingLogConsentAgreed'] == true) == agreed &&
+            !snapshotObserved.isCompleted) {
+          snapshotObserved.complete();
+        }
+      },
+      onError: (Object error) {
+        snapshotError = error;
+        if (!snapshotObserved.isCompleted) {
+          snapshotObserved.complete();
+        }
+      },
+    );
     try {
       await MtfFirebaseFunctions.call(
         'updateManagedMemberConsent',
         functions: _functions,
-        parameters: {
-          'memberId': normalizedMemberId,
-          'agreed': agreed,
-        },
+        parameters: {'memberId': normalizedMemberId, 'agreed': agreed},
       );
       final readback = await memberRef.get(
         const GetOptions(source: Source.server),
@@ -77,6 +82,9 @@ class PersonalMemberConsentService {
         throw StateError('member_consent_readback_mismatch');
       }
       await snapshotObserved.future.timeout(const Duration(seconds: 12));
+      if (snapshotError != null) {
+        throw StateError('member_consent_snapshot_failed');
+      }
       final timestamp = data['trainingLogConsentAgreedAt'];
       return PersonalMemberConsentState(
         agreed: agreed,

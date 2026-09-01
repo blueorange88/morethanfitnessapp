@@ -7,6 +7,7 @@ import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
 import '../aifc/core/aifc_nickname.dart';
 import '../theme/app_colors.dart';
+import '../services/app_account_service.dart' show appAccountErrorMessage;
 import '../services/personal_member_card_save_service.dart';
 
 class AifcQuickRegisterResult {
@@ -28,24 +29,29 @@ class AifcQuickRegisterChatSheet extends StatefulWidget {
     super.key,
     required this.nickname,
     required this.onFastSave,
+    this.onAccountLink,
   });
 
   final String nickname;
   final Future<void> Function(AifcQuickRegisterResult result) onFastSave;
+  final Future<bool> Function()? onAccountLink;
 
   static Future<AifcQuickRegisterResult?> show({
     required BuildContext context,
     required String nickname,
     required Future<void> Function(AifcQuickRegisterResult result) onFastSave,
+    Future<bool> Function()? onAccountLink,
   }) {
     return showModalBottomSheet<AifcQuickRegisterResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcQuickRegisterChatSheet(
-        nickname: nickname,
-        onFastSave: onFastSave,
-      ),
+      builder:
+          (_) => AifcQuickRegisterChatSheet(
+            nickname: nickname,
+            onFastSave: onFastSave,
+            onAccountLink: onAccountLink,
+          ),
     );
   }
 
@@ -63,6 +69,7 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
 
   DateTime? _consultDate;
   bool _discardPromptVisible = false;
+  bool _accountLinkPromptVisible = false;
   String? _lastValidationMessage;
 
   @override
@@ -95,15 +102,16 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
             phoneC: _phoneC,
             consultDateText: _formatDate(_consultDate),
             onConsultDateTap: _pickConsultDate,
-            onClearConsultDate: _consultDate == null
-                ? null
-                : () {
-                    setState(() {
-                      _consultDate = null;
-                      _discardPromptVisible = false;
-                      _lastValidationMessage = null;
-                    });
-                  },
+            onClearConsultDate:
+                _consultDate == null
+                    ? null
+                    : () {
+                      setState(() {
+                        _consultDate = null;
+                        _discardPromptVisible = false;
+                        _lastValidationMessage = null;
+                      });
+                    },
           ),
           const SizedBox(height: 12),
           _QuickRegisterActionCard(
@@ -220,12 +228,63 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
         }
         await widget.onFastSave(result);
       },
-      successText: goDetail
-          ? '$memberLabel 기본 정보를 먼저 등록하고,\n고객카드 작성으로 이어갈게요.'
-          : '$memberLabel을 등록했어요.\n필요하면 고객카드에서 더 자세히 채울 수 있어요.',
+      successText:
+          goDetail
+              ? '$memberLabel 기본 정보를 먼저 등록하고,\n고객카드 작성으로 이어갈게요.'
+              : '$memberLabel을 등록했어요.\n필요하면 고객카드에서 더 자세히 채울 수 있어요.',
       errorTextBuilder: personalMemberUpdateErrorMessage,
+      onError: _handleSubmitError,
       closeAfterReply: true,
       popResult: result,
+    );
+  }
+
+  void _handleSubmitError(Object error) {
+    _accountLinkPromptVisible =
+        personalMemberUpdateRequiresAccountLink(error) &&
+        widget.onAccountLink != null;
+  }
+
+  Future<void> _openAccountConnection() async {
+    final onAccountLink = widget.onAccountLink;
+    if (aifcIsBusy || onAccountLink == null) return;
+
+    HapticFeedback.mediumImpact();
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      aifcLoading = true;
+    });
+
+    var linked = false;
+    Object? linkError;
+    try {
+      linked = await onAccountLink();
+    } catch (error) {
+      linkError = error;
+    } finally {
+      if (mounted) {
+        setState(() {
+          aifcLoading = false;
+        });
+      }
+    }
+    if (!mounted) return;
+    if (linkError != null) {
+      aifcAddFcMessage(
+        text: appAccountErrorMessage(linkError),
+        groupKey: 'quick_register_account_link_error',
+      );
+      return;
+    }
+    if (!linked) return;
+
+    setState(() {
+      _accountLinkPromptVisible = false;
+    });
+    aifcSetActiveGroup('quick_register_account_linked');
+    aifcAddFcMessage(
+      text: '계정이 연결됐어요. 입력한 내용은 그대로예요.\n빠른등록을 다시 눌러주세요.',
+      groupKey: 'quick_register_account_linked',
     );
   }
 
@@ -244,10 +303,7 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
 
     aifcSetActiveGroup('quick_register_validation');
 
-    aifcAddFcMessage(
-      text: message,
-      groupKey: 'quick_register_validation',
-    );
+    aifcAddFcMessage(text: message, groupKey: 'quick_register_validation');
   }
 
   Future<void> _handleCancel() async {
@@ -346,7 +402,8 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -371,22 +428,38 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
         if (aifcIsBusy)
           const SizedBox(height: 16)
         else
-          GestureDetector(
-            onTap: _handleCancel,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Center(
-                child: Text(
-                  '취소',
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_accountLinkPromptVisible)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: _SmallActionButton(
+                    label: '계정 연결하기',
+                    foregroundColor: colorScheme.onSecondary,
+                    backgroundColor: colorScheme.secondary,
+                    borderColor: colorScheme.secondary,
+                    onTap: _openAccountConnection,
+                  ),
+                ),
+              GestureDetector(
+                onTap: _handleCancel,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Center(
+                    child: Text(
+                      '취소',
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
       ],
     );
@@ -417,11 +490,7 @@ class _RegisterInputCard extends StatelessWidget {
         TextField(
           controller: nameC,
           textInputAction: TextInputAction.next,
-          decoration: _inputDecoration(
-            context,
-            label: '이름',
-            hint: '예: 김모어',
-          ),
+          decoration: _inputDecoration(context, label: '이름', hint: '예: 김모어'),
         ),
         const SizedBox(height: 10),
         TextField(
@@ -444,17 +513,11 @@ class _RegisterInputCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AifcRadius.button),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
               color: tokens.aifcInputSurface,
               borderRadius: BorderRadius.circular(AifcRadius.button),
-              border: Border.all(
-                color: tokens.cardBorder,
-                width: 0.5,
-              ),
+              border: Border.all(color: tokens.cardBorder, width: 0.5),
             ),
             child: Row(
               children: [
@@ -468,9 +531,10 @@ class _RegisterInputCard extends StatelessWidget {
                   child: Text(
                     '상담 예약일 · $consultDateText',
                     style: TextStyle(
-                      color: consultDateText == '선택 안 함'
-                          ? scheme.onSurfaceVariant
-                          : scheme.onSurface,
+                      color:
+                          consultDateText == '선택 안 함'
+                              ? scheme.onSurfaceVariant
+                              : scheme.onSurface,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -512,30 +576,18 @@ class _RegisterInputCard extends StatelessWidget {
       filled: true,
       fillColor: tokens.aifcInputSurface,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 12,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: tokens.cardBorder,
-          width: 0.5,
-        ),
+        borderSide: BorderSide(color: tokens.cardBorder, width: 0.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: tokens.cardBorder,
-          width: 0.5,
-        ),
+        borderSide: BorderSide(color: tokens.cardBorder, width: 0.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: scheme.secondary,
-          width: 1.2,
-        ),
+        borderSide: BorderSide(color: scheme.secondary, width: 1.2),
       ),
     );
   }

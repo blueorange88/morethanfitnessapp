@@ -33,20 +33,12 @@ class AifcAnimatedChatMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final opacity = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut,
-    );
+    final opacity = CurvedAnimation(parent: controller, curve: Curves.easeOut);
 
     final slide = Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
 
     return FadeTransition(
       opacity: opacity,
@@ -142,10 +134,7 @@ mixin AifcChatFlowMixin<T extends StatefulWidget>
     );
   }
 
-  void aifcAddUserMessage({
-    required String text,
-    Object? groupKey,
-  }) {
+  void aifcAddUserMessage({required String text, Object? groupKey}) {
     aifcAddMessage(
       AifcChatFlowMessage(
         side: AifcBubbleSide.user,
@@ -204,20 +193,13 @@ mixin AifcChatFlowMixin<T extends StatefulWidget>
       aifcSetActiveGroup(groupKey);
     }
 
-    aifcAddUserMessage(
-      text: userText,
-      groupKey: groupKey,
-    );
+    aifcAddUserMessage(text: userText, groupKey: groupKey);
 
     await Future.delayed(const Duration(milliseconds: 120));
     if (!mounted) return;
 
     await aifcShowTypingThen(() async {
-      aifcAddFcMessage(
-        text: fcText,
-        child: fcChild,
-        groupKey: groupKey,
-      );
+      aifcAddFcMessage(text: fcText, child: fcChild, groupKey: groupKey);
     });
   }
 
@@ -229,6 +211,7 @@ mixin AifcChatFlowMixin<T extends StatefulWidget>
     required String successText,
     String errorText = '처리 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.',
     String Function(Object error)? errorTextBuilder,
+    void Function(Object error)? onError,
     Widget? successChild,
     Object? groupKey,
     bool closeAfterReply = false,
@@ -241,10 +224,7 @@ mixin AifcChatFlowMixin<T extends StatefulWidget>
       aifcSetActiveGroup(groupKey);
     }
 
-    aifcAddUserMessage(
-      text: userText,
-      groupKey: groupKey,
-    );
+    aifcAddUserMessage(text: userText, groupKey: groupKey);
 
     await Future.delayed(const Duration(milliseconds: 120));
     if (!mounted) return;
@@ -257,10 +237,7 @@ mixin AifcChatFlowMixin<T extends StatefulWidget>
     aifcScrollToBottom();
 
     try {
-      await Future.wait<void>([
-        Future.delayed(aifcTypingDuration),
-        action(),
-      ]);
+      await Future.wait<void>([Future.delayed(aifcTypingDuration), action()]);
     } catch (error) {
       if (!mounted) return;
 
@@ -269,6 +246,7 @@ mixin AifcChatFlowMixin<T extends StatefulWidget>
         aifcLoading = false;
       });
 
+      onError?.call(error);
       aifcAddFcMessage(
         text: errorTextBuilder?.call(error) ?? errorText,
         groupKey: groupKey,
@@ -335,10 +313,7 @@ mixin AifcChatFlowMixin<T extends StatefulWidget>
         aifcFetching = false;
       });
 
-      aifcAddFcMessage(
-        text: errorText,
-        groupKey: groupKey,
-      );
+      aifcAddFcMessage(text: errorText, groupKey: groupKey);
 
       return null;
     }

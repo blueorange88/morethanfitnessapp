@@ -20,7 +20,7 @@ class GuestStartPage extends StatelessWidget {
     AppEnvironmentConfig.debugLogLegacyWorkspaceAccess('guestStart');
     final showDebugLegacyWorkspace =
         AppEnvironmentConfig.canOpenDebugLegacyWorkspace &&
-            onOpenDebugLegacyWorkspace != null;
+        onOpenDebugLegacyWorkspace != null;
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       body: SafeArea(
@@ -75,11 +75,12 @@ class GuestStartPage extends StatelessWidget {
                   const SizedBox(height: 20),
                   FilledButton.icon(
                     key: const Key('guest_preview_button'),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => GuestPreviewPage(service: service),
-                      ),
-                    ),
+                    onPressed:
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => GuestPreviewPage(service: service),
+                          ),
+                        ),
                     icon: const Icon(Icons.explore_outlined),
                     label: const Text('가입 없이 둘러보기'),
                     style: FilledButton.styleFrom(
@@ -100,19 +101,9 @@ class GuestStartPage extends StatelessWidget {
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     key: const Key('google_auth_button'),
-                    onPressed: () async {
-                      try {
-                        await service.signInWithGoogle();
-                      } catch (error) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(appAccountErrorMessage(error))),
-                        );
-                      }
-                    },
+                    onPressed: null,
                     icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
-                    label: const Text('Google로 계속하기 · 설정 준비 중'),
+                    label: const Text('Google 로그인 · 후속 준비 중'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 13),
                     ),
@@ -152,8 +143,8 @@ class GuestStartPage extends StatelessWidget {
   }
 
   void _openEmail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => EmailAuthPage(service: service)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => EmailAuthPage(service: service)));
   }
 }

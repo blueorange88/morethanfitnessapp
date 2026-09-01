@@ -76,6 +76,7 @@ import '../widgets/home/lesson_editor/home_lesson_quick_actions_section.dart';
 import '../widgets/home/lesson_editor/home_lesson_type_editor_panel.dart';
 import '../widgets/home/lesson_editor/home_lesson_editor_fields.dart';
 import '../widgets/home/lesson_editor/home_member_match_picker_sheet.dart';
+import '../widgets/home/lesson_editor/home_same_name_schedule_link_sheet.dart';
 import '../widgets/home/lesson_editor/home_lesson_start_end_time_picker.dart';
 import '../widgets/home/lesson_editor/home_time_range_dialog.dart';
 import '../widgets/home/lesson_editor/home_member_sign_request_sheet.dart';
@@ -106,6 +107,7 @@ import '../aifc/core/aifc_nickname.dart';
 import '../widgets/aifc_interaction.dart';
 import '../widgets/aifc_lesson_confirm_chat_sheet.dart';
 import '../widgets/aifc_quick_register_chat_sheet.dart';
+import '../widgets/account_connection_dialog.dart';
 import '../widgets/aifc_pin_confirm_chat_sheet.dart';
 import '../widgets/aifc_confirm_chat_sheet.dart';
 import '../widgets/premium_banner_widget.dart';
@@ -165,12 +167,7 @@ enum HomeAction {
   expiringMembers,
 }
 
-const List<String> kSeedLessonTypeNames = [
-  'PT',
-  '필라테스',
-  '그룹레슨',
-  'OT상담',
-];
+const List<String> kSeedLessonTypeNames = ['PT', '필라테스', '그룹레슨', 'OT상담'];
 
 const List<Color> kLessonTypePalette = [
   Color(0xFF4F46E5), // indigo
@@ -423,20 +420,17 @@ class _HomePageState extends State<HomePage>
     );
 
     if (ok == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('회원권계약서 초안을 저장했어요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원권계약서 초안을 저장했어요.')));
     }
   }
 
   Future<_HomeMembershipContractMember?>
       _showMembershipContractMemberPicker() async {
-    final snapshot = await _ownedCollectionQuery('members')
-        .where('isDeleted', isNotEqualTo: true)
-        .limit(80)
-        .get();
+    final snapshot = await _ownedCollectionQuery(
+      'members',
+    ).where('isDeleted', isNotEqualTo: true).limit(80).get();
 
     if (!mounted) return null;
 
@@ -452,11 +446,9 @@ class _HomePageState extends State<HomePage>
       ..sort((a, b) => a.name.compareTo(b.name));
 
     if (members.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('회원권계약서를 작성할 회원이 아직 없어요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원권계약서를 작성할 회원이 아직 없어요.')));
       return null;
     }
 
@@ -634,8 +626,9 @@ class _HomePageState extends State<HomePage>
   int _weekPageIndex = _todayWeekIndex; // 처음엔 "이번 주"
 
   // PageView 컨트롤러 (처음 페이지를 이번 주로)
-  late final PageController _weekPageController =
-      PageController(initialPage: _todayWeekIndex);
+  late final PageController _weekPageController = PageController(
+    initialPage: _todayWeekIndex,
+  );
   final ScrollController _homeScrollController = ScrollController();
   final GlobalKey _scheduleSectionKey = GlobalKey();
   final GlobalKey _todayNextLessonsKey = GlobalKey();
@@ -846,9 +839,7 @@ class _HomePageState extends State<HomePage>
   Future<void> _editWeeklyGoal() async {
     final submitted = await showDialog<String>(
       context: context,
-      builder: (_) => HomeWeeklyGoalDialog(
-        initialValue: '$_weeklyLessonGoal',
-      ),
+      builder: (_) => HomeWeeklyGoalDialog(initialValue: '$_weeklyLessonGoal'),
     );
     if (!mounted || submitted == null) return;
 
@@ -878,9 +869,7 @@ class _HomePageState extends State<HomePage>
           nextItems = decoded
               .whereType<Map>()
               .map(
-                (e) => LessonTypeItem.fromMap(
-                  Map<String, dynamic>.from(e),
-                ),
+                (e) => LessonTypeItem.fromMap(Map<String, dynamic>.from(e)),
               )
               .where((e) => e.id.isNotEmpty && e.name.trim().isNotEmpty)
               .toList();
@@ -923,12 +912,15 @@ class _HomePageState extends State<HomePage>
     final prefs = await SharedPreferences.getInstance();
 
     final owner = _isPersonalWorkspace ? _personalOwnerUid : null;
-    final savedStartHour =
-        prefs.getInt(homeSchedulePreferenceKey('home_start_hour', owner));
-    final savedEndHour =
-        prefs.getInt(homeSchedulePreferenceKey('home_end_hour', owner));
-    final savedDefaultMinute =
-        prefs.getInt(homeSchedulePreferenceKey('home_default_minute', owner));
+    final savedStartHour = prefs.getInt(
+      homeSchedulePreferenceKey('home_start_hour', owner),
+    );
+    final savedEndHour = prefs.getInt(
+      homeSchedulePreferenceKey('home_end_hour', owner),
+    );
+    final savedDefaultMinute = prefs.getInt(
+      homeSchedulePreferenceKey('home_default_minute', owner),
+    );
 
     final rawRowMinutes = prefs.getString(
       homeSchedulePreferenceKey('home_time_row_minutes_v1', owner),
@@ -1083,7 +1075,9 @@ class _HomePageState extends State<HomePage>
   }
 
   LessonTypeItem? _findLessonTypeByName(
-      String name, List<LessonTypeItem> items) {
+    String name,
+    List<LessonTypeItem> items,
+  ) {
     for (final item in items) {
       if (item.name == name) return item;
     }
@@ -1160,20 +1154,16 @@ class _HomePageState extends State<HomePage>
     _streamAnchorMonday = anchorMonday;
 
     final start = anchorMonday.add(Duration(days: _minWeekOffset * 7));
-    final endExclusive =
-        anchorMonday.add(Duration(days: (_maxWeekOffset + 1) * 7));
+    final endExclusive = anchorMonday.add(
+      Duration(days: (_maxWeekOffset + 1) * 7),
+    );
 
     _scheduleSub = _ownedCollectionQuery('schedules')
-        .where(
-          'startAt',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(start),
-        )
-        .where(
-          'startAt',
-          isLessThan: Timestamp.fromDate(endExclusive),
-        )
+        .where('startAt', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('startAt', isLessThan: Timestamp.fromDate(endExclusive))
         .snapshots()
-        .listen((snapshot) async {
+        .listen(
+      (snapshot) async {
       final snapshotId = ++latestSnapshotId;
 
       if (kDebugMode) {
@@ -1187,8 +1177,9 @@ class _HomePageState extends State<HomePage>
 
       Set<String> deletedMemberIds;
       try {
-        deletedMemberIds =
-            await _deletedMemberIdsFromScheduleDocs(snapshot.docs);
+          deletedMemberIds = await _deletedMemberIdsFromScheduleDocs(
+            snapshot.docs,
+          );
       } catch (error) {
         if (kDebugMode) {
           final errorCode = error is FirebaseException
@@ -1250,7 +1241,9 @@ class _HomePageState extends State<HomePage>
         final docId = doc.id.trim();
 
         if (_isScheduleDocTemporarilyHidden(docId)) {
-          debugPrint('[MTF_SCHEDULE_DELETE] hidden from stream docId=$docId');
+            debugPrint(
+              '[MTF_SCHEDULE_DELETE] hidden from stream docId=$docId',
+            );
           continue;
         }
 
@@ -1288,7 +1281,8 @@ class _HomePageState extends State<HomePage>
 
         final memberIdText = (data['memberId'] ?? '').toString().trim();
 
-        final bool linkedMemberDeleted = data['linkedMemberDeleted'] == true ||
+          final bool linkedMemberDeleted =
+              data['linkedMemberDeleted'] == true ||
             (memberIdText.isNotEmpty &&
                 deletedMemberIds.contains(memberIdText));
 
@@ -1301,11 +1295,15 @@ class _HomePageState extends State<HomePage>
             : <String, dynamic>{};
 
         final lastContractSummaryMap = data['lastContractSummary'] is Map
-            ? Map<String, dynamic>.from(data['lastContractSummary'] as Map)
+              ? Map<String, dynamic>.from(
+                  data['lastContractSummary'] as Map,
+                )
             : <String, dynamic>{};
 
         final smartAlarmContextMap = data['smartAlarmContext'] is Map
-            ? Map<String, dynamic>.from(data['smartAlarmContext'] as Map)
+              ? Map<String, dynamic>.from(
+                  data['smartAlarmContext'] as Map,
+                )
             : <String, dynamic>{};
 
         final moreCareSlotMap = data['moreCareSlot'] is Map
@@ -1322,8 +1320,8 @@ class _HomePageState extends State<HomePage>
                 .toString()
                 .trim();
 
-        final moreCareTemporaryUntilValue =
-            data['moreCareTemporaryUntil'] ?? moreCareSlotMap['temporaryUntil'];
+          final moreCareTemporaryUntilValue = data['moreCareTemporaryUntil'] ??
+              moreCareSlotMap['temporaryUntil'];
 
         final contractIdText = (data['contractId'] ??
                 lessonSyncMap['contractId'] ??
@@ -1406,14 +1404,15 @@ class _HomePageState extends State<HomePage>
           if (data['customerSignature'] != null)
             'customerSignature': data['customerSignature'],
 
-          if (data['typeName'] != null) 'typeName': data['typeName'].toString(),
+            if (data['typeName'] != null)
+              'typeName': data['typeName'].toString(),
           if (data['typeId'] != null) 'typeId': data['typeId'].toString(),
           if (data['typeColorHex'] != null)
             'typeColorHex': data['typeColorHex'].toString(),
 
           'attended': data['attended'] == true,
-          'endAt':
-              endDt ?? dt.add(Duration(minutes: _defaultLessonDurationMinutes)),
+            'endAt': endDt ??
+                dt.add(Duration(minutes: _defaultLessonDurationMinutes)),
           'endTime': (data['endTime'] ?? '').toString(),
 
           if (data['attendanceOverride'] != null)
@@ -1422,7 +1421,8 @@ class _HomePageState extends State<HomePage>
           if (data['sessionSnapshotTotal'] != null)
             'sessionSnapshotTotal': data['sessionSnapshotTotal'],
           if (data['sessionSnapshotRemainBefore'] != null)
-            'sessionSnapshotRemainBefore': data['sessionSnapshotRemainBefore'],
+              'sessionSnapshotRemainBefore':
+                  data['sessionSnapshotRemainBefore'],
           if (data['sessionSnapshotRemainAfter'] != null)
             'sessionSnapshotRemainAfter': data['sessionSnapshotRemainAfter'],
           if (data['sessionSnapshotDoneBefore'] != null)
@@ -1430,12 +1430,12 @@ class _HomePageState extends State<HomePage>
           if (data['sessionSnapshotDoneAfter'] != null)
             'sessionSnapshotDoneAfter': data['sessionSnapshotDoneAfter'],
           if (data['sessionSnapshotLessonNumber'] != null)
-            'sessionSnapshotLessonNumber': data['sessionSnapshotLessonNumber'],
+              'sessionSnapshotLessonNumber':
+                  data['sessionSnapshotLessonNumber'],
           if (data['sessionSnapshotLabel'] != null)
             'sessionSnapshotLabel': data['sessionSnapshotLabel'].toString(),
 
           // 삭제 회원과 연결된 스케줄은 회원카드/레슨일지 연결 정보 제외
-
           if (!linkedMemberDeleted && memberIdText.isNotEmpty)
             'memberId': memberIdText,
 
@@ -1489,7 +1489,8 @@ class _HomePageState extends State<HomePage>
                 .toList(),
 
           if (data['nextLessonReminderHint'] != null)
-            'nextLessonReminderHint': data['nextLessonReminderHint'].toString(),
+              'nextLessonReminderHint':
+                  data['nextLessonReminderHint'].toString(),
 
           if (moreCareStatusText.isNotEmpty)
             'moreCareStatus': moreCareStatusText,
@@ -1567,7 +1568,8 @@ class _HomePageState extends State<HomePage>
       _queueHomeWidgetSync(source: 'scheduleSnapshot');
       _queueNotificationSync();
       _updateBannerState();
-    }, onError: (Object error, StackTrace stackTrace) {
+      },
+      onError: (Object error, StackTrace stackTrace) {
       if (kDebugMode) {
         final errorCode = error is FirebaseException
             ? error.code
@@ -1583,7 +1585,8 @@ class _HomePageState extends State<HomePage>
         scheduleData.clear();
       });
       _queueHomeWidgetSync(source: 'scheduleSnapshot');
-    });
+      },
+    );
   }
 
   Future<Set<String>> _deletedMemberIdsFromScheduleDocs(
@@ -1784,8 +1787,9 @@ class _HomePageState extends State<HomePage>
       _bannerMemberCount = nextMemberCount;
       _moreSenseMemberCount = nextMoreSenseCount;
       if (moreSenseItems != null) {
-        _moreSenseItems =
-            List<HomeMoreSenseContext>.unmodifiable(moreSenseItems);
+        _moreSenseItems = List<HomeMoreSenseContext>.unmodifiable(
+          moreSenseItems,
+        );
       }
       _hasProduct = nextHasProduct;
       _isSponsor = nextProfileData['isSponsor'] == true;
@@ -1823,9 +1827,9 @@ class _HomePageState extends State<HomePage>
     _bannerMembersSub?.cancel();
     _bannerProductsSub?.cancel();
 
-    _bannerProfileSub = _trainerProfileRef
-        .snapshots(includeMetadataChanges: true)
-        .listen((snap) {
+    _bannerProfileSub =
+        _trainerProfileRef.snapshots(includeMetadataChanges: true).listen(
+      (snap) {
       final profileData = snap.data() ?? <String, dynamic>{};
       final fromCache = snap.metadata.isFromCache;
       final shouldApply = !_isPersonalWorkspace ||
@@ -1880,9 +1884,14 @@ class _HomePageState extends State<HomePage>
         }
         _bannerTierReadFailed = false;
       }
-      _logPersonalProfileSnapshot(snap: snap, applied: true, reason: reason);
+        _logPersonalProfileSnapshot(
+          snap: snap,
+          applied: true,
+          reason: reason,
+        );
       _updateBannerState(profileData: profileData, profileReady: true);
-    }, onError: (Object error) {
+      },
+      onError: (Object error) {
       if (kDebugMode && _isPersonalWorkspace) {
         final code = error is FirebaseException
             ? error.code
@@ -1894,16 +1903,20 @@ class _HomePageState extends State<HomePage>
           'rawTier=unknown parsedTier=none result=failure errorCode=$code',
         );
       }
-      if (mounted && _isPersonalWorkspace && !_hasInitialPersonalProfileData) {
+        if (mounted &&
+            _isPersonalWorkspace &&
+            !_hasInitialPersonalProfileData) {
         setState(() {
           _bannerTierReadFailed = true;
           _bannerProfileReady = false;
         });
       }
-    });
+      },
+    );
 
-    _bannerMembersSub =
-        _ownedCollectionQuery('members').snapshots().listen((snapshot) {
+    _bannerMembersSub = _ownedCollectionQuery('members').snapshots().listen((
+      snapshot,
+    ) {
       int activeMembers = 0;
 
       final kakaoCardLinkedMemberIds = <String>{};
@@ -1983,10 +1996,7 @@ class _HomePageState extends State<HomePage>
         return data['isDeleted'] != true;
       });
 
-      _updateBannerState(
-        hasProduct: hasProduct,
-        productsReady: true,
-      );
+      _updateBannerState(hasProduct: hasProduct, productsReady: true);
     });
   }
 
@@ -2064,14 +2074,18 @@ class _HomePageState extends State<HomePage>
   }
 
   DateTime _mondayOfWeek(DateTime base) {
-    return DateTime(base.year, base.month, base.day)
-        .subtract(Duration(days: base.weekday - 1));
+    return DateTime(
+      base.year,
+      base.month,
+      base.day,
+    ).subtract(Duration(days: base.weekday - 1));
   }
 
   DateTime _dateForCell(int weekOffset, String day, String time) {
     final dayIndex = _weekDaysAll.indexOf(day);
-    final monday =
-        _mondayOfWeek(currentTime).add(Duration(days: weekOffset * 7));
+    final monday = _mondayOfWeek(
+      currentTime,
+    ).add(Duration(days: weekOffset * 7));
     final date = monday.add(Duration(days: dayIndex));
 
     final parts = time.split(':');
@@ -2107,10 +2121,7 @@ class _HomePageState extends State<HomePage>
     return '$y-$m-$d-$h:$min';
   }
 
-  bool _hasLinkedMemberConnection({
-    String? memberId,
-    String? phone,
-  }) {
+  bool _hasLinkedMemberConnection({String? memberId, String? phone}) {
     final cleanMemberId = memberId?.trim() ?? '';
 
     // 회원카드/레슨일지 이동은 memberId가 있을 때만 연결된 회원으로 봅니다.
@@ -2130,8 +2141,9 @@ class _HomePageState extends State<HomePage>
   Map<String, dynamic> _buildWeekSlice(int weekOffset) {
     final Map<String, dynamic> result = {};
 
-    final weekStart =
-        _mondayOfWeek(currentTime).add(Duration(days: weekOffset * 7));
+    final weekStart = _mondayOfWeek(
+      currentTime,
+    ).add(Duration(days: weekOffset * 7));
     final weekEnd = weekStart.add(const Duration(days: 7));
 
     scheduleData.forEach((key, value) {
@@ -2169,8 +2181,9 @@ class _HomePageState extends State<HomePage>
       return {};
     }
 
-    final monday =
-        _mondayOfWeek(currentTime).add(Duration(days: weekOffset * 7));
+    final monday = _mondayOfWeek(
+      currentTime,
+    ).add(Duration(days: weekOffset * 7));
 
     DateTime exampleDate(int dayOffset, int hour, int minute) {
       final date = monday.add(Duration(days: dayOffset));
@@ -2278,14 +2291,11 @@ class _HomePageState extends State<HomePage>
 
   List<String> get _timeSlots {
     _ensureTimeRowMinutes();
-    return List<String>.generate(
-      endHour - startHour,
-      (i) {
+    return List<String>.generate(endHour - startHour, (i) {
         final hour = startHour + i;
         final minute = _timeRowMinutes[hour] ?? defaultMinute;
         return "${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}";
-      },
-    );
+    });
   }
 
   void _showSnack(
@@ -2377,8 +2387,9 @@ class _HomePageState extends State<HomePage>
                           child: Container(
                             padding: const EdgeInsets.fromLTRB(12, 11, 13, 11),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF111827)
-                                  .withValues(alpha: 0.94),
+                              color: const Color(
+                                0xFF111827,
+                              ).withValues(alpha: 0.94),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.08),
@@ -2423,8 +2434,9 @@ class _HomePageState extends State<HomePage>
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.72),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.72,
+                                          ),
                                           fontSize: 10.8,
                                           fontWeight: FontWeight.w600,
                                           height: 1.3,
@@ -2468,10 +2480,7 @@ class _HomePageState extends State<HomePage>
       _queueNotificationSync(delay: Duration.zero);
     }
 
-    _showAifcNotificationToast(
-      title: result.title,
-      subtitle: result.subtitle,
-    );
+    _showAifcNotificationToast(title: result.title, subtitle: result.subtitle);
   }
 
   Future<void> _loadCustomerCardNudgePrefs() async {
@@ -2654,8 +2663,9 @@ class _HomePageState extends State<HomePage>
     if (_tierCelebrationClaimInFlight || !mounted) return;
     _tierCelebrationClaimInFlight = true;
     try {
-      final claim =
-          await AppAccountService.instance.claimTierCelebration(transitionId);
+      final claim = await AppAccountService.instance.claimTierCelebration(
+        transitionId,
+      );
       final claimed = claim['claimed'] == true;
       if (kDebugMode) {
         debugPrint(
@@ -2753,10 +2763,7 @@ class _HomePageState extends State<HomePage>
       _queueNotificationSync(delay: Duration.zero);
     }
 
-    _showAifcNotificationToast(
-      title: result.title,
-      subtitle: result.subtitle,
-    );
+    _showAifcNotificationToast(title: result.title, subtitle: result.subtitle);
   }
 
   Future<void> _maybeShowLessonNotificationNudge({
@@ -2880,8 +2887,9 @@ class _HomePageState extends State<HomePage>
   }
 
   List<ScheduleItem> _scheduleItemsForWeek(int weekOffset) {
-    final start =
-        _mondayOfWeek(currentTime).add(Duration(days: weekOffset * 7));
+    final start = _mondayOfWeek(
+      currentTime,
+    ).add(Duration(days: weekOffset * 7));
     final end = start.add(const Duration(days: 7));
 
     return _allScheduleItems().where((item) {
@@ -2911,9 +2919,9 @@ class _HomePageState extends State<HomePage>
   List<HomeWidgetScheduleBlock> _buildWidgetBlocks(int weekOffset) {
     final days = _buildWidgetVisibleDays();
 
-    final blockItems = _scheduleItemsForWeek(weekOffset)
-        .where((item) => days.contains(item.day))
-        .map((item) {
+    final blockItems = _scheduleItemsForWeek(
+      weekOffset,
+    ).where((item) => days.contains(item.day)).map((item) {
       return HomeWidgetBlockItem(
         startAt: item.startAt,
         endAt: item.endAt,
@@ -2939,10 +2947,7 @@ class _HomePageState extends State<HomePage>
     return _scheduleItemsForWeek(0).length;
   }
 
-  String _pickAiFcHeaderMessage(
-    List<String> messages, {
-    int salt = 0,
-  }) {
+  String _pickAiFcHeaderMessage(List<String> messages, {int salt = 0}) {
     if (messages.isEmpty) return '';
 
     // 빌드마다 랜덤 변경되지 않도록 2시간 단위로만 자연스럽게 변경
@@ -2984,27 +2989,21 @@ class _HomePageState extends State<HomePage>
         currentTime.weekday == DateTime.sunday;
 
     if (dayFilter == 'weekday' && isWeekendToday) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '지금은 평일 보기라 주말 칸이 살짝 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 바로 확인할 수 있어요.',
           '$trainerLabel, 오늘은 주말인데 화면은 주5 모드예요. 오늘 레슨 $todayCount개는 제가 기억하고 있어요.',
           '주말 일정은 잠시 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 다시 펼쳐볼 수 있어요.',
           '오늘 주말 레슨 $todayCount개가 있어요. 화면에 안 보이면 주7 보기로 한 번 펼쳐볼까요?',
-        ],
-        salt: 70 + todayCount,
-      );
+      ], salt: 70 + todayCount);
     }
 
     if (dayFilter == 'weekend' && !isWeekendToday) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '지금은 주말 보기라 평일 칸이 살짝 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 바로 확인할 수 있어요.',
           '$trainerLabel, 오늘은 평일인데 화면은 주말 모드예요. 오늘 일정 $todayCount개는 제가 놓치지 않고 기억해둘게요.',
           '평일 일정은 잠시 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 다시 펼쳐볼 수 있어요.',
           '오늘 평일 레슨 $todayCount개가 있어요. 화면에 안 보이면 주7 보기로 한 번 확인해볼까요?',
-        ],
-        salt: 72 + todayCount,
-      );
+      ], salt: 72 + todayCount);
     }
 
     return '';
@@ -3020,11 +3019,8 @@ class _HomePageState extends State<HomePage>
         !_hasProduct;
   }
 
-  String _buildFirstHomeWelcomeNotice({
-    required String trainerLabel,
-  }) {
-    return _pickAiFcHeaderMessage(
-      [
+  String _buildFirstHomeWelcomeNotice({required String trainerLabel}) {
+    return _pickAiFcHeaderMessage([
         '안녕하세요 $trainerLabel, 반가워요. 앞으로 레슨 일정도, 회원 관리도 같이 즐겁게 만들어가봐요.',
         '$trainerLabel, 모어댄에 오신 걸 환영해요. 처음엔 가볍게 시작해도 괜찮아요. 제가 옆에서 하나씩 도와드릴게요.',
         '반가워요 $trainerLabel. 오늘부터 일정 관리도, 회원 관리도 조금 더 편하고 재밌게 만들어봐요.',
@@ -3032,9 +3028,7 @@ class _HomePageState extends State<HomePage>
         '환영해요 $trainerLabel. 앞으로 바쁜 날도, 여유로운 날도 제가 옆에서 흐름을 같이 챙겨볼게요.',
         '$trainerLabel, 시작은 가볍게 가도 좋아요. 레슨 일정 하나씩 쌓이면 모어댄이 더 똑똑하게 도와드릴게요.',
         '안녕하세요 $trainerLabel. 앞으로 회원님들과 만들어갈 좋은 순간들, 제가 옆에서 같이 기록해볼게요.',
-      ],
-      salt: 5,
-    );
+    ], salt: 5);
   }
 
   String _buildRestDayHeaderNotice({
@@ -3100,9 +3094,7 @@ class _HomePageState extends State<HomePage>
       todayCount: todayCount,
       weekCount: weekCount,
     )) {
-      return _buildFirstHomeWelcomeNotice(
-        trainerLabel: trainerLabel,
-      );
+      return _buildFirstHomeWelcomeNotice(trainerLabel: trainerLabel);
     }
 
     // 1. 레슨이 실제로 있는데 주5/주2 필터 때문에 오늘 칸이 접힌 경우
@@ -3120,8 +3112,7 @@ class _HomePageState extends State<HomePage>
 
     // 2. 아주 바쁜 날은 MORE 센스보다 레슨 개수 문구를 우선합니다.
     if (todayCount >= 15) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '오늘 레슨 $todayCount개… 이건 거의 레슨 괴물 모드예요. 진짜 대단합니다.',
           '레슨 $todayCount개요? 오늘은 모어댄도 정신 바짝 차리고 따라붙을게요.',
           '오늘 일정은 레전드급이에요. 하나씩만 가도 충분히 대단한 하루예요.',
@@ -3129,14 +3120,11 @@ class _HomePageState extends State<HomePage>
           '오늘은 거의 풀가동 데이예요. 체크할 건 제가 먼저 붙잡아둘게요.',
           '레슨 $todayCount개, 이건 바쁜 날을 넘어선 레슨 챔피언 모드예요.',
           '오늘 밥은 드셨어요? 이 정도 스케줄 소화하시는 거 보면 진짜 존경스러워요.',
-        ],
-        salt: 150 + todayCount,
-      );
+      ], salt: 150 + todayCount);
     }
 
     if (todayCount >= 11) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '오늘 레슨 $todayCount개, 꽤 빡센 하루예요. 체크포인트는 제가 먼저 잡아둘게요.',
           '$todayCount개 레슨이면 체력전이에요. 무리하지 않게 흐름부터 잡아볼게요.',
           '오늘은 진짜 바쁜 날이에요. 레슨 사이 작은 틈도 소중하게 써볼까요?',
@@ -3144,14 +3132,11 @@ class _HomePageState extends State<HomePage>
           '오늘 일정은 묵직합니다. 그래도 하나씩 가면 충분히 깔끔하게 끝낼 수 있어요.',
           '$todayCount개면 이미 손꼽히게 바쁜 날이에요. 모어댄이 옆에서 계속 체크할게요.',
           '이 정도 페이스면 오늘 끼니는 거르신 거 아니에요?',
-        ],
-        salt: 110 + todayCount,
-      );
+      ], salt: 110 + todayCount);
     }
 
     if (todayCount >= 9) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '오늘 레슨 $todayCount개, 바쁜 날이에요. 페이스 조절은 저랑 같이해요.',
           '$todayCount개 레슨이면 꽤 묵직한 하루예요. 순서부터 잘 잡아볼게요.',
           '오늘은 레슨이 많은 날이에요. 놓칠 포인트는 제가 먼저 표시해둘게요.',
@@ -3159,16 +3144,13 @@ class _HomePageState extends State<HomePage>
           '오늘 일정 꽉 찼어요. 숨 고를 타이밍은 제가 같이 챙겨볼게요.',
           '$todayCount개의 무대, 큐시트처럼 순서는 제가 챙겨드릴게요.',
           '이렇게 바쁜 날은 물이라도 챙겨 드셨어요?',
-        ],
-        salt: 90 + todayCount,
-      );
+      ], salt: 90 + todayCount);
     }
 
     // 3. 이번 주 전체가 비어 있으면 첫 시작 유도.
     // 단, 최초 진입자는 위에서 이미 환영 문구로 처리됩니다.
     if (weekCount == 0) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '이번 주 시간표, 아직 새하얀 도화지네요. 첫 붓질은 제가 도와드릴게요.',
           '텅 빈 일정표라니, 사실 뭐든 채울 수 있다는 뜻이에요. 첫 레슨부터 가볼까요?',
           '이번 주는 무대가 비어 있어요. 탭 한 번이면 시작할 수 있어요.',
@@ -3176,9 +3158,7 @@ class _HomePageState extends State<HomePage>
           '이번 주 스케줄이 아주 깨끗해요. 이제 첫 발자국만 남기면 돼요.',
           '빈 시간표도 시작 전엔 원래 이래요. 첫 레슨 하나만 꽂아볼까요?',
           '아직 이번 주 레슨이 없어요. 모어댄이 조용히 대기 중입니다.',
-        ],
-        salt: 10,
-      );
+      ], salt: 10);
     }
 
     // 4. 오늘 레슨이 없으면 쉬는 날/회복 문구 우선.
@@ -3194,8 +3174,7 @@ class _HomePageState extends State<HomePage>
     // 5. 오늘 1~8개이고 MORE 센스가 있으면 MORE 센스 문구를 보여줍니다.
     // 너무 바쁜 날에는 위에서 이미 레슨 개수 문구가 우선됩니다.
     if (moreSenseCount > 0) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           'MORE 센스 레이더에 회원님 $moreSenseCount명이 잡혔어요. 제가 먼저 캐치했어요.',
           '오늘 그냥 지나치기 아까운 회원님 $moreSenseCount명이 있어요. 살짝 챙겨볼까요?',
           '티 안 나게 놓치기 쉬운 신호, $moreSenseCount명 분 모아뒀어요.',
@@ -3204,14 +3183,11 @@ class _HomePageState extends State<HomePage>
           '제가 먼저 봐뒀어요. 오늘 챙기면 좋은 회원님 $moreSenseCount명이 있어요.',
           '관심 온도 살짝 올려두면 좋은 회원님 $moreSenseCount명이 있어요.',
           '회원님 $moreSenseCount명이 조용히 관리 타이밍을 보내고 있어요. 제가 받아뒀어요.',
-        ],
-        salt: moreSenseCount,
-      );
+      ], salt: moreSenseCount);
     }
 
     if (todayCount <= 2) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '오늘은 한 명 한 명 제대로 보기 좋은 날이에요.',
           '오늘의 주인공은 적지만, 집중력은 100% 발휘하기 좋은 날이에요.',
           '레슨 $todayCount개, 부담은 가볍게. 디테일은 더 깊게 갈 수 있어요.',
@@ -3219,14 +3195,11 @@ class _HomePageState extends State<HomePage>
           '레슨 $todayCount개면 오히려 더 알차게 갈 수 있는 날이에요.',
           '오늘은 속도보다 깊이로 가기 좋은 스케줄이에요.',
           '오늘처럼 여유 있는 날엔 본인 루틴은 좀 챙기셨어요?',
-        ],
-        salt: 30 + todayCount,
-      );
+      ], salt: 30 + todayCount);
     }
 
     if (todayCount <= 4) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '오늘 레슨 $todayCount개, 여유 있게 리듬 타기 좋은 날이에요.',
           '오늘은 너무 빡세지도, 너무 심심하지도 않은 스케줄이에요.',
           '레슨 $todayCount개면 딱 기분 좋게 일하는 맛 나는 날이에요.',
@@ -3234,14 +3207,11 @@ class _HomePageState extends State<HomePage>
           '스케줄이 적당히 살아 있어요. 무리 없이 깔끔하게 가볼까요?',
           '오늘 $todayCount개, 페이스만 잘 잡으면 꽤 산뜻하게 흘러갈 거예요.',
           '이 정도 페이스면 물 한 잔 마실 틈은 있으시죠?',
-        ],
-        salt: 40 + todayCount,
-      );
+      ], salt: 40 + todayCount);
     }
 
     if (todayCount <= 6) {
-      return _pickAiFcHeaderMessage(
-        [
+      return _pickAiFcHeaderMessage([
           '오늘 레슨 $todayCount개, 무리 없이 레슨 리듬 타기 좋은 날이에요.',
           '레슨 $todayCount개면 하루 흐름이 슬슬 살아나는 스케줄이에요.',
           '오늘은 꽉 차진 않았지만, 충분히 일하는 맛 나는 날이에요.',
@@ -3249,14 +3219,11 @@ class _HomePageState extends State<HomePage>
           '오늘 $todayCount개, 회원별 포인트만 잘 잡으면 깔끔하게 끝낼 수 있어요.',
           '무겁진 않지만 가볍지도 않은 날이에요. 모어댄이 흐름 잡아둘게요.',
           '이 정도면 끼니는 제때 챙기실 수 있겠죠?',
-        ],
-        salt: 60 + todayCount,
-      );
+      ], salt: 60 + todayCount);
     }
 
     // 7~8개: 꽉 찬 보통 근무일
-    return _pickAiFcHeaderMessage(
-      [
+    return _pickAiFcHeaderMessage([
         '오늘 레슨 $todayCount개, 딱 일하는 맛 나는 스케줄이에요.',
         '레슨 $todayCount개면 꽤 꽉 찬 하루예요. 흐름만 잘 타면 좋겠어요.',
         '오늘은 트레이너다운 하루네요. 순서와 페이스는 제가 같이 볼게요.',
@@ -3264,9 +3231,7 @@ class _HomePageState extends State<HomePage>
         '오늘은 꽉 찬 보통 근무일이에요. 레슨 사이 체크포인트 챙겨둘게요.',
         '이 정도면 알차게 레슨하는 날이에요. 무리 없이 리듬 타볼까요?',
         '오늘처럼 바쁜 날, 단백질 챙길 시간은 있으신가요?',
-      ],
-      salt: 80 + todayCount,
-    );
+    ], salt: 80 + todayCount);
   }
 
   int _countTodaySessions() {
@@ -3324,9 +3289,7 @@ class _HomePageState extends State<HomePage>
     _queueNotificationSync();
   }
 
-  String _buildWidgetHeaderText({
-    required int weekOffset,
-  }) {
+  String _buildWidgetHeaderText({required int weekOffset}) {
     final weekSlice = _buildWeekSlice(weekOffset);
     final filterLabel = _widgetDayFilterLabel();
     final rangeLabel =
@@ -3401,24 +3364,22 @@ class _HomePageState extends State<HomePage>
     final days0 = _buildWidgetVisibleDays();
     final days1 = _buildWidgetVisibleDays();
 
-    final List<String> blocks0 = _buildWidgetBlocks(0)
-        .map((HomeWidgetScheduleBlock e) => e.encode())
-        .toList();
+    final List<String> blocks0 = _buildWidgetBlocks(
+      0,
+    ).map((HomeWidgetScheduleBlock e) => e.encode()).toList();
 
-    final List<String> blocks1 = _buildWidgetBlocks(1)
-        .map((HomeWidgetScheduleBlock e) => e.encode())
-        .toList();
+    final List<String> blocks1 = _buildWidgetBlocks(
+      1,
+    ).map((HomeWidgetScheduleBlock e) => e.encode()).toList();
 
     final currentMarkerRatio0 = _buildWidgetCurrentMarkerRatio(0);
     final currentMarkerRatio1 = _buildWidgetCurrentMarkerRatio(1);
 
-    final header0 = '${_buildWidgetHeaderText(
-      weekOffset: 0,
-    )} · ${rows0.length}줄';
+    final header0 =
+        '${_buildWidgetHeaderText(weekOffset: 0)} · ${rows0.length}줄';
 
-    final header1 = '${_buildWidgetHeaderText(
-      weekOffset: 1,
-    )} · ${rows1.length}줄';
+    final header1 =
+        '${_buildWidgetHeaderText(weekOffset: 1)} · ${rows1.length}줄';
 
     final lessons = _allScheduleItems().map((item) {
       return HomeWidgetPreviewLesson(
@@ -3518,8 +3479,9 @@ class _HomePageState extends State<HomePage>
 
     for (final item in candidates) {
       final startAt = item['startAt'] as DateTime;
-      final originalData =
-          Map<String, dynamic>.from(item['data'] as Map<String, dynamic>);
+      final originalData = Map<String, dynamic>.from(
+        item['data'] as Map<String, dynamic>,
+      );
 
       final durationMinutes = _durationMinutesFromSession(originalData);
 
@@ -3531,9 +3493,7 @@ class _HomePageState extends State<HomePage>
         newMinute,
       );
 
-      final targetEndAt = targetStartAt.add(
-        Duration(minutes: durationMinutes),
-      );
+      final targetEndAt = targetStartAt.add(Duration(minutes: durationMinutes));
 
       final conflicts = _findScheduleOverlapsInRange(
         startAt: targetStartAt,
@@ -3560,8 +3520,9 @@ class _HomePageState extends State<HomePage>
     final localUpdates = <Map<String, dynamic>>[];
 
     for (final item in candidates) {
-      final originalData =
-          Map<String, dynamic>.from(item['data'] as Map<String, dynamic>);
+      final originalData = Map<String, dynamic>.from(
+        item['data'] as Map<String, dynamic>,
+      );
       if (_hasUnsafeScheduleCollision(originalData)) {
         _showError('같은 시간에 서로 다른 레슨 문서가 있어 시간 이동을 중단했어요.');
         return null;
@@ -3580,9 +3541,7 @@ class _HomePageState extends State<HomePage>
         newMinute,
       );
 
-      final targetEndAt = targetStartAt.add(
-        Duration(minutes: durationMinutes),
-      );
+      final targetEndAt = targetStartAt.add(Duration(minutes: durationMinutes));
 
       final targetDocId = _scheduleDocIdFromDate(targetStartAt, day);
       final movePlan = HomeScheduleMovePlan.fromSnapshot(
@@ -3620,10 +3579,7 @@ class _HomePageState extends State<HomePage>
       firestoreData['updatedAt'] = FieldValue.serverTimestamp();
 
       firestoreWrites.add(
-        HomeScheduleEditWrite(
-          targetDocId: targetDocId,
-          data: firestoreData,
-        ),
+        HomeScheduleEditWrite(targetDocId: targetDocId, data: firestoreData),
       );
 
       final exactSourceDocIds = _exactScheduleSourceDocIds(originalData);
@@ -3740,9 +3696,10 @@ class _HomePageState extends State<HomePage>
         .map((entry) => entry.key)
         .toList();
 
-    final movedCount = moveResults.values
-        .whereType<int>()
-        .fold<int>(0, (sum, value) => sum + value);
+    final movedCount = moveResults.values.whereType<int>().fold<int>(
+          0,
+          (sum, value) => sum + value,
+        );
 
     setState(() {
       for (final hour in successfulHours) {
@@ -3766,10 +3723,7 @@ class _HomePageState extends State<HomePage>
         '${movedCount > 0 ? ' 기존 레슨일정 $movedCount개도 함께 옮겼어요.' : ''}',
       );
     } else if (successfulHours.isEmpty) {
-      _showActionToast(
-        context,
-        '충돌 때문에 변경된 시간 줄이 없어요.',
-      );
+      _showActionToast(context, '충돌 때문에 변경된 시간 줄이 없어요.');
     } else {
       _showSnack(
         '충돌 없는 ${successfulHours.length}개 시간 줄만 ${pickedMinute.toString().padLeft(2, '0')}분으로 적용했어요. '
@@ -3914,10 +3868,7 @@ class _HomePageState extends State<HomePage>
 
     _preferredLessonDurationMinutes = result.durationMinutes;
 
-    return {
-      'startTime': result.startTime,
-      'endTime': result.endTime,
-    };
+    return {'startTime': result.startTime, 'endTime': result.endTime};
   }
 
   Future<String?> _openLessonEndTimeOnlyDialog({
@@ -4030,6 +3981,26 @@ class _HomePageState extends State<HomePage>
           note: note,
           consultDate: result.consultDate,
         );
+      },
+      onAccountLink: () async {
+        final ownerUid = _personalOwnerUid.trim();
+        final accountService = AppAccountService.instance;
+        final currentUser = accountService.currentUser;
+        if (ownerUid.isEmpty || currentUser?.uid != ownerUid) {
+          if (mounted) {
+            AifcInteraction.toast(
+              context: context,
+              message: '현재 계정 정보를 확인하지 못했어요. 입력한 내용은 그대로 유지했어요.',
+            );
+          }
+          return false;
+        }
+        final linked = await AccountConnectionDialog.show(
+          context: context,
+          accountService: accountService,
+          expectedUid: ownerUid,
+        );
+        return linked != null;
       },
     );
 
@@ -4376,11 +4347,7 @@ class _HomePageState extends State<HomePage>
         if (!allowed || !mounted) return;
       } catch (_) {
         if (!mounted) return;
-        _showActionToast(
-          context,
-          '등급 정보를 확인하지 못했어요.',
-          bottomOffset: 110,
-        );
+        _showActionToast(context, '등급 정보를 확인하지 못했어요.', bottomOffset: 110);
         return;
       }
     }
@@ -4415,11 +4382,7 @@ class _HomePageState extends State<HomePage>
           _ => 'MORE NEXT STEP 응원 결제 기능은 준비 중이에요.',
         };
 
-        _showActionToast(
-          context,
-          message,
-          bottomOffset: 110,
-        );
+        _showActionToast(context, message, bottomOffset: 110);
       },
     );
   }
@@ -4441,11 +4404,7 @@ class _HomePageState extends State<HomePage>
           _ => 'Master 센터 플랜 문의 기능은 준비 중이에요.',
         };
 
-        _showActionToast(
-          context,
-          message,
-          bottomOffset: 110,
-        );
+        _showActionToast(context, message, bottomOffset: 110);
       },
     );
   }
@@ -4803,9 +4762,11 @@ class _HomePageState extends State<HomePage>
     }
 
     final expireAt = _dateFromAny(data['expireAt']) ??
-        _dateFromAny((data['membership'] is Map)
+        _dateFromAny(
+          (data['membership'] is Map)
             ? (data['membership'] as Map)['endAt']
-            : null);
+              : null,
+        );
 
     final membershipDaysLeft =
         expireAt == null ? null : _homeDaysBetween(now, expireAt);
@@ -4867,14 +4828,17 @@ class _HomePageState extends State<HomePage>
     final now = currentTime;
     final name = (data['name'] ?? '').toString().trim();
     final result = <HomeMoreSenseContext>[];
-    final birth =
-        _dateFromAny(data['birth'] ?? data['birthDate'] ?? data['birthday']);
+    final birth = _dateFromAny(
+      data['birth'] ?? data['birthDate'] ?? data['birthday'],
+    );
     if (birth != null && birth.month == now.month && birth.day == now.day) {
-      result.add(HomeMoreSenseContext(
+      result.add(
+        HomeMoreSenseContext(
         key: 'birthday:$memberId:${now.year}',
         kind: HomeMoreSenseKind.birthday,
         memberName: name,
-      ));
+        ),
+      );
     }
 
     final membership = data['membership'] is Map
@@ -4883,37 +4847,49 @@ class _HomePageState extends State<HomePage>
     final expiry =
         _dateFromAny(data['expireAt']) ?? _dateFromAny(membership['endAt']);
     if (expiry != null && _homeDaysBetween(now, expiry) == 0) {
-      result.add(HomeMoreSenseContext(
+      result.add(
+        HomeMoreSenseContext(
         key: 'expiry:$memberId:${now.year}-${now.month}-${now.day}',
         kind: HomeMoreSenseKind.membershipExpiry,
         memberName: name,
-      ));
+        ),
+      );
     }
 
     final dDay = _dateFromAny(data['nextMoreDayAt']);
     if (dDay != null && _homeDaysBetween(now, dDay) == 0) {
-      result.add(HomeMoreSenseContext(
+      result.add(
+        HomeMoreSenseContext(
         key: 'dday:$memberId:${now.year}-${now.month}-${now.day}',
         kind: HomeMoreSenseKind.dDay,
         memberName: name,
-      ));
+        ),
+      );
     }
 
-    final anniversary =
-        _dateFromAny(data['anniversaryDate'] ?? data['firstLessonAt']);
+    final anniversary = _dateFromAny(
+      data['anniversaryDate'] ?? data['firstLessonAt'],
+    );
     if (anniversary != null &&
         anniversary.month == now.month &&
         anniversary.day == now.day &&
         now.isAfter(anniversary)) {
-      result.add(HomeMoreSenseContext(
+      result.add(
+        HomeMoreSenseContext(
         key: 'milestone:$memberId:${now.year}',
         kind: HomeMoreSenseKind.milestone,
         memberName: name,
         days: DateTime(now.year, now.month, now.day)
             .difference(
-                DateTime(anniversary.year, anniversary.month, anniversary.day))
+                DateTime(
+                  anniversary.year,
+                  anniversary.month,
+                  anniversary.day,
+                ),
+              )
             .inDays,
-      ));
+        ),
+      );
     }
 
     final sessions = data['sessions'] is Map
@@ -4927,11 +4903,13 @@ class _HomePageState extends State<HomePage>
     final remain =
         rawRemain is num ? rawRemain.toInt() : int.tryParse('$rawRemain');
     if (remain != null && remain >= 0 && remain <= 5) {
-      result.add(HomeMoreSenseContext(
+      result.add(
+        HomeMoreSenseContext(
         key: 'low:$memberId:$remain',
         kind: HomeMoreSenseKind.lowSessions,
         memberName: name,
-      ));
+        ),
+      );
     }
     return result;
   }
@@ -5094,11 +5072,11 @@ class _HomePageState extends State<HomePage>
       });
 
       final earnedTier = AppTierAccessService.tierLabelFromRank(earnedRank);
-      final effectiveTier =
-          AppTierAccessService.tierLabelFromRank(effectiveRank);
+      final effectiveTier = AppTierAccessService.tierLabelFromRank(
+        effectiveRank,
+      );
 
-      await profileRef.set(
-        {
+      await profileRef.set({
           'activeMemberCount': activeMemberCount,
           'kakaoCardLinkedMemberCount': kakaoCardLinkedMemberCount,
           'contractSignedMemberCount': contractSignedMemberCount,
@@ -5107,9 +5085,7 @@ class _HomePageState extends State<HomePage>
           'earnedTier': earnedTier,
           'effectiveTier': effectiveTier,
           'tierUpdatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      }, SetOptions(merge: true));
 
       if (kDebugMode) {
         debugPrint(
@@ -5165,14 +5141,11 @@ class _HomePageState extends State<HomePage>
 
       final countFields = _memberSessionCountFieldsFromData(data);
 
-      final total = int.tryParse(
-            (countFields['totalSessions'] ?? '').toString(),
-          ) ??
-          0;
+      final total =
+          int.tryParse((countFields['totalSessions'] ?? '').toString()) ?? 0;
 
-      final remain = int.tryParse(
-            (countFields['remainingSessions'] ?? '').toString(),
-          ) ??
+      final remain =
+          int.tryParse((countFields['remainingSessions'] ?? '').toString()) ??
           0;
 
       final loadedName = (data['name'] ?? '').toString().trim();
@@ -5199,9 +5172,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<Map<String, String>> _loadMemberSessionCountFields(
-    String memberId,
-  ) {
+  Future<Map<String, String>> _loadMemberSessionCountFields(String memberId) {
     return HomeMemberLookupService.loadMemberSessionCountFields(
       memberId,
       ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
@@ -5377,8 +5348,10 @@ class _HomePageState extends State<HomePage>
       );
 
       if (membershipEndAt != null) {
-        final membershipDaysLeft =
-            _homeDaysBetween(DateTime.now(), membershipEndAt);
+        final membershipDaysLeft = _homeDaysBetween(
+          DateTime.now(),
+          membershipEndAt,
+        );
 
         result['membershipEndAt'] = membershipEndAt;
         result['membershipDaysLeft'] = membershipDaysLeft;
@@ -5427,8 +5400,10 @@ class _HomePageState extends State<HomePage>
       if (membershipResumeDueAt != null) {
         result['membershipResumeDueAt'] = membershipResumeDueAt;
 
-        final resumeDaysLeft =
-            _homeDaysBetween(DateTime.now(), membershipResumeDueAt);
+        final resumeDaysLeft = _homeDaysBetween(
+          DateTime.now(),
+          membershipResumeDueAt,
+        );
         result['membershipResumeDaysLeft'] = resumeDaysLeft;
       }
 
@@ -5509,10 +5484,7 @@ class _HomePageState extends State<HomePage>
       if (_isScheduleLessonConfirmed(raw)) {
         if (latestSmartFields.isEmpty) continue;
 
-        final next = {
-          ...Map<String, dynamic>.from(raw),
-          ...latestSmartFields,
-        };
+        final next = {...Map<String, dynamic>.from(raw), ...latestSmartFields};
 
         if (!mapEquals(raw, next)) {
           upsert[entry.key] = next;
@@ -5580,10 +5552,7 @@ class _HomePageState extends State<HomePage>
       );
     }
 
-    _patchScheduleData(
-      upsert: upsert,
-      syncWidget: true,
-    );
+    _patchScheduleData(upsert: upsert, syncWidget: true);
   }
 
   String _buildTodayLessonCountText(Map<String, dynamic> data) {
@@ -5685,10 +5654,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  void _removeLocalScheduleByDocId(
-    String docId, {
-    bool syncWidget = true,
-  }) {
+  void _removeLocalScheduleByDocId(String docId, {bool syncWidget = true}) {
     final cleanDocId = docId.trim();
     if (cleanDocId.isEmpty) return;
 
@@ -5707,10 +5673,7 @@ class _HomePageState extends State<HomePage>
 
     if (removeKeys.isEmpty) return;
 
-    _patchScheduleData(
-      removeKeys: removeKeys,
-      syncWidget: syncWidget,
-    );
+    _patchScheduleData(removeKeys: removeKeys, syncWidget: syncWidget);
   }
 
   void _markScheduleDocAsRecentlyDeleted(String docId) {
@@ -5759,8 +5722,9 @@ class _HomePageState extends State<HomePage>
   Set<String> _exactScheduleSourceDocIds(Map<String, dynamic> data) {
     return <String>{
       _actualScheduleDocumentId(data),
-      ...((data['duplicateDocIds'] as List?) ?? const [])
-          .map((id) => id.toString().trim()),
+      ...((data['duplicateDocIds'] as List?) ?? const []).map(
+        (id) => id.toString().trim(),
+      ),
     }..removeWhere((id) => id.isEmpty);
   }
 
@@ -5773,8 +5737,9 @@ class _HomePageState extends State<HomePage>
   }
 
   bool _hasUnsafeScheduleCollision(Map<String, dynamic> data) {
-    return ((data['conflictingDocIds'] as List?) ?? const [])
-        .any((id) => id.toString().trim().isNotEmpty);
+    return ((data['conflictingDocIds'] as List?) ?? const []).any(
+      (id) => id.toString().trim().isNotEmpty,
+    );
   }
 
   Set<String> _allScheduleDocumentIds(Map<String, dynamic> data) {
@@ -5831,9 +5796,7 @@ class _HomePageState extends State<HomePage>
 
     _recentlyDeletedScheduleDocIds.remove(cleanDocId);
     if (kDebugMode) {
-      debugPrint(
-        '[MTF_SCHEDULE_TOMBSTONE] cleared docId=$cleanDocId',
-      );
+      debugPrint('[MTF_SCHEDULE_TOMBSTONE] cleared docId=$cleanDocId');
     }
   }
 
@@ -5996,11 +5959,7 @@ class _HomePageState extends State<HomePage>
       for (final snapshot in sourceSnapshotById.values) {
         final sourceData = snapshot.data();
         if (sourceData != null && _isScheduleLessonConfirmed(sourceData)) {
-          _showActionToast(
-            context,
-            '확정된 레슨은 삭제할 수 없어요.',
-            bottomOffset: 110,
-          );
+          _showActionToast(context, '확정된 레슨은 삭제할 수 없어요.', bottomOffset: 110);
           return false;
         }
       }
@@ -6027,15 +5986,9 @@ class _HomePageState extends State<HomePage>
       if (!snap.exists) {
         debugPrint('레슨 삭제: 이미 삭제된 문서라 로컬에서만 정리합니다. ($cleanDocId)');
 
-        _removeLocalScheduleByDocId(
-          cleanDocId,
-          syncWidget: false,
-        );
+        _removeLocalScheduleByDocId(cleanDocId, syncWidget: false);
 
-        _queueScheduleDeleteAuxiliarySync(
-          memberId: '',
-          stopwatch: stopwatch,
-        );
+        _queueScheduleDeleteAuxiliarySync(memberId: '', stopwatch: stopwatch);
 
         return true;
       }
@@ -6063,10 +6016,7 @@ class _HomePageState extends State<HomePage>
       }
 
       for (final sourceDocId in sourceDocIds) {
-        _removeLocalScheduleByDocId(
-          sourceDocId,
-          syncWidget: false,
-        );
+        _removeLocalScheduleByDocId(sourceDocId, syncWidget: false);
       }
       if (kDebugMode) {
         debugPrint(
@@ -6246,11 +6196,7 @@ class _HomePageState extends State<HomePage>
     if (!mounted) return;
 
     if (linkedToSchedule) {
-      _showActionToast(
-        context,
-        '회원으로 등록하고 레슨일정에 연결했어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '회원으로 등록하고 레슨일정에 연결했어요.', bottomOffset: 110);
     } else {
       _showActionToast(
         context,
@@ -6266,11 +6212,7 @@ class _HomePageState extends State<HomePage>
     final cleanScheduleDocId = scheduleDocId.trim();
 
     if (cleanScheduleDocId.isEmpty) {
-      _showActionToast(
-        context,
-        '확정취소할 레슨일정을 찾지 못했어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '확정취소할 레슨일정을 찾지 못했어요.', bottomOffset: 110);
       return false;
     }
 
@@ -6281,11 +6223,13 @@ class _HomePageState extends State<HomePage>
 
     final scheduleData = scheduleSnap.data();
 
-    final bool isMemberSignedConfirmed =
-        _isCustomerSignedConfirmedSchedule(scheduleData);
+    final bool isMemberSignedConfirmed = _isCustomerSignedConfirmedSchedule(
+      scheduleData,
+    );
 
-    final bool isContractLinkedConfirmed =
-        _isContractLinkedConfirmedSchedule(scheduleData);
+    final bool isContractLinkedConfirmed = _isContractLinkedConfirmedSchedule(
+      scheduleData,
+    );
 
     if (isMemberSignedConfirmed || isContractLinkedConfirmed) {
       if (!mounted) return false;
@@ -6315,11 +6259,7 @@ class _HomePageState extends State<HomePage>
     }
 
     if (result != true) {
-      _showActionToast(
-        context,
-        '확정취소에 실패했어요. 다시 확인해주세요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '확정취소에 실패했어요. 다시 확인해주세요.', bottomOffset: 110);
       return false;
     }
 
@@ -6365,8 +6305,9 @@ class _HomePageState extends State<HomePage>
           );
           return false;
         }
-        await PersonalTrainingLogRepository.firebase(uid: _personalOwnerUid)
-            .cancelFinalize(trainingLogId);
+        await PersonalTrainingLogRepository.firebase(
+          uid: _personalOwnerUid,
+        ).cancelFinalize(trainingLogId);
         return true;
       }
 
@@ -6420,10 +6361,7 @@ class _HomePageState extends State<HomePage>
       });
 
       if (upsert.isNotEmpty) {
-        _patchScheduleData(
-          upsert: upsert,
-          syncWidget: false,
-        );
+        _patchScheduleData(upsert: upsert, syncWidget: false);
       }
 
       final cancelledMemberId = result.cancelledMemberId?.trim() ?? '';
@@ -6445,62 +6383,107 @@ class _HomePageState extends State<HomePage>
     Map<String, String> sessionCountFields = const {},
     bool waitForCountsRefresh = true,
   }) async {
-    final cleanDocId = scheduleDocId.trim();
+    final linkedCount = await _applyMemberLinkToSchedules(
+      scheduleDocIds: <String>{scheduleDocId},
+      memberId: memberId,
+      phone: phone,
+      sessionCountFields: sessionCountFields,
+      waitForCountsRefresh: waitForCountsRefresh,
+    );
+    return linkedCount == 1;
+  }
+
+  Future<int> _applyMemberLinkToSchedules({
+    required Iterable<String> scheduleDocIds,
+    required String memberId,
+    String? phone,
+    Map<String, String> sessionCountFields = const {},
+    bool waitForCountsRefresh = true,
+  }) async {
+    final cleanDocIds = scheduleDocIds
+        .map((docId) => docId.trim())
+        .where((docId) => docId.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
     final cleanMemberId = memberId.trim();
     final cleanPhone = _normalizePhone(phone ?? '');
 
-    if (cleanDocId.isEmpty || cleanMemberId.isEmpty) {
-      return false;
+    if (cleanDocIds.isEmpty || cleanMemberId.isEmpty) {
+      return 0;
     }
 
-    final scheduleSnap = await FirebaseFirestore.instance
-        .collection('schedules')
-        .doc(cleanDocId)
-        .get();
+    final firestore = FirebaseFirestore.instance;
+    final memberRef = firestore.collection('members').doc(cleanMemberId);
+    final scheduleRefs = cleanDocIds
+        .map((docId) => firestore.collection('schedules').doc(docId))
+        .toList(growable: false);
 
-    if (!scheduleSnap.exists) {
+    try {
+      await firestore.runTransaction((transaction) async {
+        final memberSnap = await transaction.get(memberRef);
+        final memberData = memberSnap.data();
+        final ownerValid = !_isPersonalWorkspace ||
+            (memberData?['trainerId'] == _personalOwnerUid &&
+                memberData?['workspaceType'] == 'personal');
+        final canonicalMemberId =
+            (memberData?['memberId'] ?? '').toString().trim();
+
+        if (memberData == null ||
+            !ownerValid ||
+            canonicalMemberId != cleanMemberId ||
+            memberData['isDeleted'] == true ||
+            (memberData['deleteStatus'] ?? '').toString() ==
+                'pending_delete') {
+          throw StateError('member_link_owner_or_state_invalid');
+        }
+
+        final scheduleSnapshots = <DocumentSnapshot<Map<String, dynamic>>>[];
+        for (final scheduleRef in scheduleRefs) {
+          scheduleSnapshots.add(await transaction.get(scheduleRef));
+        }
+
+        for (final scheduleSnap in scheduleSnapshots) {
+          final schedule = scheduleSnap.data();
+          final scheduleOwnerValid = !_isPersonalWorkspace ||
+              (schedule?['trainerId'] == _personalOwnerUid &&
+                  schedule?['workspaceType'] == 'personal');
+          final existingMemberId =
+              (schedule?['memberId'] ?? '').toString().trim();
+
+          if (schedule == null ||
+              !scheduleOwnerValid ||
+              (existingMemberId.isNotEmpty &&
+                  existingMemberId != cleanMemberId)) {
+            throw StateError('schedule_link_owner_or_state_invalid');
+          }
+        }
+
+        for (final scheduleRef in scheduleRefs) {
+          transaction.set(
+            scheduleRef,
+            {
+              'memberId': cleanMemberId,
+              if (cleanPhone.isNotEmpty) 'phone': cleanPhone,
+              if (sessionCountFields['remainingSessions'] != null)
+                'remainingSessions': sessionCountFields['remainingSessions'],
+              if (sessionCountFields['totalSessions'] != null)
+                'totalSessions': sessionCountFields['totalSessions'],
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        }
+      });
+    } catch (_) {
       if (mounted) {
         _showActionToast(
           context,
-          '연결할 레슨일정을 찾지 못했어요.',
+          '선택한 레슨일정을 연결하지 못했어요. 다시 확인해주세요.',
           bottomOffset: 110,
         );
       }
-      return false;
+      return 0;
     }
-
-    final memberSnap = await FirebaseFirestore.instance
-        .collection('members')
-        .doc(cleanMemberId)
-        .get();
-
-    final memberData = memberSnap.data();
-
-    if (memberData == null ||
-        memberData['isDeleted'] == true ||
-        (memberData['deleteStatus'] ?? '').toString() == 'pending_delete') {
-      if (mounted) {
-        _showActionToast(
-          context,
-          '삭제된 회원은 연결할 수 없어요.',
-          bottomOffset: 110,
-        );
-      }
-      return false;
-    }
-
-    await FirebaseFirestore.instance
-        .collection('schedules')
-        .doc(cleanDocId)
-        .set({
-      'memberId': cleanMemberId,
-      if (cleanPhone.isNotEmpty) 'phone': cleanPhone,
-      if (sessionCountFields['remainingSessions'] != null)
-        'remainingSessions': sessionCountFields['remainingSessions'],
-      if (sessionCountFields['totalSessions'] != null)
-        'totalSessions': sessionCountFields['totalSessions'],
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
 
     final upsert = <String, Map<String, dynamic>>{};
 
@@ -6508,7 +6491,7 @@ class _HomePageState extends State<HomePage>
       if (value is! Map<String, dynamic>) return;
 
       final currentDocId = (value['docId'] ?? '').toString().trim();
-      if (currentDocId != cleanDocId) return;
+      if (!cleanDocIds.contains(currentDocId)) return;
 
       final next = Map<String, dynamic>.from(value)
         ..['memberId'] = cleanMemberId
@@ -6536,10 +6519,7 @@ class _HomePageState extends State<HomePage>
     });
 
     if (upsert.isNotEmpty) {
-      _patchScheduleData(
-        upsert: upsert,
-        syncWidget: true,
-      );
+      _patchScheduleData(upsert: upsert, syncWidget: true);
     }
 
     await _refreshMemberNextLesson(cleanMemberId);
@@ -6550,7 +6530,7 @@ class _HomePageState extends State<HomePage>
       unawaited(_refreshScheduleCountsFromMembers());
     }
 
-    return true;
+    return cleanDocIds.length;
   }
 
   Future<void> _linkManualScheduleToExistingMember({
@@ -6607,8 +6587,27 @@ class _HomePageState extends State<HomePage>
       countFields['totalSessions'] = totalValue.toString();
     }
 
-    await _applyMemberLinkToSchedule(
-      scheduleDocId: cleanDocId,
+    final sameNameCandidates = homeSameNameUnlinkedScheduleCandidates(
+      schedules: scheduleData.values.whereType<Map<String, dynamic>>().map(
+            Map<String, dynamic>.from,
+          ),
+      currentScheduleDocId: cleanDocId,
+      memberName: cleanName,
+    );
+
+    Set<String> additionalScheduleIds = const <String>{};
+    if (sameNameCandidates.isNotEmpty) {
+      final selected = await HomeSameNameScheduleLinkSheet.show(
+        context: context,
+        memberName: cleanName,
+        candidates: sameNameCandidates,
+      );
+      if (!mounted || selected == null) return;
+      additionalScheduleIds = selected;
+    }
+
+    final linkedCount = await _applyMemberLinkToSchedules(
+      scheduleDocIds: <String>{cleanDocId, ...additionalScheduleIds},
       memberId: memberId,
       phone: phone,
       sessionCountFields: countFields,
@@ -6616,7 +6615,15 @@ class _HomePageState extends State<HomePage>
     );
 
     if (!mounted) return;
-    _showActionToast(context, '기존 회원과 레슨일정을 연결했어요.', bottomOffset: 110);
+    if (linkedCount > 0) {
+      _showActionToast(
+        context,
+        linkedCount == 1
+            ? '기존 회원과 레슨일정을 연결했어요.'
+            : '$linkedCount개 레슨일정을 기존 회원과 연결했어요.',
+        bottomOffset: 110,
+      );
+    }
   }
 
   Future<void> _unlinkScheduleMemberLinkByMemberId(String memberId) async {
@@ -6649,10 +6656,7 @@ class _HomePageState extends State<HomePage>
       });
 
       if (upsert.isNotEmpty) {
-        _patchScheduleData(
-          upsert: upsert,
-          syncWidget: true,
-        );
+        _patchScheduleData(upsert: upsert, syncWidget: true);
       }
     } catch (e) {
       debugPrint('삭제 회원 스케줄 연결 해제 실패: $e');
@@ -6669,11 +6673,7 @@ class _HomePageState extends State<HomePage>
     final cleanScheduleDocId = (scheduleDocId ?? '').trim();
 
     if (cleanName.isEmpty) {
-      _showActionToast(
-        context,
-        '회원 이름을 먼저 입력해주세요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '회원 이름을 먼저 입력해주세요.', bottomOffset: 110);
       return;
     }
 
@@ -6785,11 +6785,7 @@ class _HomePageState extends State<HomePage>
     final cleanScheduleDocId = (scheduleDocId ?? '').trim();
 
     if (cleanName.isEmpty) {
-      _showActionToast(
-        context,
-        '회원 이름을 먼저 입력해주세요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '회원 이름을 먼저 입력해주세요.', bottomOffset: 110);
       return;
     }
 
@@ -6927,11 +6923,7 @@ class _HomePageState extends State<HomePage>
     if (!mounted) return;
 
     if (resolvedMemberId == null || resolvedMemberId.isEmpty) {
-      _showActionToast(
-        context,
-        '회원카드가 연결되지 않은 레슨이에요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '회원카드가 연결되지 않은 레슨이에요.', bottomOffset: 110);
       return;
     }
 
@@ -6942,11 +6934,7 @@ class _HomePageState extends State<HomePage>
 
       if (!mounted) return;
 
-      _showActionToast(
-        context,
-        '회원카드에 연결되지 않은 레슨으로 변경했어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '회원카드에 연결되지 않은 레슨으로 변경했어요.', bottomOffset: 110);
       return;
     }
 
@@ -7109,11 +7097,7 @@ class _HomePageState extends State<HomePage>
     if (!mounted) return;
 
     if (resolvedMemberId == null || resolvedMemberId.isEmpty) {
-      _showActionToast(
-        context,
-        '회원카드가 연결되지 않은 레슨이에요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '회원카드가 연결되지 않은 레슨이에요.', bottomOffset: 110);
       return;
     }
 
@@ -7124,11 +7108,7 @@ class _HomePageState extends State<HomePage>
 
       if (!mounted) return;
 
-      _showActionToast(
-        context,
-        '회원카드 연결이 없는 레슨으로 변경했어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '회원카드 연결이 없는 레슨으로 변경했어요.', bottomOffset: 110);
       return;
     }
 
@@ -7242,11 +7222,7 @@ class _HomePageState extends State<HomePage>
     final cleanMemberName = memberName.trim();
 
     if (cleanMemberId.isEmpty) {
-      _showActionToast(
-        context,
-        '기존 회원 연결 후 사용할 수 있어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '기존 회원 연결 후 사용할 수 있어요.', bottomOffset: 110);
       return;
     }
 
@@ -7276,6 +7252,7 @@ class _HomePageState extends State<HomePage>
           memberId: cleanMemberId,
           initialName: cleanMemberName.isEmpty ? null : cleanMemberName,
           openMembershipManageOnStart: true,
+          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
         ),
       ),
     );
@@ -7383,11 +7360,7 @@ class _HomePageState extends State<HomePage>
 
     if (await _isDeletedMemberId(cleanMemberId)) {
       if (!mounted) return;
-      _showActionToast(
-        context,
-        '삭제된 회원은 빠른서명을 사용할 수 없어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '삭제된 회원은 빠른서명을 사용할 수 없어요.', bottomOffset: 110);
       return;
     }
 
@@ -7570,9 +7543,9 @@ class _HomePageState extends State<HomePage>
       if (parsed != null) return parsed;
     }
 
-    return _dateFromScheduleStart(session).add(
-      Duration(minutes: _preferredLessonDurationMinutes),
-    );
+    return _dateFromScheduleStart(
+      session,
+    ).add(Duration(minutes: _preferredLessonDurationMinutes));
   }
 
   bool _isScheduleLessonConfirmed(Map<String, dynamic> session) {
@@ -7806,11 +7779,7 @@ class _HomePageState extends State<HomePage>
     }
 
     if (scheduleDocId.isEmpty) {
-      _showActionToast(
-        toastContext,
-        '연결된 일정 문서를 찾지 못했어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(toastContext, '연결된 일정 문서를 찾지 못했어요.', bottomOffset: 110);
       return;
     }
 
@@ -7829,11 +7798,7 @@ class _HomePageState extends State<HomePage>
     final status = confirmStatus ?? _confirmStatusFromScheduleSession(session);
 
     if (status == 'cancelled') {
-      _showActionToast(
-        toastContext,
-        '출석 취소 상태는 확정할 수 없어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(toastContext, '출석 취소 상태는 확정할 수 없어요.', bottomOffset: 110);
       return;
     }
 
@@ -7849,8 +7814,9 @@ class _HomePageState extends State<HomePage>
 
     if (_isPersonalWorkspace) {
       try {
-        final repository =
-            PersonalTrainingLogRepository.firebase(uid: _personalOwnerUid);
+        final repository = PersonalTrainingLogRepository.firebase(
+          uid: _personalOwnerUid,
+        );
         final personalLogId = await repository.createDraft(
           PersonalTrainingLogDraft(
             memberId: memberId,
@@ -7910,11 +7876,7 @@ class _HomePageState extends State<HomePage>
       if (!mounted) return;
 
       if (result.status == LessonConfirmationResultStatus.alreadyConfirmed) {
-        _showActionToast(
-          toastContext,
-          '이미 확정했습니다',
-          bottomOffset: 110,
-        );
+        _showActionToast(toastContext, '이미 확정했습니다', bottomOffset: 110);
         return;
       }
 
@@ -7975,10 +7937,7 @@ class _HomePageState extends State<HomePage>
       });
 
       if (localUpsert.isNotEmpty) {
-        _patchScheduleData(
-          upsert: localUpsert,
-          syncWidget: false,
-        );
+        _patchScheduleData(upsert: localUpsert, syncWidget: false);
       }
 
       await _refreshScheduleCountsFromMembers();
@@ -7996,11 +7955,7 @@ class _HomePageState extends State<HomePage>
             : '제가 고객카드 기준으로 확인했어요. 잔여 횟수를 소진하고, 담당자 확인 기록으로 남겨둘게요.',
       };
 
-      _showActionToast(
-        toastContext,
-        message,
-        bottomOffset: 110,
-      );
+      _showActionToast(toastContext, message, bottomOffset: 110);
     } catch (e) {
       debugPrint('스케줄 레슨 확정 실패: $e');
 
@@ -8019,10 +7974,7 @@ class _HomePageState extends State<HomePage>
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = math.Random.secure();
 
-    return List.generate(
-      32,
-      (_) => chars[random.nextInt(chars.length)],
-    ).join();
+    return List.generate(32, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
   String _buildMemberSignUrl(String token) {
@@ -8079,11 +8031,7 @@ class _HomePageState extends State<HomePage>
     }
 
     if (await _isDeletedMemberId(cleanMemberId)) {
-      _showActionToast(
-        context,
-        '삭제된 회원은 서명요청을 보낼 수 없어요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '삭제된 회원은 서명요청을 보낼 수 없어요.', bottomOffset: 110);
       return null;
     }
 
@@ -8100,15 +8048,12 @@ class _HomePageState extends State<HomePage>
     }
 
     if (cleanScheduleDocId.isNotEmpty) {
-      final isScheduleConfirmed =
-          await _isScheduleDocConfirmed(cleanScheduleDocId);
+      final isScheduleConfirmed = await _isScheduleDocConfirmed(
+        cleanScheduleDocId,
+      );
 
       if (isScheduleConfirmed) {
-        _showActionToast(
-          context,
-          '이미 확정된 레슨이에요.',
-          bottomOffset: 110,
-        );
+        _showActionToast(context, '이미 확정된 레슨이에요.', bottomOffset: 110);
         return null;
       }
     }
@@ -8140,11 +8085,7 @@ class _HomePageState extends State<HomePage>
       final memberSigned = existingLogData['memberSigned'] == true;
 
       if (locked || deductionApplied || lessonConfirmed) {
-        _showActionToast(
-          context,
-          '이미 확정된 레슨이에요.',
-          bottomOffset: 110,
-        );
+        _showActionToast(context, '이미 확정된 레슨이에요.', bottomOffset: 110);
         return null;
       }
 
@@ -8211,10 +8152,8 @@ class _HomePageState extends State<HomePage>
     final token = _generateMemberSignToken();
     final link = _buildMemberSignUrl(token);
 
-    await FirebaseFirestore.instance
-        .collection('sign_requests')
-        .doc(token)
-        .set({
+    await FirebaseFirestore.instance.collection('sign_requests').doc(token).set(
+      {
       'token': token,
       'status': 'waiting_member_signature',
       'used': false,
@@ -8233,13 +8172,11 @@ class _HomePageState extends State<HomePage>
       'expiresAt': Timestamp.fromDate(
         DateTime.now().add(const Duration(hours: 24)),
       ),
-    }, SetOptions(merge: true));
+      },
+      SetOptions(merge: true),
+    );
 
-    return {
-      'token': token,
-      'link': link,
-      'trainingLogId': trainingLogId,
-    };
+    return {'token': token, 'link': link, 'trainingLogId': trainingLogId};
   }
 
   Future<void> _cancelPendingSignRequestsForTrainingLog(
@@ -8319,8 +8256,9 @@ class _HomePageState extends State<HomePage>
     final originalTypeName =
         (session['typeName'] ?? session['type'] ?? '').toString().trim();
 
-    final weekStart =
-        _mondayOfWeek(currentTime).add(Duration(days: weekOffset * 7));
+    final weekStart = _mondayOfWeek(
+      currentTime,
+    ).add(Duration(days: weekOffset * 7));
     final weekEnd = weekStart.add(const Duration(days: 7));
 
     final result = <Map<String, dynamic>>[];
@@ -8781,10 +8719,7 @@ class _HomePageState extends State<HomePage>
       };
 
       firestoreWrites.add(
-        HomeScheduleEditWrite(
-          targetDocId: targetDocId,
-          data: firestoreData,
-        ),
+        HomeScheduleEditWrite(targetDocId: targetDocId, data: firestoreData),
       );
 
       final localData = {
@@ -8836,10 +8771,7 @@ class _HomePageState extends State<HomePage>
         localData.remove('totalSessions');
       }
 
-      localWrites.add({
-        'key': targetKey,
-        'data': localData,
-      });
+      localWrites.add({'key': targetKey, 'data': localData});
     }
 
     _beginScheduleMutation(deleteDocIds);
@@ -8871,8 +8803,9 @@ class _HomePageState extends State<HomePage>
 
       for (final item in localWrites) {
         final key = item['key'] as String;
-        final data =
-            Map<String, dynamic>.from(item['data'] as Map<String, dynamic>);
+        final data = Map<String, dynamic>.from(
+          item['data'] as Map<String, dynamic>,
+        );
         upsert[key] = data;
       }
 
@@ -8993,8 +8926,9 @@ class _HomePageState extends State<HomePage>
         ? resolvedMember['name']!.trim()
         : typedName;
 
-    Map<String, dynamic> countMap =
-        _parseSessionCount(sessionCountController.text);
+    Map<String, dynamic> countMap = _parseSessionCount(
+      sessionCountController.text,
+    );
 
     final resolvedSessionCountText =
         (resolvedMember['sessionCountText'] ?? '').trim();
@@ -9003,8 +8937,9 @@ class _HomePageState extends State<HomePage>
       String linkedSessionCountText = resolvedSessionCountText;
 
       if (linkedSessionCountText.isEmpty) {
-        linkedSessionCountText =
-            await _loadMemberSessionCountText(resolvedMemberId);
+        linkedSessionCountText = await _loadMemberSessionCountText(
+          resolvedMemberId,
+        );
       }
 
       if (linkedSessionCountText.isNotEmpty) {
@@ -9121,8 +9056,11 @@ class _HomePageState extends State<HomePage>
     final primaryTargetDay = orderedSelectedDays.isNotEmpty
         ? orderedSelectedDays.first
         : originalDay;
-    final primaryTargetStartAt =
-        _dateForCell(weekOffset, primaryTargetDay, editableTime);
+    final primaryTargetStartAt = _dateForCell(
+      weekOffset,
+      primaryTargetDay,
+      editableTime,
+    );
 
     return HomeLessonSaveResult(
       success: true,
@@ -9207,12 +9145,15 @@ class _HomePageState extends State<HomePage>
 
     String selectedLessonTypeId = (() {
       if (isEditMode && existingSession != null) {
-        final existingType = _resolveLessonTypeForSchedule(existingSession!);
+        final existingType = _resolveLessonTypeForSchedule(
+          existingSession!,
+        );
         final byId = localLessonTypes.where((e) => e.id == existingType.id);
         if (byId.isNotEmpty) return byId.first.id;
 
-        final byName =
-            localLessonTypes.where((e) => e.name == existingType.name);
+        final byName = localLessonTypes.where(
+          (e) => e.name == existingType.name,
+        );
         if (byName.isNotEmpty) return byName.first.id;
       }
 
@@ -9314,10 +9255,7 @@ class _HomePageState extends State<HomePage>
           'targetStartAt=${targetStartAt?.toIso8601String() ?? ''} '
           'selectedDates=$selectedDates '
           'selectedWeekdays=${selectedDays.join(',')} '
-          'isMultiDay=${isExplicitHomeScheduleMultiDay(
-        selectedDays,
-        explicitMultiDaySelection: selectionState.explicitMultiDaySelection,
-      )} '
+          'isMultiDay=${isExplicitHomeScheduleMultiDay(selectedDays, explicitMultiDaySelection: selectionState.explicitMultiDaySelection)} '
           'explicitMultiDaySelection=${selectionState.explicitMultiDaySelection} '
           'selectedDatesChangedCaller=${selectionState.lastChangedCaller} '
           'isRecurring=false '
@@ -9343,17 +9281,7 @@ class _HomePageState extends State<HomePage>
     }) {
       if (!kDebugMode) return;
       debugPrint(
-        '[$tag] ${buildEditSessionLogFields(
-          mutationId: mutationId,
-          caller: caller,
-          userAction: userAction,
-          stateBefore: stateBefore,
-          sourceDocId: sourceDocId,
-          targetDocId: targetDocId,
-          targetStartAt: targetStartAt,
-          guardAllowed: guardAllowed,
-          ignoredReason: ignoredReason,
-        )}',
+        '[$tag] ${buildEditSessionLogFields(mutationId: mutationId, caller: caller, userAction: userAction, stateBefore: stateBefore, sourceDocId: sourceDocId, targetDocId: targetDocId, targetStartAt: targetStartAt, guardAllowed: guardAllowed, ignoredReason: ignoredReason)}',
       );
     }
 
@@ -9468,8 +9396,9 @@ class _HomePageState extends State<HomePage>
           localLessonTypes.add(item);
           selectedLessonTypeId = item.id;
         } else {
-          final index =
-              localLessonTypes.indexWhere((e) => e.id == editingLessonTypeId);
+          final index = localLessonTypes.indexWhere(
+            (e) => e.id == editingLessonTypeId,
+          );
           if (index >= 0) {
             localLessonTypes[index] = localLessonTypes[index].copyWith(
               name: name,
@@ -9540,10 +9469,7 @@ class _HomePageState extends State<HomePage>
     Widget lockEditableArea(Widget child) {
       return IgnorePointer(
         ignoring: isConfirmedLesson,
-        child: Opacity(
-          opacity: isConfirmedLesson ? 0.52 : 1.0,
-          child: child,
-        ),
+        child: Opacity(opacity: isConfirmedLesson ? 0.52 : 1.0, child: child),
       );
     }
 
@@ -9559,13 +9485,11 @@ class _HomePageState extends State<HomePage>
             bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
           ),
           child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: Material(
-              color: Theme.of(sheetContext)
-                      .bottomSheetTheme
-                      .modalBackgroundColor ??
+              color: Theme.of(
+                    sheetContext,
+                  ).bottomSheetTheme.modalBackgroundColor ??
                   Theme.of(sheetContext).colorScheme.surface,
               child: StatefulBuilder(
                 builder: (sheetContext, setModalState) {
@@ -9581,8 +9505,9 @@ class _HomePageState extends State<HomePage>
                     memberId: selectedMemberId,
                     phone: selectedMemberPhone,
                   );
-                  final linkedMemberDeleted =
-                      _isLinkedMemberDeletedFromSession(existingSession);
+                  final linkedMemberDeleted = _isLinkedMemberDeletedFromSession(
+                    existingSession,
+                  );
 
                   final quickActionSession = existingSession == null
                       ? null
@@ -9668,9 +9593,7 @@ class _HomePageState extends State<HomePage>
                     safeSetModalState(() {
                       nameController.value = TextEditingValue(
                         text: name,
-                        selection: TextSelection.collapsed(
-                          offset: name.length,
-                        ),
+                        selection: TextSelection.collapsed(offset: name.length),
                       );
                       selectedMemberId = memberId;
                       selectedMemberPhone = phone;
@@ -9717,11 +9640,14 @@ class _HomePageState extends State<HomePage>
                             children: [
                               HomeLessonEditorHeader(
                                 day: day,
-                                startTimeLabel:
-                                    _formatLessonSheetTime(editableTime),
+                                startTimeLabel: _formatLessonSheetTime(
+                                  editableTime,
+                                ),
                                 endTimeLabel: editableEndTime.isEmpty
                                     ? '미설정'
-                                    : _formatLessonSheetTime(editableEndTime),
+                                    : _formatLessonSheetTime(
+                                        editableEndTime,
+                                      ),
                                 endTimeIsEmpty: editableEndTime.isEmpty,
                                 onClose: () => Navigator.of(sheetContext).pop(),
                                 onTimeTap: () async {
@@ -9768,8 +9694,12 @@ class _HomePageState extends State<HomePage>
                                 },
                               ),
                               Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  20,
+                                ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -9824,7 +9754,9 @@ class _HomePageState extends State<HomePage>
                                             lessonTypeNameController,
                                         selectedColorHex: editingColorHex,
                                         paletteColorHexes: kLessonTypePalette
-                                            .map((color) => _colorToHex(color))
+                                            .map(
+                                              (color) => _colorToHex(color),
+                                            )
                                             .toList(),
                                         onColorSelected: (hex) {
                                           setModalState(() {
@@ -9842,11 +9774,13 @@ class _HomePageState extends State<HomePage>
                                           });
                                         },
                                         onSubmit: () => submitLessonTypeEditor(
-                                            setModalState),
+                                          setModalState,
+                                        ),
                                         onDelete: editingLessonTypeId == null
                                             ? null
                                             : () => deleteEditingLessonType(
-                                                setModalState),
+                                                  setModalState,
+                                                ),
                                       ),
                                     ],
                                     const SizedBox(height: 14),
@@ -9925,7 +9859,8 @@ class _HomePageState extends State<HomePage>
                                               text: '',
                                               selection:
                                                   TextSelection.collapsed(
-                                                      offset: 0),
+                                                offset: 0,
+                                              ),
                                             );
                                             selectedMemberId = null;
                                             selectedMemberPhone = null;
@@ -9952,8 +9887,9 @@ class _HomePageState extends State<HomePage>
                                         onOpenLessonContract: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -9968,8 +9904,9 @@ class _HomePageState extends State<HomePage>
                                         onOpenMembershipManage: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -9987,14 +9924,16 @@ class _HomePageState extends State<HomePage>
                                           existingSession == null
                                               ? null
                                               : Map<String, dynamic>.from(
-                                                  existingSession!),
+                                                  existingSession!,
+                                                ),
                                         ),
                                         isContractLinkedConfirmedLesson:
                                             _isContractLinkedConfirmedSchedule(
                                           existingSession == null
                                               ? null
                                               : Map<String, dynamic>.from(
-                                                  existingSession!),
+                                                  existingSession!,
+                                                ),
                                         ),
                                         onShowToast: (message) {
                                           _showActionToast(
@@ -10014,14 +9953,15 @@ class _HomePageState extends State<HomePage>
                                           if (data == null) return false;
 
                                           return _resolveQuickSignMemberState(
-                                                  data)
-                                              .hasContract;
+                                            data,
+                                          ).hasContract;
                                         },
                                         onOpenMemberCard: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10035,8 +9975,9 @@ class _HomePageState extends State<HomePage>
                                         onOpenWorkoutLog: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10050,8 +9991,9 @@ class _HomePageState extends State<HomePage>
                                         onOpenLessonConfirm: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10095,8 +10037,9 @@ class _HomePageState extends State<HomePage>
                                         onOpenSignRequest: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10159,8 +10102,10 @@ class _HomePageState extends State<HomePage>
                                                 nameController.text.trim(),
                                             link: link,
                                             primaryColor: kPrimaryColor,
-                                            onShowToast:
-                                                (toastContext, message) {
+                                            onShowToast: (
+                                              toastContext,
+                                              message,
+                                            ) {
                                               _showActionToast(
                                                 toastContext,
                                                 message,
@@ -10172,8 +10117,9 @@ class _HomePageState extends State<HomePage>
                                         onLinkExistingMember: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10189,8 +10135,9 @@ class _HomePageState extends State<HomePage>
                                         onRegisterManualMember: () async {
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10218,8 +10165,11 @@ class _HomePageState extends State<HomePage>
 
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(
+                                              milliseconds: 120,
+                                            ),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10246,8 +10196,9 @@ class _HomePageState extends State<HomePage>
 
                                           closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(const Duration(
-                                              milliseconds: 120));
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                          );
 
                                           if (!mounted) return;
 
@@ -10285,8 +10236,9 @@ class _HomePageState extends State<HomePage>
 
                                           if (!mounted || !cancelled) return;
 
-                                          if (Navigator.of(sheetContext)
-                                              .canPop()) {
+                                          if (Navigator.of(
+                                            sheetContext,
+                                          ).canPop()) {
                                             Navigator.of(sheetContext).pop();
                                           }
                                         },
@@ -10310,14 +10262,16 @@ class _HomePageState extends State<HomePage>
                                         existingSession == null
                                             ? null
                                             : Map<String, dynamic>.from(
-                                                existingSession!),
+                                                existingSession!,
+                                              ),
                                       ),
                                       isContractLinkedConfirmedLesson:
                                           _isContractLinkedConfirmedSchedule(
                                         existingSession == null
                                             ? null
                                             : Map<String, dynamic>.from(
-                                                existingSession!),
+                                                existingSession!,
+                                              ),
                                       ),
                                       isBusy: activeMutation != null,
                                       isDeleting: activeMutation ==
@@ -10374,8 +10328,7 @@ class _HomePageState extends State<HomePage>
                                           schedule: existingSession == null
                                               ? null
                                               : Map<String, dynamic>.from(
-                                                  existingSession!,
-                                                ),
+                                                  existingSession!),
                                           editSessionLogFields:
                                               buildEditSessionLogFields(
                                             mutationId: attempt.mutationId,
@@ -10580,8 +10533,7 @@ class _HomePageState extends State<HomePage>
                                                       ? null
                                                       : Map<String,
                                                           dynamic>.from(
-                                                          existingSession!,
-                                                        ),
+                                                          existingSession!),
                                               selectedMemberId:
                                                   selectedMemberId,
                                               selectedMemberPhone:
@@ -10781,23 +10733,28 @@ class _HomePageState extends State<HomePage>
                                   : Center(
                                       key: ValueKey(sheetToastMessage),
                                       child: Container(
-                                        constraints:
-                                            const BoxConstraints(maxWidth: 280),
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 280,
+                                        ),
                                         margin: const EdgeInsets.symmetric(
-                                            horizontal: 24),
+                                          horizontal: 24,
+                                        ),
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 10,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF111827)
-                                              .withValues(alpha: 0.94),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          color: const Color(
+                                            0xFF111827,
+                                          ).withValues(alpha: 0.94),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black
-                                                  .withValues(alpha: 0.16),
+                                              color: Colors.black.withValues(
+                                                alpha: 0.16,
+                                              ),
                                               blurRadius: 12,
                                               offset: const Offset(0, 4),
                                             ),
@@ -11059,8 +11016,9 @@ class _HomePageState extends State<HomePage>
   List<Map<String, dynamic>> _buildWeekCopyPayload(int weekOffset) {
     final payload = <Map<String, dynamic>>[];
 
-    final weekStart =
-        _mondayOfWeek(currentTime).add(Duration(days: weekOffset * 7));
+    final weekStart = _mondayOfWeek(
+      currentTime,
+    ).add(Duration(days: weekOffset * 7));
     final weekEnd = weekStart.add(const Duration(days: 7));
 
     scheduleData.forEach((key, value) {
@@ -11086,7 +11044,9 @@ class _HomePageState extends State<HomePage>
 
       final endAt = value['endAt'] is DateTime
           ? value['endAt'] as DateTime
-          : startAt.add(const Duration(minutes: _defaultLessonDurationMinutes));
+          : startAt.add(
+              const Duration(minutes: _defaultLessonDurationMinutes),
+            );
 
       final day = _weekDaysAll[startAt.weekday - 1];
       final time = _timeStringFromDateTime(startAt);
@@ -11133,8 +11093,9 @@ class _HomePageState extends State<HomePage>
 
     setState(() {
       _copiedWeekSchedules = payload;
-      _copiedWeekSourceLabel =
-          _weekTitleForOffset(weekOffset).replaceAll('\n', ' ');
+      _copiedWeekSourceLabel = _weekTitleForOffset(
+        weekOffset,
+      ).replaceAll('\n', ' ');
     });
 
     _showSnack('${payload.length}개의 레슨일정을 복사했어요.');
@@ -11146,8 +11107,10 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    if (scheduleData.values.any((value) =>
-        value is Map<String, dynamic> && _hasUnsafeScheduleCollision(value))) {
+    if (scheduleData.values.any(
+      (value) =>
+          value is Map<String, dynamic> && _hasUnsafeScheduleCollision(value),
+    )) {
       _showSnack('같은 시간에 서로 다른 레슨 문서가 있어 붙여넣기를 중단했어요.');
       return;
     }
@@ -11345,8 +11308,10 @@ class _HomePageState extends State<HomePage>
   Future<void> _deleteAllSchedulesInWeek(int weekOffset) async {
     final weekSlice = _buildWeekSlice(weekOffset);
 
-    if (weekSlice.values.any((value) =>
-        value is Map<String, dynamic> && _hasUnsafeScheduleCollision(value))) {
+    if (weekSlice.values.any(
+      (value) =>
+          value is Map<String, dynamic> && _hasUnsafeScheduleCollision(value),
+    )) {
       _showSnack('같은 시간에 서로 다른 레슨 문서가 있어 전체삭제를 중단했어요.');
       return;
     }
@@ -11468,10 +11433,7 @@ class _HomePageState extends State<HomePage>
       }
     });
 
-    _patchScheduleData(
-      removeKeys: removeKeys,
-      syncWidget: true,
-    );
+    _patchScheduleData(removeKeys: removeKeys, syncWidget: true);
 
     await _reconcilePersonalTierAfterServerWrite('scheduleDelete');
 
@@ -11661,11 +11623,7 @@ class _HomePageState extends State<HomePage>
                 onSettings: _openLegacySettingsPage,
                 onUpgrade: () {
                   if (_currentAppTier == AppTier.pro) {
-                    unawaited(
-                      _openSupportTierGuideSheet(
-                        highlightTier: 'pro',
-                      ),
-                    );
+                    unawaited(_openSupportTierGuideSheet(highlightTier: 'pro'));
                     return;
                   }
 
@@ -11757,14 +11715,16 @@ class _HomePageState extends State<HomePage>
 
   HomeHeaderMessageSelection _resolveHomeHeaderMessageSelection() {
     final lessons = _scheduleItemsForToday()
-        .map((item) => HomeHeaderLessonContext(
-              startAt: item.startAt,
-              endAt: item.endAt,
-            ))
+        .map(
+          (item) =>
+              HomeHeaderLessonContext(startAt: item.startAt, endAt: item.endAt),
+        )
         .toList(growable: false);
     final activePhase = lessons
-        .map((item) =>
-            '${item.startAt.millisecondsSinceEpoch}:${item.endAt.isAfter(currentTime) ? 1 : 0}')
+        .map(
+          (item) =>
+              '${item.startAt.millisecondsSinceEpoch}:${item.endAt.isAfter(currentTime) ? 1 : 0}',
+        )
         .join(',');
     final eventKeys = _moreSenseItems.map((item) => item.key).join(',');
     final signature = [
@@ -11804,20 +11764,20 @@ class _HomePageState extends State<HomePage>
     );
     _headerMessageContextSignature = signature;
     _headerMessageSelection = selection;
-    _recentHeaderMessageKeys = <String>{
-      selection.fcKey,
-      ..._recentHeaderMessageKeys,
-    }.take(5).toSet();
+    _recentHeaderMessageKeys =
+        <String>{selection.fcKey, ..._recentHeaderMessageKeys}.take(5).toSet();
     if (selection.questionKey != null) {
       _askedHeaderQuestionKeys = <String>{
         ..._askedHeaderQuestionKeys,
         selection.questionKey!,
       };
     }
-    unawaited(_headerMessageHistory.remember(
+    unawaited(
+      _headerMessageHistory.remember(
       messageKey: selection.fcKey,
       questionKey: selection.questionKey,
-    ));
+      ),
+    );
     return selection;
   }
 
@@ -11893,9 +11853,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _openUpgradeChatSheet({
-    String source = 'banner',
-  }) async {
+  Future<void> _openUpgradeChatSheet({String source = 'banner'}) async {
     if (!_bannerStateReady) {
       _showActionToast(
         context,
@@ -12000,9 +11958,7 @@ class _HomePageState extends State<HomePage>
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.70),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: const Color(0xFFE5E7EB),
-            ),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           child: const Center(
             child: Text(
@@ -12033,11 +11989,7 @@ class _HomePageState extends State<HomePage>
         ),
         onTap: () {
           if (_currentAppTier == AppTier.pro) {
-            unawaited(
-              _openSupportTierGuideSheet(
-                highlightTier: 'pro',
-              ),
-            );
+            unawaited(_openSupportTierGuideSheet(highlightTier: 'pro'));
             return;
           }
 
@@ -12191,11 +12143,7 @@ class _HomePageState extends State<HomePage>
     );
     if (!mounted) return;
     if (!valid) {
-      _showActionToast(
-        context,
-        '현재 작업공간에서 확인할 수 없는 회원이에요.',
-        bottomOffset: 110,
-      );
+      _showActionToast(context, '현재 작업공간에서 확인할 수 없는 회원이에요.', bottomOffset: 110);
       return;
     }
     await Navigator.of(context).push(

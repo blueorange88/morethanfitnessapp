@@ -21,8 +21,8 @@ void main() {
     expect(source, contains("label: '직책 (선택)'"));
     expect(source, contains("Text('입력하기 ›'"));
     expect(source, contains("Text('센터 정보 추가 (선택)'"));
-    expect(source, contains("Text('최대 3곳'"));
-    expect(source, contains("Text('대표 · '"));
+    expect(source, contains("'최대 3곳'"));
+    expect(source, contains("'대표 · '"));
     expect(source, contains("title: const Text('대표 지역으로 설정')"));
     expect(source, contains("title: const Text('지역 변경')"));
   });
@@ -32,6 +32,25 @@ void main() {
     expect(source, contains('validator: validateTrainerEnglishName'));
     expect(source, contains('activityRegions: activityRegions'));
     expect(source, contains('nameEn: nameEn'));
+  });
+
+  test('실제 MyPage가 연결 이메일 인증 상태와 명시적 재확인을 제공한다', () {
+    final source = File('lib/pages/my_page.dart').readAsStringSync();
+    expect(source, contains("Key('my_page_email_verification_card')"));
+    expect(source, contains("Key('my_page_send_email_verification')"));
+    expect(source, contains("Key('my_page_refresh_email_verification')"));
+    expect(source, contains('sendCurrentUserEmailVerification()'));
+    expect(source, contains('refreshCurrentUser()'));
+    expect(source, contains('constraints.maxWidth < 420'));
+    expect(source, contains("'my_page_google_connected'"));
+    expect(source, contains("'my_page_connect_google'"));
+    expect(source, contains('Google 계정 연결됨'));
+    expect(source, contains('카카오 · 네이버'));
+  });
+
+  test('연결 이메일은 로컬 일부만 표시하고 주소 전체를 노출하지 않는다', () {
+    expect(myPageMaskedEmail('trainer@example.com'), 'tr***@example.com');
+    expect(myPageMaskedEmail('a@example.com'), 'a***@example.com');
   });
 
   group('직업 AI FC 문구', () {
@@ -44,41 +63,39 @@ void main() {
   group('계약서 담당강사명 source', () {
     test('저장된 nickname 선택은 realName 존재와 무관하게 유지한다', () {
       expect(
-        myPageContractNameSourceFromProfile(
-          const {
-            'contractTrainerNameSource': 'displayName',
-            'nickname': '남트',
-            'realName': '남명구',
-          },
-        ),
+        myPageContractNameSourceFromProfile(const {
+          'contractTrainerNameSource': 'displayName',
+          'nickname': '남트',
+          'realName': '남명구',
+        }),
         'displayName',
       );
     });
 
     test('저장된 realName과 manual 선택도 다른 이름 변경으로 바뀌지 않는다', () {
       expect(
-        myPageContractNameSourceFromProfile(
-          const {'contractTrainerNameSource': 'realName', 'nickname': '새닉'},
-        ),
+        myPageContractNameSourceFromProfile(const {
+          'contractTrainerNameSource': 'realName',
+          'nickname': '새닉',
+        }),
         'realName',
       );
       expect(
-        myPageContractNameSourceFromProfile(
-          const {
-            'contractTrainerNameSource': 'manual',
-            'nickname': '새닉',
-            'realName': '새실명',
-          },
-        ),
+        myPageContractNameSourceFromProfile(const {
+          'contractTrainerNameSource': 'manual',
+          'nickname': '새닉',
+          'realName': '새실명',
+        }),
         'manual',
       );
     });
 
     test('source가 없는 과거 문서는 이름 존재 여부로 추론하지 않는다', () {
       expect(
-        myPageContractNameSourceFromProfile(
-          const {'nickname': '남트', 'realName': '남명구'},
-        ),
+        myPageContractNameSourceFromProfile(const {
+          'nickname': '남트',
+          'realName': '남명구',
+        }),
         'manual',
       );
     });
@@ -132,10 +149,10 @@ void main() {
         'canonical real',
       );
       expect(
-        myPageRealNameFromProfile(
-          const {'displayName': 'legacy display', 'name': 'legacy name'},
-          personalWorkspace: true,
-        ),
+        myPageRealNameFromProfile(const {
+          'displayName': 'legacy display',
+          'name': 'legacy name',
+        }, personalWorkspace: true),
         isEmpty,
       );
     });
@@ -150,10 +167,9 @@ void main() {
         'canonical lesson',
       );
       expect(
-        myPageJobTitleFromProfile(
-          const {'affiliationType': 'freelancer'},
-          personalWorkspace: true,
-        ),
+        myPageJobTitleFromProfile(const {
+          'affiliationType': 'freelancer',
+        }, personalWorkspace: true),
         isEmpty,
       );
     });
@@ -176,13 +192,10 @@ void main() {
   group('마이페이지 anchored 더보기 메뉴', () {
     for (final width in <double>[320, 360, 412]) {
       for (final scale in <double>[1, 1.3, 1.8]) {
-        testWidgets('${width.toInt()}dp / textScale $scale에서 overflow가 없다',
-            (tester) async {
-          await _pumpMyPageMoreMenu(
-            tester,
-            width: width,
-            textScale: scale,
-          );
+        testWidgets('${width.toInt()}dp / textScale $scale에서 overflow가 없다', (
+          tester,
+        ) async {
+          await _pumpMyPageMoreMenu(tester, width: width, textScale: scale);
           await tester.tap(find.byKey(const Key('test_my_page_more_menu')));
           await tester.pumpAndSettle();
 
@@ -197,9 +210,12 @@ void main() {
 
     testWidgets('선택·바깥 탭·뒤로가기로 메뉴를 한 번만 닫는다', (tester) async {
       MyPageMoreMenuAction? selected;
-      await _pumpMyPageMoreMenu(tester, onSelected: (value) {
-        selected = value;
-      });
+      await _pumpMyPageMoreMenu(
+        tester,
+        onSelected: (value) {
+          selected = value;
+        },
+      );
 
       await tester.tap(find.byKey(const Key('test_my_page_more_menu')));
       await tester.pumpAndSettle();

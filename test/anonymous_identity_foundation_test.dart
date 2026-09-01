@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/services/app_account_service.dart';
 
@@ -127,6 +129,146 @@ void main() {
     expect(steps, ['link', 'refresh', 'transition']);
   });
 
+  test('인증 link 후 profile 전환이 실패해도 같은 UID에서 재시도를 재개한다', () async {
+    final steps = <String>[];
+    final gateway = _FakeIdentityGateway(
+      currentUser: anonymous,
+      linkedResult: linked,
+      steps: steps,
+    );
+    final profile = _FakeProfileGateway(
+      steps: steps,
+      transitionErrors: [
+        FirebaseFunctionsException(
+          code: 'unavailable',
+          message: 'network unavailable',
+        ),
+      ],
+    );
+    final service = AppAccountService(
+      gateway: gateway,
+      anonymousGateway: gateway,
+      profileGateway: profile,
+    );
+
+    await expectLater(
+      service.linkAnonymousWithEmail(
+        email: 'trainer@example.com',
+        password: 'password-123',
+      ),
+      _failsWith(AppAccountErrorCode.network),
+    );
+    expect(gateway.currentUser?.isAnonymous, isFalse);
+
+    final resumed = await service.linkAnonymousWithEmail(
+      email: 'trainer@example.com',
+      password: 'password-123',
+    );
+
+    expect(resumed.uid, anonymous.uid);
+    expect(steps, ['link', 'refresh', 'transition', 'refresh', 'transition']);
+    expect(gateway.linkCalls, 1);
+    expect(profile.transitionCalls, 2);
+  });
+
+  test('Functions unavailable은 재시도 가능한 네트워크 오류로 번역한다', () async {
+    final gateway = _FakeIdentityGateway(
+      currentUser: anonymous,
+      linkedResult: linked,
+    );
+    final profile = _FakeProfileGateway(
+      transitionErrors: [
+        FirebaseFunctionsException(
+          code: 'unavailable',
+          message: 'network unavailable',
+        ),
+      ],
+    );
+
+    await expectLater(
+      AppAccountService(
+        gateway: gateway,
+        anonymousGateway: gateway,
+        profileGateway: profile,
+      ).linkAnonymousWithEmail(
+        email: 'trainer@example.com',
+        password: 'password-123',
+      ),
+      _failsWith(AppAccountErrorCode.network),
+    );
+    expect(
+      appAccountErrorMessage(
+        const AppAccountException(AppAccountErrorCode.network),
+      ),
+      contains('이 화면에서 다시 시도'),
+    );
+  });
+
+  test('Firebase Auth internal-error의 DNS 원인도 네트워크 오류로 번역한다', () async {
+    final gateway = _FakeIdentityGateway(
+      currentUser: anonymous,
+      linkError: FirebaseAuthException(
+        code: 'internal-error',
+        message: 'UnknownHostException: Unable to resolve host',
+      ),
+    );
+
+    await expectLater(
+      AppAccountService(
+        gateway: gateway,
+        anonymousGateway: gateway,
+        profileGateway: _FakeProfileGateway(),
+      ).linkAnonymousWithEmail(
+        email: 'trainer@example.com',
+        password: 'password-123',
+      ),
+      _failsWith(AppAccountErrorCode.network),
+    );
+  });
+
+  test('비활성 Email/Password provider는 일반 오류와 구분한다', () async {
+    final gateway = _FakeIdentityGateway(
+      currentUser: anonymous,
+      linkError: FirebaseAuthException(code: 'operation-not-allowed'),
+    );
+
+    await expectLater(
+      AppAccountService(
+        gateway: gateway,
+        anonymousGateway: gateway,
+        profileGateway: _FakeProfileGateway(),
+      ).linkAnonymousWithEmail(
+        email: 'trainer@example.com',
+        password: 'password-123',
+      ),
+      _failsWith(AppAccountErrorCode.emailPasswordProviderDisabled),
+    );
+    expect(
+      appAccountErrorMessage(
+        const AppAccountException(
+          AppAccountErrorCode.emailPasswordProviderDisabled,
+        ),
+      ),
+      contains('활성화되지 않았어요'),
+    );
+  });
+
+  test('재시작 후 linked Auth는 link 재호출 없이 profile 전환만 마무리한다', () async {
+    final steps = <String>[];
+    final gateway = _FakeIdentityGateway(currentUser: linked, steps: steps);
+    final profile = _FakeProfileGateway(steps: steps);
+
+    final result = await AppAccountService(
+      gateway: gateway,
+      anonymousGateway: gateway,
+      profileGateway: profile,
+    ).completeCurrentEmailLink();
+
+    expect(result.uid, anonymous.uid);
+    expect(gateway.linkCalls, 0);
+    expect(steps, ['refresh', 'transition']);
+  });
+
   test('연결 결과 UID가 바뀌면 profile 전환 없이 실패한다', () async {
     const changed = AppAccountUser(
       uid: 'different-uid',
@@ -206,6 +348,7 @@ class _FakeIdentityGateway
   final List<String>? steps;
   int anonymousCalls = 0;
   int refreshCalls = 0;
+  int linkCalls = 0;
   int signOutCalls = 0;
   String? linkedEmail;
 
@@ -228,6 +371,7 @@ class _FakeIdentityGateway
     required String email,
     required String password,
   }) async {
+    linkCalls += 1;
     steps?.add('link');
     linkedEmail = email;
     if (linkError != null) throw linkError!;
@@ -271,9 +415,11 @@ class _FakeIdentityGateway
 }
 
 class _FakeProfileGateway implements AnonymousProfileGateway {
-  _FakeProfileGateway({this.steps});
+  _FakeProfileGateway({this.steps, List<Object>? transitionErrors})
+      : transitionErrors = transitionErrors ?? <Object>[];
 
   final List<String>? steps;
+  final List<Object> transitionErrors;
   int bootstrapCalls = 0;
   int transitionCalls = 0;
 
@@ -286,6 +432,7 @@ class _FakeProfileGateway implements AnonymousProfileGateway {
   Future<void> transitionAnonymousProfileToLinked() async {
     transitionCalls += 1;
     steps?.add('transition');
+    if (transitionErrors.isNotEmpty) throw transitionErrors.removeAt(0);
   }
 
   @override

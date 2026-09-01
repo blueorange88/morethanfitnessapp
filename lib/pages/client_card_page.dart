@@ -26,6 +26,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'membership_contract_page.dart';
 
 import '../services/app_tier_access_service.dart';
+import '../services/app_account_service.dart';
 import '../services/lesson_product_service.dart';
 import '../services/inbody_camera_permission_service.dart';
 import '../services/personal_member_card_save_service.dart';
@@ -50,6 +51,8 @@ import '../widgets/dev_client_card_viewport.dart';
 import '../widgets/aifc_contract_history_chat_sheet.dart';
 import '../widgets/aifc_interaction.dart';
 import '../widgets/aifc_confirm_chat_sheet.dart';
+import '../widgets/aifc_account_link_required_chat_sheet.dart';
+import '../widgets/account_connection_dialog.dart';
 import '../widgets/aifc_badge_chat_sheet.dart';
 import '../widgets/aifc_personal_tag_management_chat_sheet.dart';
 import '../widgets/personal_member_taxonomy_picker.dart';
@@ -83,19 +86,13 @@ List<String> clientCardMissingRequiredFields({
     items.add('성별');
   }
 
-  final birthValidation = validateMemberBirthDate(
-    birthText,
-    required: true,
-  );
+  final birthValidation = validateMemberBirthDate(birthText, required: true);
 
   if (!birthValidation.isValid) {
     items.add('생년월일');
   }
 
-  final phoneValidation = validateKoreanMobilePhone(
-    phone,
-    required: true,
-  );
+  final phoneValidation = validateKoreanMobilePhone(phone, required: true);
 
   if (!phoneValidation.isValid || hasPhoneDuplicate) {
     items.add('전화번호');
@@ -121,10 +118,15 @@ double clientCardMemberSetupPageHeight({
   required bool isCustomLessonTypeSelected,
   required bool isLessonTypeLockedByContract,
   required bool isLegacyCurrentLessonType,
+  bool includesPersonalTaxonomy = false,
 }) {
-  if (isLegacyCurrentLessonType) return 462;
-  if (isCustomLessonTypeSelected || isLessonTypeLockedByContract) return 392;
-  return 348;
+  final baseHeight =
+      isLegacyCurrentLessonType
+          ? 462.0
+          : isCustomLessonTypeSelected || isLessonTypeLockedByContract
+          ? 392.0
+          : 348.0;
+  return baseHeight + (includesPersonalTaxonomy ? 120 : 0);
 }
 
 @visibleForTesting
@@ -132,6 +134,11 @@ bool clientCardUsesStackedBasicInfoLayout(double _) => false;
 
 @visibleForTesting
 double clientCardBasicInfoPageHeight(double _) => 260;
+
+@visibleForTesting
+DateTime clientCardMoreDayLastDate(DateTime now) {
+  return DateTime(now.year + 10, 12, 31);
+}
 
 @visibleForTesting
 bool clientCardMembershipNotRegisteredFromCanonical(
@@ -249,19 +256,17 @@ class AchievementBadge {
     );
   }
 
-  factory AchievementBadge.fromFirestore(
-    String id,
-    Map<String, dynamic> data,
-  ) {
+  factory AchievementBadge.fromFirestore(String id, Map<String, dynamic> data) {
     return AchievementBadge(
       id: id,
       title: (data['title'] ?? '').toString().trim(),
       code: _codeFromString((data['code'] ?? 'manual').toString()),
       type: (data['type'] ?? 'auto').toString(),
       source: (data['source'] ?? '').toString(),
-      sourceGoalId: (data['sourceGoalId'] ?? '').toString().trim().isEmpty
-          ? null
-          : (data['sourceGoalId'] ?? '').toString().trim(),
+      sourceGoalId:
+          (data['sourceGoalId'] ?? '').toString().trim().isEmpty
+              ? null
+              : (data['sourceGoalId'] ?? '').toString().trim(),
       isRepresentative: data['isRepresentative'] == true,
       earnedAt: _toDate(data['earnedAt']),
     );
@@ -269,18 +274,13 @@ class AchievementBadge {
 }
 
 class _ManualBadgeOption {
-  const _ManualBadgeOption({
-    required this.title,
-    required this.code,
-  });
+  const _ManualBadgeOption({required this.title, required this.code});
 
   final String title;
   final AchievementBadgeCode code;
 }
 
-AchievementBadge? _resolveRepresentativeBadge(
-  List<AchievementBadge> badges,
-) {
+AchievementBadge? _resolveRepresentativeBadge(List<AchievementBadge> badges) {
   if (badges.isEmpty) return null;
 
   final selected = badges.where((badge) => badge.isRepresentative).toList();
@@ -297,19 +297,11 @@ List<Color> _resolveCardGradient(String grade, String status) {
       return base;
     case '휴면':
       return base
-          .map((c) => _adjustCardColor(
-                c,
-                saturation: 0.50,
-                brightness: 0.75,
-              ))
+          .map((c) => _adjustCardColor(c, saturation: 0.50, brightness: 0.75))
           .toList();
     case '만료':
       return base
-          .map((c) => _adjustCardColor(
-                c,
-                saturation: 0.25,
-                brightness: 0.62,
-              ))
+          .map((c) => _adjustCardColor(c, saturation: 0.25, brightness: 0.62))
           .toList();
     default:
       return base;
@@ -319,86 +311,40 @@ List<Color> _resolveCardGradient(String grade, String status) {
 List<Color> _gradeBaseColors(String grade) {
   switch (grade.trim().toUpperCase()) {
     case 'VVIP':
-      return [
-        Color(0xFF5B21B6),
-        Color(0xFF7C3AED),
-        Color(0xFFDB2777),
-      ];
+      return [Color(0xFF5B21B6), Color(0xFF7C3AED), Color(0xFFDB2777)];
     case 'VIP':
-      return [
-        Color(0xFF3730A3),
-        Color(0xFF4F46E5),
-        Color(0xFF6366F1),
-      ];
+      return [Color(0xFF3730A3), Color(0xFF4F46E5), Color(0xFF6366F1)];
     case 'GOLD':
-      return [
-        Color(0xFFB45309),
-        Color(0xFFD97706),
-        Color(0xFFF59E0B),
-      ];
+      return [Color(0xFFB45309), Color(0xFFD97706), Color(0xFFF59E0B)];
     case 'SILVER':
-      return [
-        Color(0xFF475569),
-        Color(0xFF64748B),
-        Color(0xFF94A3B8),
-      ];
+      return [Color(0xFF475569), Color(0xFF64748B), Color(0xFF94A3B8)];
     case 'BRONZE':
-      return [
-        Color(0xFF78350F),
-        Color(0xFF92400E),
-        Color(0xFFB45309),
-      ];
+      return [Color(0xFF78350F), Color(0xFF92400E), Color(0xFFB45309)];
     default:
-      return [
-        Color(0xFF4F46E5),
-        Color(0xFF7C3AED),
-        Color(0xFF9333EA),
-      ];
+      return [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF9333EA)];
   }
 }
 
 List<Color> _resolveIcChipColors(String grade) {
   switch (grade.trim().toUpperCase()) {
     case 'VVIP':
-      return [
-        Color(0xFFE0D7FF),
-        Color(0xFF7C3AED),
-      ];
+      return [Color(0xFFE0D7FF), Color(0xFF7C3AED)];
     case 'VIP':
-      return [
-        Color(0xFFC7D2FE),
-        Color(0xFF4338CA),
-      ];
+      return [Color(0xFFC7D2FE), Color(0xFF4338CA)];
     case 'GOLD':
-      return [
-        Color(0xFFFDE68A),
-        Color(0xFFD97706),
-      ];
+      return [Color(0xFFFDE68A), Color(0xFFD97706)];
     case 'SILVER':
-      return [
-        Color(0xFFE2E8F0),
-        Color(0xFF94A3B8),
-      ];
+      return [Color(0xFFE2E8F0), Color(0xFF94A3B8)];
     case 'BRONZE':
-      return [
-        Color(0xFFFCD7AA),
-        Color(0xFF92400E),
-      ];
+      return [Color(0xFFFCD7AA), Color(0xFF92400E)];
     default:
-      return [
-        Color(0xFFC4B5FD),
-        Color(0xFF7C3AED),
-      ];
+      return [Color(0xFFC4B5FD), Color(0xFF7C3AED)];
   }
 }
 
 List<Color> _resolveBackGradient(List<Color> frontGradient) {
   return frontGradient
-      .map((c) => _adjustCardColor(
-            c,
-            saturation: 0.70,
-            brightness: 0.82,
-          ))
+      .map((c) => _adjustCardColor(c, saturation: 0.70, brightness: 0.82))
       .toList();
 }
 
@@ -410,12 +356,8 @@ Color _adjustCardColor(
   final hsl = HSLColor.fromColor(color);
 
   return hsl
-      .withSaturation(
-        (hsl.saturation * saturation).clamp(0.0, 1.0),
-      )
-      .withLightness(
-        (hsl.lightness * brightness).clamp(0.0, 1.0),
-      )
+      .withSaturation((hsl.saturation * saturation).clamp(0.0, 1.0))
+      .withLightness((hsl.lightness * brightness).clamp(0.0, 1.0))
       .toColor();
 }
 
@@ -530,9 +472,10 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
   String _buildMembershipLine() {
     final days = widget.daysLeft;
 
-    final dayText = days == null
-        ? ''
-        : days >= 0
+    final dayText =
+        days == null
+            ? ''
+            : days >= 0
             ? ' · D-$days'
             : ' · D+${days.abs()}';
 
@@ -547,9 +490,10 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
 
   String _backAnniversaryLabel() {
     if (widget.anniversaryDate != null) {
-      final label = widget.anniversaryLabel.trim().isEmpty
-          ? 'MORE 데이'
-          : widget.anniversaryLabel.trim();
+      final label =
+          widget.anniversaryLabel.trim().isEmpty
+              ? 'MORE 데이'
+              : widget.anniversaryLabel.trim();
 
       return 'MORE 데이 : $label ${DateFormat('yyyy.MM.dd').format(widget.anniversaryDate!)}';
     }
@@ -563,9 +507,10 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
 
   String _backAnniversaryShortLabel() {
     if (widget.anniversaryDate != null) {
-      final label = widget.anniversaryLabel.trim().isEmpty
-          ? '기념일'
-          : widget.anniversaryLabel.trim();
+      final label =
+          widget.anniversaryLabel.trim().isEmpty
+              ? '기념일'
+              : widget.anniversaryLabel.trim();
 
       return '$label · ${DateFormat('yyyy.MM.dd').format(widget.anniversaryDate!)}';
     }
@@ -582,9 +527,7 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
     return SizedBox(
       height: 280,
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(
-          end: _isFlipped ? math.pi : 0,
-        ),
+        tween: Tween<double>(end: _isFlipped ? math.pi : 0),
         duration: const Duration(milliseconds: 620),
         curve: Curves.easeOutCubic,
         builder: (context, angle, _) {
@@ -592,16 +535,18 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
 
           return Transform(
             alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(angle),
-            child: showBack
-                ? Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()..rotateY(math.pi),
-                    child: _buildBack(),
-                  )
-                : _buildFront(),
+            transform:
+                Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateY(angle),
+            child:
+                showBack
+                    ? Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()..rotateY(math.pi),
+                      child: _buildBack(),
+                    )
+                    : _buildFront(),
           );
         },
       ),
@@ -618,9 +563,7 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
             color: widget.gradientColors.last.withOpacity(0.35),
@@ -751,16 +694,17 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
                           color: Colors.white.withOpacity(0.14),
                         ),
                         clipBehavior: Clip.hardEdge,
-                        child: widget.avatarImage != null
-                            ? Image(
-                                image: widget.avatarImage!,
-                                fit: BoxFit.cover,
-                              )
-                            : Icon(
-                                Icons.person_rounded,
-                                size: 30,
-                                color: Colors.white.withOpacity(0.75),
-                              ),
+                        child:
+                            widget.avatarImage != null
+                                ? Image(
+                                  image: widget.avatarImage!,
+                                  fit: BoxFit.cover,
+                                )
+                                : Icon(
+                                  Icons.person_rounded,
+                                  size: 30,
+                                  color: Colors.white.withOpacity(0.75),
+                                ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -863,9 +807,7 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
             color: backGradient.last.withOpacity(0.30),
@@ -979,9 +921,7 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
                       ),
                     ),
                     const SizedBox(width: 7),
-                    _MembershipHologramButton(
-                      onTap: _flip,
-                    ),
+                    _MembershipHologramButton(onTap: _flip),
                   ],
                 ),
               ],
@@ -994,10 +934,7 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
 }
 
 class _MembershipIcChip extends StatelessWidget {
-  const _MembershipIcChip({
-    required this.colors,
-    this.representativeBadge,
-  });
+  const _MembershipIcChip({required this.colors, this.representativeBadge});
 
   final List<Color> colors;
   final AchievementBadge? representativeBadge;
@@ -1007,11 +944,7 @@ class _MembershipIcChip extends StatelessWidget {
     final badge = representativeBadge;
 
     if (badge != null) {
-      return AchievementIcChip(
-        code: badge.code,
-        width: 48,
-        height: 36,
-      );
+      return AchievementIcChip(code: badge.code, width: 48, height: 36);
     }
 
     return Container(
@@ -1024,13 +957,9 @@ class _MembershipIcChip extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: colors,
         ),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.28),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.28)),
       ),
-      child: CustomPaint(
-        painter: _MembershipIcChipPainter(),
-      ),
+      child: CustomPaint(painter: _MembershipIcChipPainter()),
     );
   }
 }
@@ -1038,10 +967,11 @@ class _MembershipIcChip extends StatelessWidget {
 class _MembershipIcChipPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.28)
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
+    final linePaint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.28)
+          ..strokeWidth = 0.5
+          ..style = PaintingStyle.stroke;
 
     canvas.drawLine(
       Offset(0, size.height / 2),
@@ -1098,9 +1028,10 @@ class _MembershipMagneticStripe extends StatelessWidget {
     final label =
         groupLabel.trim().isEmpty ? 'MORE THAN GYM' : groupLabel.trim();
 
-    final displayLabel = RegExp(r'^[A-Za-z0-9\s\-_]+$').hasMatch(label)
-        ? label.toUpperCase()
-        : label;
+    final displayLabel =
+        RegExp(r'^[A-Za-z0-9\s\-_]+$').hasMatch(label)
+            ? label.toUpperCase()
+            : label;
 
     return GestureDetector(
       onTap: onTap,
@@ -1110,11 +1041,7 @@ class _MembershipMagneticStripe extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0E0E0E),
-              Color(0xFF1C1C1C),
-              Color(0xFF0E0E0E),
-            ],
+            colors: [Color(0xFF0E0E0E), Color(0xFF1C1C1C), Color(0xFF0E0E0E)],
           ),
         ),
         child: Stack(
@@ -1178,8 +1105,9 @@ class _MembershipMagneticStripe extends StatelessWidget {
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   color: Colors.white.withOpacity(0.55),
-                  letterSpacing:
-                      _membershipCardGroupLetterSpacing(displayLabel),
+                  letterSpacing: _membershipCardGroupLetterSpacing(
+                    displayLabel,
+                  ),
                   shadows: [
                     Shadow(
                       color: Colors.black.withOpacity(0.80),
@@ -1237,10 +1165,7 @@ class _MembershipSignatureBand extends StatelessWidget {
           child: Container(
             width: double.infinity,
             constraints: const BoxConstraints(minHeight: 38),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.91),
               borderRadius: BorderRadius.circular(6),
@@ -1277,9 +1202,10 @@ class _MembershipSignatureBand extends StatelessWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           fontStyle: FontStyle.italic,
-                          color: memo.isEmpty
-                              ? const Color(0xFFD1D5DB)
-                              : const Color(0xFF374151),
+                          color:
+                              memo.isEmpty
+                                  ? const Color(0xFFD1D5DB)
+                                  : const Color(0xFF374151),
                         ),
                       ),
                     ),
@@ -1330,16 +1256,13 @@ class _MembershipSignatureLinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black.withOpacity(0.052)
-      ..strokeWidth = 0.5;
+    final paint =
+        Paint()
+          ..color = Colors.black.withOpacity(0.052)
+          ..strokeWidth = 0.5;
 
     for (double y = 18; y < size.height; y += 18) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        paint,
-      );
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
   }
 
@@ -1371,20 +1294,14 @@ class _MembershipBackStats extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _MembershipBackStatItem(
-          label: '재등록',
-          value: '${reregisterCount}회',
-        ),
+        _MembershipBackStatItem(label: '재등록', value: '${reregisterCount}회'),
         const _MembershipBackStatDivider(),
         _MembershipBackStatItem(
           label: '노쇼/미차감',
           value: '$noShowDeducted/$noShowUndeducted회',
         ),
         const _MembershipBackStatDivider(),
-        _MembershipBackStatItem(
-          label: '서비스',
-          value: '${serviceCount}회',
-        ),
+        _MembershipBackStatItem(label: '서비스', value: '${serviceCount}회'),
         const _MembershipBackStatDivider(),
         _MembershipBackStatItem(
           label: '첫 등록일',
@@ -1472,13 +1389,15 @@ class _MembershipContractWifiIcon extends StatelessWidget {
         height: 34,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: isSigned
-              ? Colors.white.withOpacity(0.12)
-              : Colors.white.withOpacity(0.05),
+          color:
+              isSigned
+                  ? Colors.white.withOpacity(0.12)
+                  : Colors.white.withOpacity(0.05),
           border: Border.all(
-            color: isSigned
-                ? Colors.white.withOpacity(0.18)
-                : Colors.white.withOpacity(0.09),
+            color:
+                isSigned
+                    ? Colors.white.withOpacity(0.18)
+                    : Colors.white.withOpacity(0.09),
           ),
         ),
         child: Column(
@@ -1495,9 +1414,10 @@ class _MembershipContractWifiIcon extends StatelessWidget {
               style: TextStyle(
                 fontSize: 5.2,
                 fontWeight: FontWeight.w800,
-                color: isSigned
-                    ? Colors.white.withOpacity(0.60)
-                    : Colors.white.withOpacity(0.22),
+                color:
+                    isSigned
+                        ? Colors.white.withOpacity(0.60)
+                        : Colors.white.withOpacity(0.22),
               ),
             ),
           ],
@@ -1529,13 +1449,15 @@ class _MembershipTalkBellIcon extends StatelessWidget {
         height: 34,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: active
-              ? Colors.white.withOpacity(0.12)
-              : Colors.white.withOpacity(0.05),
+          color:
+              active
+                  ? Colors.white.withOpacity(0.12)
+                  : Colors.white.withOpacity(0.05),
           border: Border.all(
-            color: active
-                ? Colors.white.withOpacity(0.18)
-                : Colors.white.withOpacity(0.09),
+            color:
+                active
+                    ? Colors.white.withOpacity(0.18)
+                    : Colors.white.withOpacity(0.09),
           ),
         ),
         child: Stack(
@@ -1550,9 +1472,10 @@ class _MembershipTalkBellIcon extends StatelessWidget {
                       ? Icons.notifications_active_rounded
                       : Icons.notifications_none_rounded,
                   size: 16,
-                  color: active
-                      ? Colors.white.withOpacity(0.92)
-                      : Colors.white.withOpacity(0.24),
+                  color:
+                      active
+                          ? Colors.white.withOpacity(0.92)
+                          : Colors.white.withOpacity(0.24),
                 ),
                 const SizedBox(height: 1),
                 Text(
@@ -1560,18 +1483,17 @@ class _MembershipTalkBellIcon extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 5.4,
                     fontWeight: FontWeight.w900,
-                    color: active
-                        ? Colors.white.withOpacity(0.60)
-                        : Colors.white.withOpacity(0.22),
+                    color:
+                        active
+                            ? Colors.white.withOpacity(0.60)
+                            : Colors.white.withOpacity(0.22),
                   ),
                 ),
               ],
             ),
             if (!active)
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _MembershipBellOffSlashPainter(),
-                ),
+                child: CustomPaint(painter: _MembershipBellOffSlashPainter()),
               ),
           ],
         ),
@@ -1585,10 +1507,11 @@ class _MembershipBellOffSlashPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFFF5050).withOpacity(0.78)
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = const Color(0xFFFF5050).withOpacity(0.78)
+          ..strokeWidth = 2.0
+          ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(
       Offset(size.width * 0.22, size.height * 0.20),
@@ -1604,44 +1527,39 @@ class _MembershipBellOffSlashPainter extends CustomPainter {
 }
 
 class _MembershipWifiSignalPainter extends CustomPainter {
-  const _MembershipWifiSignalPainter({
-    required this.isSigned,
-  });
+  const _MembershipWifiSignalPainter({required this.isSigned});
 
   final bool isSigned;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final signalPaint = Paint()
-      ..color = isSigned
-          ? Colors.white.withOpacity(0.92)
-          : Colors.white.withOpacity(0.22)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
+    final signalPaint =
+        Paint()
+          ..color =
+              isSigned
+                  ? Colors.white.withOpacity(0.92)
+                  : Colors.white.withOpacity(0.22)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..strokeCap = StrokeCap.round;
 
-    final dotPaint = Paint()
-      ..color = isSigned
-          ? Colors.white.withOpacity(0.92)
-          : Colors.white.withOpacity(0.22);
+    final dotPaint =
+        Paint()
+          ..color =
+              isSigned
+                  ? Colors.white.withOpacity(0.92)
+                  : Colors.white.withOpacity(0.22);
 
     final cx = size.width / 2;
     final baseY = size.height - 3;
 
     // 아래 점
-    canvas.drawCircle(
-      Offset(cx, baseY),
-      2.2,
-      dotPaint,
-    );
+    canvas.drawCircle(Offset(cx, baseY), 2.2, dotPaint);
 
     // 위로 퍼지는 와이파이 3단
     for (final radius in [5.0, 8.5, 12.0]) {
       canvas.drawArc(
-        Rect.fromCircle(
-          center: Offset(cx, baseY),
-          radius: radius,
-        ),
+        Rect.fromCircle(center: Offset(cx, baseY), radius: radius),
         math.pi * 1.18,
         math.pi * 0.64,
         false,
@@ -1689,52 +1607,50 @@ class _MembershipConsentQr extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           color: isAgreed ? Colors.white : Colors.white.withOpacity(0.05),
-          border: isAgreed
-              ? null
-              : Border.all(
-                  color: Colors.white.withOpacity(0.09),
-                ),
+          border:
+              isAgreed
+                  ? null
+                  : Border.all(color: Colors.white.withOpacity(0.09)),
         ),
-        child: isAgreed
-            ? Padding(
-                padding: const EdgeInsets.all(3),
-                child: CustomPaint(
-                  painter: _MembershipQrPainter(accentColor: accentColor),
-                ),
-              )
-            : Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.qr_code_2_rounded,
-                      size: 15,
-                      color: Colors.white.withOpacity(0.26),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      '동의필요',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 6.2,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white.withOpacity(0.34),
-                        height: 1.0,
+        child:
+            isAgreed
+                ? Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: CustomPaint(
+                    painter: _MembershipQrPainter(accentColor: accentColor),
+                  ),
+                )
+                : Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.qr_code_2_rounded,
+                        size: 15,
+                        color: Colors.white.withOpacity(0.26),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 1),
+                      Text(
+                        '동의필요',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 6.2,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white.withOpacity(0.34),
+                          height: 1.0,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
       ),
     );
   }
 }
 
 class _MembershipQrPainter extends CustomPainter {
-  const _MembershipQrPainter({
-    required this.accentColor,
-  });
+  const _MembershipQrPainter({required this.accentColor});
 
   final Color accentColor;
 
@@ -1750,12 +1666,7 @@ class _MembershipQrPainter extends CustomPainter {
     ]) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            pos[0] * cell,
-            pos[1] * cell,
-            cell * 3,
-            cell * 3,
-          ),
+          Rect.fromLTWH(pos[0] * cell, pos[1] * cell, cell * 3, cell * 3),
           const Radius.circular(1),
         ),
         paint,
@@ -1763,12 +1674,7 @@ class _MembershipQrPainter extends CustomPainter {
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            (pos[0] + 1) * cell,
-            (pos[1] + 1) * cell,
-            cell,
-            cell,
-          ),
+          Rect.fromLTWH((pos[0] + 1) * cell, (pos[1] + 1) * cell, cell, cell),
           const Radius.circular(0.5),
         ),
         Paint()..color = Colors.white,
@@ -1808,9 +1714,7 @@ class _MembershipQrPainter extends CustomPainter {
 }
 
 class _MembershipHologramButton extends StatefulWidget {
-  const _MembershipHologramButton({
-    required this.onTap,
-  });
+  const _MembershipHologramButton({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -1833,10 +1737,7 @@ class _MembershipHologramButtonState extends State<_MembershipHologramButton>
       duration: const Duration(milliseconds: 520),
     );
 
-    _shine = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    );
+    _shine = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
   }
 
   @override
@@ -1870,8 +1771,9 @@ class _MembershipHologramButtonState extends State<_MembershipHologramButton>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF67E8F9)
-                        .withOpacity(0.12 + (_shine.value * 0.25)),
+                    color: const Color(
+                      0xFF67E8F9,
+                    ).withOpacity(0.12 + (_shine.value * 0.25)),
                     blurRadius: 10 + (_shine.value * 10),
                     spreadRadius: _shine.value * 1.4,
                   ),
@@ -1879,9 +1781,7 @@ class _MembershipHologramButtonState extends State<_MembershipHologramButton>
               ),
               clipBehavior: Clip.hardEdge,
               child: CustomPaint(
-                painter: _MembershipHologramPainter(
-                  shineValue: _shine.value,
-                ),
+                painter: _MembershipHologramPainter(shineValue: _shine.value),
               ),
             ),
           );
@@ -1892,9 +1792,7 @@ class _MembershipHologramButtonState extends State<_MembershipHologramButton>
 }
 
 class _MembershipHologramPainter extends CustomPainter {
-  const _MembershipHologramPainter({
-    this.shineValue = 0,
-  });
+  const _MembershipHologramPainter({this.shineValue = 0});
 
   final double shineValue;
 
@@ -1929,24 +1827,17 @@ class _MembershipHologramPainter extends CustomPainter {
       }
     }
 
-    final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(0.07)
-      ..strokeWidth = 0.5;
+    final gridPaint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.07)
+          ..strokeWidth = 0.5;
 
     for (double x = 0; x < size.width; x += 4) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, size.height),
-        gridPaint,
-      );
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
     }
 
     for (double y = 0; y < size.height; y += 4) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        gridPaint,
-      );
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
     canvas.drawRect(
@@ -2036,9 +1927,7 @@ class _MembershipCardTextureLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Positioned.fill(
-      child: CustomPaint(
-        painter: _MembershipTexturePainter(),
-      ),
+      child: CustomPaint(painter: _MembershipTexturePainter()),
     );
   }
 }
@@ -2048,9 +1937,10 @@ class _MembershipTexturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.028)
-      ..strokeWidth = 0.5;
+    final paint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.028)
+          ..strokeWidth = 0.5;
 
     for (double x = -size.width; x < size.width * 2; x += 25) {
       canvas.drawLine(
@@ -2107,10 +1997,7 @@ class _CareMilestoneItem {
 }
 
 class _MemberGroupOption {
-  const _MemberGroupOption({
-    required this.id,
-    required this.label,
-  });
+  const _MemberGroupOption({required this.id, required this.label});
 
   final String id;
   final String label;
@@ -2181,11 +2068,7 @@ class _ContractHistoryItem {
   });
 }
 
-enum _MembershipPauseConfirmAction {
-  reset,
-  confirm,
-  cancel,
-}
+enum _MembershipPauseConfirmAction { reset, confirm, cancel }
 
 class _MembershipPauseHistoryItem {
   const _MembershipPauseHistoryItem({
@@ -2262,10 +2145,10 @@ class ClientCardPage extends StatefulWidget {
     this.initialName,
     this.openMembershipManageOnStart = false,
     this.personalOwnerUid,
-  })  : isEditMode = true,
-        initialPhone = null,
-        initialVisitDate = null,
-        initialConsultDate = null;
+  }) : isEditMode = true,
+       initialPhone = null,
+       initialVisitDate = null,
+       initialConsultDate = null;
 
   factory ClientCardPage.newMember({
     Key? key,
@@ -2289,8 +2172,8 @@ class ClientCardPage extends StatefulWidget {
     this.initialVisitDate,
     this.initialConsultDate,
     this.personalOwnerUid,
-  })  : isEditMode = false,
-        openMembershipManageOnStart = false;
+  }) : isEditMode = false,
+       openMembershipManageOnStart = false;
 
   factory ClientCardPage.fromAny({
     Key? key,
@@ -2313,12 +2196,7 @@ class ClientCardPage extends StatefulWidget {
   State<ClientCardPage> createState() => _ClientCardPageState();
 }
 
-enum _MembershipManageAction {
-  editPeriod,
-  pauseHistory,
-  contract,
-  archive,
-}
+enum _MembershipManageAction { editPeriod, pauseHistory, contract, archive }
 
 class _ClientCardPageState extends State<ClientCardPage> {
   final _formKey = GlobalKey<FormState>();
@@ -2333,6 +2211,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
   final _memberSetupExpansionController = ExpansibleController();
   final _validationFocusCoordinator = ClientCardValidationFocusCoordinator();
   bool _isSaving = false;
+  bool _accountLinkSheetOpen = false;
+  bool _accountLinkCompletedDuringSave = false;
 
   final _picker = ImagePicker();
 
@@ -2368,7 +2248,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   final _remainSessionsC = TextEditingController(text: '0');
 
   bool _didOpenMembershipManageOnStart = false;
-  bool _membershipNotRegistered = false;
+  bool _membershipNotRegistered = true;
   int? _termMonths;
   int? _customDays;
   DateTime? _passStart;
@@ -2458,10 +2338,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _nextReservationSub;
   final Set<String> _reportedFirestoreErrors = <String>{};
   StreamSubscription<PersonalMemberPreferences>?
-      _personalMemberPreferencesSubscription;
+  _personalMemberPreferencesSubscription;
   Timer? _nextReservationTickTimer;
   List<QueryDocumentSnapshot<Map<String, dynamic>>>
-      _nextReservationScheduleDocs = [];
+  _nextReservationScheduleDocs = [];
   late final String _draftKey;
   String _headerDisplayName = '';
   String _headerGroupLabel = 'MORE THAN GYM';
@@ -2602,13 +2482,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
           .collection('members')
           .doc(widget.memberId)
           .set({
-        'notificationSettings': {
-          'confirmTalkEnabled': enabled,
-          'confirmTalkUpdatedAt': FieldValue.serverTimestamp(),
-          'confirmTalkSource': 'client_card_back',
-        },
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'notificationSettings': {
+              'confirmTalkEnabled': enabled,
+              'confirmTalkUpdatedAt': FieldValue.serverTimestamp(),
+              'confirmTalkSource': 'client_card_back',
+            },
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -2642,15 +2522,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
           fallback: 'canonical',
         );
       }
-      final snap = _isPersonalWorkspace
-          ? await FirebaseFirestore.instance
-              .collection('trainer_profiles')
-              .doc(_personalOwnerUid)
-              .get()
-          : await FirebaseFirestore.instance
-              .collection('trainer_profile')
-              .doc('me')
-              .get();
+      final snap =
+          _isPersonalWorkspace
+              ? await FirebaseFirestore.instance
+                  .collection('trainer_profiles')
+                  .doc(_personalOwnerUid)
+                  .get()
+              : await FirebaseFirestore.instance
+                  .collection('trainer_profile')
+                  .doc('me')
+                  .get();
 
       final data = snap.data();
 
@@ -2681,11 +2562,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       return '';
     } catch (error) {
-      _handleFirestoreError(
-        feature: 'profile',
-        operation: 'get',
-        error: error,
-      );
+      _handleFirestoreError(feature: 'profile', operation: 'get', error: error);
       return '';
     }
   }
@@ -2773,34 +2650,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   final List<_ManualBadgeOption> _manualBadgeOptions = const [
-    _ManualBadgeOption(
-      title: '우수 출석',
-      code: AchievementBadgeCode.attendance,
-    ),
-    _ManualBadgeOption(
-      title: '운동 습관 형성',
-      code: AchievementBadgeCode.manual,
-    ),
-    _ManualBadgeOption(
-      title: '체중 감량 성공',
-      code: AchievementBadgeCode.manual,
-    ),
-    _ManualBadgeOption(
-      title: '근력 향상',
-      code: AchievementBadgeCode.manual,
-    ),
-    _ManualBadgeOption(
-      title: '컨디션 회복',
-      code: AchievementBadgeCode.manual,
-    ),
-    _ManualBadgeOption(
-      title: '부상 복귀',
-      code: AchievementBadgeCode.manual,
-    ),
-    _ManualBadgeOption(
-      title: '트레이너 추천',
-      code: AchievementBadgeCode.manual,
-    ),
+    _ManualBadgeOption(title: '우수 출석', code: AchievementBadgeCode.attendance),
+    _ManualBadgeOption(title: '운동 습관 형성', code: AchievementBadgeCode.manual),
+    _ManualBadgeOption(title: '체중 감량 성공', code: AchievementBadgeCode.manual),
+    _ManualBadgeOption(title: '근력 향상', code: AchievementBadgeCode.manual),
+    _ManualBadgeOption(title: '컨디션 회복', code: AchievementBadgeCode.manual),
+    _ManualBadgeOption(title: '부상 복귀', code: AchievementBadgeCode.manual),
+    _ManualBadgeOption(title: '트레이너 추천', code: AchievementBadgeCode.manual),
   ];
 
   String get _pageTitle => 'MEMBERSHIP CARD';
@@ -2860,11 +2716,6 @@ class _ClientCardPageState extends State<ClientCardPage> {
     _bodyHealthPageController = PageController();
     _memoPageController = PageController();
     _memoPageController.addListener(_handleMemoPageScroll);
-
-    if (widget.initialVisitDate != null) {
-      _membershipNotRegistered = false;
-      _passStart = widget.initialVisitDate;
-    }
 
     if (widget.initialConsultDate != null) {
       final noteText =
@@ -3093,10 +2944,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     try {
-      final groupSnap = await FirebaseFirestore.instance
-          .collection('member_groups')
-          .doc(_groupDocId(groupId))
-          .get();
+      final groupSnap =
+          await FirebaseFirestore.instance
+              .collection('member_groups')
+              .doc(_groupDocId(groupId))
+              .get();
 
       final data = groupSnap.data();
       final name = (data?['name'] ?? '').toString().trim();
@@ -3117,10 +2969,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('member_groups')
-          .doc('default_group')
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('member_groups')
+              .doc('default_group')
+              .get();
 
       final name = (snap.data()?['name'] ?? '').toString().trim();
 
@@ -3135,8 +2988,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
   void _handleMemoPageScroll() {
     if (!_memoPageController.hasClients) return;
 
-    final page =
-        (_memoPageController.page ?? _memoPageIndex.toDouble()).clamp(0.0, 1.0);
+    final page = (_memoPageController.page ?? _memoPageIndex.toDouble()).clamp(
+      0.0,
+      1.0,
+    );
 
     if ((page - _memoPageValue).abs() < 0.015) return;
 
@@ -3204,17 +3059,21 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return;
     }
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(widget.memberId)
-          .collection('care_milestones')
-          .orderBy('dueDate')
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(widget.memberId)
+              .collection('care_milestones')
+              .orderBy('dueDate')
+              .get();
 
-      final items = snapshot.docs
-          .map((doc) => _CareMilestoneItem.fromFirestore(doc.id, doc.data()))
-          .where((item) => item.title.isNotEmpty)
-          .toList();
+      final items =
+          snapshot.docs
+              .map(
+                (doc) => _CareMilestoneItem.fromFirestore(doc.id, doc.data()),
+              )
+              .where((item) => item.title.isNotEmpty)
+              .toList();
 
       if (!mounted) return;
 
@@ -3248,17 +3107,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return;
     }
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(widget.memberId)
-          .collection('achievement_badges')
-          .orderBy('earnedAt', descending: true)
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(widget.memberId)
+              .collection('achievement_badges')
+              .orderBy('earnedAt', descending: true)
+              .get();
 
-      final badges = snapshot.docs
-          .map((doc) => AchievementBadge.fromFirestore(doc.id, doc.data()))
-          .where((badge) => badge.title.isNotEmpty)
-          .toList();
+      final badges =
+          snapshot.docs
+              .map((doc) => AchievementBadge.fromFirestore(doc.id, doc.data()))
+              .where((badge) => badge.title.isNotEmpty)
+              .toList();
 
       if (!mounted) return;
 
@@ -3295,15 +3156,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
           .collection('achievement_badges')
           .doc(docId)
           .set({
-        'title': title,
-        'code': code.name,
-        'type': 'auto',
-        'source': source,
-        'isRepresentative': false,
-        'earnedAt': Timestamp.fromDate(earnedAt),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'title': title,
+            'code': code.name,
+            'type': 'auto',
+            'source': source,
+            'isRepresentative': false,
+            'earnedAt': Timestamp.fromDate(earnedAt),
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (_) {}
   }
 
@@ -3341,7 +3202,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final ok = await _showAifcConfirm(
       title: '메달을 삭제할까요?',
-      message: '$title 메달을 삭제합니다.\n'
+      message:
+          '$title 메달을 삭제합니다.\n'
           '회원카드의 성취 기록에서 사라져요.',
       cancelText: '취소',
       confirmText: '삭제',
@@ -3404,15 +3266,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
           .collection('achievement_badges')
           .doc(docId)
           .set({
-        'title': cleanTitle,
-        'code': code.name,
-        'type': 'manual',
-        'source': 'trainer',
-        'isRepresentative': false,
-        'earnedAt': Timestamp.fromDate(DateTime.now()),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'title': cleanTitle,
+            'code': code.name,
+            'type': 'manual',
+            'source': 'trainer',
+            'isRepresentative': false,
+            'earnedAt': Timestamp.fromDate(DateTime.now()),
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       await _loadAchievementBadgesFromFirestore();
 
@@ -3437,10 +3299,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       badges: _achievementBadges,
       nickname: _safeAifcNickname,
       onAddBadge: (title, code) async {
-        await _addManualAchievementBadge(
-          title: title,
-          code: code,
-        );
+        await _addManualAchievementBadge(title: title, code: code);
       },
       onDeleteBadge: (badge) async {
         await _deleteAchievementBadgeDirectly(badge);
@@ -3508,39 +3367,40 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _manualBadgeOptions.map((option) {
-                        return InkWell(
-                          onTap: () async {
-                            Navigator.pop(sheetContext);
-                            await _addManualAchievementBadge(
-                              title: option.title,
-                              code: option.code,
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(999),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F3FF),
+                      children:
+                          _manualBadgeOptions.map((option) {
+                            return InkWell(
+                              onTap: () async {
+                                Navigator.pop(sheetContext);
+                                await _addManualAchievementBadge(
+                                  title: option.title,
+                                  code: option.code,
+                                );
+                              },
                               borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: const Color(0xFFE9D5FF),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F3FF),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: const Color(0xFFE9D5FF),
+                                  ),
+                                ),
+                                child: Text(
+                                  option.title,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF6D28D9),
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              option.title,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF6D28D9),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          }).toList(),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -3572,15 +3432,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: customText.isEmpty
-                            ? null
-                            : () async {
-                                Navigator.pop(sheetContext);
-                                await _addManualAchievementBadge(
-                                  title: customText,
-                                  code: AchievementBadgeCode.manual,
-                                );
-                              },
+                        onPressed:
+                            customText.isEmpty
+                                ? null
+                                : () async {
+                                  Navigator.pop(sheetContext);
+                                  await _addManualAchievementBadge(
+                                    title: customText,
+                                    code: AchievementBadgeCode.manual,
+                                  );
+                                },
                         icon: const Icon(Icons.workspace_premium_rounded),
                         label: const Text('직접 입력 메달 추가'),
                         style: FilledButton.styleFrom(
@@ -3643,14 +3504,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
       final batch = FirebaseFirestore.instance.batch();
 
       for (final item in _achievementBadges) {
-        batch.set(
-          ref.doc(item.id),
-          {
-            'isRepresentative': item.id == badge.id,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        batch.set(ref.doc(item.id), {
+          'isRepresentative': item.id == badge.id,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       await batch.commit();
@@ -3676,14 +3533,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
       final batch = FirebaseFirestore.instance.batch();
 
       for (final item in _achievementBadges) {
-        batch.set(
-          ref.doc(item.id),
-          {
-            'isRepresentative': false,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        batch.set(ref.doc(item.id), {
+          'isRepresentative': false,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       await batch.commit();
@@ -3703,14 +3556,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
       final batch = FirebaseFirestore.instance.batch();
 
       for (final item in _achievementBadges) {
-        batch.set(
-          ref.doc(item.id),
-          {
-            'isRepresentative': item.id == badge.id,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        batch.set(ref.doc(item.id), {
+          'isRepresentative': item.id == badge.id,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       await batch.commit();
@@ -3726,12 +3575,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
           .collection('members')
           .doc(widget.memberId)
           .set({
-        'milestoneSettings': {
-          'autoMilestoneEnabled': _autoMilestoneEnabled,
-          'ddayFollowUpEnabled': _ddayFollowUpEnabled,
-        },
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'milestoneSettings': {
+              'autoMilestoneEnabled': _autoMilestoneEnabled,
+              'ddayFollowUpEnabled': _ddayFollowUpEnabled,
+            },
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (_) {}
   }
 
@@ -3779,10 +3628,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
           .collection('care_milestones')
           .doc(item.id)
           .set({
-        'status': 'done',
-        'completedAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'status': 'done',
+            'completedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       await _loadCareMilestonesFromFirestore();
 
@@ -3797,7 +3646,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Future<void> _deleteCareMilestone(_CareMilestoneItem item) async {
     final ok = await _showAifcConfirm(
       title: 'MORE 포커스를 삭제할까요?',
-      message: '${item.title} 항목을 삭제합니다.\n'
+      message:
+          '${item.title} 항목을 삭제합니다.\n'
           '회원 관리 체크포인트에서 사라져요.',
       cancelText: '취소',
       confirmText: '삭제',
@@ -3830,11 +3680,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Future<void> _loadTierAccess() async {
     try {
-      final access = _isPersonalWorkspace
-          ? await AppTierAccessService.loadPersonalTrainerAccess(
-              uid: widget.personalOwnerUid!.trim(),
-            )
-          : await AppTierAccessService.loadTrainerAccess();
+      final access =
+          _isPersonalWorkspace
+              ? await AppTierAccessService.loadPersonalTrainerAccess(
+                uid: widget.personalOwnerUid!.trim(),
+              )
+              : await AppTierAccessService.loadTrainerAccess();
 
       if (!mounted) return;
 
@@ -3887,19 +3738,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
         service.loadFromServer(PersonalMemberTaxonomyKind.tag),
       ]);
       if (!mounted) return;
-      final label = _headerGroupLabel.trim().isEmpty
-          ? kPersonalDefaultGroupLabel
-          : _headerGroupLabel.trim();
-      final groups = results[0]
-        ..sort((a, b) {
-          final createdAt = a.createdAt.compareTo(b.createdAt);
-          return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
-        });
-      final tags = results[1]
-        ..sort((a, b) {
-          final createdAt = a.createdAt.compareTo(b.createdAt);
-          return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
-        });
+      final label =
+          _headerGroupLabel.trim().isEmpty
+              ? kPersonalDefaultGroupLabel
+              : _headerGroupLabel.trim();
+      final groups =
+          results[0]..sort((a, b) {
+            final createdAt = a.createdAt.compareTo(b.createdAt);
+            return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
+          });
+      final tags =
+          results[1]..sort((a, b) {
+            final createdAt = a.createdAt.compareTo(b.createdAt);
+            return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
+          });
       setState(() {
         _personalGroupOptions = List.unmodifiable(groups);
         _personalTagOptions = List.unmodifiable(tags);
@@ -3912,12 +3764,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         );
         _groupOptions
           ..clear()
-          ..add(
-            _MemberGroupOption(
-              id: '__ungrouped__',
-              label: label,
-            ),
-          )
+          ..add(_MemberGroupOption(id: '__ungrouped__', label: label))
           ..addAll(
             groups.map(
               (item) => _MemberGroupOption(id: item.id, label: item.name),
@@ -3926,9 +3773,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
         if (!_groupOptions.any((item) => item.id == _selectedGroupId)) {
           _selectedGroupId = '__ungrouped__';
         }
-        _headerGroupLabel = _groupOptions
-            .firstWhere((item) => item.id == _selectedGroupId)
-            .label;
+        _headerGroupLabel =
+            _groupOptions
+                .firstWhere((item) => item.id == _selectedGroupId)
+                .label;
       });
       return;
     }
@@ -3940,10 +3788,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       final defaultGroupName = await _loadDefaultGroupName();
 
       final options = <_MemberGroupOption>[
-        _MemberGroupOption(
-          id: '__ungrouped__',
-          label: defaultGroupName,
-        ),
+        _MemberGroupOption(id: '__ungrouped__', label: defaultGroupName),
       ];
 
       for (final doc in snapshot.docs) {
@@ -3972,12 +3817,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           continue;
         }
 
-        options.add(
-          _MemberGroupOption(
-            id: groupId,
-            label: name,
-          ),
-        );
+        options.add(_MemberGroupOption(id: groupId, label: name));
       }
 
       options.sort((a, b) {
@@ -3994,9 +3834,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
           ..addAll(options);
 
         if (_selectedGroupId == '__ungrouped__') {
-          _headerGroupLabel = defaultGroupName.trim().isEmpty
-              ? 'MORE THAN GYM'
-              : defaultGroupName.trim();
+          _headerGroupLabel =
+              defaultGroupName.trim().isEmpty
+                  ? 'MORE THAN GYM'
+                  : defaultGroupName.trim();
         }
       });
     } catch (_) {}
@@ -4019,17 +3860,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return int.tryParse((value ?? '').toString()) ?? 0;
   }
 
-  int _lessonStatCountFromMemberData(
-    Map<String, dynamic> data,
-    String key,
-  ) {
-    final sessions = data['sessions'] is Map
-        ? Map<String, dynamic>.from(data['sessions'] as Map)
-        : <String, dynamic>{};
+  int _lessonStatCountFromMemberData(Map<String, dynamic> data, String key) {
+    final sessions =
+        data['sessions'] is Map
+            ? Map<String, dynamic>.from(data['sessions'] as Map)
+            : <String, dynamic>{};
 
-    final lessonStats = data['lessonStats'] is Map
-        ? Map<String, dynamic>.from(data['lessonStats'] as Map)
-        : <String, dynamic>{};
+    final lessonStats =
+        data['lessonStats'] is Map
+            ? Map<String, dynamic>.from(data['lessonStats'] as Map)
+            : <String, dynamic>{};
 
     final values = <int>[
       _intFromAny(data[key]), // 예전 루트 필드 대비
@@ -4085,33 +3925,36 @@ class _ClientCardPageState extends State<ClientCardPage> {
         .collection('members')
         .doc(widget.memberId)
         .snapshots()
-        .listen((snap) {
-      final data = snap.data();
-      if (data == null || !mounted) return;
-      if (!_isOwnedPersonalMember(data)) {
-        _logCanonicalRead(
-          feature: 'memberCard',
-          pathType: 'canonical',
-          ownerScoped: false,
-          result: 'empty',
-        );
-        return;
-      }
+        .listen(
+          (snap) {
+            final data = snap.data();
+            if (data == null || !mounted) return;
+            if (!_isOwnedPersonalMember(data)) {
+              _logCanonicalRead(
+                feature: 'memberCard',
+                pathType: 'canonical',
+                ownerScoped: false,
+                result: 'empty',
+              );
+              return;
+            }
 
-      _logCanonicalRead(
-        feature: 'memberCard',
-        pathType: 'canonical',
-        ownerScoped: _isPersonalWorkspace,
-        result: 'success',
-      );
-      _applyLessonStatsFromMemberData(data);
-    }, onError: (Object error, StackTrace stackTrace) {
-      _handleFirestoreError(
-        feature: 'memberCard',
-        operation: 'listen',
-        error: error,
-      );
-    });
+            _logCanonicalRead(
+              feature: 'memberCard',
+              pathType: 'canonical',
+              ownerScoped: _isPersonalWorkspace,
+              result: 'success',
+            );
+            _applyLessonStatsFromMemberData(data);
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            _handleFirestoreError(
+              feature: 'memberCard',
+              operation: 'listen',
+              error: error,
+            );
+          },
+        );
   }
 
   DateTime? _dateTimeFromAny(dynamic value) {
@@ -4183,8 +4026,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final cleanMemberId = widget.memberId.trim();
     if (cleanMemberId.isEmpty) return;
 
-    Query<Map<String, dynamic>> query =
-        FirebaseFirestore.instance.collection('schedules');
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection(
+      'schedules',
+    );
 
     if (_isPersonalWorkspace) {
       final authUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
@@ -4204,32 +4048,36 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     query = query.where('memberId', isEqualTo: cleanMemberId);
-    _nextReservationSub = query.snapshots().listen((snapshot) {
-      _nextReservationScheduleDocs = snapshot.docs;
-      _logCanonicalRead(
-        feature: 'memberSchedule',
-        pathType: 'canonical',
-        ownerScoped: _isPersonalWorkspace,
-        result: snapshot.docs.isEmpty ? 'empty' : 'success',
-      );
-      _applyNextReservationFromSchedules();
-    }, onError: (Object error, StackTrace stackTrace) {
-      _nextReservationScheduleDocs = const [];
-      _applyNextReservationFromSchedules();
-      _handleFirestoreError(
-        feature: 'memberSchedule',
-        operation: 'listen',
-        error: error,
-      );
-    });
+    _nextReservationSub = query.snapshots().listen(
+      (snapshot) {
+        _nextReservationScheduleDocs = snapshot.docs;
+        _logCanonicalRead(
+          feature: 'memberSchedule',
+          pathType: 'canonical',
+          ownerScoped: _isPersonalWorkspace,
+          result: snapshot.docs.isEmpty ? 'empty' : 'success',
+        );
+        _applyNextReservationFromSchedules();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        _nextReservationScheduleDocs = const [];
+        _applyNextReservationFromSchedules();
+        _handleFirestoreError(
+          feature: 'memberSchedule',
+          operation: 'listen',
+          error: error,
+        );
+      },
+    );
   }
 
   Future<void> _loadFromFirestore() async {
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(widget.memberId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(widget.memberId)
+              .get();
       if (!snap.exists || !mounted) return;
 
       final d = snap.data() ?? <String, dynamic>{};
@@ -4259,37 +4107,45 @@ class _ClientCardPageState extends State<ClientCardPage> {
         return null;
       }
 
-      final sessions = (d['sessions'] is Map)
-          ? Map<String, dynamic>.from(d['sessions'] as Map)
-          : <String, dynamic>{};
+      final sessions =
+          (d['sessions'] is Map)
+              ? Map<String, dynamic>.from(d['sessions'] as Map)
+              : <String, dynamic>{};
 
-      final lessonStats = (d['lessonStats'] is Map)
-          ? Map<String, dynamic>.from(d['lessonStats'] as Map)
-          : <String, dynamic>{};
+      final lessonStats =
+          (d['lessonStats'] is Map)
+              ? Map<String, dynamic>.from(d['lessonStats'] as Map)
+              : <String, dynamic>{};
 
-      final membership = (d['membership'] is Map)
-          ? Map<String, dynamic>.from(d['membership'] as Map)
-          : <String, dynamic>{};
+      final membership =
+          (d['membership'] is Map)
+              ? Map<String, dynamic>.from(d['membership'] as Map)
+              : <String, dynamic>{};
 
-      final health = (d['health'] is Map)
-          ? Map<String, dynamic>.from(d['health'] as Map)
-          : <String, dynamic>{};
+      final health =
+          (d['health'] is Map)
+              ? Map<String, dynamic>.from(d['health'] as Map)
+              : <String, dynamic>{};
 
-      final femaleCondition = (health['femaleCondition'] is Map)
-          ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
-          : <String, dynamic>{};
+      final femaleCondition =
+          (health['femaleCondition'] is Map)
+              ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
+              : <String, dynamic>{};
 
-      final milestoneSettings = (d['milestoneSettings'] is Map)
-          ? Map<String, dynamic>.from(d['milestoneSettings'] as Map)
-          : <String, dynamic>{};
+      final milestoneSettings =
+          (d['milestoneSettings'] is Map)
+              ? Map<String, dynamic>.from(d['milestoneSettings'] as Map)
+              : <String, dynamic>{};
 
-      final notificationSettings = (d['notificationSettings'] is Map)
-          ? Map<String, dynamic>.from(d['notificationSettings'] as Map)
-          : <String, dynamic>{};
+      final notificationSettings =
+          (d['notificationSettings'] is Map)
+              ? Map<String, dynamic>.from(d['notificationSettings'] as Map)
+              : <String, dynamic>{};
 
-      final lessonSync = d['lessonSync'] is Map
-          ? Map<String, dynamic>.from(d['lessonSync'] as Map)
-          : <String, dynamic>{};
+      final lessonSync =
+          d['lessonSync'] is Map
+              ? Map<String, dynamic>.from(d['lessonSync'] as Map)
+              : <String, dynamic>{};
 
       _membershipPaused =
           membership['status'] == 'paused' || d['membershipStatus'] == 'paused';
@@ -4305,8 +4161,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       _membershipPausePlannedDays =
           (membership['pausePlannedDays'] as num?)?.toInt() ??
-              (d['membershipPausePlannedDays'] as num?)?.toInt() ??
-              0;
+          (d['membershipPausePlannedDays'] as num?)?.toInt() ??
+          0;
 
       _membershipResumeDueAt = dt(
         membership['resumeDueAt'] ?? d['membershipResumeDueAt'],
@@ -4314,18 +4170,18 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       _membershipPauseActualDays =
           (membership['pauseActualDays'] as num?)?.toInt() ??
-              (d['membershipPauseActualDays'] as num?)?.toInt() ??
-              0;
+          (d['membershipPauseActualDays'] as num?)?.toInt() ??
+          0;
 
       _membershipPauseUsedDays =
           (membership['pauseUsedDays'] as num?)?.toInt() ??
-              (d['membershipPauseUsedDays'] as num?)?.toInt() ??
-              0;
+          (d['membershipPauseUsedDays'] as num?)?.toInt() ??
+          0;
 
       _membershipContractDraftExists =
           d['membershipContractDraftExists'] == true ||
-              (membership['contractStatus'] ?? '').toString() == 'draft' ||
-              (d['membershipContractStatus'] ?? '').toString() == 'draft';
+          (membership['contractStatus'] ?? '').toString() == 'draft' ||
+          (d['membershipContractStatus'] ?? '').toString() == 'draft';
 
       _membershipContractStatus =
           (d['membershipContractStatus'] ?? membership['contractStatus'] ?? '')
@@ -4334,30 +4190,30 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       _membershipContractMaxPauseDays =
           (membership['maxPauseDaysFromContract'] as num?)?.toInt() ??
-              (d['membershipContractMaxPauseDays'] as num?)?.toInt();
+          (d['membershipContractMaxPauseDays'] as num?)?.toInt();
 
       final loadedContractSigned = (d['contractSigned'] as bool?) ?? false;
       final loadedContractSignedAt = dt(d['contractSignedAt']);
 
       final contractLessonType = [
-        lessonSync['lessonType'],
-        lessonSync['productType'],
-        lessonSync['programType'],
-        d['contractLessonType'],
-        d['lessonType'],
-      ].map((e) => (e ?? '').toString().trim()).firstWhere(
-            (e) => e.isNotEmpty && e != '미입력',
-            orElse: () => '',
-          );
+            lessonSync['lessonType'],
+            lessonSync['productType'],
+            lessonSync['programType'],
+            d['contractLessonType'],
+            d['lessonType'],
+          ]
+          .map((e) => (e ?? '').toString().trim())
+          .firstWhere((e) => e.isNotEmpty && e != '미입력', orElse: () => '');
 
       String nextGroupLabel = 'MORE THAN GYM';
 
       final rawStatus = personalMemberStatusFromCanonical(d);
       final groupId = (d['groupId'] as String?)?.trim();
       final personalGroupId = (d['personalGroupId'] as String?)?.trim();
-      final personalTagIds = d['personalTagIds'] is Iterable
-          ? normalizePersonalTagIds(d['personalTagIds'] as Iterable)
-          : const <String>[];
+      final personalTagIds =
+          d['personalTagIds'] is Iterable
+              ? normalizePersonalTagIds(d['personalTagIds'] as Iterable)
+              : const <String>[];
       String nextSelectedGroupId = '__ungrouped__';
 
       if (!_isPersonalWorkspace && rawStatus == '휴면') {
@@ -4375,9 +4231,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
           personalGroupId != null &&
           _personalGroupOptions.any((item) => item.id == personalGroupId)) {
         nextSelectedGroupId = personalGroupId;
-        nextGroupLabel = _personalGroupOptions
-            .firstWhere((item) => item.id == personalGroupId)
-            .name;
+        nextGroupLabel =
+            _personalGroupOptions
+                .firstWhere((item) => item.id == personalGroupId)
+                .name;
       } else {
         nextGroupLabel = await _loadGroupDisplayName('__ungrouped__');
         nextSelectedGroupId = '__ungrouped__';
@@ -4386,15 +4243,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
         final loadedName = (d['name'] as String?) ?? '';
         _nameC.text = loadedName;
         _headerDisplayName = loadedName.trim();
-        _headerGroupLabel = nextGroupLabel.trim().isEmpty
-            ? 'MORE THAN GYM'
-            : nextGroupLabel.trim();
+        _headerGroupLabel =
+            nextGroupLabel.trim().isEmpty
+                ? 'MORE THAN GYM'
+                : nextGroupLabel.trim();
 
         _selectedGroupId = nextSelectedGroupId;
         _selectedPersonalTagIds = personalTagIds
-            .where(
-              (id) => _personalTagOptions.any((item) => item.id == id),
-            )
+            .where((id) => _personalTagOptions.any((item) => item.id == id))
             .toList(growable: false);
         _loadedPersonalTagIds = _selectedPersonalTagIds;
 
@@ -4418,10 +4274,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           (d['phoneDisplay'] ?? '').toString().trim(),
           (d['phoneNormalized'] ?? '').toString().trim(),
           (d['phone'] ?? '').toString().trim(),
-        ].firstWhere(
-          (value) => value.isNotEmpty,
-          orElse: () => '',
-        );
+        ].firstWhere((value) => value.isNotEmpty, orElse: () => '');
 
         _phoneC.text = formatKoreanMobilePhone(loadedPhone);
 
@@ -4434,23 +4287,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _addrC.text = (d['address'] ?? '').toString();
         _addrDetailC.text = (d['detailAddress'] ?? '').toString();
 
-        _membershipGrade =
-            _safeMembershipGrade(d['membershipGrade'] as String?);
+        _membershipGrade = _safeMembershipGrade(
+          d['membershipGrade'] as String?,
+        );
         _jobC.text = (d['job'] as String?) ?? '';
         _trainerC.text = (d['trainer'] ?? '').toString().trim();
         _memberStatus = _safeMemberStatus(rawStatus);
         _lessonType = _safeLessonType(d['lessonType'] as String?);
 
-        _photoUrl = (d['photoUrl'] ?? '').toString().trim().isEmpty
-            ? null
-            : (d['photoUrl'] ?? '').toString().trim();
+        _photoUrl =
+            (d['photoUrl'] ?? '').toString().trim().isEmpty
+                ? null
+                : (d['photoUrl'] ?? '').toString().trim();
 
         _lessonsNotRegistered =
             (sessions['notRegistered'] as bool?) ?? _lessonsNotRegistered;
         final rawTotalSessions =
             sessions['total'] ?? d['totalSessions'] ?? d['sessionTotal'];
 
-        final rawRemainSessions = sessions['remain'] ??
+        final rawRemainSessions =
+            sessions['remain'] ??
             d['remainSessions'] ??
             d['remainingSessions'] ??
             d['remainingPt'] ??
@@ -4458,24 +4314,31 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
         final rawDoneSessions = sessions['done'] ?? d['doneSessions'];
 
-        _totalSessionsC.text = rawTotalSessions is num
-            ? rawTotalSessions.toInt().toString()
-            : int.tryParse((rawTotalSessions ?? '').toString())?.toString() ??
-                _totalSessionsC.text;
+        _totalSessionsC.text =
+            rawTotalSessions is num
+                ? rawTotalSessions.toInt().toString()
+                : int.tryParse(
+                      (rawTotalSessions ?? '').toString(),
+                    )?.toString() ??
+                    _totalSessionsC.text;
 
-        _remainSessionsC.text = rawRemainSessions is num
-            ? rawRemainSessions.toInt().toString()
-            : int.tryParse((rawRemainSessions ?? '').toString())?.toString() ??
-                _remainSessionsC.text;
+        _remainSessionsC.text =
+            rawRemainSessions is num
+                ? rawRemainSessions.toInt().toString()
+                : int.tryParse(
+                      (rawRemainSessions ?? '').toString(),
+                    )?.toString() ??
+                    _remainSessionsC.text;
 
-// doneSessions는 화면에서 직접 입력하지 않고 total - remain으로 계산하지만,
-// 기존 데이터 확인용으로 fallback만 준비해 둡니다.
+        // doneSessions는 화면에서 직접 입력하지 않고 total - remain으로 계산하지만,
+        // 기존 데이터 확인용으로 fallback만 준비해 둡니다.
         if (rawDoneSessions != null &&
             _totalSessionsC.text.trim().isEmpty &&
             _remainSessionsC.text.trim().isEmpty) {
-          final done = rawDoneSessions is num
-              ? rawDoneSessions.toInt()
-              : int.tryParse(rawDoneSessions.toString()) ?? 0;
+          final done =
+              rawDoneSessions is num
+                  ? rawDoneSessions.toInt()
+                  : int.tryParse(rawDoneSessions.toString()) ?? 0;
           _totalSessionsC.text = done.toString();
           _remainSessionsC.text = '0';
         }
@@ -4552,17 +4415,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
         _femaleConditionMemoC.text = (femaleCondition['memo'] ?? '').toString();
 
-        final inbodyRaw = (health['inbody'] is Map)
-            ? Map<String, dynamic>.from(health['inbody'])
-            : null;
+        final inbodyRaw =
+            (health['inbody'] is Map)
+                ? Map<String, dynamic>.from(health['inbody'])
+                : null;
 
         _latestInbodyImageUrl =
             (health['inbodyImageUrl'] ?? '').toString().trim().isEmpty
                 ? null
                 : (health['inbodyImageUrl'] ?? '').toString().trim();
 
-        _latestInbodyMeasuredAt =
-            dt(health['inbodyMeasuredAt'] ?? inbodyRaw?['measuredAt']);
+        _latestInbodyMeasuredAt = dt(
+          health['inbodyMeasuredAt'] ?? inbodyRaw?['measuredAt'],
+        );
 
         if (inbodyRaw != null && inbodyRaw.isNotEmpty) {
           final h = inbodyRaw['heightCm'];
@@ -4592,7 +4457,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _contractSigned = loadedContractSigned;
         _contractSignedAt = loadedContractSignedAt;
 
-        final hasContractLesson = _contractSigned ||
+        final hasContractLesson =
+            _contractSigned ||
             _contractSignedAt != null ||
             contractLessonType.isNotEmpty;
 
@@ -4614,9 +4480,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _ddayFollowUpEnabled =
             (milestoneSettings['ddayFollowUpEnabled'] as bool?) ?? true;
 
-        _headerGroupLabel = nextGroupLabel.trim().isEmpty
-            ? 'MORE THAN GYM'
-            : nextGroupLabel.trim();
+        _headerGroupLabel =
+            nextGroupLabel.trim().isEmpty
+                ? 'MORE THAN GYM'
+                : nextGroupLabel.trim();
       });
     } catch (error) {
       _handleFirestoreError(
@@ -4679,6 +4546,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _passStart = _parseDate(m['passStart'] as String?);
         _passEnd = _parseDate(m['passEnd'] as String?);
         _lastRegisteredAt = _parseDate(m['lastRegisteredAt'] as String?);
+        if (!_membershipNotRegistered &&
+            _termMonths == null &&
+            _customDays == null &&
+            _passEnd == null) {
+          _membershipNotRegistered = true;
+          _passStart = null;
+          _lastRegisteredAt = null;
+        }
 
         _nextReservation = _parseDate(m['nextReservationDate'] as String?);
 
@@ -4761,30 +4636,34 @@ class _ClientCardPageState extends State<ClientCardPage> {
       'inbodyNotProvided': _inbodyNotProvided,
       'diseaseHistory': _diseaseC.text.trim(),
       'medicineHistory': _medicineC.text.trim(),
-      'inbody': _inbodyNotProvided
-          ? null
-          : {
-              'heightCm': double.tryParse(_heightC.text) ?? 0,
-              'weightKg': double.tryParse(_weightC.text) ?? 0,
-              'bodyFatPct': double.tryParse(_bfPctC.text) ?? 0,
-              'skeletalMuscleKg': double.tryParse(_smmC.text) ?? 0,
-              'bodyFatKg': double.tryParse(_bfKgC.text) ?? 0,
-              'bmi': _safeBmi(
-                double.tryParse(_heightC.text) ?? 0,
-                double.tryParse(_weightC.text) ?? 0,
-              ),
-            },
-      'anniversaryDate': _formatDate(_anniversaryDate).isEmpty
-          ? null
-          : _formatDate(_anniversaryDate),
-      'anniversaryLabel': _anniversaryDate == null
-          ? null
-          : _anniversaryLabelC.text.trim().isEmpty
+      'inbody':
+          _inbodyNotProvided
+              ? null
+              : {
+                'heightCm': double.tryParse(_heightC.text) ?? 0,
+                'weightKg': double.tryParse(_weightC.text) ?? 0,
+                'bodyFatPct': double.tryParse(_bfPctC.text) ?? 0,
+                'skeletalMuscleKg': double.tryParse(_smmC.text) ?? 0,
+                'bodyFatKg': double.tryParse(_bfKgC.text) ?? 0,
+                'bmi': _safeBmi(
+                  double.tryParse(_heightC.text) ?? 0,
+                  double.tryParse(_weightC.text) ?? 0,
+                ),
+              },
+      'anniversaryDate':
+          _formatDate(_anniversaryDate).isEmpty
+              ? null
+              : _formatDate(_anniversaryDate),
+      'anniversaryLabel':
+          _anniversaryDate == null
+              ? null
+              : _anniversaryLabelC.text.trim().isEmpty
               ? '기념일'
               : _anniversaryLabelC.text.trim(),
-      'specialEvent': _specialEventC.text.trim().isEmpty
-          ? null
-          : _specialEventC.text.trim(),
+      'specialEvent':
+          _specialEventC.text.trim().isEmpty
+              ? null
+              : _specialEventC.text.trim(),
       'note': _noteC.text.trim().isEmpty ? null : _noteC.text.trim(),
       'trainingLogConsentAgreed': _trainingLogConsentAgreed,
       'trainingLogConsentAgreedAt': _formatDate(_trainingLogConsentAgreedAt),
@@ -4792,9 +4671,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         'autoMilestoneEnabled': _autoMilestoneEnabled,
         'ddayFollowUpEnabled': _ddayFollowUpEnabled,
       },
-      'notificationSettings': {
-        'confirmTalkEnabled': _confirmTalkEnabled,
-      },
+      'notificationSettings': {'confirmTalkEnabled': _confirmTalkEnabled},
       if (includeRegisteredAt) 'registeredAt': DateTime.now().toIso8601String(),
     };
   }
@@ -4821,19 +4698,23 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final bool activeMembership = raw['membershipNotRegistered'] != true;
 
-    final notificationSettings = raw['notificationSettings'] is Map
-        ? Map<String, dynamic>.from(raw['notificationSettings'] as Map)
-        : <String, dynamic>{};
+    final notificationSettings =
+        raw['notificationSettings'] is Map
+            ? Map<String, dynamic>.from(raw['notificationSettings'] as Map)
+            : <String, dynamic>{};
 
-    final totalSessions = (raw['totalSessions'] as int?) ??
+    final totalSessions =
+        (raw['totalSessions'] as int?) ??
         int.tryParse((raw['totalSessions'] ?? '0').toString()) ??
         0;
 
-    final remainSessions = (raw['remainSessions'] as int?) ??
+    final remainSessions =
+        (raw['remainSessions'] as int?) ??
         int.tryParse((raw['remainSessions'] ?? '0').toString()) ??
         0;
 
-    final doneSessions = (raw['doneSessions'] as int?) ??
+    final doneSessions =
+        (raw['doneSessions'] as int?) ??
         (totalSessions - remainSessions).clamp(0, totalSessions);
 
     final payload = <String, dynamic>{
@@ -4870,7 +4751,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       'lessonType': raw['lessonType'],
       'groupId': raw['groupId'],
 
-// 홈, 회원관리, 레슨일지 차감 로직에서 같이 참조할 수 있도록 루트 필드도 유지합니다.
+      // 홈, 회원관리, 레슨일지 차감 로직에서 같이 참조할 수 있도록 루트 필드도 유지합니다.
       'totalSessions': totalSessions,
       'remainSessions': remainSessions,
       'remainingSessions': remainSessions,
@@ -4936,11 +4817,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
           'inbodyMeasuredAt': Timestamp.fromDate(_latestInbodyMeasuredAt!),
         'femaleCondition': {
           'enabled': _gender == '여' && _femaleConditionEnabled,
-          'lastStartAt': _parseSoftDate(_femaleConditionLastStartC.text) == null
-              ? null
-              : Timestamp.fromDate(
-                  _parseSoftDate(_femaleConditionLastStartC.text)!,
-                ),
+          'lastStartAt':
+              _parseSoftDate(_femaleConditionLastStartC.text) == null
+                  ? null
+                  : Timestamp.fromDate(
+                    _parseSoftDate(_femaleConditionLastStartC.text)!,
+                  ),
           'cycleDays': int.tryParse(_femaleConditionCycleC.text.trim()) ?? 28,
           'memo': _femaleConditionMemoC.text.trim(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -4953,11 +4835,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
       'note': raw['note'],
       'trainingLogConsentAgreed': raw['trainingLogConsentAgreed'] == true,
       'trainingLogConsentAgreedAt': ts(raw['trainingLogConsentAgreedAt']),
-      'milestoneSettings': raw['milestoneSettings'] ??
-          {
-            'autoMilestoneEnabled': true,
-            'ddayFollowUpEnabled': true,
-          },
+      'milestoneSettings':
+          raw['milestoneSettings'] ??
+          {'autoMilestoneEnabled': true, 'ddayFollowUpEnabled': true},
       'notificationSettings': {
         'confirmTalkEnabled':
             notificationSettings['confirmTalkEnabled'] == true,
@@ -5013,22 +4893,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
     });
 
     final idxRef = memberRef.collection('training_logs').doc('_index');
-    batch.set(
-      idxRef,
-      {
-        'entries': 0,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    batch.set(idxRef, {
+      'entries': 0,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     final todayYmd = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final firstLogRef = memberRef.collection('training_logs').doc(todayYmd);
 
-    final inbody = (raw['inbody'] is Map)
-        ? Map<String, dynamic>.from(raw['inbody'])
-        : null;
+    final inbody =
+        (raw['inbody'] is Map)
+            ? Map<String, dynamic>.from(raw['inbody'])
+            : null;
 
     batch.set(firstLogRef, {
       'date': todayYmd,
@@ -5063,8 +4940,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
         .replaceAll('/', '-')
         .replaceAll(RegExp(r'\s+'), '');
 
-    final match =
-        RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$').firstMatch(normalized);
+    final match = RegExp(
+      r'^(\d{4})-(\d{1,2})-(\d{1,2})$',
+    ).firstMatch(normalized);
     if (match == null) return null;
 
     final y = int.tryParse(match.group(1)!);
@@ -5303,7 +5181,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final ok = await _showAifcConfirm(
       title: '프로필 사진을 삭제할까요?',
-      message: '현재 회원카드에 표시된 프로필 사진을 삭제합니다.\n'
+      message:
+          '현재 회원카드에 표시된 프로필 사진을 삭제합니다.\n'
           '나중에 다시 등록할 수 있어요.',
       cancelText: '취소',
       confirmText: '삭제',
@@ -5326,9 +5205,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
           .collection('members')
           .doc(widget.memberId)
           .set({
-        'photoUrl': FieldValue.delete(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'photoUrl': FieldValue.delete(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
       if (!mounted) return;
       _showAifcToast('프로필 사진을 삭제했어요.');
     } catch (_) {
@@ -5364,11 +5243,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
       access: resolvedAccess,
       feature: feature,
       loadAccess: () async {
-        final access = _isPersonalWorkspace
-            ? await AppTierAccessService.loadPersonalTrainerAccess(
-                uid: widget.personalOwnerUid!.trim(),
-              )
-            : await AppTierAccessService.loadTrainerAccess();
+        final access =
+            _isPersonalWorkspace
+                ? await AppTierAccessService.loadPersonalTrainerAccess(
+                  uid: widget.personalOwnerUid!.trim(),
+                )
+                : await AppTierAccessService.loadTrainerAccess();
         resolvedAccess = access;
 
         if (mounted) {
@@ -5381,12 +5261,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
         return access;
       },
       onShowTierGuide: (info) async {
-        final access = resolvedAccess ??
+        final access =
+            resolvedAccess ??
             _tierAccess ??
             (_isPersonalWorkspace
                 ? await AppTierAccessService.loadPersonalTrainerAccess(
-                    uid: widget.personalOwnerUid!.trim(),
-                  )
+                  uid: widget.personalOwnerUid!.trim(),
+                )
                 : await AppTierAccessService.loadTrainerAccess());
 
         if (!mounted) return;
@@ -5411,12 +5292,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
     );
     if (result == null || !mounted) return;
     final nextId = result.personalGroupId ?? '__ungrouped__';
-    final nextLabel = _groupOptions
-        .firstWhere(
-          (item) => item.id == nextId,
-          orElse: () => _groupOptions.first,
-        )
-        .label;
+    final nextLabel =
+        _groupOptions
+            .firstWhere(
+              (item) => item.id == nextId,
+              orElse: () => _groupOptions.first,
+            )
+            .label;
     setState(() {
       _selectedGroupId = nextId;
       _headerGroupLabel = nextLabel;
@@ -5462,9 +5344,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     if (!mounted) return;
 
-    final trainerName = _safeAifcNickname.trim().isEmpty
-        ? _trainerC.text.trim()
-        : _safeAifcNickname;
+    final trainerName =
+        _safeAifcNickname.trim().isEmpty
+            ? _trainerC.text.trim()
+            : _safeAifcNickname;
 
     await AifcTierGuideChatSheet.show(
       context: context,
@@ -5496,17 +5379,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final defaultTrainerName = await _loadDefaultTrainerName();
 
-    final trainerName = _trainerC.text.trim().isNotEmpty
-        ? _trainerC.text.trim()
-        : defaultTrainerName;
+    final trainerName =
+        _trainerC.text.trim().isNotEmpty
+            ? _trainerC.text.trim()
+            : defaultTrainerName;
 
     final ok = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => ContractPage(
-          memberId: widget.memberId,
-          memberName: _nameC.text.trim(),
-          trainerName: trainerName,
-        ),
+        builder:
+            (_) => ContractPage(
+              memberId: widget.memberId,
+              memberName: _nameC.text.trim(),
+              trainerName: trainerName,
+            ),
       ),
     );
 
@@ -5519,9 +5404,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
   }
 
-  int _membershipPauseAvailableDays({
-    required int remainingDays,
-  }) {
+  int _membershipPauseAvailableDays({required int remainingDays}) {
     final contractMax = _membershipContractMaxPauseDays;
 
     if (!_membershipContractDraftExists ||
@@ -5530,8 +5413,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return remainingDays;
     }
 
-    final contractRemaining =
-        (contractMax - _membershipPauseUsedDays).clamp(0, contractMax);
+    final contractRemaining = (contractMax - _membershipPauseUsedDays).clamp(
+      0,
+      contractMax,
+    );
 
     return math.min(remainingDays, contractRemaining);
   }
@@ -5632,10 +5517,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return null;
   }
 
-  String _pauseDaysParsedReplyText({
-    required String input,
-    required int days,
-  }) {
+  String _pauseDaysParsedReplyText({required String input, required int days}) {
     final raw = input.trim();
 
     if (raw.isEmpty || RegExp(r'^\d+$').hasMatch(raw)) {
@@ -5696,16 +5578,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: const Color(0xFFE0DEFF),
-                            ),
+                            border: Border.all(color: const Color(0xFFE0DEFF)),
                           ),
                           child: Text(
                             '${aifcPersonLabel(memberName)} 회원권을 $days일 정지할게요.\n\n'
-                            '${_membershipPauseLimitGuideText(
-                              remainingDays: remainingDays,
-                              availableDays: maxDays,
-                            )}\n\n'
+                            '${_membershipPauseLimitGuideText(remainingDays: remainingDays, availableDays: maxDays)}\n\n'
                             '이 기간으로 저장할까요?',
                             style: const TextStyle(
                               color: Color(0xFF1E1B4B),
@@ -5724,9 +5601,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            Navigator.of(sheetContext).pop(
-                              _MembershipPauseConfirmAction.reset,
-                            );
+                            Navigator.of(
+                              sheetContext,
+                            ).pop(_MembershipPauseConfirmAction.reset);
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: kPagePrimary,
@@ -5740,9 +5617,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           ),
                           child: const Text(
                             '기간재설정',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),
@@ -5750,9 +5625,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       Expanded(
                         child: FilledButton(
                           onPressed: () {
-                            Navigator.of(sheetContext).pop(
-                              _MembershipPauseConfirmAction.confirm,
-                            );
+                            Navigator.of(
+                              sheetContext,
+                            ).pop(_MembershipPauseConfirmAction.confirm);
                           },
                           style: FilledButton.styleFrom(
                             backgroundColor: kPagePrimary,
@@ -5764,9 +5639,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           ),
                           child: const Text(
                             '알겠어요',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),
@@ -5775,9 +5648,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () {
-                      Navigator.of(sheetContext).pop(
-                        _MembershipPauseConfirmAction.cancel,
-                      );
+                      Navigator.of(
+                        sheetContext,
+                      ).pop(_MembershipPauseConfirmAction.cancel);
                     },
                     child: const Text(
                       '취소',
@@ -5811,11 +5684,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       final result = await AifcInteraction.ask(
         context: context,
-        question: '$memberLabel 회원권을 얼마나 정지할까요?\n'
-            '${_membershipPauseLimitGuideText(
-          remainingDays: remainingDays,
-          availableDays: maxDays,
-        )}',
+        question:
+            '$memberLabel 회원권을 얼마나 정지할까요?\n'
+            '${_membershipPauseLimitGuideText(remainingDays: remainingDays, availableDays: maxDays)}',
         inputLabel: '예: 7 / 일주일 / 보름 / 이번달말까지',
         keyboardType: TextInputType.text,
         skipLabel: '취소',
@@ -5834,10 +5705,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           selectedDays = days;
           selectedInput = value.trim();
 
-          return '${_pauseDaysParsedReplyText(
-            input: selectedInput,
-            days: days,
-          )}\n'
+          return '${_pauseDaysParsedReplyText(input: selectedInput, days: days)}\n'
               '회원권계약서 기준 정지 가능일 안에서만 저장할 수 있어요.';
         },
       );
@@ -5942,29 +5810,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
           .collection('members')
           .doc(widget.memberId)
           .set({
-        'memberStatus': '휴면',
-        'membershipStatus': 'paused',
-        'membership.status': 'paused',
-        'membership.pausedAt': FieldValue.serverTimestamp(),
-        'membership.pausePlannedDays': pauseDays,
-        'membership.resumeDueAt': Timestamp.fromDate(resumeDueAt),
-        'membership.pauseReason': 'client_card_membership_pause',
-        'membership.pauseSource': 'client_card',
-        'membership.updatedAt': FieldValue.serverTimestamp(),
-        'membershipPausePlannedDays': pauseDays,
-        'membershipResumeDueAt': Timestamp.fromDate(resumeDueAt),
-        'membershipPausedAt': FieldValue.serverTimestamp(),
-        'membershipPauseHistory': FieldValue.arrayUnion([
-          {
-            'type': 'pause',
-            'at': Timestamp.fromDate(now),
-            'plannedDays': pauseDays,
-            'resumeDueAt': Timestamp.fromDate(resumeDueAt),
-            'source': 'client_card',
-          },
-        ]),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'memberStatus': '휴면',
+            'membershipStatus': 'paused',
+            'membership.status': 'paused',
+            'membership.pausedAt': FieldValue.serverTimestamp(),
+            'membership.pausePlannedDays': pauseDays,
+            'membership.resumeDueAt': Timestamp.fromDate(resumeDueAt),
+            'membership.pauseReason': 'client_card_membership_pause',
+            'membership.pauseSource': 'client_card',
+            'membership.updatedAt': FieldValue.serverTimestamp(),
+            'membershipPausePlannedDays': pauseDays,
+            'membershipResumeDueAt': Timestamp.fromDate(resumeDueAt),
+            'membershipPausedAt': FieldValue.serverTimestamp(),
+            'membershipPauseHistory': FieldValue.arrayUnion([
+              {
+                'type': 'pause',
+                'at': Timestamp.fromDate(now),
+                'plannedDays': pauseDays,
+                'resumeDueAt': Timestamp.fromDate(resumeDueAt),
+                'source': 'client_card',
+              },
+            ]),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -5990,28 +5858,32 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final today = DateTime(now.year, now.month, now.day);
 
-    final elapsedDays = today.difference(pausedStartDate).inDays <= 0
-        ? 1
-        : today.difference(pausedStartDate).inDays;
+    final elapsedDays =
+        today.difference(pausedStartDate).inDays <= 0
+            ? 1
+            : today.difference(pausedStartDate).inDays;
 
-    final plannedDays = _membershipPausePlannedDays <= 0
-        ? elapsedDays
-        : _membershipPausePlannedDays;
+    final plannedDays =
+        _membershipPausePlannedDays <= 0
+            ? elapsedDays
+            : _membershipPausePlannedDays;
 
     final actualPauseDays =
         elapsedDays > plannedDays ? plannedDays : elapsedDays;
 
-    final nextPassEnd = _passEnd == null
-        ? null
-        : DateTime(
-            _passEnd!.year,
-            _passEnd!.month,
-            _passEnd!.day,
-          ).add(Duration(days: actualPauseDays));
+    final nextPassEnd =
+        _passEnd == null
+            ? null
+            : DateTime(
+              _passEnd!.year,
+              _passEnd!.month,
+              _passEnd!.day,
+            ).add(Duration(days: actualPauseDays));
 
     final ok = await _showAifcConfirm(
       title: '회원권을 재개할까요?',
-      message: '${aifcPersonLabel(memberName)} 회원권을 다시 진행 상태로 바꿉니다.\n\n'
+      message:
+          '${aifcPersonLabel(memberName)} 회원권을 다시 진행 상태로 바꿉니다.\n\n'
           '실제 정지된 기간은 $actualPauseDays일로 기록하고,\n'
           '회원권 종료일도 $actualPauseDays일 연장해둘게요.',
       cancelText: '취소',
@@ -6028,44 +5900,47 @@ class _ClientCardPageState extends State<ClientCardPage> {
         .collection('members')
         .doc(widget.memberId)
         .set({
-      'memberStatus': '활성',
-      'membershipStatus': 'active',
-      'membership.status': 'active',
-      'membership.resumedAt': FieldValue.serverTimestamp(),
-      'membership.pauseActualDays': actualPauseDays,
-      'membership.lastPauseActualDays': actualPauseDays,
-      'membership.pauseUsedDays': FieldValue.increment(actualPauseDays),
-      'membership.updatedAt': FieldValue.serverTimestamp(),
-      if (nextPassEnd != null)
-        'membership.endAt': Timestamp.fromDate(nextPassEnd),
-      if (nextPassEnd != null)
-        'membership.days': _passStart == null
-            ? null
-            : nextPassEnd
-                    .difference(DateTime(
-                      _passStart!.year,
-                      _passStart!.month,
-                      _passStart!.day,
-                    ))
-                    .inDays +
-                1,
-      if (nextPassEnd != null)
-        'membershipResumeExtendedEndAt': Timestamp.fromDate(nextPassEnd),
-      'membershipPauseActualDays': actualPauseDays,
-      'membershipPauseUsedDays': FieldValue.increment(actualPauseDays),
-      'membershipPauseHistory': FieldValue.arrayUnion([
-        {
-          'type': 'resume',
-          'at': Timestamp.fromDate(now),
-          'actualDays': actualPauseDays,
-          'plannedDays': plannedDays,
+          'memberStatus': '활성',
+          'membershipStatus': 'active',
+          'membership.status': 'active',
+          'membership.resumedAt': FieldValue.serverTimestamp(),
+          'membership.pauseActualDays': actualPauseDays,
+          'membership.lastPauseActualDays': actualPauseDays,
+          'membership.pauseUsedDays': FieldValue.increment(actualPauseDays),
+          'membership.updatedAt': FieldValue.serverTimestamp(),
           if (nextPassEnd != null)
-            'extendedEndAt': Timestamp.fromDate(nextPassEnd),
-          'source': 'client_card',
-        },
-      ]),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+            'membership.endAt': Timestamp.fromDate(nextPassEnd),
+          if (nextPassEnd != null)
+            'membership.days':
+                _passStart == null
+                    ? null
+                    : nextPassEnd
+                            .difference(
+                              DateTime(
+                                _passStart!.year,
+                                _passStart!.month,
+                                _passStart!.day,
+                              ),
+                            )
+                            .inDays +
+                        1,
+          if (nextPassEnd != null)
+            'membershipResumeExtendedEndAt': Timestamp.fromDate(nextPassEnd),
+          'membershipPauseActualDays': actualPauseDays,
+          'membershipPauseUsedDays': FieldValue.increment(actualPauseDays),
+          'membershipPauseHistory': FieldValue.arrayUnion([
+            {
+              'type': 'resume',
+              'at': Timestamp.fromDate(now),
+              'actualDays': actualPauseDays,
+              'plannedDays': plannedDays,
+              if (nextPassEnd != null)
+                'extendedEndAt': Timestamp.fromDate(nextPassEnd),
+              'source': 'client_card',
+            },
+          ]),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
 
     if (!mounted) return;
 
@@ -6097,22 +5972,24 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _openMembershipPauseHistorySheet() async {
-    final snap = await FirebaseFirestore.instance
-        .collection('members')
-        .doc(widget.memberId)
-        .get();
+    final snap =
+        await FirebaseFirestore.instance
+            .collection('members')
+            .doc(widget.memberId)
+            .get();
 
     if (!mounted) return;
 
     final data = snap.data() ?? <String, dynamic>{};
     final rawHistory = data['membershipPauseHistory'];
 
-    final history = rawHistory is List
-        ? rawHistory
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList()
-        : <Map<String, dynamic>>[];
+    final history =
+        rawHistory is List
+            ? rawHistory
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
+            : <Map<String, dynamic>>[];
 
     String dateText(dynamic value) {
       if (value is Timestamp) {
@@ -6149,14 +6026,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
       context: context,
       nickname: _safeAifcNickname,
       title: '정지 / 재개 이력',
-      message: history.isEmpty
-          ? '아직 회원권 정지 또는 재개 이력이 없어요.'
-          : '최근 회원권 정지와 재개 이력을 정리했어요.',
-      items: history.isEmpty
-          ? const [
-              '정지/재개를 진행하면 이곳에 기록됩니다.',
-            ]
-          : history.map(itemText).toList().reversed.take(8).toList(),
+      message:
+          history.isEmpty
+              ? '아직 회원권 정지 또는 재개 이력이 없어요.'
+              : '최근 회원권 정지와 재개 이력을 정리했어요.',
+      items:
+          history.isEmpty
+              ? const ['정지/재개를 진행하면 이곳에 기록됩니다.']
+              : history.map(itemText).toList().reversed.take(8).toList(),
       confirmText: '확인했어요',
       userConfirmText: '확인했습니다',
       replyText: '확인되었습니다. 필요한 기록이 생기면 계속 정리해둘게요.',
@@ -6299,17 +6176,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final ok = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => MembershipContractPage(
-          memberId: widget.memberId,
-          memberName: _nameC.text.trim(),
-          trainerName: _trainerC.text.trim(),
-          lessonType: _lessonType.trim(),
-          totalSessions: int.tryParse(_totalSessionsC.text.trim()) ?? 0,
-          remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
-          membershipStartAt: _passStart,
-          membershipEndAt: _passEnd,
-          membershipPaused: _membershipPaused,
-        ),
+        builder:
+            (_) => MembershipContractPage(
+              memberId: widget.memberId,
+              memberName: _nameC.text.trim(),
+              trainerName: _trainerC.text.trim(),
+              lessonType: _lessonType.trim(),
+              totalSessions: int.tryParse(_totalSessionsC.text.trim()) ?? 0,
+              remainingSessions:
+                  int.tryParse(_remainSessionsC.text.trim()) ?? 0,
+              membershipStartAt: _passStart,
+              membershipEndAt: _passEnd,
+              membershipPaused: _membershipPaused,
+            ),
       ),
     );
 
@@ -6352,16 +6231,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Future<void> _openContractHistorySheet() async {
     if (!await _guardTierFeature(AppTierFeatureKey.contractHistory)) return;
 
-    final items = _buildContractHistoryItems()
-        .map(
-          (item) => AifcContractHistorySheetItem(
-            title: item.title,
-            subtitle: item.subtitle,
-            badge: item.badge,
-            isCurrent: item.isCurrent,
-          ),
-        )
-        .toList();
+    final items =
+        _buildContractHistoryItems()
+            .map(
+              (item) => AifcContractHistorySheetItem(
+                title: item.title,
+                subtitle: item.subtitle,
+                badge: item.badge,
+                isCurrent: item.isCurrent,
+              ),
+            )
+            .toList();
 
     final action = await AifcContractHistoryChatSheet.show(
       context: context,
@@ -6379,11 +6259,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Future<void> _openTrainingLogConsent() async {
     final agreed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => TrainingLogConsentPage(
-          onAgree: _isPersonalWorkspace
-              ? () => _persistTrainingLogConsent(true)
-              : null,
-        ),
+        builder:
+            (_) => TrainingLogConsentPage(
+              onAgree:
+                  _isPersonalWorkspace
+                      ? () => _persistTrainingLogConsent(true)
+                      : null,
+            ),
       ),
     );
 
@@ -6415,8 +6297,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
         ownerUid: owner,
         memberId: widget.memberId,
         access: _tierAccess,
-        loadAccess: () =>
-            AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+        loadAccess:
+            () => AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
         entryPoint: 'client_card_training_log',
       );
       if (!allowed || !mounted) return;
@@ -6430,11 +6312,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
         !_trainingLogConsentAgreed) {
       final agreed = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (_) => TrainingLogConsentPage(
-            onAgree: _isPersonalWorkspace
-                ? () => _persistTrainingLogConsent(true)
-                : null,
-          ),
+          builder:
+              (_) => TrainingLogConsentPage(
+                onAgree:
+                    _isPersonalWorkspace
+                        ? () => _persistTrainingLogConsent(true)
+                        : null,
+              ),
         ),
       );
 
@@ -6461,16 +6345,18 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogPage(
-          memberId: widget.memberId,
-          memberName: _nameC.text.trim(),
-          memberPhone: _phoneC.text.trim(),
-          totalSessions: int.tryParse(_totalSessionsC.text.trim()) ?? 0,
-          remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
-          lastLogAt: _lastLogAt,
-          personalOwnerUid:
-              _isPersonalWorkspace ? widget.personalOwnerUid!.trim() : null,
-        ),
+        builder:
+            (_) => PersonalTrainingLogPage(
+              memberId: widget.memberId,
+              memberName: _nameC.text.trim(),
+              memberPhone: _phoneC.text.trim(),
+              totalSessions: int.tryParse(_totalSessionsC.text.trim()) ?? 0,
+              remainingSessions:
+                  int.tryParse(_remainSessionsC.text.trim()) ?? 0,
+              lastLogAt: _lastLogAt,
+              personalOwnerUid:
+                  _isPersonalWorkspace ? widget.personalOwnerUid!.trim() : null,
+            ),
       ),
     );
 
@@ -6561,12 +6447,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _submitAndStay() async {
-    if (_isSaving) return;
+    final trace = PersonalMemberSaveTrace.start();
+    trace.record(
+      PersonalMemberSaveTraceStage.saveButtonTap,
+      PersonalMemberSaveTraceStatus.start,
+    );
+    if (_isSaving) {
+      trace.record(
+        PersonalMemberSaveTraceStage.saveButtonTap,
+        PersonalMemberSaveTraceStatus.fail,
+        outcome: 'IGNORED_BUSY',
+      );
+      return;
+    }
+    trace.record(
+      PersonalMemberSaveTraceStage.saveButtonTap,
+      PersonalMemberSaveTraceStatus.ok,
+    );
     setState(() {
       _isSaving = true;
     });
+    _accountLinkCompletedDuringSave = false;
     try {
-      await _submitAndStayOnce();
+      await _submitAndStayOnce(trace);
     } finally {
       if (mounted) {
         setState(() {
@@ -6574,12 +6477,62 @@ class _ClientCardPageState extends State<ClientCardPage> {
         });
       }
     }
+    if (!mounted || !_accountLinkCompletedDuringSave) return;
+    _accountLinkCompletedDuringSave = false;
+    await AifcAccountLinkRequiredChatSheet.showLinked(
+      context: context,
+      nickname: _safeAifcNickname,
+    );
   }
 
-  Future<void> _submitAndStayOnce() async {
+  Future<bool> _runAccountLinkRequiredFlow() async {
+    if (_accountLinkSheetOpen || !mounted) return false;
+    _accountLinkSheetOpen = true;
+    try {
+      final shouldConnect = await AifcAccountLinkRequiredChatSheet.show(
+        context: context,
+        nickname: _safeAifcNickname,
+      );
+      if (!mounted || !shouldConnect) return false;
+
+      final ownerUid = _personalOwnerUid;
+      final authUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+      if (ownerUid.isEmpty || authUid != ownerUid) {
+        _showAifcToast('현재 계정 정보를 확인하지 못했어요. 입력한 내용은 그대로 유지했어요.');
+        return false;
+      }
+
+      try {
+        final linked = await AccountConnectionDialog.show(
+          context: context,
+          accountService: AppAccountService.instance,
+          expectedUid: ownerUid,
+        );
+        return mounted && linked != null;
+      } catch (error) {
+        if (mounted) {
+          _showAifcToast(appAccountErrorMessage(error));
+        }
+        return false;
+      }
+    } finally {
+      _accountLinkSheetOpen = false;
+    }
+  }
+
+  Future<void> _submitAndStayOnce(PersonalMemberSaveTrace trace) async {
     if (!_isEditMode && _isPersonalWorkspace && !_newCardAccessAllowed) {
+      trace.record(
+        PersonalMemberSaveTraceStage.localValidate,
+        PersonalMemberSaveTraceStatus.fail,
+        outcome: 'ACCESS_BLOCKED',
+      );
       return;
     }
+    trace.record(
+      PersonalMemberSaveTraceStage.localValidate,
+      PersonalMemberSaveTraceStatus.start,
+    );
     _validationFocusCoordinator.cancelPending();
     _normalizeBirthInput();
     final missingRequiredFields = _missingRequiredFields();
@@ -6598,6 +6551,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
       'missingCount=${missingRequiredFields.length}',
     );
     if (!valid) {
+      trace.record(
+        PersonalMemberSaveTraceStage.localValidate,
+        PersonalMemberSaveTraceStatus.fail,
+        outcome: 'REQUIRED_FIELD_INVALID',
+      );
       setState(() {
         _showRequiredFieldsNotice = true;
       });
@@ -6622,14 +6580,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
     );
 
     if (!phoneValidation.isValid) {
+      trace.record(
+        PersonalMemberSaveTraceStage.localValidate,
+        PersonalMemberSaveTraceStatus.fail,
+        outcome: 'PHONE_INVALID',
+      );
       setState(() {
         _showRequiredFieldsNotice = true;
       });
 
-      await _scrollToBasicInfoField(
-        _phoneFieldKey,
-        focusNode: _phoneFocusNode,
-      );
+      await _scrollToBasicInfoField(_phoneFieldKey, focusNode: _phoneFocusNode);
 
       if (!mounted) return;
 
@@ -6643,14 +6603,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
     );
 
     if (!birthValidation.isValid) {
+      trace.record(
+        PersonalMemberSaveTraceStage.localValidate,
+        PersonalMemberSaveTraceStatus.fail,
+        outcome: 'BIRTH_DATE_INVALID',
+      );
       setState(() {
         _showRequiredFieldsNotice = true;
       });
 
-      await _scrollToBasicInfoField(
-        _birthFieldKey,
-        focusNode: _birthFocusNode,
-      );
+      await _scrollToBasicInfoField(_birthFieldKey, focusNode: _birthFocusNode);
 
       if (!mounted) return;
 
@@ -6658,11 +6620,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return;
     }
 
+    trace.record(
+      PersonalMemberSaveTraceStage.localValidate,
+      PersonalMemberSaveTraceStatus.ok,
+    );
+    trace.record(
+      PersonalMemberSaveTraceStage.phoneDuplicateCheck,
+      PersonalMemberSaveTraceStatus.start,
+    );
     final phoneAvailable = await _ensurePhoneIsNotDuplicatedBeforeSave();
 
     if (!phoneAvailable) {
+      trace.record(
+        PersonalMemberSaveTraceStage.phoneDuplicateCheck,
+        PersonalMemberSaveTraceStatus.fail,
+        outcome: 'DUPLICATE_FOUND',
+      );
       return;
     }
+    trace.record(
+      PersonalMemberSaveTraceStage.phoneDuplicateCheck,
+      PersonalMemberSaveTraceStatus.ok,
+      outcome: _isPersonalWorkspace ? 'SERVER_ENFORCED' : 'AVAILABLE',
+    );
 
     if (!_membershipNotRegistered) {
       _lastRegisteredAt ??= DateTime.now();
@@ -6678,13 +6658,18 @@ class _ClientCardPageState extends State<ClientCardPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(color: kPagePrimary),
-        ),
+        builder:
+            (_) => const Center(
+              child: CircularProgressIndicator(color: kPagePrimary),
+            ),
       );
     }
 
     try {
+      trace.record(
+        PersonalMemberSaveTraceStage.uiSuccess,
+        PersonalMemberSaveTraceStatus.start,
+      );
       if (_isPersonalWorkspace && !_isEditMode) {
         final result = await PersonalMemberCardSaveService(
           uid: widget.personalOwnerUid!.trim(),
@@ -6702,6 +6687,21 @@ class _ClientCardPageState extends State<ClientCardPage> {
           remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
           lessonsNotRegistered: _lessonsNotRegistered,
           note: _noteC.text.trim(),
+          membershipGrade: _membershipGrade,
+          membership: PersonalMemberMembershipUpdate(
+            notRegistered: _membershipNotRegistered,
+            termMonths: _termMonths,
+            customDays: _customDays,
+            startAt: _passStart,
+            endAt: _passEnd,
+            days: _passDays(),
+            lastRegisteredAt: _lastRegisteredAt,
+            reregisterCount: _reregisterCount,
+            lastReregisterAt: _lastReregisterAt,
+          ),
+          anniversaryDate: _anniversaryDate,
+          anniversaryLabel:
+              _anniversaryDate == null ? null : _anniversaryLabelC.text.trim(),
           selectedGroupId: _selectedGroupId,
           canonicalCustomGroupIds:
               _personalGroupOptions.map((item) => item.id).toSet(),
@@ -6710,6 +6710,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 _selectedGroupId == '__ungrouped__' ? null : _selectedGroupId,
             personalTagIds: _selectedPersonalTagIds,
           ),
+          trace: trace,
         );
         await _runPostCanonicalSaveTasks();
         if (!mounted) return;
@@ -6717,6 +6718,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
           Navigator.of(context).pop();
         }
         if (!mounted) return;
+        trace.record(
+          PersonalMemberSaveTraceStage.uiSuccess,
+          PersonalMemberSaveTraceStatus.ok,
+        );
         Navigator.of(context).pop(result);
         return;
       }
@@ -6738,6 +6743,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           remainingSessions: int.tryParse(_remainSessionsC.text.trim()) ?? 0,
           lessonsNotRegistered: _lessonsNotRegistered,
           note: _noteC.text.trim(),
+          membershipGrade: _membershipGrade,
           membership: PersonalMemberMembershipUpdate(
             notRegistered: _membershipNotRegistered,
             termMonths: _termMonths,
@@ -6762,6 +6768,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             ),
             personalTagIds: _selectedPersonalTagIds,
           ),
+          trace: trace,
         );
         final postSaveSucceeded = await _runPostCanonicalSaveTasks();
         if (!mounted) return;
@@ -6770,19 +6777,25 @@ class _ClientCardPageState extends State<ClientCardPage> {
         }
         await _loadFromFirestore();
         if (!mounted) return;
+        trace.record(
+          PersonalMemberSaveTraceStage.uiSuccess,
+          PersonalMemberSaveTraceStatus.ok,
+          outcome: postSaveSucceeded ? 'SUCCESS' : 'PARTIAL_POST_SAVE',
+        );
         _showAifcToast(
           !updateResult.scheduleNameSyncSucceeded
               ? '회원 정보는 저장했지만 일정 이름 동기화에 실패했어요. 다시 시도해주세요.'
               : postSaveSucceeded
-                  ? '회원 정보를 저장했어요.'
-                  : '회원 정보는 저장했지만 일부 화면 설정을 정리하지 못했어요.',
+              ? '회원 정보를 저장했어요.'
+              : '회원 정보는 저장했지만 일부 화면 설정을 정리하지 못했어요.',
         );
         return;
       }
 
       final raw = _collectFormMap(includeRegisteredAt: true);
-      final docRef =
-          FirebaseFirestore.instance.collection('members').doc(widget.memberId);
+      final docRef = FirebaseFirestore.instance
+          .collection('members')
+          .doc(widget.memberId);
 
       final preSnap = await docRef.get();
       final bool isNew = !preSnap.exists;
@@ -6832,10 +6845,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _maybeShowClientCardNudges();
       });
     } catch (e) {
+      trace.record(
+        PersonalMemberSaveTraceStage.uiSuccess,
+        personalMemberSaveTraceFailureStatus(e),
+        outcome: personalMemberSaveTraceFailureOutcome(e),
+        errorCode: personalMemberUpdateErrorCode(e),
+      );
       if (mounted && Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
-      if (mounted) {
+      final authUser = FirebaseAuth.instance.currentUser;
+      final canResumeLinkedProfile =
+          personalMemberUpdateNeedsLinkedProfileCompletion(e) &&
+          authUser != null &&
+          !authUser.isAnonymous &&
+          authUser.uid.trim() == _personalOwnerUid;
+      if (mounted &&
+          (personalMemberUpdateRequiresAccountLink(e) ||
+              canResumeLinkedProfile)) {
+        _accountLinkCompletedDuringSave = await _runAccountLinkRequiredFlow();
+      } else if (mounted) {
         _showAifcToast(personalMemberUpdateErrorMessage(e));
       }
     }
@@ -6844,7 +6873,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
   Future<void> _resetForm() async {
     final ok = await _showAifcConfirm(
       title: '입력 내용을 초기화할까요?',
-      message: '현재 입력한 내용과 저장된 초안을 초기화합니다.\n'
+      message:
+          '현재 입력한 내용과 저장된 초안을 초기화합니다.\n'
           '이미 저장된 회원 정보는 저장 버튼을 누르기 전까지 바뀌지 않아요.',
       cancelText: '취소',
       confirmText: '리셋',
@@ -6881,10 +6911,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
       _totalSessionsC.text = '0';
       _remainSessionsC.text = '0';
 
-      _membershipNotRegistered = false;
+      _membershipNotRegistered = true;
       _termMonths = null;
       _customDays = null;
-      _passStart = widget.initialVisitDate;
+      _passStart = null;
       _passEnd = null;
       _lastRegisteredAt = null;
       _noShowDeductedCount = 0;
@@ -6937,9 +6967,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return '강사';
     }
 
-    final cleaned = value.endsWith('님')
-        ? value.substring(0, value.length - 1).trim()
-        : value;
+    final cleaned =
+        value.endsWith('님')
+            ? value.substring(0, value.length - 1).trim()
+            : value;
 
     return cleaned.isEmpty ? '강사' : cleaned;
   }
@@ -6949,7 +6980,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
       context: context,
       nickname: _safeAifcNickname,
       title: '회원 정보를 삭제할까요?',
-      message: '삭제하면 회원리스트에서는 즉시 사라집니다.\n\n'
+      message:
+          '삭제하면 회원리스트에서는 즉시 사라집니다.\n\n'
           '단, 복구 요청을 위해 삭제일 기준 7일간 보관됩니다.\n'
           '복구가 필요한 경우 고객센터로 문의해주세요.',
       cancelText: '취소',
@@ -7004,9 +7036,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {
         return Padding(
@@ -7021,10 +7051,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             children: [
               const Text(
                 'Special Note',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -7075,8 +7102,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
     if (cleanMemberId.isEmpty) return;
 
     try {
-      Query<Map<String, dynamic>> query =
-          FirebaseFirestore.instance.collection('schedules');
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection(
+        'schedules',
+      );
       if (_isPersonalWorkspace) {
         final authUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
         if (authUid.isEmpty || authUid != _personalOwnerUid) {
@@ -7105,28 +7133,24 @@ class _ClientCardPageState extends State<ClientCardPage> {
         final chunk = snap.docs.skip(i).take(chunkSize);
 
         for (final doc in chunk) {
-          batch.set(
-            doc.reference,
-            {
-              'memberId': FieldValue.delete(),
-              'phone': FieldValue.delete(),
-              'totalSessions': FieldValue.delete(),
-              'remainingSessions': FieldValue.delete(),
-              'remainSessions': FieldValue.delete(),
-              'sessionSnapshotTotal': FieldValue.delete(),
-              'sessionSnapshotRemainBefore': FieldValue.delete(),
-              'sessionSnapshotRemainAfter': FieldValue.delete(),
-              'sessionSnapshotDoneBefore': FieldValue.delete(),
-              'sessionSnapshotDoneAfter': FieldValue.delete(),
-              'sessionSnapshotLessonNumber': FieldValue.delete(),
-              'sessionSnapshotLabel': FieldValue.delete(),
-              'linkedMemberDeleted': true,
-              'deletedMemberId': cleanMemberId,
-              'deletedMemberName': _nameC.text.trim(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
+          batch.set(doc.reference, {
+            'memberId': FieldValue.delete(),
+            'phone': FieldValue.delete(),
+            'totalSessions': FieldValue.delete(),
+            'remainingSessions': FieldValue.delete(),
+            'remainSessions': FieldValue.delete(),
+            'sessionSnapshotTotal': FieldValue.delete(),
+            'sessionSnapshotRemainBefore': FieldValue.delete(),
+            'sessionSnapshotRemainAfter': FieldValue.delete(),
+            'sessionSnapshotDoneBefore': FieldValue.delete(),
+            'sessionSnapshotDoneAfter': FieldValue.delete(),
+            'sessionSnapshotLessonNumber': FieldValue.delete(),
+            'sessionSnapshotLabel': FieldValue.delete(),
+            'linkedMemberDeleted': true,
+            'deletedMemberId': cleanMemberId,
+            'deletedMemberName': _nameC.text.trim(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         }
 
         await batch.commit();
@@ -7142,9 +7166,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(color: kPagePrimary),
-        ),
+        builder:
+            (_) => const Center(
+              child: CircularProgressIndicator(color: kPagePrimary),
+            ),
       );
     }
 
@@ -7209,10 +7234,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       hintText: hint,
       suffixText: suffixText,
       suffixIcon: suffixIcon,
-      errorStyle: const TextStyle(
-        height: 0,
-        fontSize: 0,
-      ),
+      errorStyle: const TextStyle(height: 0, fontSize: 0),
       errorMaxLines: 1,
       floatingLabelBehavior: FloatingLabelBehavior.auto,
       filled: true,
@@ -7232,17 +7254,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xFFEF4444),
-          width: 1.4,
-        ),
+        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.4),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xFFEF4444),
-          width: 1.6,
-        ),
+        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.6),
       ),
     );
   }
@@ -7284,17 +7300,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '이전',
-                onPressed: _basicInfoPageIndex == 0
-                    ? null
-                    : () {
-                        _basicInfoPageController.previousPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _basicInfoPageIndex == 0
+                        ? null
+                        : () {
+                          _basicInfoPageController.previousPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_left_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
             AnimatedOpacity(
@@ -7302,17 +7321,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '다음',
-                onPressed: _basicInfoPageIndex == 1
-                    ? null
-                    : () {
-                        _basicInfoPageController.nextPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _basicInfoPageIndex == 1
+                        ? null
+                        : () {
+                          _basicInfoPageController.nextPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_right_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
           ],
@@ -7340,17 +7362,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '이전',
-                onPressed: _memberSetupPageIndex == 0
-                    ? null
-                    : () {
-                        _memberSetupPageController.previousPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _memberSetupPageIndex == 0
+                        ? null
+                        : () {
+                          _memberSetupPageController.previousPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_left_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
             AnimatedOpacity(
@@ -7358,17 +7383,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '다음',
-                onPressed: _memberSetupPageIndex == 1
-                    ? null
-                    : () {
-                        _memberSetupPageController.nextPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _memberSetupPageIndex == 1
+                        ? null
+                        : () {
+                          _memberSetupPageController.nextPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_right_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
           ],
@@ -7415,17 +7443,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '이전',
-                onPressed: _bodyHealthPageIndex == 0
-                    ? null
-                    : () {
-                        _bodyHealthPageController.previousPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _bodyHealthPageIndex == 0
+                        ? null
+                        : () {
+                          _bodyHealthPageController.previousPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_left_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
             AnimatedOpacity(
@@ -7433,17 +7464,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '다음',
-                onPressed: _bodyHealthPageIndex == 1
-                    ? null
-                    : () {
-                        _bodyHealthPageController.nextPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _bodyHealthPageIndex == 1
+                        ? null
+                        : () {
+                          _bodyHealthPageController.nextPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_right_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
           ],
@@ -7490,17 +7524,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '이전',
-                onPressed: _memoPageIndex == 0
-                    ? null
-                    : () {
-                        _memoPageController.previousPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _memoPageIndex == 0
+                        ? null
+                        : () {
+                          _memoPageController.previousPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_left_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
             AnimatedOpacity(
@@ -7508,17 +7545,20 @@ class _ClientCardPageState extends State<ClientCardPage> {
               duration: const Duration(milliseconds: 180),
               child: IconButton(
                 tooltip: '다음',
-                onPressed: _memoPageIndex == 1
-                    ? null
-                    : () {
-                        _memoPageController.nextPage(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                onPressed:
+                    _memoPageIndex == 1
+                        ? null
+                        : () {
+                          _memoPageController.nextPage(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
                 icon: const Icon(Icons.chevron_right_rounded),
-                visualDensity:
-                    const VisualDensity(horizontal: -3, vertical: -3),
+                visualDensity: const VisualDensity(
+                  horizontal: -3,
+                  vertical: -3,
+                ),
               ),
             ),
           ],
@@ -7577,9 +7617,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final diff = target.difference(today).inDays;
 
-    final dday = diff > 0
-        ? 'D-$diff'
-        : diff == 0
+    final dday =
+        diff > 0
+            ? 'D-$diff'
+            : diff == 0
             ? 'D-DAY'
             : 'D+${diff.abs()}';
 
@@ -7592,7 +7633,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
     if (_anniversaryDate != null) {
       final label = _anniversaryLabelText();
       items.add(
-          'MORE 데이 $label ${DateFormat('MM.dd').format(_anniversaryDate!)}');
+        'MORE 데이 $label ${DateFormat('MM.dd').format(_anniversaryDate!)}',
+      );
     } else if (_birthDate != null) {
       items.add('MORE 데이 생일 ${DateFormat('MM.dd').format(_birthDate!)}');
     }
@@ -7613,25 +7655,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     if (_lastRegisteredAt != null) {
-      final days = DateTime.now()
-          .difference(DateTime(
-            _lastRegisteredAt!.year,
-            _lastRegisteredAt!.month,
-            _lastRegisteredAt!.day,
-          ))
-          .inDays;
+      final days =
+          DateTime.now()
+              .difference(
+                DateTime(
+                  _lastRegisteredAt!.year,
+                  _lastRegisteredAt!.month,
+                  _lastRegisteredAt!.day,
+                ),
+              )
+              .inDays;
 
       if (days >= 100) {
         items.add('레슨 시작 100일');
       }
     }
 
-    final firestoreMilestones = _careMilestones
-        .where((item) => item.isActive)
-        .map(_careMilestoneDisplayText)
-        .where((text) => text.trim().isNotEmpty)
-        .take(4)
-        .toList();
+    final firestoreMilestones =
+        _careMilestones
+            .where((item) => item.isActive)
+            .map(_careMilestoneDisplayText)
+            .where((text) => text.trim().isNotEmpty)
+            .take(4)
+            .toList();
 
     items.addAll(firestoreMilestones);
 
@@ -7693,7 +7739,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final result = await AifcInteraction.ask(
       context: context,
-      question: '아직 ${missing.join(', ')} 정보가 남아 있어요.\n'
+      question:
+          '아직 ${missing.join(', ')} 정보가 남아 있어요.\n'
           '지금 다 채우지 않아도 괜찮아요. 필요할 때 제가 다시 챙겨드릴게요.',
       inputLabel: '예: 나중에 할게요 / 지금 확인할게요',
       skipLabel: '나중에',
@@ -7740,7 +7787,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final result = await AifcInteraction.ask(
       context: context,
-      question: '이 회원님에게 기억해둘 관리 포인트가 있을까요?\n'
+      question:
+          '이 회원님에게 기억해둘 관리 포인트가 있을까요?\n'
           '예를 들면 무릎 이슈, 바디프로필 D-DAY, 재등록 체크 같은 내용이에요.',
       inputLabel: '예: 무릎 통증 주의 / 바디프로필 D-60',
       skipLabel: '나중에',
@@ -7909,13 +7957,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             danger: true,
                           );
                           if (!confirmed) return;
-                          final next = _customLessonTypes
-                              .where(
-                                (value) =>
-                                    customLessonTypeComparisonKey(value) !=
-                                    customLessonTypeComparisonKey(type),
-                              )
-                              .toList();
+                          final next =
+                              _customLessonTypes
+                                  .where(
+                                    (value) =>
+                                        customLessonTypeComparisonKey(value) !=
+                                        customLessonTypeComparisonKey(type),
+                                  )
+                                  .toList();
                           try {
                             await PersonalMemberPreferencesService(
                               uid: widget.personalOwnerUid!.trim(),
@@ -7949,8 +7998,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final value = normalizeCustomLessonType(_customLessonTypeC.text);
     if (value.isEmpty) return;
     final key = customLessonTypeComparisonKey(value);
-    if (_customLessonTypes
-        .any((item) => customLessonTypeComparisonKey(item) == key)) {
+    if (_customLessonTypes.any(
+      (item) => customLessonTypeComparisonKey(item) == key,
+    )) {
       return;
     }
     await PersonalMemberPreferencesService(
@@ -8033,8 +8083,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
       focusNode: focusNode,
       unfocusCurrent: _clearValidationFocus,
       waitForFocusSettlement: _waitForValidationFocusSettlement,
-      showKeyboard: () =>
-          SystemChannels.textInput.invokeMethod<void>('TextInput.show'),
+      showKeyboard:
+          () => SystemChannels.textInput.invokeMethod<void>('TextInput.show'),
     );
   }
 
@@ -8057,10 +8107,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<bool> _ensurePhoneIsNotDuplicatedBeforeSave() async {
-    // Personal 신규 회원은 createManagedMember transaction이 현재 UID 범위에서
-    // 중복 전화번호를 최종 판정한다. 클라이언트의 전역 members 조회는
-    // owner-scoped Rules에 의해 거부되며 저장 전 불필요한 permission-denied를 만든다.
-    if (_isPersonalWorkspace && !_isEditMode) {
+    // Personal 회원의 전화번호 중복은 create/updateManagedMember가 현재
+    // UID 범위에서 자기 자신을 제외해 최종 판정한다. 저장 전 Firestore
+    // 조회가 네트워크 장애로 callable 호출을 막지 않도록 서버 계약을 사용한다.
+    if (_isPersonalWorkspace) {
       return true;
     }
 
@@ -8070,10 +8120,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return true;
     }
 
-    final validation = validateKoreanMobilePhone(
-      phoneDigits,
-      required: true,
-    );
+    final validation = validateKoreanMobilePhone(phoneDigits, required: true);
 
     if (!validation.isValid) {
       return true;
@@ -8097,15 +8144,18 @@ class _ClientCardPageState extends State<ClientCardPage> {
         final value = target.value.trim();
         if (value.isEmpty) continue;
 
-        Query<Map<String, dynamic>> query =
-            FirebaseFirestore.instance.collection('members');
+        Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+            .collection('members');
         if (_isPersonalWorkspace) {
           query = query
               .where('trainerId', isEqualTo: _personalOwnerUid)
               .where('workspaceType', isEqualTo: 'personal');
         }
-        final snapshot =
-            await query.where(target.key, isEqualTo: value).limit(8).get();
+        final snapshot = await query
+            .where(target.key, isEqualTo: value)
+            .limit(8)
+            .get()
+            .timeout(const Duration(seconds: 8));
 
         for (final doc in snapshot.docs) {
           if (_isActiveDuplicateMemberDoc(doc)) {
@@ -8124,15 +8174,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
         return true;
       }
 
-      final names = duplicateDocs.values
-          .map((doc) => (doc.data()['name'] ?? '').toString().trim())
-          .where((name) => name.isNotEmpty)
-          .take(2)
-          .toList();
+      final names =
+          duplicateDocs.values
+              .map((doc) => (doc.data()['name'] ?? '').toString().trim())
+              .where((name) => name.isNotEmpty)
+              .take(2)
+              .toList();
 
-      final message = names.isEmpty
-          ? '같은 휴대폰 번호로 등록된 회원이 이미 있어요.'
-          : '같은 휴대폰 번호 회원이 이미 있어요: ${names.join(', ')}';
+      final message =
+          names.isEmpty
+              ? '같은 휴대폰 번호로 등록된 회원이 이미 있어요.'
+              : '같은 휴대폰 번호 회원이 이미 있어요: ${names.join(', ')}';
 
       if (!mounted) return false;
 
@@ -8141,17 +8193,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
         _showRequiredFieldsNotice = true;
       });
 
-      await _scrollToBasicInfoField(
-        _phoneFieldKey,
-        focusNode: _phoneFocusNode,
-      );
+      await _scrollToBasicInfoField(_phoneFieldKey, focusNode: _phoneFocusNode);
 
       if (!mounted) return false;
 
       _showAifcToast(message);
       return false;
     } catch (e) {
-      debugPrint('회원 휴대폰 중복 확인 실패: $e');
+      debugPrint(
+        '[MTF_MEMBER_SAVE_PREFLIGHT] task=phoneDuplicate '
+        'result=skipped errorType=${e.runtimeType}',
+      );
 
       // 네트워크 문제로 저장 전체를 막지는 않습니다.
       // 정상 연결 상태에서는 위 로직으로 중복을 차단합니다.
@@ -8223,25 +8275,28 @@ class _ClientCardPageState extends State<ClientCardPage> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: missing.map((item) {
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0xFFFCD34D)),
-                ),
-                child: Text(
-                  item,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF92400E),
-                  ),
-                ),
-              );
-            }).toList(),
+            children:
+                missing.map((item) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFFCD34D)),
+                    ),
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF92400E),
+                      ),
+                    ),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -8343,9 +8398,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final end = DateFormat('yyyy. MM. dd').format(_passEnd!);
     final daysLeft = _daysLeft();
 
-    final remainText = daysLeft == null
-        ? ''
-        : daysLeft >= 0
+    final remainText =
+        daysLeft == null
+            ? ''
+            : daysLeft >= 0
             ? ' (${daysLeft}일 남음)'
             : ' (${daysLeft.abs()}일 지남)';
 
@@ -8403,9 +8459,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.14),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -8430,9 +8484,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.10),
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.10)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -8534,15 +8586,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Widget _consentStatusChip() {
-    final color = _trainingLogConsentAgreed
-        ? const Color(0xFF16A34A)
-        : const Color(0xFFDC2626);
+    final color =
+        _trainingLogConsentAgreed
+            ? const Color(0xFF16A34A)
+            : const Color(0xFFDC2626);
 
-    final text = _trainingLogConsentAgreed
-        ? (_trainingLogConsentAgreedAt == null
-            ? '동의 완료'
-            : '동의 ${DateFormat('yyyy-MM-dd').format(_trainingLogConsentAgreedAt!)}')
-        : '동의필요';
+    final text =
+        _trainingLogConsentAgreed
+            ? (_trainingLogConsentAgreedAt == null
+                ? '동의 완료'
+                : '동의 ${DateFormat('yyyy-MM-dd').format(_trainingLogConsentAgreedAt!)}')
+            : '동의필요';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -8570,9 +8624,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return _SectionCard(
       icon: Icons.description_outlined,
       title: '레슨계약서 / 서명',
-      subtitle: _contractSignedAt == null
-          ? '레슨계약서 없이도 먼저 등록하고, 나중에 작성할 수 있어요'
-          : '서명일 ${DateFormat('yyyy-MM-dd').format(_contractSignedAt!)}',
+      subtitle:
+          _contractSignedAt == null
+              ? '레슨계약서 없이도 먼저 등록하고, 나중에 작성할 수 있어요'
+              : '서명일 ${DateFormat('yyyy-MM-dd').format(_contractSignedAt!)}',
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -8730,122 +8785,111 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Widget _basicInfoSection() {
     Widget buildNameField() => TextFormField(
-          key: _nameFieldKey,
-          controller: _nameC,
-          focusNode: _nameFocusNode,
-          decoration: _inputDecoration(
-            '이름',
-            suffixIcon: _buildAgeSuffix(),
-            requiredField: true,
-          ),
-          validator: (value) =>
-              (value == null || value.trim().isEmpty) ? '이름 입력' : null,
-          onChanged: (value) => setState(() {
+      key: _nameFieldKey,
+      controller: _nameC,
+      focusNode: _nameFocusNode,
+      decoration: _inputDecoration(
+        '이름',
+        suffixIcon: _buildAgeSuffix(),
+        requiredField: true,
+      ),
+      validator:
+          (value) => (value == null || value.trim().isEmpty) ? '이름 입력' : null,
+      onChanged:
+          (value) => setState(() {
             _headerDisplayName = value.trim();
           }),
-        );
+    );
 
     Widget buildGenderField() => DropdownButtonFormField<String>(
-          key: _genderFieldKey,
-          value: _gender,
-          isExpanded: true,
-          decoration: _inputDecoration(
-            '성별',
-            requiredField: true,
-          ),
-          items: const [
-            DropdownMenuItem(value: '미입력', child: Text('미입력')),
-            DropdownMenuItem(value: '남', child: Text('남')),
-            DropdownMenuItem(value: '여', child: Text('여')),
-          ],
-          onChanged: (value) => setState(() => _gender = value ?? '미입력'),
-        );
+      key: _genderFieldKey,
+      value: _gender,
+      isExpanded: true,
+      decoration: _inputDecoration('성별', requiredField: true),
+      items: const [
+        DropdownMenuItem(value: '미입력', child: Text('미입력')),
+        DropdownMenuItem(value: '남', child: Text('남')),
+        DropdownMenuItem(value: '여', child: Text('여')),
+      ],
+      onChanged: (value) => setState(() => _gender = value ?? '미입력'),
+    );
 
     Widget buildBirthField() => TextFormField(
-          key: _birthFieldKey,
-          controller: _birthTextC,
-          focusNode: _birthFocusNode,
-          decoration: _inputDecoration(
-            '생년월일',
-            hint: 'YYYY-MM-DD',
-            requiredField: true,
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.date_range),
-              onPressed: () async {
-                final current = _birthDate ?? _parseDate(_birthTextC.text);
-                final now = DateTime.now();
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate:
-                      current ?? DateTime(now.year - 25, now.month, now.day),
-                  firstDate: DateTime(1900),
-                  lastDate: now,
-                );
-                if (picked != null) {
-                  setState(() {
-                    _birthDate = picked;
-                    _birthTextC.text = _formatDate(picked);
-                  });
-                }
-              },
-            ),
-          ),
-          keyboardType: TextInputType.datetime,
-          inputFormatters: const [MemberBirthDateInputFormatter()],
-          textInputAction: TextInputAction.done,
-          onEditingComplete: () {
-            _normalizeBirthInput(validateField: true);
-            _birthFocusNode.unfocus();
-          },
-          onChanged: (value) {
-            setState(() {
-              _birthDate = _parseDate(value);
-            });
-          },
-          validator: (value) {
-            final result = validateMemberBirthDate(
-              value ?? '',
-              required: true,
+      key: _birthFieldKey,
+      controller: _birthTextC,
+      focusNode: _birthFocusNode,
+      decoration: _inputDecoration(
+        '생년월일',
+        hint: 'YYYY-MM-DD',
+        requiredField: true,
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.date_range),
+          onPressed: () async {
+            final current = _birthDate ?? _parseDate(_birthTextC.text);
+            final now = DateTime.now();
+            final picked = await showDatePicker(
+              context: context,
+              initialDate:
+                  current ?? DateTime(now.year - 25, now.month, now.day),
+              firstDate: DateTime(1900),
+              lastDate: now,
             );
-            return result.isValid ? null : result.errorText ?? '생년월일을 확인해주세요.';
+            if (picked != null) {
+              setState(() {
+                _birthDate = picked;
+                _birthTextC.text = _formatDate(picked);
+              });
+            }
           },
-        );
+        ),
+      ),
+      keyboardType: TextInputType.datetime,
+      inputFormatters: const [MemberBirthDateInputFormatter()],
+      textInputAction: TextInputAction.done,
+      onEditingComplete: () {
+        _normalizeBirthInput(validateField: true);
+        _birthFocusNode.unfocus();
+      },
+      onChanged: (value) {
+        setState(() {
+          _birthDate = _parseDate(value);
+        });
+      },
+      validator: (value) {
+        final result = validateMemberBirthDate(value ?? '', required: true);
+        return result.isValid ? null : result.errorText ?? '생년월일을 확인해주세요.';
+      },
+    );
 
     Widget buildJobField() => TextFormField(
-          controller: _jobC,
-          decoration: _inputDecoration(
-            '직업',
-            hint: '예: 사무직',
-          ),
-        );
+      controller: _jobC,
+      decoration: _inputDecoration('직업', hint: '예: 사무직'),
+    );
 
     Widget buildPhoneField() => TextFormField(
-          key: _phoneFieldKey,
-          controller: _phoneC,
-          focusNode: _phoneFocusNode,
-          decoration: _inputDecoration(
-            '전화번호',
-            hint: '010-1234-5678',
-            requiredField: true,
-          ),
-          keyboardType: TextInputType.phone,
-          inputFormatters: const [MemberPhoneInputFormatter()],
-          validator: (value) {
-            final result = validateKoreanMobilePhone(
-              value ?? '',
-              required: true,
-            );
-            if (!result.isValid) return '';
-            if (_phoneDuplicateMessage != null) return '';
-            return null;
-          },
-          onChanged: (_) {
-            if (_phoneDuplicateMessage != null) {
-              _phoneDuplicateMessage = null;
-            }
-            setState(() {});
-          },
-        );
+      key: _phoneFieldKey,
+      controller: _phoneC,
+      focusNode: _phoneFocusNode,
+      decoration: _inputDecoration(
+        '전화번호',
+        hint: '010-1234-5678',
+        requiredField: true,
+      ),
+      keyboardType: TextInputType.phone,
+      inputFormatters: const [MemberPhoneInputFormatter()],
+      validator: (value) {
+        final result = validateKoreanMobilePhone(value ?? '', required: true);
+        if (!result.isValid) return '';
+        if (_phoneDuplicateMessage != null) return '';
+        return null;
+      },
+      onChanged: (_) {
+        if (_phoneDuplicateMessage != null) {
+          _phoneDuplicateMessage = null;
+        }
+        setState(() {});
+      },
+    );
 
     return _ExpandableSectionCard(
       controller: _basicInfoExpansionController,
@@ -8914,8 +8958,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 child: OutlinedButton(
                                   onPressed: _openPostcodeSearch,
                                   style: OutlinedButton.styleFrom(
-                                    minimumSize:
-                                        const Size(double.infinity, 56),
+                                    minimumSize: const Size(
+                                      double.infinity,
+                                      56,
+                                    ),
                                     side: const BorderSide(color: kPageBorder),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
@@ -8984,6 +9030,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
               isCustomLessonTypeSelected: _isCustomLessonTypeSelected,
               isLessonTypeLockedByContract: _isLessonTypeLockedByContract,
               isLegacyCurrentLessonType: _isLegacyCurrentLessonType,
+              includesPersonalTaxonomy: _isPersonalWorkspace,
             ),
             child: PageView(
               controller: _memberSetupPageController,
@@ -9005,11 +9052,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               decoration: _inputDecoration('회원 상태'),
                               items: const [
                                 DropdownMenuItem(
-                                    value: '활성', child: Text('활성')),
+                                  value: '활성',
+                                  child: Text('활성'),
+                                ),
                                 DropdownMenuItem(
-                                    value: '휴면', child: Text('휴면')),
+                                  value: '휴면',
+                                  child: Text('휴면'),
+                                ),
                                 DropdownMenuItem(
-                                    value: '만료', child: Text('만료')),
+                                  value: '만료',
+                                  child: Text('만료'),
+                                ),
                               ],
                               onChanged: (v) {
                                 setState(() {
@@ -9025,15 +9078,25 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               decoration: _inputDecoration('회원 등급'),
                               items: const [
                                 DropdownMenuItem(
-                                    value: 'VVIP', child: Text('VVIP')),
+                                  value: 'VVIP',
+                                  child: Text('VVIP'),
+                                ),
                                 DropdownMenuItem(
-                                    value: 'VIP', child: Text('VIP')),
+                                  value: 'VIP',
+                                  child: Text('VIP'),
+                                ),
                                 DropdownMenuItem(
-                                    value: 'GOLD', child: Text('GOLD')),
+                                  value: 'GOLD',
+                                  child: Text('GOLD'),
+                                ),
                                 DropdownMenuItem(
-                                    value: 'SILVER', child: Text('SILVER')),
+                                  value: 'SILVER',
+                                  child: Text('SILVER'),
+                                ),
                                 DropdownMenuItem(
-                                    value: 'BRONZE', child: Text('BRONZE')),
+                                  value: 'BRONZE',
+                                  child: Text('BRONZE'),
+                                ),
                               ],
                               onChanged: (v) {
                                 setState(() {
@@ -9056,9 +9119,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           ..._lessonTypeDropdownOptions.map(
                             (value) => DropdownMenuItem<String>(
                               value: value,
-                              child: Text(
-                                value == '미입력' ? '레슨권 미등록' : value,
-                              ),
+                              child: Text(value == '미입력' ? '레슨권 미등록' : value),
                             ),
                           ),
                           const DropdownMenuItem(
@@ -9066,21 +9127,22 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             child: Text('직접입력'),
                           ),
                         ],
-                        onChanged: (_lessonsNotRegistered ||
-                                _isLessonTypeLockedByContract)
-                            ? null
-                            : (v) {
-                                setState(() {
-                                  if (v == _customLessonTypeValue) {
-                                    _isEnteringCustomLessonType = true;
-                                    _lessonType = '';
-                                  } else {
-                                    _isEnteringCustomLessonType = false;
-                                    _lessonType = v ?? '미입력';
-                                    _customLessonTypeC.clear();
-                                  }
-                                });
-                              },
+                        onChanged:
+                            (_lessonsNotRegistered ||
+                                    _isLessonTypeLockedByContract)
+                                ? null
+                                : (v) {
+                                  setState(() {
+                                    if (v == _customLessonTypeValue) {
+                                      _isEnteringCustomLessonType = true;
+                                      _lessonType = '';
+                                    } else {
+                                      _isEnteringCustomLessonType = false;
+                                      _lessonType = v ?? '미입력';
+                                      _customLessonTypeC.clear();
+                                    }
+                                  });
+                                },
                       ),
                       if (_isCustomLessonTypeSelected) ...[
                         const SizedBox(height: 10),
@@ -9088,7 +9150,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           key: _customLessonTypeFieldKey,
                           controller: _customLessonTypeC,
                           focusNode: _customLessonTypeFocusNode,
-                          enabled: !_lessonsNotRegistered &&
+                          enabled:
+                              !_lessonsNotRegistered &&
                               !_isLessonTypeLockedByContract,
                           decoration: _inputDecoration(
                             _isLessonTypeLockedByContract
@@ -9098,8 +9161,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           ),
                           validator: (value) {
                             if (!_isEnteringCustomLessonType) return null;
-                            return normalizeCustomLessonType(value ?? '')
-                                    .isEmpty
+                            return normalizeCustomLessonType(
+                                  value ?? '',
+                                ).isEmpty
                                 ? '레슨 종류를 입력해주세요.'
                                 : null;
                           },
@@ -9127,9 +9191,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
-                          onPressed: _isPersonalWorkspace
-                              ? _showCustomLessonTypeManagement
-                              : null,
+                          onPressed:
+                              _isPersonalWorkspace
+                                  ? _showCustomLessonTypeManagement
+                                  : null,
                           icon: const Icon(Icons.tune_rounded, size: 17),
                           label: const Text('레슨 종류 관리'),
                         ),
@@ -9178,9 +9243,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 Icon(
                                   Icons.home_work_outlined,
                                   size: 18,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -9190,9 +9256,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                     ),
                                   ),
                                 ),
@@ -9203,32 +9270,37 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         )
                       else
                         DropdownButtonFormField<String>(
-                          value: _groupOptions
-                                  .any((item) => item.id == _selectedGroupId)
-                              ? _selectedGroupId
-                              : '__ungrouped__',
+                          value:
+                              _groupOptions.any(
+                                    (item) => item.id == _selectedGroupId,
+                                  )
+                                  ? _selectedGroupId
+                                  : '__ungrouped__',
                           decoration: _inputDecoration('그룹설정'),
-                          items: _groupOptions.map((group) {
-                            return DropdownMenuItem<String>(
-                              value: group.id,
-                              child: Text(
-                                group.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          }).toList(),
+                          items:
+                              _groupOptions.map((group) {
+                                return DropdownMenuItem<String>(
+                                  value: group.id,
+                                  child: Text(
+                                    group.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
                           onChanged: (value) {
                             final nextId = value ?? '__ungrouped__';
-                            final nextLabel = _groupOptions
-                                .firstWhere(
-                                  (item) => item.id == nextId,
-                                  orElse: () => const _MemberGroupOption(
-                                    id: '__ungrouped__',
-                                    label: 'MORE THAN GYM',
-                                  ),
-                                )
-                                .label;
+                            final nextLabel =
+                                _groupOptions
+                                    .firstWhere(
+                                      (item) => item.id == nextId,
+                                      orElse:
+                                          () => const _MemberGroupOption(
+                                            id: '__ungrouped__',
+                                            label: 'MORE THAN GYM',
+                                          ),
+                                    )
+                                    .label;
 
                             setState(() {
                               _selectedGroupId = nextId;
@@ -9248,9 +9320,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   Icon(
                                     Icons.sell_outlined,
                                     size: 18,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                                    color:
+                                        Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 8),
                                   const Expanded(
@@ -9275,51 +9348,57 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   key: const ValueKey(
                                     'client_card_add_personal_tag',
                                   ),
-                                  avatar:
-                                      const Icon(Icons.add_rounded, size: 17),
+                                  avatar: const Icon(
+                                    Icons.add_rounded,
+                                    size: 17,
+                                  ),
                                   label: const Text('추가'),
                                   onPressed: _pickPersonalTags,
                                 ),
-                                children: _selectedPersonalTagIds.isEmpty
-                                    ? [
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(left: 4),
-                                          child: Text(
-                                            '선택된 태그 없음',
-                                            style: TextStyle(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ]
-                                    : [
-                                        for (final id
-                                            in _selectedPersonalTagIds)
+                                children:
+                                    _selectedPersonalTagIds.isEmpty
+                                        ? [
                                           Padding(
-                                            padding:
-                                                const EdgeInsets.only(right: 6),
-                                            child: Chip(
-                                              visualDensity:
-                                                  VisualDensity.compact,
-                                              label: ConstrainedBox(
-                                                constraints:
-                                                    const BoxConstraints(
-                                                  maxWidth: 124,
-                                                ),
-                                                child: Text(
-                                                  _personalTagName(id),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
+                                            padding: const EdgeInsets.only(
+                                              left: 4,
+                                            ),
+                                            child: Text(
+                                              '선택된 태그 없음',
+                                              style: TextStyle(
+                                                color:
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                fontSize: 12,
                                               ),
                                             ),
                                           ),
-                                      ],
+                                        ]
+                                        : [
+                                          for (final id
+                                              in _selectedPersonalTagIds)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 6,
+                                              ),
+                                              child: Chip(
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                label: ConstrainedBox(
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                        maxWidth: 124,
+                                                      ),
+                                                  child: Text(
+                                                    _personalTagName(id),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                               ),
                             ],
                           ),
@@ -9395,11 +9474,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       _tapDateField(
                         label: '최근 재등록일',
                         text: _formatDate(_lastReregisterAt),
-                        onTap: () => _pickDate(
-                          current: _lastReregisterAt,
-                          onPicked: (d) =>
-                              setState(() => _lastReregisterAt = d),
-                        ),
+                        onTap:
+                            () => _pickDate(
+                              current: _lastReregisterAt,
+                              onPicked:
+                                  (d) => setState(() => _lastReregisterAt = d),
+                            ),
                       ),
                     ],
                   ),
@@ -9515,9 +9595,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     child: Row(
                       children: [
                         _SoftInfoChip(
-                          label: _lessonsNotRegistered
-                              ? '레슨 미등록'
-                              : '레슨 등록 · 완료 $done회',
+                          label:
+                              _lessonsNotRegistered
+                                  ? '레슨 미등록'
+                                  : '레슨 등록 · 완료 $done회',
                         ),
                         const SizedBox(width: 8),
                         _SoftInfoChip(label: '총 $total / 잔여 $remain'),
@@ -9604,7 +9685,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     materialTapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
                                     visualDensity: const VisualDensity(
-                                        horizontal: -2, vertical: -2),
+                                      horizontal: -2,
+                                      vertical: -2,
+                                    ),
                                     selected:
                                         _termMonths == m && _customDays == null,
                                     onSelected: (sel) {
@@ -9649,26 +9732,36 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   child: _tapDateField(
                                     label: '시작일',
                                     text: _formatDate(_passStart),
-                                    onTap: () => _pickDate(
-                                      current: _passStart,
-                                      first: DateTime(1900),
-                                      last: DateTime(DateTime.now().year + 20),
-                                      onPicked: (d) => setState(() {
-                                        _passStart = d;
-                                        if (_termMonths != null) {
-                                          _passEnd = d.add(
-                                            Duration(
-                                                days:
-                                                    _approxDays(_termMonths!) -
-                                                        1),
-                                          );
-                                        } else if (_customDays != null) {
-                                          _passEnd = d.add(
-                                            Duration(days: _customDays! - 1),
-                                          );
-                                        }
-                                      }),
-                                    ),
+                                    onTap:
+                                        () => _pickDate(
+                                          current: _passStart,
+                                          first: DateTime(1900),
+                                          last: DateTime(
+                                            DateTime.now().year + 20,
+                                          ),
+                                          onPicked:
+                                              (d) => setState(() {
+                                                _passStart = d;
+                                                if (_termMonths != null) {
+                                                  _passEnd = d.add(
+                                                    Duration(
+                                                      days:
+                                                          _approxDays(
+                                                            _termMonths!,
+                                                          ) -
+                                                          1,
+                                                    ),
+                                                  );
+                                                } else if (_customDays !=
+                                                    null) {
+                                                  _passEnd = d.add(
+                                                    Duration(
+                                                      days: _customDays! - 1,
+                                                    ),
+                                                  );
+                                                }
+                                              }),
+                                        ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -9676,27 +9769,35 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   child: _tapDateField(
                                     label: '종료일',
                                     text: _formatDate(_passEnd),
-                                    onTap: () => _pickDate(
-                                      current: _passEnd,
-                                      first: _passStart ?? DateTime(1900),
-                                      last: DateTime(DateTime.now().year + 20),
-                                      onPicked: (d) => setState(() {
-                                        _passEnd = d;
-                                        if (_passStart != null) {
-                                          final s = DateTime(
-                                            _passStart!.year,
-                                            _passStart!.month,
-                                            _passStart!.day,
-                                          );
-                                          final e =
-                                              DateTime(d.year, d.month, d.day);
-                                          final days =
-                                              e.difference(s).inDays + 1;
-                                          _termMonths = null;
-                                          _customDays = days;
-                                        }
-                                      }),
-                                    ),
+                                    onTap:
+                                        () => _pickDate(
+                                          current: _passEnd,
+                                          first: _passStart ?? DateTime(1900),
+                                          last: DateTime(
+                                            DateTime.now().year + 20,
+                                          ),
+                                          onPicked:
+                                              (d) => setState(() {
+                                                _passEnd = d;
+                                                if (_passStart != null) {
+                                                  final s = DateTime(
+                                                    _passStart!.year,
+                                                    _passStart!.month,
+                                                    _passStart!.day,
+                                                  );
+                                                  final e = DateTime(
+                                                    d.year,
+                                                    d.month,
+                                                    d.day,
+                                                  );
+                                                  final days =
+                                                      e.difference(s).inDays +
+                                                      1;
+                                                  _termMonths = null;
+                                                  _customDays = days;
+                                                }
+                                              }),
+                                        ),
                                   ),
                                 ),
                               ],
@@ -9711,7 +9812,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                       '기간 ${_termMonths != null ? '${_termMonths}개월' : (_customDays != null ? '${_customDays}일' : '-')}',
                                 ),
                                 _SoftInfoChip(
-                                    label: '총 ${_passDays() ?? '-'}일'),
+                                  label: '총 ${_passDays() ?? '-'}일',
+                                ),
                                 _SoftInfoChip(
                                   label:
                                       '남은 ${_daysLeft()?.toString() ?? '-'}일',
@@ -9721,17 +9823,23 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             const SizedBox(height: 12),
                             Container(
                               width: double.infinity,
-                              padding:
-                                  const EdgeInsets.fromLTRB(12, 11, 12, 11),
+                              padding: const EdgeInsets.fromLTRB(
+                                12,
+                                11,
+                                12,
+                                11,
+                              ),
                               decoration: BoxDecoration(
-                                color: _membershipPaused
-                                    ? const Color(0xFFFFF1F2)
-                                    : const Color(0xFFF8FAFC),
+                                color:
+                                    _membershipPaused
+                                        ? const Color(0xFFFFF1F2)
+                                        : const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: _membershipPaused
-                                      ? const Color(0xFFFCA5A5)
-                                      : kPageBorder,
+                                  color:
+                                      _membershipPaused
+                                          ? const Color(0xFFFCA5A5)
+                                          : kPageBorder,
                                 ),
                               ),
                               child: Row(
@@ -9740,20 +9848,23 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     width: 10,
                                     height: 10,
                                     decoration: BoxDecoration(
-                                      color: _membershipPaused
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF10B981),
+                                      color:
+                                          _membershipPaused
+                                              ? const Color(0xFFEF4444)
+                                              : const Color(0xFF10B981),
                                       shape: BoxShape.circle,
-                                      boxShadow: _membershipPaused
-                                          ? [
-                                              BoxShadow(
-                                                color: const Color(0xFFEF4444)
-                                                    .withOpacity(0.45),
-                                                blurRadius: 8,
-                                                spreadRadius: 1,
-                                              ),
-                                            ]
-                                          : null,
+                                      boxShadow:
+                                          _membershipPaused
+                                              ? [
+                                                BoxShadow(
+                                                  color: const Color(
+                                                    0xFFEF4444,
+                                                  ).withOpacity(0.45),
+                                                  blurRadius: 8,
+                                                  spreadRadius: 1,
+                                                ),
+                                              ]
+                                              : null,
                                     ),
                                   ),
                                   const SizedBox(width: 9),
@@ -9767,9 +9878,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                               ? '회원권 정지중'
                                               : '회원권 진행중',
                                           style: TextStyle(
-                                            color: _membershipPaused
-                                                ? const Color(0xFFB91C1C)
-                                                : kPageText,
+                                            color:
+                                                _membershipPaused
+                                                    ? const Color(0xFFB91C1C)
+                                                    : kPageText,
                                             fontSize: 12.8,
                                             fontWeight: FontWeight.w900,
                                           ),
@@ -9791,8 +9903,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                                       _membershipResumeDueAt,
                                                 ),
                                               ].whereType<String>().map(
-                                                    _buildMembershipPauseStatusChip,
-                                                  ),
+                                                _buildMembershipPauseStatusChip,
+                                              ),
                                             ],
                                           ),
                                         ] else ...[
@@ -9815,10 +9927,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              color: _membershipPaused
-                                                  ? const Color(0xFFB91C1C)
-                                                      .withOpacity(0.72)
-                                                  : kPagePrimary,
+                                              color:
+                                                  _membershipPaused
+                                                      ? const Color(
+                                                        0xFFB91C1C,
+                                                      ).withOpacity(0.72)
+                                                      : kPagePrimary,
                                               fontSize: 10.8,
                                               height: 1.3,
                                               fontWeight: FontWeight.w800,
@@ -9830,20 +9944,27 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   ),
                                   const SizedBox(width: 8),
                                   OutlinedButton(
-                                    onPressed: _membershipNotRegistered
-                                        ? null
-                                        : _toggleMembershipPause,
+                                    onPressed:
+                                        _membershipNotRegistered
+                                            ? null
+                                            : _toggleMembershipPause,
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: _membershipPaused
-                                          ? const Color(0xFFB91C1C)
-                                          : kPagePrimary,
+                                      foregroundColor:
+                                          _membershipPaused
+                                              ? const Color(0xFFB91C1C)
+                                              : kPagePrimary,
                                       side: BorderSide(
-                                        color: _membershipPaused
-                                            ? const Color(0xFFFCA5A5)
-                                            : kPagePrimary.withOpacity(0.24),
+                                        color:
+                                            _membershipPaused
+                                                ? const Color(0xFFFCA5A5)
+                                                : kPagePrimary.withOpacity(
+                                                  0.24,
+                                                ),
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 10),
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(13),
                                       ),
@@ -9864,11 +9985,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               children: [
                                 Expanded(
                                   child: OutlinedButton.icon(
-                                    onPressed: _membershipNotRegistered
-                                        ? null
-                                        : _openMembershipPauseHistorySheet,
-                                    icon: const Icon(Icons.history_rounded,
-                                        size: 18),
+                                    onPressed:
+                                        _membershipNotRegistered
+                                            ? null
+                                            : _openMembershipPauseHistorySheet,
+                                    icon: const Icon(
+                                      Icons.history_rounded,
+                                      size: 18,
+                                    ),
                                     label: const Text('정지/재개 이력'),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: kPageText,
@@ -9876,7 +10000,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                         color: kPageBorder,
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 13),
+                                        vertical: 13,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(14),
                                       ),
@@ -9886,11 +10011,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: OutlinedButton.icon(
-                                    onPressed: _membershipNotRegistered
-                                        ? null
-                                        : _openMembershipContractDraft,
-                                    icon: const Icon(Icons.assignment_outlined,
-                                        size: 18),
+                                    onPressed:
+                                        _membershipNotRegistered
+                                            ? null
+                                            : _openMembershipContractDraft,
+                                    icon: const Icon(
+                                      Icons.assignment_outlined,
+                                      size: 18,
+                                    ),
                                     label: const Text('회원권계약서'),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: kPagePrimary,
@@ -9898,7 +10026,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                         color: kPagePrimary.withOpacity(0.24),
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 13),
+                                        vertical: 13,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(14),
                                       ),
@@ -9972,9 +10101,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       if (picked == null) return;
 
-      final recognizer = TextRecognizer(
-        script: TextRecognitionScript.korean,
-      );
+      final recognizer = TextRecognizer(script: TextRecognitionScript.korean);
 
       try {
         final inputImage = InputImage.fromFilePath(picked.path);
@@ -9997,34 +10124,35 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   _ClientCardInbodyOcrData _extractClientCardInbodyData(String raw) {
-    final lines = raw
-        .split(RegExp(r'[\r\n]+'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final lines =
+        raw
+            .split(RegExp(r'[\r\n]+'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     String findValue(List<String> keywords) {
       for (int i = 0; i < lines.length; i++) {
         final compact = lines[i].replaceAll(' ', '').toLowerCase();
 
         final hasKeyword = keywords.any((keyword) {
-          return compact.contains(
-            keyword.replaceAll(' ', '').toLowerCase(),
-          );
+          return compact.contains(keyword.replaceAll(' ', '').toLowerCase());
         });
 
         if (!hasKeyword) continue;
 
-        final currentMatch =
-            RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i]);
+        final currentMatch = RegExp(
+          r'(\d{1,3}(?:[.,]\d{1,2})?)',
+        ).firstMatch(lines[i]);
 
         if (currentMatch != null) {
           return currentMatch.group(1)!.replaceAll(',', '.');
         }
 
         if (i + 1 < lines.length) {
-          final nextMatch =
-              RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i + 1]);
+          final nextMatch = RegExp(
+            r'(\d{1,3}(?:[.,]\d{1,2})?)',
+          ).firstMatch(lines[i + 1]);
 
           if (nextMatch != null) {
             return nextMatch.group(1)!.replaceAll(',', '.');
@@ -10035,8 +10163,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return '';
     }
 
-    final dateMatch =
-        RegExp(r'(20\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2})').firstMatch(raw);
+    final dateMatch = RegExp(
+      r'(20\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2})',
+    ).firstMatch(raw);
 
     return _ClientCardInbodyOcrData(
       date: dateMatch?.group(1)?.replaceAll('/', '.') ?? '',
@@ -10056,8 +10185,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
         .replaceAll('/', '-')
         .replaceAll(RegExp(r'\s+'), '');
 
-    final match =
-        RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$').firstMatch(normalized);
+    final match = RegExp(
+      r'^(\d{4})-(\d{1,2})-(\d{1,2})$',
+    ).firstMatch(normalized);
     if (match == null) return null;
 
     final y = int.tryParse(match.group(1)!);
@@ -10118,8 +10248,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
     required double? bodyFatPct,
     required double? bodyFatKg,
   }) async {
-    final memberRef =
-        FirebaseFirestore.instance.collection('members').doc(widget.memberId);
+    final memberRef = FirebaseFirestore.instance
+        .collection('members')
+        .doc(widget.memberId);
 
     final recordRef = memberRef.collection('inbody_records').doc();
 
@@ -10151,10 +10282,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           'skeletalMuscleKg': skeletalMuscleKg,
           'bodyFatPct': bodyFatPct,
           'bodyFatKg': bodyFatKg,
-          'bmi': _safeBmi(
-            double.tryParse(_heightC.text) ?? 0,
-            weightKg ?? 0,
-          ),
+          'bmi': _safeBmi(double.tryParse(_heightC.text) ?? 0, weightKg ?? 0),
         },
       },
       'updatedAt': FieldValue.serverTimestamp(),
@@ -10166,15 +10294,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
     required _ClientCardInbodyOcrData data,
   }) async {
     final dateController = TextEditingController(
-      text: data.date.trim().isEmpty
-          ? _formatInbodyMeasuredDate(DateTime.now())
-          : data.date.replaceAll('.', '-').replaceAll('/', '-'),
+      text:
+          data.date.trim().isEmpty
+              ? _formatInbodyMeasuredDate(DateTime.now())
+              : data.date.replaceAll('.', '-').replaceAll('/', '-'),
     );
 
     final weightController = TextEditingController(text: data.weight);
     final skeletalController = TextEditingController(text: data.skeletalMuscle);
-    final bodyFatPctController =
-        TextEditingController(text: data.bodyFatPercent);
+    final bodyFatPctController = TextEditingController(
+      text: data.bodyFatPercent,
+    );
     final bodyFatKgController = TextEditingController(text: data.bodyFatKg);
 
     bool saveImage = true;
@@ -10189,9 +10319,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: SafeArea(
                 top: false,
@@ -10320,21 +10448,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           onPressed: () async {
                             final measuredAt =
                                 _parseInbodyMeasuredDate(dateController.text) ??
-                                    DateTime.now();
+                                DateTime.now();
 
-                            final weightKg =
-                                _parseInbodyNumber(weightController.text);
-                            final skeletalMuscleKg =
-                                _parseInbodyNumber(skeletalController.text);
-                            final bodyFatPct =
-                                _parseInbodyNumber(bodyFatPctController.text);
-                            final bodyFatKg =
-                                _parseInbodyNumber(bodyFatKgController.text);
+                            final weightKg = _parseInbodyNumber(
+                              weightController.text,
+                            );
+                            final skeletalMuscleKg = _parseInbodyNumber(
+                              skeletalController.text,
+                            );
+                            final bodyFatPct = _parseInbodyNumber(
+                              bodyFatPctController.text,
+                            );
+                            final bodyFatKg = _parseInbodyNumber(
+                              bodyFatKgController.text,
+                            );
 
                             String? imageUrl;
                             if (saveImage) {
-                              imageUrl =
-                                  await _uploadClientCardInbodyImage(imageFile);
+                              imageUrl = await _uploadClientCardInbodyImage(
+                                imageFile,
+                              );
                             }
 
                             if (!mounted) return;
@@ -10451,7 +10584,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   onPressed: () async {
                     final initial =
                         _parseSoftDate(_femaleConditionLastStartC.text) ??
-                            DateTime.now();
+                        DateTime.now();
 
                     final picked = await showDatePicker(
                       context: context,
@@ -10459,9 +10592,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       firstDate: DateTime.now().subtract(
                         const Duration(days: 365),
                       ),
-                      lastDate: DateTime.now().add(
-                        const Duration(days: 365),
-                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
 
                     if (picked == null) return;
@@ -10548,9 +10679,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
               label: const Text('인바디 사진 읽기'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kPagePrimary,
-                side: BorderSide(
-                  color: kPagePrimary.withOpacity(0.22),
-                ),
+                side: BorderSide(color: kPagePrimary.withOpacity(0.22)),
                 minimumSize: const Size(0, 44),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -10617,8 +10746,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           Expanded(
                             child: Container(
                               height: 60,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: kPageFieldBg,
                                 borderRadius: BorderRadius.circular(14),
@@ -10655,8 +10785,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       const SizedBox(height: 10),
                       SwitchListTile.adaptive(
                         value: _inbodyNotProvided,
-                        onChanged: (v) =>
-                            setState(() => _inbodyNotProvided = v),
+                        onChanged:
+                            (v) => setState(() => _inbodyNotProvided = v),
                         activeColor: kPagePrimary,
                         contentPadding: EdgeInsets.zero,
                         title: const Text(
@@ -10699,10 +10829,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       TextFormField(
                         controller: _medicineC,
                         maxLines: 2,
-                        decoration: _inputDecoration(
-                          '복약 이력',
-                          hint: '복용 약물 기록',
-                        ),
+                        decoration: _inputDecoration('복약 이력', hint: '복용 약물 기록'),
                       ),
                       _femaleConditionSection(),
                     ],
@@ -10799,7 +10926,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
     if (_anniversaryDate != null) {
       final label = _anniversaryLabelText();
       items.add(
-          'MORE 데이 $label ${DateFormat('MM.dd').format(_anniversaryDate!)}');
+        'MORE 데이 $label ${DateFormat('MM.dd').format(_anniversaryDate!)}',
+      );
     } else if (_birthDate != null) {
       items.add('MORE 데이 생일 ${DateFormat('MM.dd').format(_birthDate!)}');
     }
@@ -10824,13 +10952,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
 
     if (_lastRegisteredAt != null) {
-      final days = DateTime.now()
-          .difference(DateTime(
-            _lastRegisteredAt!.year,
-            _lastRegisteredAt!.month,
-            _lastRegisteredAt!.day,
-          ))
-          .inDays;
+      final days =
+          DateTime.now()
+              .difference(
+                DateTime(
+                  _lastRegisteredAt!.year,
+                  _lastRegisteredAt!.month,
+                  _lastRegisteredAt!.day,
+                ),
+              )
+              .inDays;
 
       if (days >= 100) {
         items.add('레슨 시작 100일');
@@ -10841,18 +10972,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Widget _buildCareMilestoneChips() {
-    final firestoreItems = _careMilestones
-        .where((item) {
-          if (!item.isActive) return false;
+    final firestoreItems =
+        _careMilestones
+            .where((item) {
+              if (!item.isActive) return false;
 
-          if (!_autoMilestoneEnabled && item.isAuto) {
-            return false;
-          }
+              if (!_autoMilestoneEnabled && item.isAuto) {
+                return false;
+              }
 
-          return true;
-        })
-        .take(8)
-        .toList();
+              return true;
+            })
+            .take(8)
+            .toList();
 
     final autoItems = _computedAutoMilestoneTexts();
 
@@ -10875,10 +11007,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       runSpacing: 7,
       children: [
         ...autoItems.map((text) {
-          return _MilestoneChip(
-            label: text,
-            isAuto: true,
-          );
+          return _MilestoneChip(label: text, isAuto: true);
         }),
         ...firestoreItems.map((item) {
           return _MilestoneChip(
@@ -10901,11 +11030,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final autoItems = _computedAutoMilestoneTexts();
 
-    final activeItems = _careMilestones.where((item) {
-      if (!item.isActive) return false;
-      if (!_autoMilestoneEnabled && item.isAuto) return false;
-      return true;
-    }).toList();
+    final activeItems =
+        _careMilestones.where((item) {
+          if (!item.isActive) return false;
+          if (!_autoMilestoneEnabled && item.isAuto) return false;
+          return true;
+        }).toList();
 
     final doneItems = _careMilestones.where((item) => item.isDone).toList();
 
@@ -10928,28 +11058,30 @@ class _ClientCardPageState extends State<ClientCardPage> {
       memberName: _nameC.text.trim().isEmpty ? '회원' : _nameC.text.trim(),
       nickname: _trainerC.text.trim(),
       autoItems: autoItems,
-      activeItems: activeItems.map((item) {
-        return AifcCareMilestoneSheetItem(
-          id: item.id,
-          title: _careMilestoneDisplayText(item),
-          badge: badgeForActiveItem(item),
-          isAuto: item.isAuto,
-          isManual: item.isManual,
-          isDone: item.isDone,
-          canComplete: true,
-          canDelete: item.isManual,
-        );
-      }).toList(),
-      doneItems: doneItems.map((item) {
-        return AifcCareMilestoneSheetItem(
-          id: item.id,
-          title: _careMilestoneDisplayText(item),
-          badge: badgeForDoneItem(item),
-          isAuto: item.isAuto,
-          isManual: item.isManual,
-          isDone: item.isDone,
-        );
-      }).toList(),
+      activeItems:
+          activeItems.map((item) {
+            return AifcCareMilestoneSheetItem(
+              id: item.id,
+              title: _careMilestoneDisplayText(item),
+              badge: badgeForActiveItem(item),
+              isAuto: item.isAuto,
+              isManual: item.isManual,
+              isDone: item.isDone,
+              canComplete: true,
+              canDelete: item.isManual,
+            );
+          }).toList(),
+      doneItems:
+          doneItems.map((item) {
+            return AifcCareMilestoneSheetItem(
+              id: item.id,
+              title: _careMilestoneDisplayText(item),
+              badge: badgeForDoneItem(item),
+              isAuto: item.isAuto,
+              isManual: item.isManual,
+              isDone: item.isDone,
+            );
+          }).toList(),
       onComplete: (id) async {
         final item = itemById[id];
         if (item == null) return;
@@ -11021,16 +11153,18 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               onTap: () async {
                                 if (!(_tierAccess?.canUseMoreDay ?? false)) {
                                   await _guardTierFeature(
-                                      AppTierFeatureKey.moreDay);
+                                    AppTierFeatureKey.moreDay,
+                                  );
                                 }
                               },
                               decoration: _inputDecoration(
                                 'MORE 데이 제목 설정',
                                 hint: '예: 결혼기념일 / 경조사',
                               ),
-                              onChanged: (_tierAccess?.canUseMoreDay ?? false)
-                                  ? (_) => setState(() {})
-                                  : null,
+                              onChanged:
+                                  (_tierAccess?.canUseMoreDay ?? false)
+                                      ? (_) => setState(() {})
+                                      : null,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -11041,22 +11175,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               clearKey: const ValueKey(
                                 'client_card_anniversary_clear',
                               ),
-                              onClear: _anniversaryDate == null
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _anniversaryDate = null;
-                                        _anniversaryLabelC.text = '기념일';
-                                      });
-                                    },
+                              onClear:
+                                  _anniversaryDate == null
+                                      ? null
+                                      : () {
+                                        setState(() {
+                                          _anniversaryDate = null;
+                                          _anniversaryLabelC.text = '기념일';
+                                        });
+                                      },
                               onTap: () async {
                                 if (!await _guardTierFeature(
-                                    AppTierFeatureKey.moreDay)) return;
+                                  AppTierFeatureKey.moreDay,
+                                ))
+                                  return;
 
                                 await _pickDate(
                                   current: _anniversaryDate,
-                                  onPicked: (d) =>
-                                      setState(() => _anniversaryDate = d),
+                                  last: clientCardMoreDayLastDate(
+                                    DateTime.now(),
+                                  ),
+                                  onPicked:
+                                      (d) =>
+                                          setState(() => _anniversaryDate = d),
                                 );
                               },
                             ),
@@ -11151,16 +11292,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           SizedBox(
                             height: 58,
                             child: FilledButton(
-                              onPressed: _specialEventC.text.trim().isEmpty
-                                  ? null
-                                  : _addManualCareMilestone,
+                              onPressed:
+                                  _specialEventC.text.trim().isEmpty
+                                      ? null
+                                      : _addManualCareMilestone,
                               style: FilledButton.styleFrom(
                                 backgroundColor: kPagePrimary,
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor:
-                                    const Color(0xFFE5E7EB),
-                                disabledForegroundColor:
-                                    const Color(0xFF9CA3AF),
+                                disabledBackgroundColor: const Color(
+                                  0xFFE5E7EB,
+                                ),
+                                disabledForegroundColor: const Color(
+                                  0xFF9CA3AF,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -11207,9 +11351,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   onPressed: _openCareMilestoneSheet,
                                   style: TextButton.styleFrom(
                                     visualDensity: const VisualDensity(
-                                        horizontal: -3, vertical: -3),
+                                      horizontal: -3,
+                                      vertical: -3,
+                                    ),
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8),
+                                      horizontal: 8,
+                                    ),
                                     minimumSize: const Size(0, 30),
                                   ),
                                   child: const Text(
@@ -11359,14 +11506,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
       child: InputDecorator(
         decoration: _inputDecoration(
           label,
-          suffixIcon: onClear == null
-              ? const Icon(Icons.date_range)
-              : IconButton(
-                  key: clearKey,
-                  tooltip: '날짜 지우기',
-                  onPressed: onClear,
-                  icon: const Icon(Icons.clear_rounded),
-                ),
+          suffixIcon:
+              onClear == null
+                  ? const Icon(Icons.date_range)
+                  : IconButton(
+                    key: clearKey,
+                    tooltip: '날짜 지우기',
+                    onPressed: onClear,
+                    icon: const Icon(Icons.clear_rounded),
+                  ),
         ),
         child: Text(
           text.isEmpty ? '선택하세요' : text,
@@ -11428,7 +11576,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     final result = await AifcInteraction.ask(
       context: context,
-      question: '회원권 기간을 며칠로 잡아둘까요?\n'
+      question:
+          '회원권 기간을 며칠로 잡아둘까요?\n'
           '예를 들어 45일, 100일처럼 숫자로 알려주세요.',
       inputLabel: '예: 45',
       skipLabel: '나중에',
@@ -11618,9 +11767,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return DevClientCardViewport(
-      child: _buildClientCardContent(context),
-    );
+    return DevClientCardViewport(child: _buildClientCardContent(context));
   }
 
   Widget _buildClientCardContent(BuildContext context) {
@@ -11634,8 +11781,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          leading:
-              BackButton(onPressed: () => Navigator.of(context).maybePop()),
+          leading: BackButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
           title: const Text('고객카드 등록'),
         ),
         body: const Center(
@@ -11683,9 +11831,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
               Expanded(
                 child: _ClientCardBottomActionButton(
                   icon: Icons.save_outlined,
-                  label: _isSaving
-                      ? '저장 중…'
-                      : _isEditMode
+                  label:
+                      _isSaving
+                          ? '저장 중…'
+                          : _isEditMode
                           ? '수정 저장'
                           : '회원 저장',
                   filled: true,
@@ -11702,52 +11851,54 @@ class _ClientCardPageState extends State<ClientCardPage> {
             duration: const Duration(milliseconds: 260),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeOutCubic,
-            child: !_isClientCardLoaded
-                ? _buildClientCardLoadingHeader()
-                : MembershipCardFlip(
-                    key: ValueKey('membership_card_${widget.memberId}'),
-                    onBackTap: () => Navigator.of(context).maybePop(),
-                    onMoreSelected: _handleMembershipCardMoreSelected,
-                    gradientColors: _resolveCardGradient(
-                      _membershipGrade,
-                      _memberStatus,
+            child:
+                !_isClientCardLoaded
+                    ? _buildClientCardLoadingHeader()
+                    : MembershipCardFlip(
+                      key: ValueKey('membership_card_${widget.memberId}'),
+                      onBackTap: () => Navigator.of(context).maybePop(),
+                      onMoreSelected: _handleMembershipCardMoreSelected,
+                      gradientColors: _resolveCardGradient(
+                        _membershipGrade,
+                        _memberStatus,
+                      ),
+                      icChipColors: _resolveIcChipColors(_membershipGrade),
+                      representativeBadge: _representativeBadge,
+                      badges: _achievementBadges,
+                      onBadgeTap: _showBadgeBubble,
+                      avatarImage: _headerAvatarImage(),
+                      name:
+                          _nameC.text.trim().isEmpty
+                              ? '이름 미입력'
+                              : _nameC.text.trim(),
+                      phone: _prettyPhone(_phoneC.text),
+                      lessonType: _headerLessonTypeText(),
+                      totalSessions: _totalSessionValue,
+                      remainSessions: _remainSessionValue,
+                      membershipLabel: _headerMembershipLabelText(),
+                      membershipPeriod: _headerMembershipPeriodText(),
+                      daysLeft: _headerDaysLeft(),
+                      groupLabel: _membershipCardGroupLabelText(),
+                      memoText: _noteC.text.trim(),
+                      reregisterCount: _reregisterCount,
+                      noShowDeductedCount: _noShowDeductedCount,
+                      noShowUndeductedCount: _noShowUndeductedCount,
+                      serviceCount: _serviceSessionCount,
+                      firstRegisteredAt: _passStart,
+                      anniversaryLabel: _anniversaryLabelText(),
+                      anniversaryDate: _anniversaryDate,
+                      birthdayDate: _birthDate,
+                      contractSigned: _contractSigned,
+                      contractSignedAt: _contractSignedAt,
+                      consentAgreed: _trainingLogConsentAgreed,
+                      confirmTalkEnabled: _confirmTalkEnabled,
+                      onAvatarTap: _pickProfileImage,
+                      onAvatarLongPress: _clearProfileImage,
+                      onMemoTap: _jumpToNoteEditor,
+                      onContractTap: _openContract,
+                      onConsentTap: _handleConsentTapFromCard,
+                      onConfirmTalkToggle: _setConfirmTalkEnabledFromCard,
                     ),
-                    icChipColors: _resolveIcChipColors(_membershipGrade),
-                    representativeBadge: _representativeBadge,
-                    badges: _achievementBadges,
-                    onBadgeTap: _showBadgeBubble,
-                    avatarImage: _headerAvatarImage(),
-                    name: _nameC.text.trim().isEmpty
-                        ? '이름 미입력'
-                        : _nameC.text.trim(),
-                    phone: _prettyPhone(_phoneC.text),
-                    lessonType: _headerLessonTypeText(),
-                    totalSessions: _totalSessionValue,
-                    remainSessions: _remainSessionValue,
-                    membershipLabel: _headerMembershipLabelText(),
-                    membershipPeriod: _headerMembershipPeriodText(),
-                    daysLeft: _headerDaysLeft(),
-                    groupLabel: _membershipCardGroupLabelText(),
-                    memoText: _noteC.text.trim(),
-                    reregisterCount: _reregisterCount,
-                    noShowDeductedCount: _noShowDeductedCount,
-                    noShowUndeductedCount: _noShowUndeductedCount,
-                    serviceCount: _serviceSessionCount,
-                    firstRegisteredAt: _passStart,
-                    anniversaryLabel: _anniversaryLabelText(),
-                    anniversaryDate: _anniversaryDate,
-                    birthdayDate: _birthDate,
-                    contractSigned: _contractSigned,
-                    contractSignedAt: _contractSignedAt,
-                    consentAgreed: _trainingLogConsentAgreed,
-                    confirmTalkEnabled: _confirmTalkEnabled,
-                    onAvatarTap: _pickProfileImage,
-                    onAvatarLongPress: _clearProfileImage,
-                    onMemoTap: _jumpToNoteEditor,
-                    onContractTap: _openContract,
-                    onConsentTap: _handleConsentTapFromCard,
-                    onConfirmTalkToggle: _setConfirmTalkEnabledFromCard,
-                  ),
           ),
           Expanded(
             child: Form(
@@ -11857,27 +12008,28 @@ class _DaumPostcodeSearchPageState extends State<_DaumPostcodeSearchPage> {
   void initState() {
     super.initState();
 
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'DaumPostcodeChannel',
-        onMessageReceived: (message) {
-          final decoded = parsePostcodeSearchMessage(message.message);
-          if (decoded == null) return;
-          Navigator.of(context).pop(
-            _PostcodeSearchResult(
-              zonecode: decoded['zonecode']!,
-              roadAddress: decoded['roadAddress']!,
-              jibunAddress: decoded['jibunAddress']!,
-              buildingName: decoded['buildingName']!,
-            ),
+    _controller =
+        WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..addJavaScriptChannel(
+            'DaumPostcodeChannel',
+            onMessageReceived: (message) {
+              final decoded = parsePostcodeSearchMessage(message.message);
+              if (decoded == null) return;
+              Navigator.of(context).pop(
+                _PostcodeSearchResult(
+                  zonecode: decoded['zonecode']!,
+                  roadAddress: decoded['roadAddress']!,
+                  jibunAddress: decoded['jibunAddress']!,
+                  buildingName: decoded['buildingName']!,
+                ),
+              );
+            },
+          )
+          ..loadHtmlString(
+            _postcodeHtml(),
+            baseUrl: 'https://postcode.map.daum.net/',
           );
-        },
-      )
-      ..loadHtmlString(
-        _postcodeHtml(),
-        baseUrl: 'https://postcode.map.daum.net/',
-      );
   }
 
   @override
@@ -11887,9 +12039,7 @@ class _DaumPostcodeSearchPageState extends State<_DaumPostcodeSearchPage> {
       appBar: AppBar(
         title: const Text(
           '우편번호 찾기',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
         backgroundColor: Colors.white,
         foregroundColor: kPageText,
@@ -11915,55 +12065,23 @@ class AchievementIcChip extends StatelessWidget {
   List<Color> get _colors {
     switch (code) {
       case AchievementBadgeCode.lesson100:
-        return const [
-          Color(0xFF78350F),
-          Color(0xFFB45309),
-          Color(0xFFFCD34D),
-        ];
+        return const [Color(0xFF78350F), Color(0xFFB45309), Color(0xFFFCD34D)];
       case AchievementBadgeCode.bodyProfileDone:
-        return const [
-          Color(0xFF3B0764),
-          Color(0xFF7C3AED),
-          Color(0xFFDDD6FE),
-        ];
+        return const [Color(0xFF3B0764), Color(0xFF7C3AED), Color(0xFFDDD6FE)];
       case AchievementBadgeCode.competitionDone:
-        return const [
-          Color(0xFF1E3A5F),
-          Color(0xFF1D4ED8),
-          Color(0xFF93C5FD),
-        ];
+        return const [Color(0xFF1E3A5F), Color(0xFF1D4ED8), Color(0xFF93C5FD)];
       case AchievementBadgeCode.reregister10:
-        return const [
-          Color(0xFF0C4A6E),
-          Color(0xFF0369A1),
-          Color(0xFF7DD3FC),
-        ];
+        return const [Color(0xFF0C4A6E), Color(0xFF0369A1), Color(0xFF7DD3FC)];
       case AchievementBadgeCode.longTerm:
-        return const [
-          Color(0xFF064E3B),
-          Color(0xFF047857),
-          Color(0xFF6EE7B7),
-        ];
+        return const [Color(0xFF064E3B), Color(0xFF047857), Color(0xFF6EE7B7)];
       case AchievementBadgeCode.attendance:
       case AchievementBadgeCode.manual:
-        return const [
-          Color(0xFF831843),
-          Color(0xFFBE185D),
-          Color(0xFFFBCFE8),
-        ];
+        return const [Color(0xFF831843), Color(0xFFBE185D), Color(0xFFFBCFE8)];
       case AchievementBadgeCode.weddingDone:
-        return const [
-          Color(0xFF1C1917),
-          Color(0xFF57534E),
-          Color(0xFFD6D3D1),
-        ];
+        return const [Color(0xFF1C1917), Color(0xFF57534E), Color(0xFFD6D3D1)];
 
       case AchievementBadgeCode.ddayDone:
-        return const [
-          Color(0xFF312E81),
-          Color(0xFF4F46E5),
-          Color(0xFFA5B4FC),
-        ];
+        return const [Color(0xFF312E81), Color(0xFF4F46E5), Color(0xFFA5B4FC)];
     }
   }
 
@@ -11991,15 +12109,10 @@ class AchievementIcChip extends StatelessWidget {
             offset: const Offset(0, -1),
           ),
         ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.25),
-          width: 0.5,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.25), width: 0.5),
       ),
       clipBehavior: Clip.hardEdge,
-      child: CustomPaint(
-        painter: AchievementIcChipPainter(code: code),
-      ),
+      child: CustomPaint(painter: AchievementIcChipPainter(code: code)),
     );
   }
 }
@@ -12018,54 +12131,22 @@ class _AchievementBadgeBubble extends StatelessWidget {
   List<Color> get _colors {
     switch (badge.code) {
       case AchievementBadgeCode.lesson100:
-        return const [
-          Color(0xFF78350F),
-          Color(0xFFB45309),
-          Color(0xFFFCD34D),
-        ];
+        return const [Color(0xFF78350F), Color(0xFFB45309), Color(0xFFFCD34D)];
       case AchievementBadgeCode.bodyProfileDone:
-        return const [
-          Color(0xFF3B0764),
-          Color(0xFF7C3AED),
-          Color(0xFFDDD6FE),
-        ];
+        return const [Color(0xFF3B0764), Color(0xFF7C3AED), Color(0xFFDDD6FE)];
       case AchievementBadgeCode.competitionDone:
-        return const [
-          Color(0xFF1E3A5F),
-          Color(0xFF1D4ED8),
-          Color(0xFF93C5FD),
-        ];
+        return const [Color(0xFF1E3A5F), Color(0xFF1D4ED8), Color(0xFF93C5FD)];
       case AchievementBadgeCode.weddingDone:
-        return const [
-          Color(0xFF1C1917),
-          Color(0xFF57534E),
-          Color(0xFFD6D3D1),
-        ];
+        return const [Color(0xFF1C1917), Color(0xFF57534E), Color(0xFFD6D3D1)];
       case AchievementBadgeCode.ddayDone:
-        return const [
-          Color(0xFF312E81),
-          Color(0xFF4F46E5),
-          Color(0xFFA5B4FC),
-        ];
+        return const [Color(0xFF312E81), Color(0xFF4F46E5), Color(0xFFA5B4FC)];
       case AchievementBadgeCode.reregister10:
-        return const [
-          Color(0xFF0C4A6E),
-          Color(0xFF0369A1),
-          Color(0xFF7DD3FC),
-        ];
+        return const [Color(0xFF0C4A6E), Color(0xFF0369A1), Color(0xFF7DD3FC)];
       case AchievementBadgeCode.longTerm:
-        return const [
-          Color(0xFF064E3B),
-          Color(0xFF047857),
-          Color(0xFF6EE7B7),
-        ];
+        return const [Color(0xFF064E3B), Color(0xFF047857), Color(0xFF6EE7B7)];
       case AchievementBadgeCode.attendance:
       case AchievementBadgeCode.manual:
-        return const [
-          Color(0xFF831843),
-          Color(0xFFBE185D),
-          Color(0xFFFBCFE8),
-        ];
+        return const [Color(0xFF831843), Color(0xFFBE185D), Color(0xFFFBCFE8)];
     }
   }
 
@@ -12083,10 +12164,7 @@ class _AchievementBadgeBubble extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: _colors,
           ),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.24),
-            width: 0.7,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.24), width: 0.7),
           boxShadow: [
             BoxShadow(
               color: _colors.first.withOpacity(0.30),
@@ -12123,11 +12201,7 @@ class _AchievementBadgeBubble extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                AchievementIcChip(
-                  code: badge.code,
-                  width: 54,
-                  height: 40,
-                ),
+                AchievementIcChip(code: badge.code, width: 54, height: 40),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -12213,23 +12287,24 @@ class _MembershipBadgeSlotRow extends StatelessWidget {
         return Expanded(
           child: Padding(
             padding: EdgeInsets.only(right: index == 4 ? 0 : 4),
-            child: hasBadge
-                ? GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => onBadgeTap(badge),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: AchievementIcChip(
-                        code: badge!.code,
-                        width: double.infinity,
-                        height: 30,
+            child:
+                hasBadge
+                    ? GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onBadgeTap(badge),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: AchievementIcChip(
+                          code: badge!.code,
+                          width: double.infinity,
+                          height: 30,
+                        ),
                       ),
+                    )
+                    : const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 2),
+                      child: _EmptyAchievementSlot(),
                     ),
-                  )
-                : const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 2),
-                    child: _EmptyAchievementSlot(),
-                  ),
           ),
         );
       }),
@@ -12247,10 +12322,7 @@ class _EmptyAchievementSlot extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
         color: Colors.white.withOpacity(0.045),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.14),
-          width: 0.8,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.14), width: 0.8),
       ),
       child: Center(
         child: Icon(
@@ -12264,9 +12336,7 @@ class _EmptyAchievementSlot extends StatelessWidget {
 }
 
 class AchievementIcChipPainter extends CustomPainter {
-  const AchievementIcChipPainter({
-    required this.code,
-  });
+  const AchievementIcChipPainter({required this.code});
 
   final AchievementBadgeCode code;
 
@@ -12309,9 +12379,10 @@ class AchievementIcChipPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
 
-    final crossPaint = Paint()
-      ..color = Colors.white.withOpacity(0.22)
-      ..strokeWidth = 0.5;
+    final crossPaint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.22)
+          ..strokeWidth = 0.5;
 
     canvas.drawLine(Offset(0, cy), Offset(size.width, cy), crossPaint);
     canvas.drawLine(Offset(cx, 0), Offset(cx, size.height), crossPaint);
@@ -12350,33 +12421,31 @@ class AchievementIcChipPainter extends CustomPainter {
     final cupTop = cy - size.height * 0.23;
     final cupBottom = cy - size.height * 0.02;
 
-    final cupPath = Path()
-      ..moveTo(cupLeft, cupTop)
-      ..quadraticBezierTo(
-        cupLeft,
-        cupBottom,
-        cx,
-        cupBottom + size.height * 0.045,
-      )
-      ..quadraticBezierTo(
-        cupRight,
-        cupBottom,
-        cupRight,
-        cupTop,
-      )
-      ..close();
+    final cupPath =
+        Path()
+          ..moveTo(cupLeft, cupTop)
+          ..quadraticBezierTo(
+            cupLeft,
+            cupBottom,
+            cx,
+            cupBottom + size.height * 0.045,
+          )
+          ..quadraticBezierTo(cupRight, cupBottom, cupRight, cupTop)
+          ..close();
 
-    final fill = Paint()
-      ..color = Colors.white.withOpacity(0.92)
-      ..style = PaintingStyle.fill;
+    final fill =
+        Paint()
+          ..color = Colors.white.withOpacity(0.92)
+          ..style = PaintingStyle.fill;
 
     canvas.drawPath(cupPath, fill);
 
-    final handlePaint = Paint()
-      ..color = Colors.white.withOpacity(0.86)
-      ..strokeWidth = size.width * 0.035
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+    final handlePaint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.86)
+          ..strokeWidth = size.width * 0.035
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
 
     canvas.drawArc(
       Rect.fromCenter(
@@ -12430,9 +12499,10 @@ class AchievementIcChipPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
 
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.92)
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.92)
+          ..style = PaintingStyle.fill;
 
     final body = RRect.fromRectAndRadius(
       Rect.fromCenter(
@@ -12489,23 +12559,26 @@ class AchievementIcChipPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
 
-    final ribbonPaint = Paint()
-      ..color = Colors.white.withOpacity(0.82)
-      ..style = PaintingStyle.fill;
+    final ribbonPaint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.82)
+          ..style = PaintingStyle.fill;
 
-    final leftRibbon = Path()
-      ..moveTo(cx - size.width * 0.18, cy - size.height * 0.30)
-      ..lineTo(cx - size.width * 0.05, cy - size.height * 0.30)
-      ..lineTo(cx, cy - size.height * 0.08)
-      ..lineTo(cx - size.width * 0.08, cy - size.height * 0.08)
-      ..close();
+    final leftRibbon =
+        Path()
+          ..moveTo(cx - size.width * 0.18, cy - size.height * 0.30)
+          ..lineTo(cx - size.width * 0.05, cy - size.height * 0.30)
+          ..lineTo(cx, cy - size.height * 0.08)
+          ..lineTo(cx - size.width * 0.08, cy - size.height * 0.08)
+          ..close();
 
-    final rightRibbon = Path()
-      ..moveTo(cx + size.width * 0.18, cy - size.height * 0.30)
-      ..lineTo(cx + size.width * 0.05, cy - size.height * 0.30)
-      ..lineTo(cx, cy - size.height * 0.08)
-      ..lineTo(cx + size.width * 0.08, cy - size.height * 0.08)
-      ..close();
+    final rightRibbon =
+        Path()
+          ..moveTo(cx + size.width * 0.18, cy - size.height * 0.30)
+          ..lineTo(cx + size.width * 0.05, cy - size.height * 0.30)
+          ..lineTo(cx, cy - size.height * 0.08)
+          ..lineTo(cx + size.width * 0.08, cy - size.height * 0.08)
+          ..close();
 
     canvas.drawPath(leftRibbon, ribbonPaint);
     canvas.drawPath(rightRibbon, ribbonPaint);
@@ -12561,20 +12634,22 @@ class AchievementIcChipPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
 
-    final crownPaint = Paint()
-      ..color = Colors.white.withOpacity(0.92)
-      ..style = PaintingStyle.fill;
+    final crownPaint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.92)
+          ..style = PaintingStyle.fill;
 
     final baseY = cy + size.height * 0.07;
-    final crown = Path()
-      ..moveTo(cx - size.width * 0.24, baseY)
-      ..lineTo(cx - size.width * 0.18, cy - size.height * 0.20)
-      ..lineTo(cx - size.width * 0.06, cy - size.height * 0.04)
-      ..lineTo(cx, cy - size.height * 0.25)
-      ..lineTo(cx + size.width * 0.06, cy - size.height * 0.04)
-      ..lineTo(cx + size.width * 0.18, cy - size.height * 0.20)
-      ..lineTo(cx + size.width * 0.24, baseY)
-      ..close();
+    final crown =
+        Path()
+          ..moveTo(cx - size.width * 0.24, baseY)
+          ..lineTo(cx - size.width * 0.18, cy - size.height * 0.20)
+          ..lineTo(cx - size.width * 0.06, cy - size.height * 0.04)
+          ..lineTo(cx, cy - size.height * 0.25)
+          ..lineTo(cx + size.width * 0.06, cy - size.height * 0.04)
+          ..lineTo(cx + size.width * 0.18, cy - size.height * 0.20)
+          ..lineTo(cx + size.width * 0.24, baseY)
+          ..close();
 
     canvas.drawPath(crown, crownPaint);
 
@@ -12669,11 +12744,7 @@ class AchievementIcChipPainter extends CustomPainter {
           color: Colors.white.withOpacity(opacity),
           letterSpacing: letterSpacing,
           shadows: const [
-            Shadow(
-              color: Colors.black54,
-              blurRadius: 3,
-              offset: Offset(0, 1),
-            ),
+            Shadow(color: Colors.black54, blurRadius: 3, offset: Offset(0, 1)),
           ],
         ),
       ),
@@ -12690,25 +12761,21 @@ class AchievementIcChipPainter extends CustomPainter {
   }
 
   void _drawShine(Canvas canvas, Size size) {
-    final shinePaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.white.withOpacity(0.32),
-          Colors.white.withOpacity(0.06),
-          Colors.transparent,
-          Colors.white.withOpacity(0.04),
-        ],
-        stops: const [0.0, 0.3, 0.55, 1.0],
-      ).createShader(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-      );
+    final shinePaint =
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.32),
+              Colors.white.withOpacity(0.06),
+              Colors.transparent,
+              Colors.white.withOpacity(0.04),
+            ],
+            stops: const [0.0, 0.3, 0.55, 1.0],
+          ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      shinePaint,
-    );
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), shinePaint);
   }
 
   @override
@@ -12831,9 +12898,10 @@ class _ExpandableSectionCard extends StatelessWidget {
         border: Border.all(color: themeTokens.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.black.withOpacity(0.18)
-                : Colors.black.withOpacity(0.03),
+            color:
+                Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black.withOpacity(0.18)
+                    : Colors.black.withOpacity(0.03),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -12868,16 +12936,17 @@ class _ExpandableSectionCard extends StatelessWidget {
               color: colorScheme.onSurface,
             ),
           ),
-          subtitle: subtitle == null
-              ? null
-              : Text(
-                  subtitle!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurfaceVariant,
+          subtitle:
+              subtitle == null
+                  ? null
+                  : Text(
+                    subtitle!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
           trailing: trailing,
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
@@ -12885,9 +12954,7 @@ class _ExpandableSectionCard extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
           ),
-          children: [
-            child,
-          ],
+          children: [child],
         ),
       ),
     );
@@ -12895,10 +12962,7 @@ class _ExpandableSectionCard extends StatelessWidget {
 }
 
 class _HeaderMiniStat extends StatelessWidget {
-  const _HeaderMiniStat({
-    required this.label,
-    required this.value,
-  });
+  const _HeaderMiniStat({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -12910,9 +12974,7 @@ class _HeaderMiniStat extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         children: [
@@ -12951,9 +13013,7 @@ class _GlassHeaderChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.10),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
       ),
       child: Text(
         text,
@@ -12989,9 +13049,7 @@ class _MilestoneChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: color.withOpacity(0.18),
-        ),
+        border: Border.all(color: color.withOpacity(0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -13104,14 +13162,16 @@ class _ClientCardBottomActionButton extends StatelessWidget {
     final enabled = onTap != null;
     final colorScheme = Theme.of(context).colorScheme;
     final themeTokens = Theme.of(context).extension<MtfThemeTokens>()!;
-    final Color bgColor = filled
-        ? enabled
-            ? colorScheme.secondary
-            : colorScheme.secondary.withOpacity(0.55)
-        : themeTokens.cardSurface;
-    final Color fgColor = filled
-        ? colorScheme.onSecondary
-        : enabled
+    final Color bgColor =
+        filled
+            ? enabled
+                ? colorScheme.secondary
+                : colorScheme.secondary.withOpacity(0.55)
+            : themeTokens.cardSurface;
+    final Color fgColor =
+        filled
+            ? colorScheme.onSecondary
+            : enabled
             ? colorScheme.onSurface
             : colorScheme.onSurfaceVariant;
     final Color borderColor = filled ? bgColor : themeTokens.cardBorder;
@@ -13131,11 +13191,7 @@ class _ClientCardBottomActionButton extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 19,
-                color: fgColor,
-              ),
+              Icon(icon, size: 19, color: fgColor),
               const SizedBox(height: 4),
               Text(
                 label,

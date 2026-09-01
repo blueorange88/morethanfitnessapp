@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/aifc/core/aifc_chat_sheet.dart';
@@ -178,5 +179,68 @@ void main() {
     expect(attempts, 2);
     expect(completedName, 'DEV QUICK RETRY');
     expect(find.byType(AifcQuickRegisterChatSheet), findsNothing);
+  });
+
+  testWidgets('빠른등록 계정 제한은 입력을 유지하고 같은 시트에서 연결 창을 연다', (tester) async {
+    var linkAttempts = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: lightTheme(),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () => AifcQuickRegisterChatSheet.show(
+                context: context,
+                nickname: '테스트 강사',
+                onFastSave: (_) async {
+                  throw FirebaseFunctionsException(
+                    code: 'failed-precondition',
+                    message: 'account_link_required',
+                  );
+                },
+                onAccountLink: () async {
+                  linkAttempts += 1;
+                  return true;
+                },
+              ),
+              child: const Text('빠른등록 열기'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('빠른등록 열기'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'DEV ACCOUNT LINK');
+    await tester.enterText(fields.at(1), '01012345678');
+    await tester.ensureVisible(find.text('빠른등록'));
+    await tester.tap(find.text('빠른등록'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump();
+
+    expect(find.text('계정 연결하기'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(fields.at(0)).controller!.text,
+      'DEV ACCOUNT LINK',
+    );
+    expect(
+      tester.widget<TextField>(fields.at(1)).controller!.text,
+      '01012345678',
+    );
+
+    await tester.tap(find.text('계정 연결하기'));
+    await tester.pumpAndSettle();
+
+    expect(linkAttempts, 1);
+    expect(find.textContaining('계정이 연결됐어요'), findsOneWidget);
+    expect(find.byType(AifcQuickRegisterChatSheet), findsOneWidget);
+    expect(
+      tester.widget<TextField>(fields.at(0)).controller!.text,
+      'DEV ACCOUNT LINK',
+    );
   });
 }

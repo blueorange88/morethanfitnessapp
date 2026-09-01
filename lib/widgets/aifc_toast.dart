@@ -21,15 +21,20 @@ class AifcToast {
 
     _entry = OverlayEntry(
       builder: (context) {
+        final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+        final effectiveBottom =
+            keyboardInset > 0 ? keyboardInset + 16 : bottomOffset;
         return Positioned.fill(
           child: IgnorePointer(
             child: SafeArea(
               child: Stack(
                 children: [
-                  Positioned(
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
                     left: 24,
                     right: 24,
-                    bottom: bottomOffset,
+                    bottom: effectiveBottom,
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 340),
@@ -41,14 +46,16 @@ class AifcToast {
                               vertical: 11,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F1020).withOpacity(0.96),
+                              color: const Color(
+                                0xFF0F1020,
+                              ).withValues(alpha: 0.96),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.08),
+                                color: Colors.white.withValues(alpha: 0.08),
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.18),
+                                  color: Colors.black.withValues(alpha: 0.18),
                                   blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),

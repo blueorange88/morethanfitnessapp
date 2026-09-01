@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/pages/personal_my_page.dart';
@@ -85,20 +86,16 @@ void main() {
     await tester.tap(find.text('계정 연결하기'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('link_google_preparing')), findsOneWidget);
+    expect(find.byKey(const Key('link_google_account')), findsOneWidget);
     expect(find.byKey(const Key('link_kakao_preparing')), findsOneWidget);
-    expect(
-      tester
-          .widget<OutlinedButton>(
-            find.byKey(const Key('link_google_preparing')),
-          )
-          .onPressed,
-      isNull,
-    );
+    expect(find.byKey(const Key('link_naver_preparing')), findsOneWidget);
+    expect(find.text('카카오·네이버 계정 연결은 준비 중이에요.'), findsOneWidget);
+    expect(find.byKey(const Key('link_email')), findsOneWidget);
   });
 
-  testWidgets('anonymous Beginner는 서버 등급과 진행 조건을 표시하고 로그아웃을 숨긴다',
-      (tester) async {
+  testWidgets('anonymous Beginner는 서버 등급과 진행 조건을 표시하고 로그아웃을 숨긴다', (
+    tester,
+  ) async {
     final gateway = _FakeMemberGateway(
       usage: const ManagedMemberUsage(
         count: 7,
@@ -141,11 +138,47 @@ void main() {
 
     expect(find.text('AMATEUR'), findsOneWidget);
     await _scrollTo(tester, const Key('open_password_change'));
-    expect(find.textContaining('trainer@example.com'), findsOneWidget);
-    expect(find.textContaining('이메일 인증: 완료'), findsOneWidget);
+    expect(find.textContaining('tr***@example.com'), findsOneWidget);
+    expect(find.textContaining('인증 완료 ✓'), findsOneWidget);
+    expect(find.byKey(const Key('personal_connect_google')), findsOneWidget);
+    expect(find.text('카카오 · 네이버'), findsOneWidget);
     expect(find.byKey(const Key('open_password_change')), findsOneWidget);
     expect(find.byKey(const Key('personal_account_sign_out')), findsOneWidget);
     expect(find.byKey(const Key('link_email_account')), findsNothing);
+  });
+
+  testWidgets('Google 연결 후 MyPage가 password와 Google 상태를 함께 표시한다', (
+    tester,
+  ) async {
+    final gateway = _FakeMemberGateway(
+      usage: const ManagedMemberUsage(
+        count: 10,
+        limit: 10,
+        lifetimeQualifiedCount: 10,
+        tier: 'Amateur',
+        accountLinked: true,
+        profileCompleted: true,
+        displayName: '레온',
+        phone: '01012345678',
+        activityRegion: '서울',
+        primaryActivity: 'PT',
+        affiliationType: 'freelancer',
+      ),
+    );
+    await _pumpPage(
+      tester,
+      gateway: gateway,
+      anonymous: false,
+      auth: _FakeAuthGateway(
+        anonymous: false,
+        providerIds: const ['password', 'google.com'],
+      ),
+    );
+
+    await _scrollTo(tester, const Key('personal_google_connected'));
+    expect(find.byKey(const Key('personal_google_connected')), findsOneWidget);
+    expect(find.text('Google 계정 연결됨'), findsOneWidget);
+    expect(find.textContaining('tr***@example.com'), findsOneWidget);
   });
 
   for (final scenario in const [
@@ -190,13 +223,21 @@ void main() {
     expect(find.textContaining('연락처, 활동 지역'), findsOneWidget);
 
     await tester.enterText(
-        find.byKey(const Key('profile_display_name')), '입력 유지');
+      find.byKey(const Key('profile_display_name')),
+      '입력 유지',
+    );
     await tester.enterText(
-        find.byKey(const Key('profile_phone')), '01012345678');
+      find.byKey(const Key('profile_phone')),
+      '01012345678',
+    );
     await tester.enterText(
-        find.byKey(const Key('profile_activity_region')), '서울');
+      find.byKey(const Key('profile_activity_region')),
+      '서울',
+    );
     await tester.enterText(
-        find.byKey(const Key('profile_primary_activity')), 'PT');
+      find.byKey(const Key('profile_primary_activity')),
+      'PT',
+    );
     await _scrollTo(tester, const Key('profile_affiliation_type'));
     await tester.tap(find.byKey(const Key('profile_affiliation_type')));
     await tester.pumpAndSettle();
@@ -228,18 +269,173 @@ void main() {
     await _openEmailLinkSheet(tester);
     await _scrollTo(tester, const Key('link_email'));
     await tester.enterText(
-        find.byKey(const Key('link_email')), 'trainer@example.com');
+      find.byKey(const Key('link_email')),
+      'trainer@example.com',
+    );
     await tester.enterText(find.byKey(const Key('link_password')), 'secret12');
     await tester.enterText(
-        find.byKey(const Key('link_password_confirmation')), 'secret12');
+      find.byKey(const Key('link_password_confirmation')),
+      'secret12',
+    );
     await tester.tap(find.byKey(const Key('link_email_account')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('continue_link_without_verification')),
+    );
     await tester.pumpAndSettle();
 
     expect(auth.linkBeforeUid, 'owner-uid');
     expect(auth.currentUser?.uid, 'owner-uid');
     expect(profile.transitionCalls, 1);
     expect(auth.refreshCalls, 1);
+    expect(auth.verificationCalls, 0);
+  });
+
+  testWidgets('계정 연결 전용 진입은 canonical 이메일 연결 뒤 true로 복귀한다', (tester) async {
+    final auth = _FakeAuthGateway(anonymous: true);
+    final profile = _FakeProfileGateway();
+    bool? linkedResult;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    linkedResult = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute<bool>(
+                        builder:
+                            (_) => PersonalMyPage(
+                              uid: 'owner-uid',
+                              accountService: AppAccountService(
+                                gateway: auth,
+                                anonymousGateway: auth,
+                                profileGateway: profile,
+                              ),
+                              memberGateway: _FakeMemberGateway(
+                                usage: const ManagedMemberUsage(
+                                  count: 8,
+                                  limit: 10,
+                                  lifetimeQualifiedCount: 10,
+                                ),
+                              ),
+                              autoNudgeEnabled: false,
+                              openAccountLinkOnStart: true,
+                            ),
+                      ),
+                    );
+                  },
+                  child: const Text('계정 연결 시작'),
+                ),
+              ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('계정 연결 시작'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('link_email')),
+      'trainer@example.com',
+    );
+    await tester.enterText(find.byKey(const Key('link_password')), 'secret12');
+    await tester.enterText(
+      find.byKey(const Key('link_password_confirmation')),
+      'secret12',
+    );
+    await tester.tap(find.byKey(const Key('link_email_account')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('continue_link_without_verification')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(linkedResult, isTrue);
+    expect(auth.linkBeforeUid, 'owner-uid');
+    expect(auth.currentUser?.uid, 'owner-uid');
+    expect(profile.transitionCalls, 1);
+  });
+
+  testWidgets('미인증 계정은 마스킹 이메일과 재전송·인증 확인을 제공한다', (tester) async {
+    final gateway = _FakeMemberGateway(
+      usage: const ManagedMemberUsage(
+        count: 10,
+        limit: 10,
+        lifetimeQualifiedCount: 10,
+        tier: 'Amateur',
+        accountLinked: true,
+      ),
+    );
+    final auth = _FakeAuthGateway(
+      anonymous: false,
+      emailVerified: false,
+      reloadEmailVerified: true,
+    );
+    await _pumpPage(tester, gateway: gateway, anonymous: false, auth: auth);
+
+    await _scrollTo(tester, const Key('send_email_verification'));
+    expect(find.textContaining('tr***@example.com'), findsOneWidget);
+    expect(find.textContaining('인증 필요'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('send_email_verification')));
+    await tester.pumpAndSettle();
     expect(auth.verificationCalls, 1);
+
+    await tester.tap(find.byKey(const Key('refresh_email_verification')));
+    await tester.pumpAndSettle();
+    expect(auth.reloadCalls, 1);
+    expect(find.textContaining('인증 완료 ✓'), findsOneWidget);
+    expect(find.byKey(const Key('send_email_verification')), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('부분 연결 후 재시작해도 profile 전환을 마무리하고 true로 복귀한다', (tester) async {
+    final auth = _FakeAuthGateway(anonymous: false);
+    final profile = _FakeProfileGateway();
+    bool? linkedResult;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    linkedResult = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute<bool>(
+                        builder:
+                            (_) => PersonalMyPage(
+                              uid: 'owner-uid',
+                              accountService: AppAccountService(
+                                gateway: auth,
+                                anonymousGateway: auth,
+                                profileGateway: profile,
+                              ),
+                              memberGateway: _FakeMemberGateway(
+                                usage: const ManagedMemberUsage(
+                                  count: 10,
+                                  limit: 10,
+                                  lifetimeQualifiedCount: 10,
+                                ),
+                              ),
+                              autoNudgeEnabled: false,
+                              openAccountLinkOnStart: true,
+                            ),
+                      ),
+                    );
+                  },
+                  child: const Text('계정 연결 마무리'),
+                ),
+              ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('계정 연결 마무리'));
+    await tester.pumpAndSettle();
+
+    expect(linkedResult, isTrue);
+    expect(auth.linkBeforeUid, isNull);
+    expect(auth.refreshCalls, 1);
+    expect(profile.transitionCalls, 1);
   });
 
   testWidgets('기존 이메일 충돌은 자동 병합 없이 입력값과 화면을 유지한다', (tester) async {
@@ -257,26 +453,67 @@ void main() {
     await _openEmailLinkSheet(tester);
     await _scrollTo(tester, const Key('link_email'));
     await tester.enterText(
-        find.byKey(const Key('link_email')), 'used@example.com');
+      find.byKey(const Key('link_email')),
+      'used@example.com',
+    );
     await tester.enterText(find.byKey(const Key('link_password')), 'secret12');
     await tester.enterText(
-        find.byKey(const Key('link_password_confirmation')), 'secret12');
+      find.byKey(const Key('link_password_confirmation')),
+      'secret12',
+    );
     await tester.tap(find.byKey(const Key('link_email_account')));
     await tester.pumpAndSettle();
 
     expect(find.text('used@example.com'), findsOneWidget);
-    expect(find.textContaining('이미 사용 중인 이메일'), findsOneWidget);
+    expect(find.textContaining('이미 사용 중인 이메일'), findsWidgets);
     expect(find.textContaining('안전한 계정 전환 절차'), findsOneWidget);
     expect(auth.signOutCalls, 0);
   });
 
+  testWidgets('계정 연결 네트워크 실패는 입력값과 시트를 유지하고 재시도를 안내한다', (tester) async {
+    final gateway = _FakeMemberGateway(
+      usage: const ManagedMemberUsage(count: 10, limit: 10),
+    );
+    final auth = _FakeAuthGateway(anonymous: true);
+    final profile = _FakeProfileGateway(
+      transitionErrors: [
+        FirebaseFunctionsException(
+          code: 'unavailable',
+          message: 'network unavailable',
+        ),
+      ],
+    );
+    await _pumpPage(
+      tester,
+      gateway: gateway,
+      anonymous: true,
+      auth: auth,
+      profile: profile,
+    );
+
+    await _openEmailLinkSheet(tester);
+    await _scrollTo(tester, const Key('link_email'));
+    await tester.enterText(
+      find.byKey(const Key('link_email')),
+      'retry@example.com',
+    );
+    await tester.enterText(find.byKey(const Key('link_password')), 'secret12');
+    await tester.enterText(
+      find.byKey(const Key('link_password_confirmation')),
+      'secret12',
+    );
+    await tester.tap(find.byKey(const Key('link_email_account')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('retry@example.com'), findsOneWidget);
+    expect(find.textContaining('이 화면에서 다시 시도'), findsWidgets);
+    expect(find.byKey(const Key('link_email_account')), findsOneWidget);
+    expect(profile.transitionCalls, 1);
+  });
+
   testWidgets('linked 로그아웃은 현재 UID widget cache를 먼저 정리한다', (tester) async {
     final gateway = _FakeMemberGateway(
-      usage: const ManagedMemberUsage(
-        count: 0,
-        limit: 10,
-        accountLinked: true,
-      ),
+      usage: const ManagedMemberUsage(count: 0, limit: 10, accountLinked: true),
     );
     final auth = _FakeAuthGateway(anonymous: false);
     final events = <String>[];
@@ -317,8 +554,6 @@ Future<void> _scrollTo(WidgetTester tester, Key key) async {
 Future<void> _openEmailLinkSheet(WidgetTester tester) async {
   await _scrollTo(tester, const Key('open_account_and_records'));
   await tester.tap(find.byKey(const Key('open_account_and_records')));
-  await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('expand_email_link')));
   await tester.pumpAndSettle();
 }
 
@@ -424,7 +659,11 @@ class _FakeMemberGateway implements ManagedMemberWorkspaceGateway {
 }
 
 class _FakeProfileGateway implements AnonymousProfileGateway {
+  _FakeProfileGateway({List<Object>? transitionErrors})
+    : transitionErrors = transitionErrors ?? <Object>[];
+
   int transitionCalls = 0;
+  final List<Object> transitionErrors;
 
   @override
   Future<void> bootstrapAnonymousBeginnerProfile() async {}
@@ -432,33 +671,46 @@ class _FakeProfileGateway implements AnonymousProfileGateway {
   @override
   Future<void> transitionAnonymousProfileToLinked() async {
     transitionCalls++;
+    if (transitionErrors.isNotEmpty) throw transitionErrors.removeAt(0);
   }
 
   @override
   Future<Map<String, dynamic>> reconcilePersonalTier() async => const {
-        'tier': 'Beginner',
-        'amateurConditionCount': 0,
-        'amateurConditionTotal': 2,
-        'eligible': false,
-        'changed': false,
-      };
+    'tier': 'Beginner',
+    'amateurConditionCount': 0,
+    'amateurConditionTotal': 2,
+    'eligible': false,
+    'changed': false,
+  };
 }
 
 class _FakeAuthGateway
-    implements AppAccountAuthGateway, AppAnonymousIdentityGateway {
-  _FakeAuthGateway({required bool anonymous, this.linkError})
-      : _user = AppAccountUser(
-          uid: 'owner-uid',
-          email: anonymous ? '' : 'trainer@example.com',
-          emailVerified: !anonymous,
-          isAnonymous: anonymous,
-        );
+    implements
+        AppAccountAuthGateway,
+        AppAnonymousIdentityGateway,
+        AppEmailVerificationGateway {
+  _FakeAuthGateway({
+    required bool anonymous,
+    this.linkError,
+    bool? emailVerified,
+    this.reloadEmailVerified,
+    List<String>? providerIds,
+  }) : _user = AppAccountUser(
+         uid: 'owner-uid',
+         email: anonymous ? '' : 'trainer@example.com',
+         emailVerified: emailVerified ?? !anonymous,
+         isAnonymous: anonymous,
+         providerIds:
+             providerIds ?? (anonymous ? const [] : const ['password']),
+       );
 
   AppAccountUser? _user;
   final Object? linkError;
+  final bool? reloadEmailVerified;
   String? linkBeforeUid;
   int refreshCalls = 0;
   int verificationCalls = 0;
+  int reloadCalls = 0;
   int signOutCalls = 0;
 
   @override
@@ -479,6 +731,7 @@ class _FakeAuthGateway
       email: email,
       emailVerified: false,
       isAnonymous: false,
+      providerIds: const ['password'],
     );
     return _user!;
   }
@@ -488,6 +741,20 @@ class _FakeAuthGateway
 
   @override
   Future<void> sendEmailVerification() async => verificationCalls++;
+
+  @override
+  Future<AppAccountUser> reloadCurrentUser() async {
+    reloadCalls++;
+    final current = _user!;
+    _user = AppAccountUser(
+      uid: current.uid,
+      email: current.email,
+      emailVerified: reloadEmailVerified ?? current.emailVerified,
+      isAnonymous: current.isAnonymous,
+      providerIds: current.providerIds,
+    );
+    return _user!;
+  }
 
   @override
   Future<void> signOut() async {
@@ -502,8 +769,7 @@ class _FakeAuthGateway
   Future<AppAccountUser> createUserWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> sendPasswordResetEmail(String email) =>
@@ -513,6 +779,5 @@ class _FakeAuthGateway
   Future<AppAccountUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }

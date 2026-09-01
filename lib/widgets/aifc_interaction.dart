@@ -41,6 +41,18 @@ class AifcInteraction {
     );
   }
 
+  static void feedbackSnack({
+    required BuildContext context,
+    required String message,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    AifcSnackBar.show(
+      context: context,
+      message: message,
+      duration: duration,
+    );
+  }
+
   static Future<String?> ask({
     required BuildContext context,
     required String question,

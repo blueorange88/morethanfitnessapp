@@ -12,6 +12,8 @@ import 'contract_list_page.dart';
 import 'more_care_admin_page.dart';
 
 import '../services/app_tier_access_service.dart';
+import '../services/app_account_service.dart'
+    show AppAccountService, appAccountErrorMessage;
 import '../services/lesson_product_service.dart';
 import '../services/managed_member_workspace_service.dart';
 import '../services/app_environment.dart';
@@ -33,6 +35,7 @@ import '../widgets/premium_banner_widget.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 import '../widgets/mtf_floating_more_menu.dart';
 import '../widgets/aifc_upgrade_chat_sheet.dart';
+import '../widgets/account_connection_dialog.dart';
 import '../theme/app_colors.dart';
 
 import '../aifc/core/aifc_chat_sheet.dart';
@@ -55,19 +58,16 @@ String myPageProfileDocumentPath(String? personalOwnerUid) {
   return uid.isEmpty ? 'trainer_profile/me' : 'trainer_profiles/$uid';
 }
 
-String myPageNudgePreferenceKey(
-  String? personalOwnerUid, {
-  String? projectId,
-}) {
+String myPageNudgePreferenceKey(String? personalOwnerUid, {String? projectId}) {
   const base = 'my_ai_fc_profile_nudge_step_v1';
   final uid = (personalOwnerUid ?? '').trim();
   return uid.isEmpty
       ? base
       : AppEnvironmentConfig.personalPreferenceKey(
-          uid: uid,
-          featureKey: base,
-          projectId: projectId,
-        );
+        uid: uid,
+        featureKey: base,
+        projectId: projectId,
+      );
 }
 
 String myPageNicknameFromProfile(
@@ -134,6 +134,16 @@ MyPageNameSaveAction resolveMyPageNameSaveAction({
 bool canUseRealNameAsNickname(String realName) {
   final cleanRealName = realName.trim();
   return cleanRealName.isNotEmpty && cleanRealName.length <= 6;
+}
+
+String myPageMaskedEmail(String email) {
+  final clean = email.trim();
+  final separator = clean.indexOf('@');
+  if (separator <= 0 || separator == clean.length - 1) return clean;
+  final local = clean.substring(0, separator);
+  final domain = clean.substring(separator + 1);
+  final visible = local.length <= 2 ? 1 : 2;
+  return '${local.substring(0, visible)}***@$domain';
 }
 
 const Set<String> _myPageContractNameSources = {
@@ -257,6 +267,7 @@ class _MyPageState extends State<MyPage> {
   bool _isDirty = false;
   bool _isExitSheetShowing = false;
   bool _isBusinessConnectionChecking = false;
+  bool _isEmailVerificationBusy = false;
   bool _profileLoadFailed = false;
   bool _isApplyingProfileValues = false;
   Map<String, dynamic> _initialProfileValues = const {};
@@ -300,10 +311,9 @@ class _MyPageState extends State<MyPage> {
   bool get _displayTrainerInfoDone =>
       _beginnerMissionEarned || _teacherInfoCompletedForTier;
 
-  DocumentReference<Map<String, dynamic>> get _profileRef =>
-      FirebaseFirestore.instance.doc(
-        myPageProfileDocumentPath(widget.personalOwnerUid),
-      );
+  DocumentReference<Map<String, dynamic>> get _profileRef => FirebaseFirestore
+      .instance
+      .doc(myPageProfileDocumentPath(widget.personalOwnerUid));
 
   @override
   void initState() {
@@ -358,23 +368,23 @@ class _MyPageState extends State<MyPage> {
   }
 
   Map<String, dynamic> _currentProfileValues() => <String, dynamic>{
-        'realName': _nameController.text,
-        'nameEn': _nameEnController.text,
-        'nickname': _displayNameController.text,
-        'gymName': _gymNameController.text,
-        'centerLocation': _centerLocationController.text,
-        'activityArea': _activityAreaController.text,
-        'activityRegions': List<String>.from(_selectedActivityRegions),
-        'jobTitle': _positionController.text,
-        'birth': _birthController.text,
-        'phone': _phoneController.text,
-        'intro': _introController.text,
-        'primaryActivity': _lessonSpecialtyController.text,
-        'contractTrainerCustomName': _contractTrainerCustomNameController.text,
-        'affiliationType': _affiliationType ?? '',
-        'gender': _gender,
-        'contractTrainerNameSource': _contractTrainerNameSource,
-      };
+    'realName': _nameController.text,
+    'nameEn': _nameEnController.text,
+    'nickname': _displayNameController.text,
+    'gymName': _gymNameController.text,
+    'centerLocation': _centerLocationController.text,
+    'activityArea': _activityAreaController.text,
+    'activityRegions': List<String>.from(_selectedActivityRegions),
+    'jobTitle': _positionController.text,
+    'birth': _birthController.text,
+    'phone': _phoneController.text,
+    'intro': _introController.text,
+    'primaryActivity': _lessonSpecialtyController.text,
+    'contractTrainerCustomName': _contractTrainerCustomNameController.text,
+    'affiliationType': _affiliationType ?? '',
+    'gender': _gender,
+    'contractTrainerNameSource': _contractTrainerNameSource,
+  };
 
   void _handleProfileInputChanged() {
     if (!mounted) return;
@@ -437,11 +447,7 @@ class _MyPageState extends State<MyPage> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    icon,
-                    color: active ? kMyPrimary : kMyMuted,
-                    size: 20,
-                  ),
+                  Icon(icon, color: active ? kMyPrimary : kMyMuted, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -512,11 +518,7 @@ class _MyPageState extends State<MyPage> {
                     icon: Icons.remove_circle_outline_rounded,
                   ),
                   const SizedBox(height: 8),
-                  option(
-                    value: 'male',
-                    label: '남',
-                    icon: Icons.male_rounded,
-                  ),
+                  option(value: 'male', label: '남', icon: Icons.male_rounded),
                   const SizedBox(height: 8),
                   option(
                     value: 'female',
@@ -577,10 +579,7 @@ class _MyPageState extends State<MyPage> {
                 ),
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: kMyMuted,
-            ),
+            const Icon(Icons.keyboard_arrow_down_rounded, color: kMyMuted),
           ],
         ),
       ),
@@ -591,26 +590,25 @@ class _MyPageState extends State<MyPage> {
   void _openSettingsPage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => SettingsPage(
-          personalOwnerUid: widget.personalOwnerUid,
-        ),
+        builder: (_) => SettingsPage(personalOwnerUid: widget.personalOwnerUid),
       ),
     );
   }
 
   void _openPasswordChangePage() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PasswordChangePage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const PasswordChangePage()));
   }
 
   void _openContractListPage() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ContractListPage(
-          personalOwnerUid:
-              _isPersonalWorkspace ? widget.personalOwnerUid!.trim() : null,
-        ),
+        builder:
+            (_) => ContractListPage(
+              personalOwnerUid:
+                  _isPersonalWorkspace ? widget.personalOwnerUid!.trim() : null,
+            ),
       ),
     );
   }
@@ -622,9 +620,10 @@ class _MyPageState extends State<MyPage> {
           context: context,
           access: null,
           feature: AppTierFeatureKey.lessonInsights,
-          loadAccess: () => AppTierAccessService.loadPersonalTrainerAccess(
-            uid: widget.personalOwnerUid!.trim(),
-          ),
+          loadAccess:
+              () => AppTierAccessService.loadPersonalTrainerAccess(
+                uid: widget.personalOwnerUid!.trim(),
+              ),
           entryPoint: 'my_page_lesson_insights',
         );
         if (!allowed || !mounted) return;
@@ -636,9 +635,7 @@ class _MyPageState extends State<MyPage> {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => StatsPage(
-          personalOwnerUid: widget.personalOwnerUid,
-        ),
+        builder: (_) => StatsPage(personalOwnerUid: widget.personalOwnerUid),
       ),
     );
   }
@@ -649,21 +646,20 @@ class _MyPageState extends State<MyPage> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
+      builder:
+          (_) => const AlertDialog(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 14),
+                Expanded(child: Text('잠시만 기다려주세요.\n연결할 플레이스를 찾고 있어요.')),
+              ],
             ),
-            SizedBox(width: 14),
-            Expanded(
-              child: Text('잠시만 기다려주세요.\n연결할 플레이스를 찾고 있어요.'),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
@@ -688,11 +684,12 @@ class _MyPageState extends State<MyPage> {
       }
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => MoreCareAdminPage(
-            isBusinessOwner: _isMoreBusinessOwnerTier,
-            isCompanyLinked: true,
-            companyName: _moreBusinessCompanyName,
-          ),
+          builder:
+              (_) => MoreCareAdminPage(
+                isBusinessOwner: _isMoreBusinessOwnerTier,
+                isCompanyLinked: true,
+                companyName: _moreBusinessCompanyName,
+              ),
         ),
       );
     } else {
@@ -745,8 +742,9 @@ class _MyPageState extends State<MyPage> {
           'profileImageUrl',
           'contractTrainerName',
         ];
-        final presentFields =
-            profileFields.where((field) => data?[field] != null).join(',');
+        final presentFields = profileFields
+            .where((field) => data?[field] != null)
+            .join(',');
         debugPrint(
           '[MTF_MY_PAGE_IDENTITY] uid=${widget.personalOwnerUid ?? 'legacy'} '
           'personal=$_isPersonalWorkspace profileExists=${doc.exists} '
@@ -760,8 +758,9 @@ class _MyPageState extends State<MyPage> {
           data,
           personalWorkspace: _isPersonalWorkspace,
         );
-        _nameEnController.text =
-            normalizeTrainerEnglishName((data['nameEn'] ?? '').toString());
+        _nameEnController.text = normalizeTrainerEnglishName(
+          (data['nameEn'] ?? '').toString(),
+        );
         _displayNameController.text = myPageNicknameFromProfile(
           data,
           personalWorkspace: _isPersonalWorkspace,
@@ -773,13 +772,16 @@ class _MyPageState extends State<MyPage> {
             (data['centerLocation'] ?? data['activityArea'] ?? '').toString();
         _selectedActivityRegions
           ..clear()
-          ..addAll(normalizeTrainerActivityRegions(
-            data['activityRegions'],
-            legacyActivityRegion: data['activityRegion']?.toString(),
-          ));
-        _activityAreaController.text = _selectedActivityRegions.isEmpty
-            ? ''
-            : _selectedActivityRegions.first;
+          ..addAll(
+            normalizeTrainerActivityRegions(
+              data['activityRegions'],
+              legacyActivityRegion: data['activityRegion']?.toString(),
+            ),
+          );
+        _activityAreaController.text =
+            _selectedActivityRegions.isEmpty
+                ? ''
+                : _selectedActivityRegions.first;
         _positionController.text = myPageJobTitleFromProfile(
           data,
           personalWorkspace: _isPersonalWorkspace,
@@ -788,13 +790,14 @@ class _MyPageState extends State<MyPage> {
         _birthController.text = (data['birth'] ?? '').toString();
         _phoneController.text = (data['phone'] ?? '').toString();
         final loadedAffiliation = (data['affiliationType'] ?? '').toString();
-        _affiliationType = isTrainerAffiliationType(loadedAffiliation)
-            ? loadedAffiliation
-            : null;
+        _affiliationType =
+            isTrainerAffiliationType(loadedAffiliation)
+                ? loadedAffiliation
+                : null;
         _optionalJobTitleExpanded = _positionController.text.trim().isNotEmpty;
         _optionalCenterFieldsExpanded =
             _gymNameController.text.trim().isNotEmpty ||
-                _centerLocationController.text.trim().isNotEmpty;
+            _centerLocationController.text.trim().isNotEmpty;
         _introController.text = (data['intro'] ?? '').toString();
         _lessonSpecialtyController.text = myPageLessonFieldsFromProfile(
           data,
@@ -804,33 +807,37 @@ class _MyPageState extends State<MyPage> {
         _contractTrainerNameSource = myPageContractNameSourceFromProfile(data);
         final rawContractSource =
             (data['contractTrainerNameSource'] ?? '').toString().trim();
-        final profileReadSource = _isPersonalWorkspace
-            ? (_myPageContractNameSources.contains(rawContractSource)
-                ? 'firestore'
-                : 'default')
-            : 'legacy';
-        _contractTrainerCustomNameController.text =
-            myPageContractCustomNameFromProfile(
+        final profileReadSource =
+            _isPersonalWorkspace
+                ? (_myPageContractNameSources.contains(rawContractSource)
+                    ? 'firestore'
+                    : 'default')
+                : 'legacy';
+        _contractTrainerCustomNameController
+            .text = myPageContractCustomNameFromProfile(
           data,
           source: _contractTrainerNameSource,
         );
         _gender = (data['gender'] ?? 'unset').toString();
 
-        _moreBusinessCompanyId = (data['moreBusinessCompanyId'] ??
-                data['businessCompanyId'] ??
-                data['companyId'] ??
-                '')
-            .toString()
-            .trim();
+        _moreBusinessCompanyId =
+            (data['moreBusinessCompanyId'] ??
+                    data['businessCompanyId'] ??
+                    data['companyId'] ??
+                    '')
+                .toString()
+                .trim();
 
-        _moreBusinessCompanyName = (data['moreBusinessCompanyName'] ??
-                data['businessCompanyName'] ??
-                data['companyName'] ??
-                '')
-            .toString()
-            .trim();
+        _moreBusinessCompanyName =
+            (data['moreBusinessCompanyName'] ??
+                    data['businessCompanyName'] ??
+                    data['companyName'] ??
+                    '')
+                .toString()
+                .trim();
 
-        _moreBusinessLinked = data['moreBusinessLinked'] == true ||
+        _moreBusinessLinked =
+            data['moreBusinessLinked'] == true ||
             _moreBusinessCompanyId.isNotEmpty;
 
         // _trainerMatchingConsent =
@@ -838,7 +845,7 @@ class _MyPageState extends State<MyPage> {
 
         // final rawTrainerMatchingConsentAt =
         //data['trainerMatchingConsentAt'];
-//
+        //
         // if (rawTrainerMatchingConsentAt is Timestamp) {
         //   _trainerMatchingConsentAt = rawTrainerMatchingConsentAt.toDate();
         //  } else if (rawTrainerMatchingConsentAt is DateTime) {
@@ -884,7 +891,8 @@ class _MyPageState extends State<MyPage> {
       _profileLoadFailed = true;
       if (!mounted) return;
       _showSnack(
-          _isNetworkFailure(e) ? '인터넷 연결을 확인해주세요.' : '내 정보 불러오기에 실패했어요.');
+        _isNetworkFailure(e) ? '인터넷 연결을 확인해주세요.' : '내 정보 불러오기에 실패했어요.',
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -968,14 +976,17 @@ class _MyPageState extends State<MyPage> {
     if (_affiliationType!.isEmpty) _affiliationType = null;
     _selectedActivityRegions
       ..clear()
-      ..addAll(normalizeTrainerActivityRegions(
-        values['activityRegions'],
-        legacyActivityRegion: values['activityArea']?.toString(),
-      ));
+      ..addAll(
+        normalizeTrainerActivityRegions(
+          values['activityRegions'],
+          legacyActivityRegion: values['activityArea']?.toString(),
+        ),
+      );
     _activityAreaController.text =
         _selectedActivityRegions.isEmpty ? '' : _selectedActivityRegions.first;
     _optionalJobTitleExpanded = _positionController.text.trim().isNotEmpty;
-    _optionalCenterFieldsExpanded = _gymNameController.text.trim().isNotEmpty ||
+    _optionalCenterFieldsExpanded =
+        _gymNameController.text.trim().isNotEmpty ||
         _centerLocationController.text.trim().isNotEmpty;
     _gender = (values['gender'] ?? 'unset').toString();
     _contractTrainerNameSource =
@@ -1009,10 +1020,12 @@ class _MyPageState extends State<MyPage> {
         if (kDebugMode) {
           debugPrint(progress.debugLog(source: 'myPage'));
         }
-        final memberCount = ((profile['validMemberCount'] ??
-                profile['lifetimeQualifiedMemberCount'] ??
-                0) as num)
-            .toInt();
+        final memberCount =
+            ((profile['validMemberCount'] ??
+                        profile['lifetimeQualifiedMemberCount'] ??
+                        0)
+                    as num)
+                .toInt();
         if (!mounted) return;
         setState(() {
           _memberCountForTier = memberCount;
@@ -1039,15 +1052,17 @@ class _MyPageState extends State<MyPage> {
       }
       final tierAccess = await AppTierAccessService.loadTrainerAccess();
 
-      final schedulesSnap = await FirebaseFirestore.instance
-          .collection('schedules')
-          .limit(300)
-          .get();
+      final schedulesSnap =
+          await FirebaseFirestore.instance
+              .collection('schedules')
+              .limit(300)
+              .get();
 
-      final productsSnap = await FirebaseFirestore.instance
-          .collection('lesson_products')
-          .limit(20)
-          .get();
+      final productsSnap =
+          await FirebaseFirestore.instance
+              .collection('lesson_products')
+              .limit(20)
+              .get();
 
       final hasProduct = productsSnap.docs.any((doc) {
         final data = doc.data();
@@ -1198,10 +1213,7 @@ class _MyPageState extends State<MyPage> {
       return true;
     }
 
-    _showActionToast(
-      '명함 보기와 공유는 Semi-Pro부터 사용할 수 있어요.',
-      bottomOffset: 110,
-    );
+    _showActionToast('명함 보기와 공유는 Semi-Pro부터 사용할 수 있어요.', bottomOffset: 110);
 
     await Future.delayed(const Duration(milliseconds: 220));
 
@@ -1270,51 +1282,55 @@ class _MyPageState extends State<MyPage> {
         final choice = await showModalBottomSheet<_RealNameNicknameChoice>(
           context: context,
           isScrollControlled: true,
-          builder: (sheetContext) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    '모어댄이 부를 이름이 필요해요.\n입력한 실명을 닉네임으로 사용할까요?',
-                    style: TextStyle(
-                      color: kMyText,
-                      fontSize: 17,
-                      height: 1.4,
-                      fontWeight: FontWeight.w800,
-                    ),
+          builder:
+              (sheetContext) => SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        '모어댄이 부를 이름이 필요해요.\n입력한 실명을 닉네임으로 사용할까요?',
+                        style: TextStyle(
+                          color: kMyText,
+                          fontSize: 17,
+                          height: 1.4,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        key: const Key('my_page_use_real_name_as_nickname'),
+                        title: const Text('실명으로 사용할게요'),
+                        onTap:
+                            () => Navigator.pop(
+                              sheetContext,
+                              _RealNameNicknameChoice.useRealName,
+                            ),
+                      ),
+                      ListTile(
+                        key: const Key('my_page_enter_nickname'),
+                        title: const Text('닉네임 입력하기'),
+                        onTap:
+                            () => Navigator.pop(
+                              sheetContext,
+                              _RealNameNicknameChoice.enterNickname,
+                            ),
+                      ),
+                      ListTile(
+                        key: const Key('my_page_cancel_name_save'),
+                        title: const Text('취소'),
+                        onTap:
+                            () => Navigator.pop(
+                              sheetContext,
+                              _RealNameNicknameChoice.cancel,
+                            ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    key: const Key('my_page_use_real_name_as_nickname'),
-                    title: const Text('실명으로 사용할게요'),
-                    onTap: () => Navigator.pop(
-                      sheetContext,
-                      _RealNameNicknameChoice.useRealName,
-                    ),
-                  ),
-                  ListTile(
-                    key: const Key('my_page_enter_nickname'),
-                    title: const Text('닉네임 입력하기'),
-                    onTap: () => Navigator.pop(
-                      sheetContext,
-                      _RealNameNicknameChoice.enterNickname,
-                    ),
-                  ),
-                  ListTile(
-                    key: const Key('my_page_cancel_name_save'),
-                    title: const Text('취소'),
-                    onTap: () => Navigator.pop(
-                      sheetContext,
-                      _RealNameNicknameChoice.cancel,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
         );
         if (!mounted) return false;
         if (choice == _RealNameNicknameChoice.enterNickname) {
@@ -1398,8 +1414,9 @@ class _MyPageState extends State<MyPage> {
         );
       }
 
-      final shortName =
-          _buildShortName(displayName.isNotEmpty ? displayName : name);
+      final shortName = _buildShortName(
+        displayName.isNotEmpty ? displayName : name,
+      );
 
       final updateData = <String, dynamic>{
         'name': name,
@@ -1445,8 +1462,9 @@ class _MyPageState extends State<MyPage> {
             'function=updatePersonalTrainerProfile result=start errorCode=none',
           );
         }
-        await FirebaseManagedMemberWorkspaceGateway(uid: uid)
-            .updateTrainerProfile(
+        await FirebaseManagedMemberWorkspaceGateway(
+          uid: uid,
+        ).updateTrainerProfile(
           displayName: name.isNotEmpty ? name : displayName,
           nickname: displayName,
           realName: name,
@@ -1464,8 +1482,9 @@ class _MyPageState extends State<MyPage> {
           contractTrainerCustomName: contractCustomName,
         );
         try {
-          await FirebaseManagedMemberWorkspaceGateway(uid: uid)
-              .reconcilePersonalTier();
+          await FirebaseManagedMemberWorkspaceGateway(
+            uid: uid,
+          ).reconcilePersonalTier();
         } catch (error) {
           if (kDebugMode) {
             debugPrint(
@@ -1523,7 +1542,7 @@ class _MyPageState extends State<MyPage> {
         );
         final contractSourceMatched =
             confirmedContractSource == _contractTrainerNameSource &&
-                confirmedContractCustomName == contractCustomName;
+            confirmedContractCustomName == contractCustomName;
         if (kDebugMode) {
           debugPrint(
             '[MTF_MY_PAGE_PROFILE_RELOAD] uid=$uid '
@@ -1760,31 +1779,36 @@ class _MyPageState extends State<MyPage> {
       required: false,
     );
     final results = <String, String?>{
-      'realName': validateTrainerRealName(_nameController.text) == null
-          ? null
-          : 'invalid_format',
-      'jobTitle': validateTrainerJobTitleForAffiliation(
-                _positionController.text,
-                _affiliationType,
-              ) ==
-              null
-          ? null
-          : 'invalid_format',
+      'realName':
+          validateTrainerRealName(_nameController.text) == null
+              ? null
+              : 'invalid_format',
+      'jobTitle':
+          validateTrainerJobTitleForAffiliation(
+                    _positionController.text,
+                    _affiliationType,
+                  ) ==
+                  null
+              ? null
+              : 'invalid_format',
       'primaryActivity':
           validatePrimaryActivity(_lessonSpecialtyController.text) == null
               ? null
               : 'invalid_format',
-      'affiliationType': isTrainerAffiliationType(_affiliationType)
-          ? null
-          : 'invalid_selection',
-      'activityRegion': isTrainerActivityRegion(_activityAreaController.text)
-          ? null
-          : 'invalid_selection',
+      'affiliationType':
+          isTrainerAffiliationType(_affiliationType)
+              ? null
+              : 'invalid_selection',
+      'activityRegion':
+          isTrainerActivityRegion(_activityAreaController.text)
+              ? null
+              : 'invalid_selection',
       'phone': phoneResult.isValid ? null : 'invalid_format',
       'birthDate': birthResult.isValid ? null : 'invalid_date',
-      'englishName': validateTrainerEnglishName(_nameEnController.text) == null
-          ? null
-          : 'invalid_characters',
+      'englishName':
+          validateTrainerEnglishName(_nameEnController.text) == null
+              ? null
+              : 'invalid_characters',
     };
 
     for (final entry in results.entries) {
@@ -1815,9 +1839,10 @@ class _MyPageState extends State<MyPage> {
       await FirebaseManagedMemberWorkspaceGateway(
         uid: widget.personalOwnerUid!.trim(),
       ).updateTrainerProfile(
-        displayName: _nameController.text.trim().isNotEmpty
-            ? _nameController.text.trim()
-            : _displayNameController.text.trim(),
+        displayName:
+            _nameController.text.trim().isNotEmpty
+                ? _nameController.text.trim()
+                : _displayNameController.text.trim(),
         nickname: _displayNameController.text.trim(),
         realName: _nameController.text.trim(),
         phone: _normalizePhone(_phoneController.text),
@@ -1935,9 +1960,10 @@ class _MyPageState extends State<MyPage> {
 
     if (text.isEmpty) return '트';
 
-    final normalized = text.endsWith('강사')
-        ? text.substring(0, text.length - '강사'.length).trim()
-        : text;
+    final normalized =
+        text.endsWith('강사')
+            ? text.substring(0, text.length - '강사'.length).trim()
+            : text;
 
     if (normalized.isEmpty) {
       return text.length <= 2 ? text : text.substring(0, 2);
@@ -2011,6 +2037,151 @@ class _MyPageState extends State<MyPage> {
     AifcInteraction.toast(context: context, message: msg);
   }
 
+  Future<void> _sendEmailVerification() async {
+    if (_isEmailVerificationBusy) return;
+    setState(() => _isEmailVerificationBusy = true);
+    try {
+      await AppAccountService.instance.sendCurrentUserEmailVerification();
+      if (!mounted) return;
+      _showSnack('인증메일을 보냈어요. 메일의 링크를 눌러 인증을 완료해주세요.');
+    } catch (error) {
+      if (!mounted) return;
+      _showSnack(appAccountErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _isEmailVerificationBusy = false);
+    }
+  }
+
+  Future<void> _refreshEmailVerification() async {
+    if (_isEmailVerificationBusy) return;
+    setState(() => _isEmailVerificationBusy = true);
+    try {
+      final refreshed = await AppAccountService.instance.refreshCurrentUser();
+      if (!mounted) return;
+      setState(() {});
+      _showSnack(
+        refreshed.emailVerified
+            ? '이메일 인증이 확인됐어요.'
+            : '아직 인증이 완료되지 않았어요. 메일의 링크를 확인해주세요.',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _showSnack(appAccountErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _isEmailVerificationBusy = false);
+    }
+  }
+
+  Future<void> _openGoogleAccountLink() async {
+    final expectedUid = (widget.personalOwnerUid ?? '').trim();
+    if (expectedUid.isEmpty) return;
+    try {
+      final linked = await AccountConnectionDialog.show(
+        context: context,
+        accountService: AppAccountService.instance,
+        expectedUid: expectedUid,
+      );
+      if (!mounted || linked == null) return;
+      setState(() {});
+    } catch (error) {
+      if (!mounted) return;
+      _showSnack(appAccountErrorMessage(error));
+    }
+  }
+
+  Widget _buildEmailVerificationCard() {
+    final user = AppAccountService.instance.currentUser;
+    if (user == null || user.isAnonymous) return const SizedBox.shrink();
+    final verified = user.emailVerified;
+    final googleLinked = user.hasProvider('google.com');
+    return Card(
+      key: const Key('my_page_email_verification_card'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.mark_email_read_outlined),
+              title: const Text('이메일 계정 연결됨'),
+              subtitle: Text(
+                '${myPageMaskedEmail(user.email)}\n'
+                '${verified ? '인증 완료 ✓' : '인증 필요'}',
+              ),
+            ),
+            if (!verified)
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final resend = OutlinedButton(
+                    key: const Key('my_page_send_email_verification'),
+                    onPressed:
+                        _isEmailVerificationBusy
+                            ? null
+                            : _sendEmailVerification,
+                    child: const Text('인증메일 다시 보내기'),
+                  );
+                  final refresh = FilledButton(
+                    key: const Key('my_page_refresh_email_verification'),
+                    onPressed:
+                        _isEmailVerificationBusy
+                            ? null
+                            : _refreshEmailVerification,
+                    child: Text(_isEmailVerificationBusy ? '확인 중' : '인증 확인'),
+                  );
+                  if (constraints.maxWidth < 420) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [resend, const SizedBox(height: 8), refresh],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: resend),
+                      const SizedBox(width: 8),
+                      Expanded(child: refresh),
+                    ],
+                  );
+                },
+              ),
+            const Divider(height: 24),
+            ListTile(
+              key: Key(
+                googleLinked
+                    ? 'my_page_google_connected'
+                    : 'my_page_connect_google',
+              ),
+              contentPadding: EdgeInsets.zero,
+              leading: Image.asset(
+                'assets/branding/google_sign_in_square_light.png',
+                width: 40,
+                height: 40,
+              ),
+              title: Text(googleLinked ? 'Google 계정 연결됨' : 'Google 계정 연결'),
+              subtitle: Text(
+                googleLinked
+                    ? '이메일 로그인과 함께 사용할 수 있어요.'
+                    : '기존 UID와 기록을 유지한 채 연결해요.',
+              ),
+              trailing:
+                  googleLinked
+                      ? const Icon(Icons.check_circle_outline_rounded)
+                      : const Icon(Icons.chevron_right_rounded),
+              onTap: googleLinked ? null : _openGoogleAccountLink,
+            ),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.more_horiz_rounded),
+              title: Text('카카오 · 네이버'),
+              subtitle: Text('준비 중'),
+              enabled: false,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showPreparingSnack(String label) {
     _showSnack('$label 기능은 준비중입니다.');
   }
@@ -2028,7 +2199,10 @@ class _MyPageState extends State<MyPage> {
 
   void _showActionToast(String message, {double bottomOffset = 76}) {
     AifcInteraction.toast(
-        context: context, message: message, bottomOffset: bottomOffset);
+      context: context,
+      message: message,
+      bottomOffset: bottomOffset,
+    );
   }
 
   // ── AI FC 프로필 넛지 ─────────────────────────────────────────────────────
@@ -2067,9 +2241,10 @@ class _MyPageState extends State<MyPage> {
   }
 
   List<_AiFcProfileNudgeItem> _buildAiFcProfileNudgeItems() {
-    final nickname = _displayNameController.text.trim().isNotEmpty
-        ? _displayNameController.text.trim()
-        : '강사님';
+    final nickname =
+        _displayNameController.text.trim().isNotEmpty
+            ? _displayNameController.text.trim()
+            : '강사님';
 
     return [
       _AiFcProfileNudgeItem(
@@ -2214,7 +2389,9 @@ class _MyPageState extends State<MyPage> {
     Future<void> moveToNextStep() async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(
-          _aiFcProfileNudgeStepKey, (currentIndex + 1) % totalCount);
+        _aiFcProfileNudgeStepKey,
+        (currentIndex + 1) % totalCount,
+      );
     }
 
     final result = await AifcInteraction.ask(
@@ -2350,10 +2527,7 @@ class _MyPageState extends State<MyPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: kMyPrimary,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: kMyPrimary, width: 1.5),
         ),
         isDense: true,
       ),
@@ -2392,9 +2566,10 @@ class _MyPageState extends State<MyPage> {
   // ── 빌드 ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final previewName = _displayNameController.text.trim().isNotEmpty
-        ? _displayNameController.text.trim()
-        : _nameController.text.trim();
+    final previewName =
+        _displayNameController.text.trim().isNotEmpty
+            ? _displayNameController.text.trim()
+            : _nameController.text.trim();
     final previewShort = _buildShortName(previewName);
     final gymName = _gymNameController.text.trim();
     final intro = _introController.text.trim();
@@ -2417,112 +2592,136 @@ class _MyPageState extends State<MyPage> {
             body: Center(
               child: SizedBox(
                 width: width,
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(color: kMyPrimary))
-                    : Column(
-                        children: [
-                          _buildHeader(
-                            previewName: previewName,
-                            previewShort: previewShort,
-                            nameEn: _nameEnController.text.trim(),
-                            gymName: gymName,
-                            specialty: _lessonSpecialtyController.text.trim(),
-                            intro: intro,
-                            phone: phone,
-                            address: _activityRegionSummary,
-                          ),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              controller: _contentScrollController,
-                              keyboardDismissBehavior:
-                                  ScrollViewKeyboardDismissBehavior.onDrag,
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                              child: Form(
-                                key: _formKey,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (_isMoreBusinessOwnerTier) ...[
-                                      _buildMoreBusinessCard(),
+                child:
+                    _isLoading
+                        ? const Center(
+                          child: CircularProgressIndicator(color: kMyPrimary),
+                        )
+                        : Column(
+                          children: [
+                            _buildHeader(
+                              previewName: previewName,
+                              previewShort: previewShort,
+                              nameEn: _nameEnController.text.trim(),
+                              gymName: gymName,
+                              specialty: _lessonSpecialtyController.text.trim(),
+                              intro: intro,
+                              phone: phone,
+                              address: _activityRegionSummary,
+                            ),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                controller: _contentScrollController,
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  16,
+                                  16,
+                                  24,
+                                ),
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (_isMoreBusinessOwnerTier) ...[
+                                        _buildMoreBusinessCard(),
+                                        const SizedBox(height: 14),
+                                      ],
+                                      _buildPremiumBanner(),
+                                      if (_isPersonalWorkspace &&
+                                          _beginnerMissionEarned &&
+                                          !_teacherInfoCompletedForTier) ...[
+                                        const SizedBox(height: 10),
+                                        _buildProfileReviewNotice(),
+                                      ],
                                       const SizedBox(height: 14),
-                                    ],
-                                    _buildPremiumBanner(),
-                                    if (_isPersonalWorkspace &&
-                                        _beginnerMissionEarned &&
-                                        !_teacherInfoCompletedForTier) ...[
-                                      const SizedBox(height: 10),
-                                      _buildProfileReviewNotice(),
-                                    ],
-                                    const SizedBox(height: 14),
-                                    _buildProfileFormCard(),
-                                    const SizedBox(height: 14),
-                                    if (!_isPersonalWorkspace) ...[
-                                      const _GoalSettingSection(),
+                                      _buildProfileFormCard(),
                                       const SizedBox(height: 14),
-                                      _ProductManagementSection(
-                                        nickname:
-                                            normalizeAifcNickname(previewName),
-                                      ),
-                                      const SizedBox(height: 14),
+                                      if (_isPersonalWorkspace &&
+                                          AppAccountService
+                                                  .instance
+                                                  .currentUser
+                                                  ?.isAnonymous ==
+                                              false) ...[
+                                        _buildEmailVerificationCard(),
+                                        const SizedBox(height: 14),
+                                      ],
+                                      if (!_isPersonalWorkspace) ...[
+                                        const _GoalSettingSection(),
+                                        const SizedBox(height: 14),
+                                        _ProductManagementSection(
+                                          nickname: normalizeAifcNickname(
+                                            previewName,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                      ],
+                                      if (!_isMoreBusinessOwnerTier) ...[
+                                        _buildMoreBusinessCard(),
+                                        const SizedBox(height: 14),
+                                      ],
+                                      const _VersionInfoCard(),
                                     ],
-                                    if (!_isMoreBusinessOwnerTier) ...[
-                                      _buildMoreBusinessCard(),
-                                      const SizedBox(height: 14),
-                                    ],
-                                    const _VersionInfoCard(),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
               ),
             ),
-            bottomNavigationBar: _isLoading
-                ? null
-                : SafeArea(
-                    top: false,
-                    child: Container(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: SizedBox(
-                        height: 52,
-                        child: FilledButton.icon(
-                          onPressed: _isSaving ? null : () => _saveProfile(),
-                          style: FilledButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.secondary,
-                            foregroundColor:
-                                Theme.of(context).colorScheme.onSecondary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+            bottomNavigationBar:
+                _isLoading
+                    ? null
+                    : SafeArea(
+                      top: false,
+                      child: Container(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        child: SizedBox(
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: _isSaving ? null : () => _saveProfile(),
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.secondary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onSecondary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
+                            label:
+                                _isSaving
+                                    ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.onSecondary,
+                                      ),
+                                    )
+                                    : const Text(
+                                      '저장하기',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                            icon:
+                                _isSaving
+                                    ? null
+                                    : const Icon(Icons.check_rounded, size: 20),
                           ),
-                          label: _isSaving
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSecondary,
-                                  ),
-                                )
-                              : const Text('저장하기',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900)),
-                          icon: _isSaving
-                              ? null
-                              : const Icon(Icons.check_rounded, size: 20),
                         ),
                       ),
                     ),
-                  ),
           ),
         );
       },
@@ -2595,76 +2794,77 @@ class _MyPageState extends State<MyPage> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _isTierLoading
-                ? Text(
-                    '등급 정보를 확인하고 있어요',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.82),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            '이용 중인 멤버십',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.76),
-                              fontSize: 12.2,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(width: 7),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.18),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              _currentTierName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
+            child:
+                _isTierLoading
+                    ? Text(
+                      '등급 정보를 확인하고 있어요',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.82),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    )
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              '이용 중인 멤버십',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.76),
+                                fontSize: 12.2,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
+                            const SizedBox(width: 7),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                _currentTierName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          _tierMessage,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.80),
+                            fontSize: 12.2,
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        _tierMessage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.80),
-                          fontSize: 12.2,
-                          fontWeight: FontWeight.w700,
-                          height: 1.25,
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '회원 $_memberCountForTier명 · 레슨 $_lessonCountForTier건',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.62),
-                          fontSize: 11.3,
-                          fontWeight: FontWeight.w700,
+                        const SizedBox(height: 3),
+                        Text(
+                          '회원 $_memberCountForTier명 · 레슨 $_lessonCountForTier건',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.62),
+                            fontSize: 11.3,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
           ),
           const SizedBox(width: 8),
           Icon(
@@ -2742,9 +2942,10 @@ class _MyPageState extends State<MyPage> {
     return Stack(
       children: [
         ImageFiltered(
-          imageFilter: canUseCard
-              ? ui.ImageFilter.blur(sigmaX: 0, sigmaY: 0)
-              : ui.ImageFilter.blur(sigmaX: 3.2, sigmaY: 3.2),
+          imageFilter:
+              canUseCard
+                  ? ui.ImageFilter.blur(sigmaX: 0, sigmaY: 0)
+                  : ui.ImageFilter.blur(sigmaX: 3.2, sigmaY: 3.2),
           child: card,
         ),
         if (!canUseCard)
@@ -2758,9 +2959,7 @@ class _MyPageState extends State<MyPage> {
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.30),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.16),
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.16)),
                 ),
                 child: Center(
                   child: Container(
@@ -2769,9 +2968,7 @@ class _MyPageState extends State<MyPage> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.14),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.18),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.18)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2881,8 +3078,9 @@ class _MyPageState extends State<MyPage> {
           ),
           decoration: BoxDecoration(
             gradient: gradient,
-            borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(32)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(32),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2951,69 +3149,69 @@ class _MyPageState extends State<MyPage> {
 
                   return FadeTransition(
                     opacity: animation,
-                    child: SlideTransition(
-                      position: slide,
-                      child: child,
-                    ),
+                    child: SlideTransition(position: slide, child: child),
                   );
                 },
-                child: _isHeaderCardExpanded
-                    ? Column(
-                        key: const ValueKey('business_card_open'),
-                        children: [
-                          const SizedBox(height: 12),
-                          _buildHeaderBusinessCardArea(
-                            previewName: previewName,
-                            nameEn: nameEn,
-                            gymName: gymName,
-                            specialty: specialty,
-                            phone: phone,
-                            address: address,
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 44,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                if (_canUseBusinessCardFeature) {
-                                  unawaited(_handleSendBusinessCardToKakao());
-                                } else {
-                                  unawaited(_openUpgradeChatSheet());
-                                }
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                side: BorderSide(
-                                  color: Colors.white.withOpacity(0.22),
+                child:
+                    _isHeaderCardExpanded
+                        ? Column(
+                          key: const ValueKey('business_card_open'),
+                          children: [
+                            const SizedBox(height: 12),
+                            _buildHeaderBusinessCardArea(
+                              previewName: previewName,
+                              nameEn: nameEn,
+                              gymName: gymName,
+                              specialty: specialty,
+                              phone: phone,
+                              address: address,
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 44,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  if (_canUseBusinessCardFeature) {
+                                    unawaited(_handleSendBusinessCardToKakao());
+                                  } else {
+                                    unawaited(_openUpgradeChatSheet());
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: BorderSide(
+                                    color: Colors.white.withOpacity(0.22),
+                                  ),
+                                  backgroundColor: Colors.white.withOpacity(
+                                    0.08,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
                                 ),
-                                backgroundColor: Colors.white.withOpacity(0.08),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
+                                icon: Icon(
+                                  _canUseBusinessCardFeature
+                                      ? Icons.ios_share_rounded
+                                      : Icons.lock_outline_rounded,
+                                  size: 18,
                                 ),
-                              ),
-                              icon: Icon(
-                                _canUseBusinessCardFeature
-                                    ? Icons.ios_share_rounded
-                                    : Icons.lock_outline_rounded,
-                                size: 18,
-                              ),
-                              label: Text(
-                                _canUseBusinessCardFeature
-                                    ? '카카오톡으로 명함 전송'
-                                    : 'Semi-Pro부터 카카오톡 전송 가능',
-                                style: const TextStyle(
-                                  fontSize: 13.2,
-                                  fontWeight: FontWeight.w900,
+                                label: Text(
+                                  _canUseBusinessCardFeature
+                                      ? '카카오톡으로 명함 전송'
+                                      : 'Semi-Pro부터 카카오톡 전송 가능',
+                                  style: const TextStyle(
+                                    fontSize: 13.2,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      )
-                    : const SizedBox.shrink(
-                        key: ValueKey('business_card_closed'),
-                      ),
+                          ],
+                        )
+                        : const SizedBox.shrink(
+                          key: ValueKey('business_card_closed'),
+                        ),
               ),
               _buildHeaderSwipeHint(),
             ],
@@ -3041,7 +3239,7 @@ class _MyPageState extends State<MyPage> {
       '영등포구',
       '용산구',
       '종로구',
-      '중구'
+      '중구',
     ],
     '부산광역시': ['강서구', '금정구', '남구', '동래구', '부산진구', '북구', '수영구', '연제구', '해운대구'],
     '대구광역시': ['달서구', '달성군', '동구', '북구', '수성구', '중구'],
@@ -3066,7 +3264,7 @@ class _MyPageState extends State<MyPage> {
       '파주시',
       '평택시',
       '하남시',
-      '화성시'
+      '화성시',
     ],
     '강원특별자치도': ['강릉시', '속초시', '원주시', '춘천시'],
     '충청북도': ['제천시', '청주시', '충주시'],
@@ -3082,34 +3280,42 @@ class _MyPageState extends State<MyPage> {
     final province = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          children: _activityRegions.keys
-              .map((value) => ListTile(
-                    title: Text(value),
-                    onTap: () => Navigator.pop(context, value),
-                  ))
-              .toList(),
-        ),
-      ),
+      builder:
+          (context) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              children:
+                  _activityRegions.keys
+                      .map(
+                        (value) => ListTile(
+                          title: Text(value),
+                          onTap: () => Navigator.pop(context, value),
+                        ),
+                      )
+                      .toList(),
+            ),
+          ),
     );
     if (!mounted || province == null) return null;
     final district = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          children: _activityRegions[province]!
-              .map((value) => ListTile(
-                    title: Text(value),
-                    onTap: () => Navigator.pop(context, value),
-                  ))
-              .toList(),
-        ),
-      ),
+      builder:
+          (context) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              children:
+                  _activityRegions[province]!
+                      .map(
+                        (value) => ListTile(
+                          title: Text(value),
+                          onTap: () => Navigator.pop(context, value),
+                        ),
+                      )
+                      .toList(),
+            ),
+          ),
     );
     if (!mounted || district == null) return null;
     return '$province $district';
@@ -3152,32 +3358,33 @@ class _MyPageState extends State<MyPage> {
   Future<void> _showActivityRegionActions(int index) async {
     final action = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            if (index != 0)
-              ListTile(
-                leading: const Icon(Icons.star_outline_rounded),
-                title: const Text('대표 지역으로 설정'),
-                onTap: () => Navigator.pop(context, 'primary'),
-              ),
-            ListTile(
-              leading: const Icon(Icons.edit_location_alt_outlined),
-              title: const Text('지역 변경'),
-              onTap: () => Navigator.pop(context, 'change'),
+      builder:
+          (context) => SafeArea(
+            child: Wrap(
+              children: [
+                if (index != 0)
+                  ListTile(
+                    leading: const Icon(Icons.star_outline_rounded),
+                    title: const Text('대표 지역으로 설정'),
+                    onTap: () => Navigator.pop(context, 'primary'),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.edit_location_alt_outlined),
+                  title: const Text('지역 변경'),
+                  onTap: () => Navigator.pop(context, 'change'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded),
+                  title: const Text('삭제'),
+                  onTap: () => Navigator.pop(context, 'delete'),
+                ),
+                ListTile(
+                  title: const Text('취소'),
+                  onTap: () => Navigator.pop(context),
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline_rounded),
-              title: const Text('삭제'),
-              onTap: () => Navigator.pop(context, 'delete'),
-            ),
-            ListTile(
-              title: const Text('취소'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
     if (!mounted || action == null) return;
     if (action == 'primary') {
@@ -3221,7 +3428,8 @@ class _MyPageState extends State<MyPage> {
     );
     if (picked == null || !mounted) return;
     setState(() {
-      _birthController.text = '${picked.year.toString().padLeft(4, '0')}-'
+      _birthController.text =
+          '${picked.year.toString().padLeft(4, '0')}-'
           '${picked.month.toString().padLeft(2, '0')}-'
           '${picked.day.toString().padLeft(2, '0')}';
     });
@@ -3247,12 +3455,15 @@ class _MyPageState extends State<MyPage> {
         labelText: '소속 형태',
         border: OutlineInputBorder(),
       ),
-      items: trainerAffiliationTypes.entries
-          .map((entry) => DropdownMenuItem(
-                value: entry.key,
-                child: Text(entry.value),
-              ))
-          .toList(),
+      items:
+          trainerAffiliationTypes.entries
+              .map(
+                (entry) => DropdownMenuItem(
+                  value: entry.key,
+                  child: Text(entry.value),
+                ),
+              )
+              .toList(),
       onChanged: (value) {
         setState(() {
           _affiliationType = value;
@@ -3260,13 +3471,13 @@ class _MyPageState extends State<MyPage> {
               _positionController.text.trim().isNotEmpty;
           _optionalCenterFieldsExpanded =
               _gymNameController.text.trim().isNotEmpty ||
-                  _centerLocationController.text.trim().isNotEmpty;
+              _centerLocationController.text.trim().isNotEmpty;
         });
         _handleProfileInputChanged();
         _logProfileFieldPolicy();
       },
-      validator: (value) =>
-          isTrainerAffiliationType(value) ? null : '소속 형태를 선택해주세요.',
+      validator:
+          (value) => isTrainerAffiliationType(value) ? null : '소속 형태를 선택해주세요.',
     );
   }
 
@@ -3313,15 +3524,19 @@ class _MyPageState extends State<MyPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text('직책 (선택)',
-                          style: TextStyle(fontWeight: FontWeight.w800)),
+                      child: Text(
+                        '직책 (선택)',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
                     ),
                     Text('입력하기 ›', style: TextStyle(color: kMyPrimary)),
                   ],
                 ),
                 SizedBox(height: 5),
-                Text('직책이 필요한 경우에만 입력해주세요.',
-                    style: TextStyle(color: kMyMuted, fontSize: 12)),
+                Text(
+                  '직책이 필요한 경우에만 입력해주세요.',
+                  style: TextStyle(color: kMyMuted, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -3336,8 +3551,11 @@ class _MyPageState extends State<MyPage> {
           label: '직책 (선택)',
           hint: '회원님들께 안내할 직책이 있다면 입력해주세요.',
           focusHint: '예: 퍼스널트레이너',
-          validator: (value) =>
-              validateTrainerJobTitleForAffiliation(value, _affiliationType),
+          validator:
+              (value) => validateTrainerJobTitleForAffiliation(
+                value,
+                _affiliationType,
+              ),
         ),
         Align(
           alignment: Alignment.centerRight,
@@ -3387,89 +3605,110 @@ class _MyPageState extends State<MyPage> {
     return FormField<List<String>>(
       key: ValueKey('activity_regions_${_selectedActivityRegions.join('|')}'),
       initialValue: List<String>.from(_selectedActivityRegions),
-      validator: (_) => _selectedActivityRegions.isNotEmpty &&
-              _selectedActivityRegions.every(isKnownTrainerActivityRegion)
-          ? null
-          : '활동 지역을 1곳 이상 선택해주세요.',
-      builder: (field) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Row(
+      validator:
+          (_) =>
+              _selectedActivityRegions.isNotEmpty &&
+                      _selectedActivityRegions.every(
+                        isKnownTrainerActivityRegion,
+                      )
+                  ? null
+                  : '활동 지역을 1곳 이상 선택해주세요.',
+      builder:
+          (field) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Text('주 활동 지역',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
-              ),
-              Text('최대 3곳', style: TextStyle(color: kMyMuted, fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ...List.generate(_selectedActivityRegions.length, (index) {
-            final region = _selectedActivityRegions[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 7),
-              child: InkWell(
-                onTap: () => _showActivityRegionActions(index),
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F3FF),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFDDD6FE)),
+              const Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '주 활동 지역',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (index == 0) ...[
-                        const Text('대표 · ',
-                            style: TextStyle(
+                  Text(
+                    '최대 3곳',
+                    style: TextStyle(color: kMyMuted, fontSize: 12),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...List.generate(_selectedActivityRegions.length, (index) {
+                final region = _selectedActivityRegions[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: InkWell(
+                    onTap: () => _showActivityRegionActions(index),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F3FF),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (index == 0) ...[
+                            const Text(
+                              '대표 · ',
+                              style: TextStyle(
                                 color: kMyPrimary,
-                                fontWeight: FontWeight.w800)),
-                      ],
-                      Expanded(child: Text(region)),
-                      const Icon(Icons.close_rounded, size: 17),
-                    ],
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                          Expanded(child: Text(region)),
+                          const Icon(Icons.close_rounded, size: 17),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              if (_selectedActivityRegions.length < 3)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const Key('my_page_add_activity_region'),
+                    onPressed: _addActivityRegion,
+                    icon: const Icon(Icons.add_location_alt_outlined),
+                    label: const Text('활동 지역 추가'),
+                  ),
+                )
+              else
+                const Text(
+                  '최대 3곳까지 등록할 수 있어요.',
+                  style: TextStyle(color: kMyMuted, fontSize: 12),
+                ),
+              if (field.hasError)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5, left: 12),
+                  child: Text(
+                    field.errorText!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
                   ),
                 ),
-              ),
-            );
-          }),
-          if (_selectedActivityRegions.length < 3)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: const Key('my_page_add_activity_region'),
-                onPressed: _addActivityRegion,
-                icon: const Icon(Icons.add_location_alt_outlined),
-                label: const Text('활동 지역 추가'),
-              ),
-            )
-          else
-            const Text('최대 3곳까지 등록할 수 있어요.',
-                style: TextStyle(color: kMyMuted, fontSize: 12)),
-          if (field.hasError)
-            Padding(
-              padding: const EdgeInsets.only(top: 5, left: 12),
-              child: Text(field.errorText!,
-                  style: const TextStyle(color: Colors.red, fontSize: 12)),
-            ),
-        ],
-      ),
+            ],
+          ),
     );
   }
 
   Widget _buildAffiliationSpecificFields(String nickname) {
-    final isCenter = trainerAffiliationCategory(_affiliationType) ==
+    final isCenter =
+        trainerAffiliationCategory(_affiliationType) ==
         TrainerAffiliationCategory.center;
     final jobField = _buildField(
       controller: _positionController,
       label: '직책',
       hint: myPageJobPrompt(nickname),
       focusHint: '예: 대표 / 팀장 / 트레이너 / 강사',
-      validator: (value) =>
-          validateTrainerJobTitleForAffiliation(value, _affiliationType),
+      validator:
+          (value) =>
+              validateTrainerJobTitleForAffiliation(value, _affiliationType),
     );
     final activityField = _buildField(
       controller: _lessonSpecialtyController,
@@ -3500,9 +3739,10 @@ class _MyPageState extends State<MyPage> {
   }
 
   Widget _buildProfileFormCard() {
-    final nickname = _displayNameController.text.trim().isNotEmpty
-        ? _displayNameController.text.trim()
-        : '강사님';
+    final nickname =
+        _displayNameController.text.trim().isNotEmpty
+            ? _displayNameController.text.trim()
+            : '강사님';
 
     return _MySectionCard(
       title: 'AI FC 안내 정보',
@@ -3598,10 +3838,7 @@ class _MyPageState extends State<MyPage> {
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                flex: 4,
-                child: _buildGenderPickerField(),
-              ),
+              Expanded(flex: 4, child: _buildGenderPickerField()),
             ],
           ),
           const SizedBox(height: 12),
@@ -3683,88 +3920,110 @@ class _MyPageState extends State<MyPage> {
             ),
           ],
         ),
-        child: _isTierLoading
-            ? const SizedBox(
-                height: 56,
-                child: Center(
+        child:
+            _isTierLoading
+                ? const SizedBox(
+                  height: 56,
+                  child: Center(
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: kMyPrimary)),
-              )
-            : Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [kMyPrimary, kMyPrimary2],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
+                      strokeWidth: 2,
+                      color: kMyPrimary,
                     ),
-                    child: const Icon(Icons.emoji_events_outlined,
-                        color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text('현재 등급',
-                                style: TextStyle(
-                                    color: kMyMuted,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800)),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2FF),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(_currentTierName,
-                                  style: const TextStyle(
-                                      color: kMyPrimary,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w900)),
-                            ),
-                          ],
+                )
+                : Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [kMyPrimary, kMyPrimary2],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        const SizedBox(height: 6),
-                        Text(_tierMessage,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.emoji_events_outlined,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                '현재 등급',
+                                style: TextStyle(
+                                  color: kMyMuted,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEEF2FF),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  _currentTierName,
+                                  style: const TextStyle(
+                                    color: kMyPrimary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _tierMessage,
                             style: const TextStyle(
-                                color: kMyText,
-                                fontSize: 12.5,
-                                height: 1.35,
-                                fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 4),
-                        Text(
-                          '회원 $_memberCountForTier명 · 레슨 $_lessonCountForTier건',
-                          style: const TextStyle(
+                              color: kMyText,
+                              fontSize: 12.5,
+                              height: 1.35,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '회원 $_memberCountForTier명 · 레슨 $_lessonCountForTier건',
+                            style: const TextStyle(
                               color: kMyMuted,
                               fontSize: 11,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: Color(0xFF9CA3AF)),
-                ],
-              ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ],
+                ),
       ),
     );
   }
 
   Future<void> _showTierInfoSheet() async {
-    final trainerName = _displayNameController.text.trim().isNotEmpty
-        ? _displayNameController.text.trim()
-        : _nameController.text.trim();
+    final trainerName =
+        _displayNameController.text.trim().isNotEmpty
+            ? _displayNameController.text.trim()
+            : _nameController.text.trim();
 
     final action = await AifcTierGuideChatSheet.show(
       context: context,
@@ -3774,9 +4033,10 @@ class _MyPageState extends State<MyPage> {
       memberCount: _memberCountForTier,
       lessonCount: _lessonCountForTier,
       hasProduct: _hasProduct,
-      trainerInfoDone: _isPersonalWorkspace
-          ? _displayTrainerInfoDone
-          : !_hasMissingAiFcProfileInfo(),
+      trainerInfoDone:
+          _isPersonalWorkspace
+              ? _displayTrainerInfoDone
+              : !_hasMissingAiFcProfileInfo(),
     );
 
     if (!mounted) return;
@@ -3809,9 +4069,10 @@ class _MyPageState extends State<MyPage> {
 
   // ── 프리미엄 배너 ─────────────────────────────────────────────────────────
   Future<void> _openUpgradeChatSheet() async {
-    final trainerName = _displayNameController.text.trim().isNotEmpty
-        ? _displayNameController.text.trim()
-        : _nameController.text.trim();
+    final trainerName =
+        _displayNameController.text.trim().isNotEmpty
+            ? _displayNameController.text.trim()
+            : _nameController.text.trim();
 
     final action = await AifcUpgradeChatSheet.show(
       context: context,
@@ -3820,9 +4081,10 @@ class _MyPageState extends State<MyPage> {
         isSponsor: _isSponsor,
         scheduleCount: _lessonCountForTier,
         memberCount: _memberCountForTier,
-        trainerInfoDone: _isPersonalWorkspace
-            ? _displayTrainerInfoDone
-            : !_hasMissingAiFcProfileInfo(),
+        trainerInfoDone:
+            _isPersonalWorkspace
+                ? _displayTrainerInfoDone
+                : !_hasMissingAiFcProfileInfo(),
         accountLinked: _accountLinkedForTier,
         requiresLinkedAccount: false,
         hasProduct: _hasProduct,
@@ -3870,9 +4132,10 @@ class _MyPageState extends State<MyPage> {
         isSponsor: _isSponsor,
         scheduleCount: _lessonCountForTier,
         memberCount: _memberCountForTier,
-        trainerInfoDone: _isPersonalWorkspace
-            ? _displayTrainerInfoDone
-            : !_hasMissingAiFcProfileInfo(),
+        trainerInfoDone:
+            _isPersonalWorkspace
+                ? _displayTrainerInfoDone
+                : !_hasMissingAiFcProfileInfo(),
         accountLinked: _accountLinkedForTier,
         requiresLinkedAccount: false,
         hasProduct: _hasProduct,
@@ -3925,9 +4188,10 @@ class _MyPageState extends State<MyPage> {
     final isOwner = _isMoreBusinessOwnerTier;
     final statusColor = _moreBusinessStatusColor;
 
-    final subtitle = isOwner
-        ? '센터와 선생님들의 MORE 비즈니스 흐름을 운영합니다.'
-        : _moreBusinessLinked
+    final subtitle =
+        isOwner
+            ? '센터와 선생님들의 MORE 비즈니스 흐름을 운영합니다.'
+            : _moreBusinessLinked
             ? '${_moreBusinessCompanyName.isEmpty ? '연결된 회사' : _moreBusinessCompanyName}와 MORE 비즈니스 흐름을 관리합니다.'
             : '회사 연결 후 MORE 비즈니스 흐름을 사용할 수 있어요.';
 
@@ -3958,11 +4222,7 @@ class _MyPageState extends State<MyPage> {
                 color: statusColor.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(15),
               ),
-              child: Icon(
-                _moreBusinessIcon,
-                color: statusColor,
-                size: 22,
-              ),
+              child: Icon(_moreBusinessIcon, color: statusColor, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -3986,9 +4246,10 @@ class _MyPageState extends State<MyPage> {
                       ),
                       const SizedBox(width: 7),
                       Tooltip(
-                        message: _isMoreBusinessOwnerTier
-                            ? 'MORE 비즈니스'
-                            : _moreBusinessLinked
+                        message:
+                            _isMoreBusinessOwnerTier
+                                ? 'MORE 비즈니스'
+                                : _moreBusinessLinked
                                 ? '회사 연결됨'
                                 : '회사 연결 안 됨',
                         child: Container(
@@ -4117,19 +4378,25 @@ class _MySectionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: const TextStyle(
-                            color: kMyText,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: kMyText,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 3),
-                      Text(subtitle!,
-                          style: const TextStyle(
-                              color: kMyMuted,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              height: 1.3)),
+                      Text(
+                        subtitle!,
+                        style: const TextStyle(
+                          color: kMyMuted,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -4193,28 +4460,37 @@ class _MyMenuTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.title,
-                      style: TextStyle(
-                          color: titleColor,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w900)),
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                   const SizedBox(height: 3),
-                  Text(item.subtitle,
-                      style: const TextStyle(
-                          color: kMyMuted,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          height: 1.3)),
+                  Text(
+                    item.subtitle,
+                    style: const TextStyle(
+                      color: kMyMuted,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
             if (item.trailingText != null)
-              Text(item.trailingText!,
-                  style: const TextStyle(
-                      color: kMyMuted,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800))
+              Text(
+                item.trailingText!,
+                style: const TextStyle(
+                  color: kMyMuted,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              )
             else
               const Icon(Icons.chevron_right_rounded, color: Color(0xFF9CA3AF)),
           ],
@@ -4260,20 +4536,26 @@ class _TierInfoRow extends StatelessWidget {
           const SizedBox(width: 9),
           SizedBox(
             width: 82,
-            child: Text(name,
-                style: TextStyle(
-                    color: active ? kMyPrimary : kMyText,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w900)),
+            child: Text(
+              name,
+              style: TextStyle(
+                color: active ? kMyPrimary : kMyText,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(description,
-                style: const TextStyle(
-                    color: kMyMuted,
-                    fontSize: 11.5,
-                    height: 1.3,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              description,
+              style: const TextStyle(
+                color: kMyMuted,
+                fontSize: 11.5,
+                height: 1.3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -4314,10 +4596,11 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
 
   Future<void> _loadGoals() async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('trainer_profile')
-          .doc('me')
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('trainer_profile')
+              .doc('me')
+              .get();
 
       final goals = doc.data()?['goals'] as Map<String, dynamic>?;
 
@@ -4328,8 +4611,8 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
         // ✅ 버그 수정: 숫자만 추출 후 포맷
         final revenueRaw = (goals['monthlyRevenueTarget'] ?? '').toString();
         final revenueDigits = revenueRaw.replaceAll(RegExp(r'[^0-9]'), '');
-        _monthlyRevenueController.text =
-            _MyMoneyInputFormatter._formatWithComma(revenueDigits);
+        _monthlyRevenueController
+            .text = _MyMoneyInputFormatter._formatWithComma(revenueDigits);
 
         _weeklyLessonController.text =
             (goals['weeklyLessonTarget'] ?? '').toString();
@@ -4359,15 +4642,19 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
           .collection('trainer_profile')
           .doc('me')
           .set({
-        'goals': {
-          'monthlyMemberTarget':
-              _parseGoalNumber(_monthlyMemberController.text),
-          'monthlyRevenueTarget':
-              _parseGoalNumber(_monthlyRevenueController.text),
-          'weeklyLessonTarget': _parseGoalNumber(_weeklyLessonController.text),
-        },
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'goals': {
+              'monthlyMemberTarget': _parseGoalNumber(
+                _monthlyMemberController.text,
+              ),
+              'monthlyRevenueTarget': _parseGoalNumber(
+                _monthlyRevenueController.text,
+              ),
+              'weeklyLessonTarget': _parseGoalNumber(
+                _weeklyLessonController.text,
+              ),
+            },
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -4427,62 +4714,69 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
       title: '월 목표 체크',
       subtitle: '이번 달 목표를 알려주시면 회원 수, 매출, 수업 흐름을 같이 체크해볼게요.',
       icon: Icons.flag_outlined,
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: kMyPrimary))
-          : Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(13),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: kMyBorder),
-                  ),
-                  child: const Text(
-                    '목표는 정확하지 않아도 괜찮아요.\n대략적인 숫자만 알려주시면 제가 진행 흐름을 같이 확인해볼게요.',
-                    style: TextStyle(
+      child:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: kMyPrimary),
+              )
+              : Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: kMyBorder),
+                    ),
+                    child: const Text(
+                      '목표는 정확하지 않아도 괜찮아요.\n대략적인 숫자만 알려주시면 제가 진행 흐름을 같이 확인해볼게요.',
+                      style: TextStyle(
                         color: kMyMuted,
                         fontSize: 12,
                         height: 1.45,
-                        fontWeight: FontWeight.w600),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _goalField(
+                  const SizedBox(height: 12),
+                  _goalField(
                     controller: _monthlyMemberController,
                     label: '이번 달 목표 회원',
-                    suffix: '명'),
-                const SizedBox(height: 12),
-                _goalField(
-                  controller: _monthlyRevenueController,
-                  label: '이번 달 목표 매출',
-                  hint: '예: 1,000,000',
-                  suffix: '원',
-                  inputFormatters: const [_MyMoneyInputFormatter()],
-                ),
-                const SizedBox(height: 12),
-                _goalField(
+                    suffix: '명',
+                  ),
+                  const SizedBox(height: 12),
+                  _goalField(
+                    controller: _monthlyRevenueController,
+                    label: '이번 달 목표 매출',
+                    hint: '예: 1,000,000',
+                    suffix: '원',
+                    inputFormatters: const [_MyMoneyInputFormatter()],
+                  ),
+                  const SizedBox(height: 12),
+                  _goalField(
                     controller: _weeklyLessonController,
                     label: '주간 레슨 목표',
-                    suffix: '회'),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _isSaving ? null : _saveGoals,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: kMyPrimary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: Text(_isSaving ? '기록하는 중...' : '목표 기록하기'),
+                    suffix: '회',
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _isSaving ? null : _saveGoals,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: kMyPrimary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(_isSaving ? '기록하는 중...' : '목표 기록하기'),
+                    ),
+                  ),
+                ],
+              ),
     );
   }
 }
@@ -4490,9 +4784,7 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
 // ── 레슨 상품 관리 섹션 ───────────────────────────────────────────────────────
 
 class _ProductManagementSection extends StatelessWidget {
-  const _ProductManagementSection({
-    required this.nickname,
-  });
+  const _ProductManagementSection({required this.nickname});
 
   final String nickname;
 
@@ -4508,10 +4800,11 @@ class _ProductManagementSection extends StatelessWidget {
         isScrollControlled: true,
         backgroundColor: Colors.white,
         showDragHandle: true,
-        builder: (_) => _ProductEditSheet(
-          defaultCategory: defaultCategory,
-          onSave: (product) => LessonProductService.addProduct(product),
-        ),
+        builder:
+            (_) => _ProductEditSheet(
+              defaultCategory: defaultCategory,
+              onSave: (product) => LessonProductService.addProduct(product),
+            ),
       );
 
       if (!context.mounted) return;
@@ -4532,52 +4825,55 @@ class _ProductManagementSection extends StatelessWidget {
     String specialty = '';
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('trainer_profile')
-          .doc('me')
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('trainer_profile')
+              .doc('me')
+              .get();
 
       final data = snap.data();
       specialty = (data?['lessonSpecialty'] ?? '').toString().trim();
     } catch (_) {}
 
-    final autoCompleteHints = <String>[
-      specialty,
-      'PT',
-      '피티',
-      '퍼스널 트레이닝',
-      'Personal Training',
-      'EMS',
-      '필라테스',
-      'Pilates',
-      '재활',
-      '체형교정',
-      '그룹레슨',
-      'Group Training',
-      '요가',
-      'Yoga',
-      '골프',
-      'Golf',
-      'Golf Training',
-      '키즈',
-      '산전산후',
-      '다이어트',
-      '근력강화',
-      '스트레칭',
-      'Stretching',
-      '러닝',
-      '러닝트레이닝',
-      'Running Training',
-      '기능성 운동',
-      'Functional Training',
-      '바디프로필',
-    ].map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
+    final autoCompleteHints =
+        <String>[
+          specialty,
+          'PT',
+          '피티',
+          '퍼스널 트레이닝',
+          'Personal Training',
+          'EMS',
+          '필라테스',
+          'Pilates',
+          '재활',
+          '체형교정',
+          '그룹레슨',
+          'Group Training',
+          '요가',
+          'Yoga',
+          '골프',
+          'Golf',
+          'Golf Training',
+          '키즈',
+          '산전산후',
+          '다이어트',
+          '근력강화',
+          '스트레칭',
+          'Stretching',
+          '러닝',
+          '러닝트레이닝',
+          'Running Training',
+          '기능성 운동',
+          'Functional Training',
+          '바디프로필',
+        ].map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
 
     if (!context.mounted) return;
 
     final result = await AifcChatSheet.show(
       context: context,
-      question: '$chatNickname, 레슨 상품을 등록해두면\n'
+      question:
+          '$chatNickname, 레슨 상품을 등록해두면\n'
           '계약서 작성할 때 바로 불러올 수 있어요.\n\n'
           '어떤 레슨 분야를 만들어 볼까요?'
           '${specialty.isNotEmpty ? "\n\n$specialty을 진행 중이신 것 같은데,\n그대로 적어주셔도 돼요." : ""}',
@@ -4603,10 +4899,11 @@ class _ProductManagementSection extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       showDragHandle: true,
-      builder: (_) => _ProductEditSheet(
-        defaultCategory: result.trim(),
-        onSave: (product) => LessonProductService.addProduct(product),
-      ),
+      builder:
+          (_) => _ProductEditSheet(
+            defaultCategory: result.trim(),
+            onSave: (product) => LessonProductService.addProduct(product),
+          ),
     );
 
     if (!context.mounted) return;
@@ -4621,16 +4918,19 @@ class _ProductManagementSection extends StatelessWidget {
   }
 
   Future<void> _openEditSheet(
-      BuildContext context, ProductModel product) async {
+    BuildContext context,
+    ProductModel product,
+  ) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       showDragHandle: true,
-      builder: (_) => _ProductEditSheet(
-        product: product,
-        onSave: (next) => LessonProductService.updateProduct(next),
-      ),
+      builder:
+          (_) => _ProductEditSheet(
+            product: product,
+            onSave: (next) => LessonProductService.updateProduct(next),
+          ),
     );
 
     if (!context.mounted) return;
@@ -4645,7 +4945,9 @@ class _ProductManagementSection extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, ProductModel product) async {
+    BuildContext context,
+    ProductModel product,
+  ) async {
     final result = await AifcConfirmChatSheet.show(
       context: context,
       nickname: normalizeAifcNickname(nickname),
@@ -4684,7 +4986,8 @@ class _ProductManagementSection extends StatelessWidget {
       context: context,
       nickname: normalizeAifcNickname(nickname),
       title: '레슨 분야를 삭제할까요?',
-      message: '$categoryName 분야의 레슨 상품 ${products.length}개가 목록에서 사라져요.\n'
+      message:
+          '$categoryName 분야의 레슨 상품 ${products.length}개가 목록에서 사라져요.\n'
           '실수라면 삭제 후 되돌리기는 개별 상품 기준으로만 관리하는 것이 안전해요.',
       cancelText: '취소',
       confirmText: '전체 삭제',
@@ -4728,9 +5031,10 @@ class _ProductManagementSection extends StatelessWidget {
     final grouped = <String, List<ProductModel>>{};
 
     for (final product in products) {
-      final category = product.categoryName.trim().isEmpty
-          ? '레슨 분야'
-          : product.categoryName.trim();
+      final category =
+          product.categoryName.trim().isEmpty
+              ? '레슨 분야'
+              : product.categoryName.trim();
 
       grouped.putIfAbsent(category, () => <ProductModel>[]);
       grouped[category]!.add(product);
@@ -4785,7 +5089,8 @@ class _ProductManagementSection extends StatelessWidget {
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-                child: CircularProgressIndicator(color: kMyPrimary));
+              child: CircularProgressIndicator(color: kMyPrimary),
+            );
           }
           return Column(
             children: [
@@ -4801,42 +5106,46 @@ class _ProductManagementSection extends StatelessWidget {
                   child: const Text(
                     '아직 알려주신 레슨 상품이 없어요.\n상품을 추가하시면, 계약서 작성할 때 바로 적용 할 수 있어요.',
                     style: TextStyle(
-                        color: kMyMuted,
-                        height: 1.45,
-                        fontWeight: FontWeight.w600),
+                      color: kMyMuted,
+                      height: 1.45,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 )
               else
                 Column(
-                  children: categoryNames.map((categoryName) {
-                    final categoryProducts =
-                        groupedProducts[categoryName] ?? <ProductModel>[];
+                  children:
+                      categoryNames.map((categoryName) {
+                        final categoryProducts =
+                            groupedProducts[categoryName] ?? <ProductModel>[];
 
-                    return _ProductCategoryGroup(
-                      categoryName: categoryName,
-                      products: categoryProducts,
-                      onAdd: () => _openAddSheet(
-                        context,
-                        defaultCategory: categoryName,
-                      ),
-                      onEdit: (product) => _openEditSheet(context, product),
-                      onDelete: (product) => _confirmDelete(context, product),
-                      onDeleteCategory: () => _confirmDeleteCategory(
-                        context,
-                        categoryName,
-                        categoryProducts,
-                      ),
-                    );
-                  }).toList(),
+                        return _ProductCategoryGroup(
+                          categoryName: categoryName,
+                          products: categoryProducts,
+                          onAdd:
+                              () => _openAddSheet(
+                                context,
+                                defaultCategory: categoryName,
+                              ),
+                          onEdit: (product) => _openEditSheet(context, product),
+                          onDelete:
+                              (product) => _confirmDelete(context, product),
+                          onDeleteCategory:
+                              () => _confirmDeleteCategory(
+                                context,
+                                categoryName,
+                                categoryProducts,
+                              ),
+                        );
+                      }).toList(),
                 ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => _openAddSheet(
-                    context,
-                    showAiGuide: products.isEmpty,
-                  ),
+                  onPressed:
+                      () =>
+                          _openAddSheet(context, showAiGuide: products.isEmpty),
                   icon: const Icon(Icons.add_rounded),
                   label: const Text('레슨 분야 추가'),
                   style: OutlinedButton.styleFrom(
@@ -4844,7 +5153,8 @@ class _ProductManagementSection extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     side: const BorderSide(color: kMyBorder),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),
@@ -4987,8 +5297,10 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(999),
@@ -5036,12 +5348,13 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
                       widget.onDeleteCategory();
                     }
                   },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: 'deleteCategory',
-                      child: Text('분야 전체 삭제'),
-                    ),
-                  ],
+                  itemBuilder:
+                      (_) => const [
+                        PopupMenuItem(
+                          value: 'deleteCategory',
+                          child: Text('분야 전체 삭제'),
+                        ),
+                      ],
                 ),
                 Icon(
                   _expanded
@@ -5056,23 +5369,22 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
             duration: const Duration(milliseconds: 180),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
-            child: _expanded
-                ? Column(
-                    key: ValueKey('open_${widget.categoryName}'),
-                    children: [
-                      const SizedBox(height: 10),
-                      ...widget.products.map((product) {
-                        return _ProductTile(
-                          product: product,
-                          onEdit: () => widget.onEdit(product),
-                          onDelete: () => widget.onDelete(product),
-                        );
-                      }),
-                    ],
-                  )
-                : const SizedBox.shrink(
-                    key: ValueKey('closed'),
-                  ),
+            child:
+                _expanded
+                    ? Column(
+                      key: ValueKey('open_${widget.categoryName}'),
+                      children: [
+                        const SizedBox(height: 10),
+                        ...widget.products.map((product) {
+                          return _ProductTile(
+                            product: product,
+                            onEdit: () => widget.onEdit(product),
+                            onDelete: () => widget.onDelete(product),
+                          );
+                        }),
+                      ],
+                    )
+                    : const SizedBox.shrink(key: ValueKey('closed')),
           ),
         ],
       ),
@@ -5132,26 +5444,31 @@ class _ProductTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name,
-                    style: const TextStyle(
-                        color: kMyText,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w900)),
+                Text(
+                  product.name,
+                  style: const TextStyle(
+                    color: kMyText,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   '${product.categoryName} · ${product.lessonType} · ${product.sessionCount}회 · 회당 ${_formatMoney(product.unitPrice)}원',
                   style: const TextStyle(
-                      color: kMyMuted,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600),
+                    color: kMyMuted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '총 ${_formatMoney(product.totalPrice)}원 · ${product.vatIncluded ? 'VAT 포함' : 'VAT 별도'}',
                   style: const TextStyle(
-                      color: kMyMuted,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700),
+                    color: kMyMuted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -5161,10 +5478,11 @@ class _ProductTile extends StatelessWidget {
               if (value == 'edit') onEdit();
               if (value == 'delete') onDelete();
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('수정')),
-              PopupMenuItem(value: 'delete', child: Text('삭제')),
-            ],
+            itemBuilder:
+                (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('수정')),
+                  PopupMenuItem(value: 'delete', child: Text('삭제')),
+                ],
           ),
         ],
       ),
@@ -5208,15 +5526,14 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
     final p = widget.product;
 
     _categoryController = TextEditingController(
-      text: p?.categoryName ??
+      text:
+          p?.categoryName ??
           (widget.defaultCategory.isNotEmpty
               ? widget.defaultCategory
               : 'PT 레슨'),
     );
 
-    _nameController = TextEditingController(
-      text: p?.name ?? '',
-    );
+    _nameController = TextEditingController(text: p?.name ?? '');
 
     _nameEditedManually = p?.name.trim().isNotEmpty ?? false;
 
@@ -5225,20 +5542,22 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
     );
 
     _unitPriceController = TextEditingController(
-      text: p == null
-          ? ''
-          : _MyMoneyInputFormatter._formatWithComma(p.unitPrice.toString()),
+      text:
+          p == null
+              ? ''
+              : _MyMoneyInputFormatter._formatWithComma(p.unitPrice.toString()),
     );
 
     _totalPriceController = TextEditingController(
-      text: p == null
-          ? ''
-          : _MyMoneyInputFormatter._formatWithComma(p.totalPrice.toString()),
+      text:
+          p == null
+              ? ''
+              : _MyMoneyInputFormatter._formatWithComma(
+                p.totalPrice.toString(),
+              ),
     );
 
-    _lessonTypeController = TextEditingController(
-      text: p?.lessonType ?? 'PT',
-    );
+    _lessonTypeController = TextEditingController(text: p?.lessonType ?? 'PT');
 
     _vatIncluded = p?.vatIncluded ?? true;
 
@@ -5324,9 +5643,10 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
         unitPrice: _parseInt(_unitPriceController.text),
         totalPrice: _parseInt(_totalPriceController.text),
         vatIncluded: _vatIncluded,
-        lessonType: _lessonTypeController.text.trim().isEmpty
-            ? 'PT'
-            : _lessonTypeController.text.trim(),
+        lessonType:
+            _lessonTypeController.text.trim().isEmpty
+                ? 'PT'
+                : _lessonTypeController.text.trim(),
       );
 
       await widget.onSave(product);
@@ -5364,7 +5684,8 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      validator: validator ??
+      validator:
+          validator ??
           (value) {
             if (value == null || value.trim().isEmpty)
               return '$label 입력이 필요합니다.';
@@ -5405,9 +5726,10 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                 Row(
                   children: [
                     const AifcAvatar(
-                        size: 42,
-                        isAnimating: true,
-                        backgroundColor: Colors.white),
+                      size: 42,
+                      isAnimating: true,
+                      backgroundColor: Colors.white,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -5419,18 +5741,22 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                                 ? '레슨 상품을 추가해볼까요?'
                                 : '레슨 상품을 수정할게요',
                             style: const TextStyle(
-                                color: kMyText,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.3),
+                              color: kMyText,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                            ),
                           ),
                           const SizedBox(height: 3),
-                          const Text('등록해두면 계약서와 회원관리에서 바로 불러올 수 있어요.',
-                              style: TextStyle(
-                                  color: kMyMuted,
-                                  fontSize: 11.5,
-                                  height: 1.35,
-                                  fontWeight: FontWeight.w600)),
+                          const Text(
+                            '등록해두면 계약서와 회원관리에서 바로 불러올 수 있어요.',
+                            style: TextStyle(
+                              color: kMyMuted,
+                              fontSize: 11.5,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -5463,7 +5789,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                         suffixText: '회',
                         keyboardType: TextInputType.number,
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
+                          FilteringTextInputFormatter.digitsOnly,
                         ],
                       ),
                     ),
@@ -5553,13 +5879,16 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                    child: Text(_isSaving
-                        ? '기록하는 중...'
-                        : widget.product == null
-                            ? '레슨상품 기록하기'
-                            : '수정 내용 기록하기'),
+                    child: Text(
+                      _isSaving
+                          ? '기록하는 중...'
+                          : widget.product == null
+                          ? '레슨상품 기록하기'
+                          : '수정 내용 기록하기',
+                    ),
                   ),
                 ),
               ],
@@ -5588,20 +5917,28 @@ class _VersionInfoCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('MORE THAN',
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w800, color: kMyMuted)),
+          const Text(
+            'MORE THAN',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: kMyMuted,
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text('Ver. v1.0.0',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: kMyMuted)),
+            child: const Text(
+              'Ver. v1.0.0',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: kMyMuted,
+              ),
+            ),
           ),
         ],
       ),
@@ -5616,7 +5953,9 @@ class _MyBirthDateInputFormatter extends TextInputFormatter {
 
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     String text;
     if (digits.length <= 4) {
@@ -5747,18 +6086,27 @@ class _AifcSmartTextFieldState extends State<_AifcSmartTextField> {
         suffixIcon: widget.suffixIcon,
         floatingLabelBehavior: FloatingLabelBehavior.always,
         labelStyle: const TextStyle(
-            color: kMyMuted, fontSize: 11.5, fontWeight: FontWeight.w800),
+          color: kMyMuted,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+        ),
         floatingLabelStyle: const TextStyle(
-            color: kMyPrimary, fontSize: 11.5, fontWeight: FontWeight.w900),
+          color: kMyPrimary,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w900,
+        ),
         hintStyle: const TextStyle(
-            color: Color(0xFF9CA3AF),
-            fontSize: 11.2,
-            height: 1.25,
-            fontWeight: FontWeight.w600),
+          color: Color(0xFF9CA3AF),
+          fontSize: 11.2,
+          height: 1.25,
+          fontWeight: FontWeight.w600,
+        ),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: kMyBorder),
@@ -5782,11 +6130,15 @@ class _MyMoneyInputFormatter extends TextInputFormatter {
 
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.isEmpty) {
       return const TextEditingValue(
-          text: '', selection: TextSelection.collapsed(offset: 0));
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
     }
     final formatted = _formatWithComma(digits);
     return TextEditingValue(
@@ -5833,9 +6185,7 @@ class _MyHeaderBusinessCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             const DecoratedBox(
-              decoration: BoxDecoration(
-                color: Color(0xFF0D1117),
-              ),
+              decoration: BoxDecoration(color: Color(0xFF0D1117)),
             ),
             Positioned.fill(
               child: CustomPaint(
@@ -5845,9 +6195,7 @@ class _MyHeaderBusinessCard extends StatelessWidget {
               ),
             ),
             Positioned.fill(
-              child: CustomPaint(
-                painter: _MyHeaderSlashLinePainter(),
-              ),
+              child: CustomPaint(painter: _MyHeaderSlashLinePainter()),
             ),
             Positioned(
               left: 0,
@@ -5929,8 +6277,9 @@ class _MyHeaderBusinessCard extends StatelessWidget {
                               color: const Color(0xFF38BDF8).withOpacity(0.14),
                               borderRadius: BorderRadius.circular(5),
                               border: Border.all(
-                                color:
-                                    const Color(0xFF38BDF8).withOpacity(0.28),
+                                color: const Color(
+                                  0xFF38BDF8,
+                                ).withOpacity(0.28),
                               ),
                             ),
                             child: Text(
@@ -5956,15 +6305,9 @@ class _MyHeaderBusinessCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         if (phone.isNotEmpty)
-                          _MyHeaderContactRow(
-                            label: 'TEL',
-                            value: phone,
-                          ),
+                          _MyHeaderContactRow(label: 'TEL', value: phone),
                         if (address.isNotEmpty)
-                          _MyHeaderContactRow(
-                            label: 'ADD',
-                            value: address,
-                          ),
+                          _MyHeaderContactRow(label: 'ADD', value: address),
                       ],
                     ),
                   ],
@@ -5980,9 +6323,7 @@ class _MyHeaderBusinessCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.12),
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
                 ),
                 child: const Icon(
                   Icons.badge_outlined,
@@ -5999,10 +6340,7 @@ class _MyHeaderBusinessCard extends StatelessWidget {
 }
 
 class _MyHeaderContactRow extends StatelessWidget {
-  const _MyHeaderContactRow({
-    required this.label,
-    required this.value,
-  });
+  const _MyHeaderContactRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -6044,20 +6382,19 @@ class _MyHeaderContactRow extends StatelessWidget {
 }
 
 class _MyHeaderPhotoAreaPainter extends CustomPainter {
-  const _MyHeaderPhotoAreaPainter({
-    required this.photoBg,
-  });
+  const _MyHeaderPhotoAreaPainter({required this.photoBg});
 
   final Color photoBg;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(size.width * 0.64, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(size.width * 0.55, size.height)
-      ..close();
+    final path =
+        Path()
+          ..moveTo(size.width * 0.64, 0)
+          ..lineTo(size.width, 0)
+          ..lineTo(size.width, size.height)
+          ..lineTo(size.width * 0.55, size.height)
+          ..close();
 
     canvas.drawPath(
       path,
@@ -6081,27 +6418,24 @@ class _MyHeaderSlashLinePainter extends CustomPainter {
     final x1 = size.width * 0.64;
     final x2 = size.width * 0.55;
 
-    final paint = Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(x1, 0),
-        Offset(x2, size.height),
-        [
-          const Color(0xFF38BDF8).withOpacity(0.1),
-          const Color(0xFF38BDF8),
-          const Color(0xFF9333EA),
-          const Color(0xFF38BDF8).withOpacity(0.1),
-        ],
-        [0.0, 0.28, 0.72, 1.0],
-      )
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
+    final paint =
+        Paint()
+          ..shader = ui.Gradient.linear(
+            Offset(x1, 0),
+            Offset(x2, size.height),
+            [
+              const Color(0xFF38BDF8).withOpacity(0.1),
+              const Color(0xFF38BDF8),
+              const Color(0xFF9333EA),
+              const Color(0xFF38BDF8).withOpacity(0.1),
+            ],
+            [0.0, 0.28, 0.72, 1.0],
+          )
+          ..strokeWidth = 3.0
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
 
-    canvas.drawLine(
-      Offset(x1, 0),
-      Offset(x2, size.height),
-      paint,
-    );
+    canvas.drawLine(Offset(x1, 0), Offset(x2, size.height), paint);
   }
 
   @override

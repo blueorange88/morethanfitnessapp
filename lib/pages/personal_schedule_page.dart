@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/personal_schedule.dart';
 import '../services/personal_schedule_repository.dart';
 import '../services/personal_schedule_widget_sync_service.dart';
+import '../widgets/aifc_interaction.dart';
 import 'personal_training_log_workspace_page.dart';
 
 class PersonalSchedulePage extends StatefulWidget {
@@ -60,8 +61,9 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('레슨일정을 저장하지 못했어요. 입력 내용을 확인해주세요.')),
+      AifcInteraction.feedbackSnack(
+        context: context,
+        message: '레슨일정을 저장하지 못했어요. 입력 내용을 확인해주세요.',
       );
     }
   }
@@ -71,8 +73,9 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
       await _repository.delete(record.scheduleId);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('확정된 레슨이거나 삭제할 수 없는 일정이에요.')),
+      AifcInteraction.feedbackSnack(
+        context: context,
+        message: '확정된 레슨이거나 삭제할 수 없는 일정이에요.',
       );
     }
   }
@@ -97,8 +100,9 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('다음 주로 복사하지 못했어요.')),
+      AifcInteraction.feedbackSnack(
+        context: context,
+        message: '다음 주로 복사하지 못했어요.',
       );
     }
   }
@@ -106,8 +110,9 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
   Future<void> _openQuickLog(PersonalScheduleRecord schedule) async {
     final memberId = (schedule.memberId ?? '').trim();
     if (memberId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('연결된 회원이 있는 일정에서만 레슨일지를 작성할 수 있어요.')),
+      AifcInteraction.feedbackSnack(
+        context: context,
+        message: '연결된 회원이 있는 일정에서만 레슨일지를 작성할 수 있어요.',
       );
       return;
     }

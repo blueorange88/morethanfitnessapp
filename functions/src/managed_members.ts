@@ -19,9 +19,11 @@ const BEGINNER_MEMBER_THRESHOLD = 10;
 const MEMBER_SCHEMA_VERSION = 2;
 const MANAGED_STATES = ["active", "paused", "dormant", "expired", "deleted"] as const;
 const GENDERS = ["male", "female"] as const;
+const MEMBER_GRADES = ["VVIP", "VIP", "GOLD", "SILVER", "BRONZE"] as const;
 
 type ManagedState = typeof MANAGED_STATES[number];
 type Gender = typeof GENDERS[number];
+type MemberGrade = typeof MEMBER_GRADES[number];
 
 type ManagedMembershipUpdate = {
   notRegistered: boolean;
@@ -224,6 +226,17 @@ function requiredGender(data: Record<string, unknown>): Gender {
   return gender as Gender;
 }
 
+function requiredMemberGrade(
+  data: Record<string, unknown>,
+  key = "membershipGrade",
+): MemberGrade {
+  const grade = requiredString(data, key).toUpperCase();
+  if (!MEMBER_GRADES.includes(grade as MemberGrade)) {
+    throw new functions.https.HttpsError("invalid-argument", `${key}_invalid`);
+  }
+  return grade as MemberGrade;
+}
+
 type BirthDate = {
   display: string;
   timestamp: Timestamp;
@@ -399,6 +412,7 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "postal", "address", "detailAddress", "lessonType",
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
       "activityRegion", "registrationMode", "nextReservationAt",
+      "membershipGrade", "membership", "anniversaryDate", "anniversaryLabel",
       "personalGroupId", "personalTagIds",
     ]);
     const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
@@ -427,6 +441,23 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
     const totalSessions = Number(data.totalSessions ?? 0);
     const remainingSessions = Number(data.remainingSessions ?? 0);
     const lessonsNotRegistered = data.lessonsNotRegistered === true;
+    const membershipGrade = hasOwn(data, "membershipGrade") ?
+      requiredMemberGrade(data) : null;
+    const membership = hasOwn(data, "membership") ?
+      managedMembershipUpdate(data.membership) : null;
+    const anniversaryDate = hasOwn(data, "anniversaryDate") ?
+      nullableCalendarDate(data, "anniversaryDate") : null;
+    const anniversaryLabel = hasOwn(data, "anniversaryLabel") ?
+      nullableString(data, "anniversaryLabel") : null;
+    if (anniversaryLabel != null) {
+      requireMaxLength(anniversaryLabel, "anniversaryLabel", 40);
+    }
+    if (anniversaryDate == null && anniversaryLabel != null) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "anniversary_pair_invalid",
+      );
+    }
     requireMaxLength(idempotencyKey, "idempotencyKey", 128);
     requireMaxLength(name, "name", 80);
     requireMaxLength(phone, "phone", 32);
@@ -522,6 +553,10 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
             total: totalSessions,
             remain: remainingSessions,
           },
+          ...(membershipGrade == null ? {} : {membershipGrade}),
+          ...(membership == null ? {} : {membership}),
+          ...(anniversaryDate == null ? {} : {anniversaryDate}),
+          ...(anniversaryLabel == null ? {} : {anniversaryLabel}),
           note,
           ...(nextReservationAt == null ? {} : {nextReservationAt}),
           ...personalMemberTaxonomyCreateFields(taxonomyAssignments),
@@ -679,6 +714,7 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "postal", "address", "detailAddress", "lessonType",
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
       "activityRegion", "membership", "anniversaryDate", "anniversaryLabel",
+      "membershipGrade",
       "personalGroupId", "personalTagIds",
     ]);
     const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
@@ -692,6 +728,8 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
     const memberId = requiredString(data, "memberId");
     const membership = hasOwn(data, "membership") ?
       managedMembershipUpdate(data.membership) : null;
+    const membershipGrade = hasOwn(data, "membershipGrade") ?
+      requiredMemberGrade(data) : undefined;
     const anniversaryDate = hasOwn(data, "anniversaryDate") ?
       nullableCalendarDate(data, "anniversaryDate") : undefined;
     const anniversaryLabel = hasOwn(data, "anniversaryLabel") ?
@@ -825,6 +863,9 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           canonicalUpdate["membership.lastReregisterAt"] =
             membership.lastReregisterAt;
         }
+        if (membershipGrade !== undefined) {
+          canonicalUpdate.membershipGrade = membershipGrade;
+        }
         if (anniversaryDate !== undefined) {
           canonicalUpdate.anniversaryDate = anniversaryDate;
         }
@@ -920,6 +961,14 @@ export function updateManagedMemberConsentHandler(
           throw new functions.https.HttpsError(
             "permission-denied",
             "member_owner_mismatch",
+          );
+        }
+        if (current.managementState === "deleted" ||
+            current.isDeleted === true ||
+            current.deleteStatus === "pending_delete") {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "member_deleted",
           );
         }
         const update: Record<string, unknown> = {

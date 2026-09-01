@@ -6484,10 +6484,10 @@ class MemberListRow extends StatelessWidget {
     if (daysLeft != null) {
       if (daysLeft < 0) {
         items.add(
-          const _IssueChipData(
-            label: '회원권 만료',
-            bgColor: Color(0xFFFEF2F2),
-            textColor: Color(0xFFDC2626),
+          _IssueChipData(
+            label: membershipExpiryLabel(daysLeft),
+            bgColor: const Color(0xFFFEF2F2),
+            textColor: const Color(0xFFDC2626),
           ),
         );
       } else if (daysLeft <= 30) {
@@ -6495,7 +6495,7 @@ class MemberListRow extends StatelessWidget {
 
         items.add(
           _IssueChipData(
-            label: daysLeft == 0 ? '회원권 오늘' : '회원권 D-$daysLeft',
+            label: membershipExpiryLabel(daysLeft),
             bgColor: urgent ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
             textColor:
                 urgent ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
@@ -8251,6 +8251,12 @@ String _dDayText(int daysLeft) {
   return 'D+${daysLeft.abs()}';
 }
 
+@visibleForTesting
+String membershipExpiryLabel(int daysLeft) {
+  if (daysLeft >= 0) return '회원권-$daysLeft';
+  return '만료';
+}
+
 bool _isSameDate(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
@@ -8264,9 +8270,7 @@ String? _membershipExpiryDDaySuffix(Member member) {
   if (expireAt == null) return null;
 
   final daysLeft = _daysBetween(DateTime.now(), expireAt);
-  if (daysLeft < 0) return null;
-
-  return _dDayText(daysLeft);
+  return membershipExpiryLabel(daysLeft);
 }
 
 bool _isMembershipExpiryWithinDays(Member member, int days) {

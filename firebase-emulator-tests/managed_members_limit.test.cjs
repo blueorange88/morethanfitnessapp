@@ -468,6 +468,105 @@ async function main() {
       assert.equal(data.birth.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
       assert.equal(data.birthAt.toDate().toISOString(), "1990-02-03T00:00:00.000Z");
     });
+    const fullPayload = {
+      ...memberPayload(73, "014"),
+      lessonType: "PT",
+      totalSessions: 20,
+      remainingSessions: 18,
+      lessonsNotRegistered: false,
+      membershipGrade: "GOLD",
+      membership: {
+        notRegistered: false,
+        termMonths: null,
+        customDays: 120,
+        startAt: "2026-08-01",
+        endAt: "2026-11-28",
+        days: 120,
+        lastRegisteredAt: "2026-08-01",
+        reregisterCount: 0,
+        lastReregisterAt: null,
+      },
+      anniversaryDate: "2026-12-25",
+      anniversaryLabel: "대회",
+    };
+    const fullCreated = await callFunction(
+      "createManagedMember",
+      legacyOwner.idToken,
+      fullPayload,
+    );
+    await scenario("full create persists grade lesson membership and anniversary", async () => {
+      assert.equal(fullCreated.status, 200, JSON.stringify(fullCreated.body));
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const memberId = fullCreated.body.result.memberId;
+      const snapshot = await getDoc(doc(db, "members", memberId));
+      const data = snapshot.data();
+      assert.equal(data.membershipGrade, "GOLD");
+      assert.equal(data.lessonType, "PT");
+      assert.equal(data.totalSessions, 20);
+      assert.equal(data.remainingSessions, 18);
+      assert.equal(data.sessions.total, 20);
+      assert.equal(data.sessions.remain, 18);
+      assert.equal(data.membership.customDays, 120);
+      assert.equal(data.membership.days, 120);
+      assert.equal(
+        data.membership.startAt.toDate().toISOString().slice(0, 10),
+        "2026-08-01",
+      );
+      assert.equal(
+        data.membership.endAt.toDate().toISOString().slice(0, 10),
+        "2026-11-28",
+      );
+      assert.equal(data.anniversaryLabel, "대회");
+      assert.equal(
+        data.anniversaryDate.toDate().toISOString().slice(0, 10),
+        "2026-12-25",
+      );
+    });
+    await scenario("member grade update persists without changing membership", async () => {
+      const memberId = fullCreated.body.result.memberId;
+      const updated = await callFunction(
+        "updateManagedMember",
+        legacyOwner.idToken,
+        {memberId, membershipGrade: "SILVER"},
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", memberId));
+      const data = snapshot.data();
+      assert.equal(data.membershipGrade, "SILVER");
+      assert.equal(data.membership.customDays, 120);
+      assert.equal(data.membership.days, 120);
+      assert.equal(data.anniversaryLabel, "대회");
+    });
+    await scenario("unsupported member grade is rejected without write", async () => {
+      const memberId = fullCreated.body.result.memberId;
+      const rejected = await callFunction(
+        "updateManagedMember",
+        legacyOwner.idToken,
+        {memberId, membershipGrade: "PLATINUM"},
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", memberId));
+      assert.equal(snapshot.data().membershipGrade, "SILVER");
+    });
+    await scenario("supported create grades normalize to canonical values", async () => {
+      const db = context(env, legacyOwner.localId, true).firestore();
+      for (const [index, grade] of [[74, "silver"], [75, "VVIP"]]) {
+        const created = await callFunction(
+          "createManagedMember",
+          legacyOwner.idToken,
+          {...memberPayload(index, "014"), membershipGrade: grade},
+        );
+        assert.equal(created.status, 200, JSON.stringify(created.body));
+        const snapshot = await getDoc(doc(
+          db,
+          "members",
+          created.body.result.memberId,
+        ));
+        assert.equal(snapshot.data().membershipGrade, grade.toUpperCase());
+      }
+    });
     await scenario("legacy retry does not rewrite a current member", async () => {
       const replayPayload = {...currentPayload};
       delete replayPayload.birthDate;
@@ -1037,6 +1136,22 @@ async function main() {
       );
       assert.equal(result.body.error.status, "PERMISSION_DENIED");
     });
+    await scenario("deleted member consent cannot be changed", async () => {
+      const result = await callFunction(
+        "updateManagedMemberConsent",
+        deleteOwner.idToken,
+        {memberId: deleteCandidateId, agreed: true},
+      );
+      assert.equal(result.body.error.status, "FAILED_PRECONDITION");
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const snapshot = await getDoc(
+          doc(admin.firestore(), "members", deleteCandidateId),
+        );
+        const data = snapshot.data();
+        assert.equal(data.trainingLogConsentAgreed, undefined);
+        assert.equal(data.trainingLogConsentAgreedAt, undefined);
+      });
+    });
     await scenario("personal profile preferences are user scoped", async () => {
       const updated = await callFunction(
         "updatePersonalTrainerProfile",
@@ -1161,9 +1276,11 @@ async function main() {
       assert.equal(repeated.body.result.lifetimeQualifiedMemberCount, 1);
     });
 
+    const thresholdMemberIds = [];
     for (let index = 2; index <= 10; index += 1) {
       const result = await create(owner, index);
       assert.equal(result.status, 200, JSON.stringify(result.body));
+      if (index >= 9) thresholdMemberIds.push(result.body.result.memberId);
     }
     await scenario("anonymous tenth valid member succeeds", async () => {
       const profile = await profileData(env, owner.localId);
@@ -1174,6 +1291,34 @@ async function main() {
     await scenario("anonymous eleventh valid member requires account link", async () => {
       assert.equal(blockedEleventh.body.error.message, "account_link_required");
       assert.equal((await profileData(env, owner.localId)).lifetimeQualifiedMemberCount, 10);
+    });
+    await scenario("active eight with two cleaned historical members still requires account link", async () => {
+      for (const memberId of thresholdMemberIds) {
+        const deleted = await callFunction(
+          "transitionManagedMemberState",
+          owner.idToken,
+          {memberId, nextState: "deleted"},
+        );
+        assert.equal(deleted.status, 200, JSON.stringify(deleted.body));
+      }
+      await env.withSecurityRulesDisabled(async (admin) => {
+        for (const memberId of thresholdMemberIds) {
+          await deleteDoc(doc(admin.firestore(), "members", memberId));
+        }
+      });
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.managedMemberCount, 8);
+      assert.equal(profile.lifetimeQualifiedMemberCount, 10);
+      const blocked = await create(owner, 11);
+      assert.equal(blocked.body.error.message, "account_link_required");
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const snapshot = await getDocs(query(
+          collection(admin.firestore(), "members"),
+          where("trainerId", "==", owner.localId),
+          where("workspaceType", "==", "personal"),
+        ));
+        assert.equal(snapshot.size, 8);
+      });
     });
 
     const completeWhileAnonymous = await completeTrainerProfile(owner);
@@ -1265,8 +1410,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 62);
-    process.stdout.write("All 62 anonymous member and tier scenarios passed.\n");
+    assert.equal(passed, 68);
+    process.stdout.write("All 68 anonymous member and tier scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

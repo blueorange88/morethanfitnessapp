@@ -88,6 +88,18 @@ void main() {
       expect(failure.toString(), isNot(contains('network unavailable')));
     });
 
+    test('host lookup 실패도 네트워크 재시도 안내로 분류한다', () {
+      final error = Exception(
+        'UnknownHostException: Unable to resolve host firestore.googleapis.com',
+      );
+
+      expect(personalMemberUpdateIsNetworkError(error), isTrue);
+      expect(
+        personalMemberUpdateErrorMessage(error),
+        contains('네트워크 연결을 확인한 뒤 다시 시도해주세요.'),
+      );
+    });
+
     test('readback timeout과 callable 입력 오류를 다른 안내로 구분한다', () {
       expect(
         personalMemberUpdateErrorMessage(TimeoutException('readback')),
@@ -101,6 +113,45 @@ void main() {
           ),
         ),
         '입력한 회원 정보를 다시 확인해주세요.',
+      );
+    });
+
+    test('누적 회원 계정 연결 요구를 입력 오류로 숨기지 않는다', () {
+      final error = PersonalMemberCardUpdateException(
+        stage: PersonalMemberCardUpdateStage.callable,
+        cause: FirebaseFunctionsException(
+          code: 'failed-precondition',
+          message: 'account_link_required',
+        ),
+      );
+
+      final message = personalMemberUpdateErrorMessage(error);
+      expect(personalMemberUpdateRequiresAccountLink(error), isTrue);
+      expect(message, contains('계정 연결이 필요해요'));
+      expect(message, contains('마이페이지'));
+      expect(message, contains('입력한 내용은 그대로 유지했어요'));
+      expect(message, isNot(contains('입력한 회원 정보를 다시 확인')));
+    });
+
+    test('Auth 연결 후 profile 전환 미완료 오류는 연결 재개 대상으로 분류한다', () {
+      final error = FirebaseFunctionsException(
+        code: 'permission-denied',
+        message: 'workspace_not_eligible',
+      );
+
+      expect(personalMemberUpdateRequiresAccountLink(error), isFalse);
+      expect(personalMemberUpdateNeedsLinkedProfileCompletion(error), isTrue);
+    });
+
+    test('신규 고객카드는 불완전한 회원권 시작일을 자동 생성하지 않는다', () {
+      final card = File('lib/pages/client_card_page.dart').readAsStringSync();
+
+      expect(card, contains('bool _membershipNotRegistered = true;'));
+      expect(card, isNot(contains('_passStart = widget.initialVisitDate;')));
+      expect(card, contains("if (!_membershipNotRegistered &&"));
+      expect(
+        card,
+        contains('personalMemberUpdateNeedsLinkedProfileCompletion(e)'),
       );
     });
 
@@ -138,17 +189,18 @@ void main() {
 
     test('직접입력 120일과 직접 날짜 선택을 동일한 계약으로 보낸다', () {
       final start = DateTime(2026, 8, 15);
-      final custom = PersonalMemberMembershipUpdate(
-        notRegistered: false,
-        termMonths: null,
-        customDays: 120,
-        startAt: start,
-        endAt: start.add(const Duration(days: 119)),
-        days: 120,
-        lastRegisteredAt: start,
-        reregisterCount: 1,
-        lastReregisterAt: start,
-      ).toCallableMap();
+      final custom =
+          PersonalMemberMembershipUpdate(
+            notRegistered: false,
+            termMonths: null,
+            customDays: 120,
+            startAt: start,
+            endAt: start.add(const Duration(days: 119)),
+            days: 120,
+            lastRegisteredAt: start,
+            reregisterCount: 1,
+            lastReregisterAt: start,
+          ).toCallableMap();
 
       expect(custom['termMonths'], isNull);
       expect(custom['customDays'], 120);
@@ -159,9 +211,10 @@ void main() {
 
     test('고객카드 update가 회원권과 D-DAY를 누락하지 않는다', () {
       final card = File('lib/pages/client_card_page.dart').readAsStringSync();
-      final service = File(
-        'lib/services/personal_member_card_save_service.dart',
-      ).readAsStringSync();
+      final service =
+          File(
+            'lib/services/personal_member_card_save_service.dart',
+          ).readAsStringSync();
       final functions =
           File('functions/src/managed_members.ts').readAsStringSync();
 
@@ -173,14 +226,28 @@ void main() {
       expect(service, contains("'anniversaryDate':"));
       expect(service, contains("stage: 'callable_start'"));
       expect(service, contains("stage: 'callable_complete'"));
+      expect(service, contains('personalMemberUpdateCallableTimeout,'));
+      expect(personalMemberUpdateCallableTimeout, const Duration(seconds: 20));
       expect(
-          service, contains("stage = PersonalMemberCardUpdateStage.readback"));
+        service,
+        contains("stage = PersonalMemberCardUpdateStage.readback"),
+      );
       expect(
-          service, contains("stage = PersonalMemberCardUpdateStage.snapshot"));
+        service,
+        contains("stage = PersonalMemberCardUpdateStage.snapshot"),
+      );
+      expect(card, contains('personalMemberUpdateRequiresAccountLink(e)'));
+      expect(card, contains('_runAccountLinkRequiredFlow()'));
+      expect(card, contains('AifcAccountLinkRequiredChatSheet.showLinked('));
       expect(
         card,
-        contains('_showAifcToast(personalMemberUpdateErrorMessage(e))'),
+        isNot(contains('if (mounted && confirmed) await _submitAndStay();')),
       );
+      expect(
+        card,
+        contains('await AifcAccountLinkRequiredChatSheet.showLinked('),
+      );
+      expect(card, contains('bool _accountLinkSheetOpen = false;'));
       for (final field in const [
         'notRegistered',
         'termMonths',
@@ -198,14 +265,97 @@ void main() {
       expect(functions, contains('canonicalUpdate.anniversaryLabel'));
     });
 
+    test('Personal 고객카드 저장 8단계가 하나의 trace로 연결된다', () {
+      final card = File('lib/pages/client_card_page.dart').readAsStringSync();
+      final service =
+          File(
+            'lib/services/personal_member_card_save_service.dart',
+          ).readAsStringSync();
+
+      expect(card, contains('PersonalMemberSaveTrace.start()'));
+      for (final stage in const [
+        'saveButtonTap',
+        'localValidate',
+        'phoneDuplicateCheck',
+        'uiSuccess',
+      ]) {
+        expect(
+          card,
+          contains('PersonalMemberSaveTraceStage.$stage'),
+          reason: '$stage client trace가 필요합니다.',
+        );
+      }
+      for (final stage in const [
+        'callableStart',
+        'callableResponse',
+        'canonicalReadback',
+        'ownerSnapshotConfirm',
+      ]) {
+        expect(
+          service,
+          contains('PersonalMemberSaveTraceStage.$stage'),
+          reason: '$stage service trace가 필요합니다.',
+        );
+      }
+      expect(card, contains('trace: trace'));
+      expect(service, isNot(contains("'traceId':")));
+    });
+
+    test('full 신규와 수정은 등급·회원권·D-DAY를 같은 canonical 계약으로 보낸다', () {
+      final card = File('lib/pages/client_card_page.dart').readAsStringSync();
+      final service =
+          File(
+            'lib/services/personal_member_card_save_service.dart',
+          ).readAsStringSync();
+      final functions =
+          File('functions/src/managed_members.ts').readAsStringSync();
+
+      final createStart = card.indexOf(').createAndVerify(');
+      final updateStart = card.indexOf(').updateAndVerify(');
+      final createBody = card.substring(createStart, updateStart);
+      final updateBody = card.substring(
+        updateStart,
+        card.indexOf(
+          'final postSaveSucceeded = await _runPostCanonicalSaveTasks();',
+          updateStart,
+        ),
+      );
+
+      for (final body in [createBody, updateBody]) {
+        expect(body, contains('membershipGrade: _membershipGrade'));
+        expect(body, contains('membership: PersonalMemberMembershipUpdate('));
+        expect(body, contains('anniversaryDate: _anniversaryDate'));
+      }
+      expect(service, contains("'membershipGrade': normalizedMembershipGrade"));
+      expect(service, contains("'membership': membership.toCallableMap()"));
+      expect(
+        service,
+        contains('member[\'membershipGrade\'] == membershipGrade'),
+      );
+      expect(
+        functions,
+        contains('...(membershipGrade == null ? {} : {membershipGrade})'),
+      );
+      expect(
+        functions,
+        contains('...(membership == null ? {} : {membership})'),
+      );
+      expect(
+        functions,
+        contains('canonicalUpdate.membershipGrade = membershipGrade'),
+      );
+    });
+
     test('Home Personal 빠른등록은 canonical create와 readback 뒤 성공 처리한다', () {
       final home = File('lib/pages/home_page.dart').readAsStringSync();
-      final sheet = File(
-        'lib/widgets/aifc_quick_register_chat_sheet.dart',
-      ).readAsStringSync();
-      final service = File(
-        'lib/services/personal_member_card_save_service.dart',
-      ).readAsStringSync();
+      final sheet =
+          File(
+            'lib/widgets/aifc_quick_register_chat_sheet.dart',
+          ).readAsStringSync();
+      final service =
+          File(
+            'lib/services/personal_member_card_save_service.dart',
+          ).readAsStringSync();
       final functions =
           File('functions/src/managed_members.ts').readAsStringSync();
 
@@ -218,13 +368,17 @@ void main() {
       expect(home, contains('final quickRegistrationId ='));
       expect(home, contains('idempotencyKey: quickRegistrationId'));
       expect(sheet, contains('await widget.onFastSave(result);'));
-      expect(sheet,
-          contains('errorTextBuilder: personalMemberUpdateErrorMessage'));
+      expect(
+        sheet,
+        contains('errorTextBuilder: personalMemberUpdateErrorMessage'),
+      );
       expect(sheet, contains('closeAfterReply: true'));
       expect(service, contains("'registrationMode': 'quick'"));
       expect(service, contains(".where('trainerId', isEqualTo: uid)"));
       expect(
-          service, contains(".where('workspaceType', isEqualTo: 'personal')"));
+        service,
+        contains(".where('workspaceType', isEqualTo: 'personal')"),
+      );
       expect(service, contains("member['createdAt'] is! Timestamp"));
       expect(functions, contains('"registrationMode", "nextReservationAt"'));
       expect(functions, contains('registrationMode === "quick"'));
@@ -239,25 +393,20 @@ void main() {
         'final postSaveSucceeded = await _runPostCanonicalSaveTasks();',
         canonicalUpdate,
       );
-      final successMessage = card.indexOf(
-        "? '회원 정보를 저장했어요.'",
-        postSave,
-      );
+      final successMessage = card.indexOf("? '회원 정보를 저장했어요.'", postSave);
       expect(canonicalUpdate, greaterThanOrEqualTo(0));
       expect(postSave, greaterThan(canonicalUpdate));
       expect(successMessage, greaterThan(postSave));
-      expect(
-        card,
-        contains('[MTF_MEMBER_SAVE_POST] task=customLessonType'),
-      );
+      expect(card, contains('[MTF_MEMBER_SAVE_POST] task=customLessonType'));
       expect(card, contains('[MTF_MEMBER_SAVE_POST] task=draftCleanup'));
     });
 
     test('Personal 삭제는 owner-scoped callable과 서버 readback을 사용한다', () {
       final card = File('lib/pages/client_card_page.dart').readAsStringSync();
-      final service = File(
-        'lib/services/personal_member_card_save_service.dart',
-      ).readAsStringSync();
+      final service =
+          File(
+            'lib/services/personal_member_card_save_service.dart',
+          ).readAsStringSync();
       final functions =
           File('functions/src/managed_members.ts').readAsStringSync();
 
@@ -280,19 +429,21 @@ void main() {
             darkTheme: ThemeData.dark(),
             themeMode: mode,
             home: Builder(
-              builder: (context) => Scaffold(
-                body: FilledButton(
-                  onPressed: () async {
-                    submitted = await showDialog<String>(
-                      context: context,
-                      builder: (_) => const HomeWeeklyGoalDialog(
-                        initialValue: '40',
-                      ),
-                    );
-                  },
-                  child: const Text('열기'),
-                ),
-              ),
+              builder:
+                  (context) => Scaffold(
+                    body: FilledButton(
+                      onPressed: () async {
+                        submitted = await showDialog<String>(
+                          context: context,
+                          builder:
+                              (_) => const HomeWeeklyGoalDialog(
+                                initialValue: '40',
+                              ),
+                        );
+                      },
+                      child: const Text('열기'),
+                    ),
+                  ),
             ),
           ),
         );

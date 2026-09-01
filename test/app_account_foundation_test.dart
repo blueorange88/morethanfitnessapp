@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/pages/account_gate.dart';
@@ -40,8 +41,9 @@ void main() {
     expect((myPage as MyPage).personalOwnerUid, 'personal-owner');
   });
 
-  testWidgets('신규 anonymous 사용자는 nickname 온보딩 저장 후 같은 UID 홈에 진입한다',
-      (tester) async {
+  testWidgets('신규 anonymous 사용자는 nickname 온보딩 저장 후 같은 UID 홈에 진입한다', (
+    tester,
+  ) async {
     final gateway = _FakeAccountGateway();
     final nicknameGateway = _FakeNicknameGateway();
     await tester.pumpWidget(
@@ -69,10 +71,7 @@ void main() {
     expect(find.textContaining('personal anonymous'), findsNothing);
     await tester.tap(find.byKey(const Key('onboarding_intro_continue')));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const Key('onboarding_nickname')),
-      '레온쌤',
-    );
+    await tester.enterText(find.byKey(const Key('onboarding_nickname')), '레온쌤');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
@@ -154,8 +153,9 @@ void main() {
     expect(nicknameField.controller?.text, '일이삼사오육');
   });
 
-  testWidgets('linked personal 계정도 nickname이 없으면 온보딩을 한 번 표시한다',
-      (tester) async {
+  testWidgets('linked personal 계정도 nickname이 없으면 온보딩을 한 번 표시한다', (
+    tester,
+  ) async {
     final gateway = _FakeAccountGateway(currentUser: linkedUser);
     await tester.pumpWidget(
       MaterialApp(
@@ -181,8 +181,9 @@ void main() {
     expect(find.text('linked personal'), findsNothing);
   });
 
-  testWidgets('신규 설치는 anonymous UID와 profile을 준비한 뒤 실제 personal 홈으로 진입한다',
-      (tester) async {
+  testWidgets('신규 설치는 anonymous UID와 profile을 준비한 뒤 실제 personal 홈으로 진입한다', (
+    tester,
+  ) async {
     final gateway = _FakeAccountGateway();
     final profile = _FakeAnonymousProfileGateway();
     final profileReader = _SequencePersonalProfileStartReader([
@@ -240,7 +241,9 @@ void main() {
     expect(find.byKey(const Key('personal_start_brand_name')), findsOneWidget);
     expect(find.text('모어댄'), findsOneWidget);
     expect(
-        find.byKey(const Key('personal_start_brand_english')), findsOneWidget);
+      find.byKey(const Key('personal_start_brand_english')),
+      findsOneWidget,
+    );
     expect(find.text('MORE THAN'), findsOneWidget);
     expect(find.byKey(const Key('personal_start_aifc_avatar')), findsOneWidget);
     final avatar = tester.widget<AifcAvatar>(
@@ -268,8 +271,9 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
-  testWidgets('기존 anonymous user는 profile을 먼저 읽고 bootstrap을 생략한다',
-      (tester) async {
+  testWidgets('기존 anonymous user는 profile을 먼저 읽고 bootstrap을 생략한다', (
+    tester,
+  ) async {
     final gateway = _FakeAccountGateway(
       currentUser: const AppAccountUser(
         uid: 'saved-anonymous-uid',
@@ -470,10 +474,9 @@ void main() {
 
   test('이메일 가입 성공은 linked 상태이며 인증 메일 결과를 분리한다', () async {
     final gateway = _FakeAccountGateway(createUser: linkedUser);
-    final result = await AppAccountService(gateway: gateway).registerWithEmail(
-      email: 'trainer@example.com',
-      password: '123456',
-    );
+    final result = await AppAccountService(
+      gateway: gateway,
+    ).registerWithEmail(email: 'trainer@example.com', password: '123456');
 
     expect(result.snapshot.state, AppAccountState.linked);
     expect(result.snapshot.tier, AppTier.beginner);
@@ -481,12 +484,30 @@ void main() {
     expect(gateway.verificationCalls, 1);
   });
 
+  test('이메일 인증 확인은 reload 후 같은 UID의 verified 상태를 반환한다', () async {
+    final gateway = _FakeAccountGateway(
+      currentUser: linkedUser,
+      reloadUser: const AppAccountUser(
+        uid: 'firebase-uid-1',
+        email: 'trainer@example.com',
+        emailVerified: true,
+        isAnonymous: false,
+      ),
+    );
+
+    final refreshed =
+        await AppAccountService(gateway: gateway).refreshCurrentUser();
+
+    expect(refreshed.uid, linkedUser.uid);
+    expect(refreshed.emailVerified, isTrue);
+    expect(gateway.reloadCalls, 1);
+  });
+
   test('이메일 로그인 성공은 Firebase user 상태를 반환한다', () async {
     final gateway = _FakeAccountGateway(loginUser: linkedUser);
-    final result = await AppAccountService(gateway: gateway).signInWithEmail(
-      email: 'trainer@example.com',
-      password: '123456',
-    );
+    final result = await AppAccountService(
+      gateway: gateway,
+    ).signInWithEmail(email: 'trainer@example.com', password: '123456');
 
     expect(result.state, AppAccountState.linked);
     expect(result.user?.uid, 'firebase-uid-1');
@@ -510,9 +531,9 @@ void main() {
 
   test('비밀번호 재설정은 입력 이메일만 Auth gateway로 전달한다', () async {
     final gateway = _FakeAccountGateway();
-    await AppAccountService(gateway: gateway).sendPasswordReset(
-      ' trainer@example.com ',
-    );
+    await AppAccountService(
+      gateway: gateway,
+    ).sendPasswordReset(' trainer@example.com ');
 
     expect(gateway.resetCalls, 1);
     expect(gateway.lastResetEmail, 'trainer@example.com');
@@ -541,8 +562,9 @@ void main() {
     expect(gateway.createCalls, 1);
   });
 
-  testWidgets('linked 로그아웃 후 새 anonymous UID의 personal 홈으로 진입한다',
-      (tester) async {
+  testWidgets('linked 로그아웃 후 새 anonymous UID의 personal 홈으로 진입한다', (
+    tester,
+  ) async {
     final gateway = _FakeAccountGateway(currentUser: linkedUser);
     final profile = _FakeAnonymousProfileGateway();
     final workspaceEvents = <String>[];
@@ -566,10 +588,8 @@ void main() {
             status: LinkedAccountAccessStatus.personalWorkspaceReady,
           ),
           profileReader: profileReader,
-          personalWorkspaceBuilder: (user) => _WorkspaceProbe(
-            uid: user.uid,
-            events: workspaceEvents,
-          ),
+          personalWorkspaceBuilder:
+              (user) => _WorkspaceProbe(uid: user.uid, events: workspaceEvents),
         ),
       ),
     );
@@ -611,22 +631,215 @@ void main() {
 
   test('계정 연결은 trainer_profile me 또는 운영 데이터 gateway를 호출하지 않는다', () async {
     final gateway = _FakeAccountGateway(createUser: linkedUser);
-    await AppAccountService(gateway: gateway).registerWithEmail(
-      email: 'trainer@example.com',
-      password: '123456',
-    );
+    await AppAccountService(
+      gateway: gateway,
+    ).registerWithEmail(email: 'trainer@example.com', password: '123456');
 
     expect(gateway.profileCalls, 0);
     expect(gateway.operationalDataCalls, 0);
   });
 
   test('Google 설정 미완료를 인증 성공으로 반환하지 않는다', () async {
-    final gateway = _FakeAccountGateway();
+    final gateway = _FakeAccountGateway(
+      currentUser: const AppAccountUser(
+        uid: 'owner-uid',
+        email: 'trainer@example.com',
+        emailVerified: true,
+        isAnonymous: false,
+        providerIds: ['password'],
+      ),
+    );
     await expectLater(
       AppAccountService(gateway: gateway).signInWithGoogle(),
       _failsWith(AppAccountErrorCode.googleSetupRequired),
     );
-    expect(gateway.currentUser, isNull);
+    expect(gateway.currentUser?.uid, 'owner-uid');
+  });
+
+  test('Google 연결은 같은 UID와 password provider를 유지한다', () async {
+    const before = AppAccountUser(
+      uid: 'owner-uid',
+      email: 'trainer@example.com',
+      emailVerified: true,
+      isAnonymous: false,
+      providerIds: ['password'],
+    );
+    const after = AppAccountUser(
+      uid: 'owner-uid',
+      email: 'trainer@example.com',
+      emailVerified: true,
+      isAnonymous: false,
+      providerIds: ['password', 'google.com'],
+    );
+    final gateway = _FakeAccountGateway(currentUser: before);
+    final google = _FakeGoogleGateway(result: after);
+    final profile = _FakeAnonymousProfileGateway();
+
+    final linked =
+        await AppAccountService(
+          gateway: gateway,
+          anonymousGateway: gateway,
+          googleGateway: google,
+          profileGateway: profile,
+        ).linkCurrentUserWithGoogle();
+
+    expect(linked?.uid, before.uid);
+    expect(linked?.hasProvider('password'), isTrue);
+    expect(linked?.hasProvider('google.com'), isTrue);
+    expect(google.calls, 1);
+    expect(gateway.refreshCalls, 1);
+    expect(profile.transitionCalls, 1);
+  });
+
+  test('Google account chooser 취소는 UID를 유지하고 후처리하지 않는다', () async {
+    const before = AppAccountUser(
+      uid: 'owner-uid',
+      email: 'trainer@example.com',
+      emailVerified: true,
+      isAnonymous: false,
+      providerIds: ['password'],
+    );
+    final gateway = _FakeAccountGateway(currentUser: before);
+    final google = _FakeGoogleGateway();
+    final profile = _FakeAnonymousProfileGateway();
+
+    final linked =
+        await AppAccountService(
+          gateway: gateway,
+          anonymousGateway: gateway,
+          googleGateway: google,
+          profileGateway: profile,
+        ).linkCurrentUserWithGoogle();
+
+    expect(linked, isNull);
+    expect(gateway.currentUser?.uid, before.uid);
+    expect(gateway.refreshCalls, 0);
+    expect(profile.transitionCalls, 0);
+  });
+
+  test('이미 Google이 연결됐으면 중복 chooser를 열지 않는다', () async {
+    final gateway = _FakeAccountGateway(
+      currentUser: const AppAccountUser(
+        uid: 'owner-uid',
+        email: 'trainer@example.com',
+        emailVerified: true,
+        isAnonymous: false,
+        providerIds: ['password', 'google.com'],
+      ),
+    );
+    final google = _FakeGoogleGateway();
+
+    await expectLater(
+      AppAccountService(
+        gateway: gateway,
+        anonymousGateway: gateway,
+        googleGateway: google,
+      ).linkCurrentUserWithGoogle(),
+      _failsWith(AppAccountErrorCode.providerAlreadyLinked),
+    );
+    expect(google.calls, 0);
+  });
+
+  test('Google credential 충돌과 네트워크 오류를 안전하게 분류한다', () async {
+    const before = AppAccountUser(
+      uid: 'owner-uid',
+      email: 'trainer@example.com',
+      emailVerified: true,
+      isAnonymous: false,
+      providerIds: ['password'],
+    );
+    for (final scenario in <(Object, AppAccountErrorCode)>[
+      (
+        FirebaseAuthException(code: 'credential-already-in-use'),
+        AppAccountErrorCode.credentialAlreadyInUse,
+      ),
+      (
+        FirebaseAuthException(code: 'account-exists-with-different-credential'),
+        AppAccountErrorCode.accountExistsWithDifferentCredential,
+      ),
+      (
+        FirebaseAuthException(code: 'network-request-failed'),
+        AppAccountErrorCode.network,
+      ),
+      (
+        FirebaseAuthException(code: 'invalid-credential'),
+        AppAccountErrorCode.invalidCredential,
+      ),
+      (
+        FirebaseAuthException(code: 'operation-not-allowed'),
+        AppAccountErrorCode.googleSetupRequired,
+      ),
+    ]) {
+      final gateway = _FakeAccountGateway(currentUser: before);
+      await expectLater(
+        AppAccountService(
+          gateway: gateway,
+          anonymousGateway: gateway,
+          googleGateway: _FakeGoogleGateway(error: scenario.$1),
+        ).linkCurrentUserWithGoogle(),
+        _failsWith(scenario.$2),
+      );
+      expect(gateway.currentUser?.uid, before.uid);
+    }
+  });
+
+  test('Google 연결 결과 UID가 바뀌면 profile 전환 전에 중단한다', () async {
+    const before = AppAccountUser(
+      uid: 'owner-uid',
+      email: 'trainer@example.com',
+      emailVerified: true,
+      isAnonymous: false,
+      providerIds: ['password'],
+    );
+    final gateway = _FakeAccountGateway(currentUser: before);
+    final profile = _FakeAnonymousProfileGateway();
+    await expectLater(
+      AppAccountService(
+        gateway: gateway,
+        anonymousGateway: gateway,
+        googleGateway: _FakeGoogleGateway(
+          result: const AppAccountUser(
+            uid: 'different-uid',
+            email: 'trainer@example.com',
+            emailVerified: true,
+            isAnonymous: false,
+            providerIds: ['google.com'],
+          ),
+        ),
+        profileGateway: profile,
+      ).linkCurrentUserWithGoogle(),
+      _failsWith(AppAccountErrorCode.uidChangedUnexpectedly),
+    );
+    expect(gateway.refreshCalls, 0);
+    expect(profile.transitionCalls, 0);
+  });
+
+  test('Google 연결로 provider 목록만 바뀌어도 userChanges가 갱신된다', () async {
+    final gateway = _FakeAccountGateway();
+    final changes = AppAccountService(gateway: gateway).userChanges();
+    final future = changes.take(2).toList();
+    gateway.emitUser(
+      const AppAccountUser(
+        uid: 'owner-uid',
+        email: 'trainer@example.com',
+        emailVerified: true,
+        isAnonymous: false,
+        providerIds: ['password'],
+      ),
+    );
+    gateway.emitUser(
+      const AppAccountUser(
+        uid: 'owner-uid',
+        email: 'trainer@example.com',
+        emailVerified: true,
+        isAnonymous: false,
+        providerIds: ['password', 'google.com'],
+      ),
+    );
+
+    final users = await future;
+    expect(users, hasLength(2));
+    expect(users.last?.hasProvider('google.com'), isTrue);
   });
 
   test('linked personal 재진입은 서버 tier가 Amateur 이상이어도 허용한다', () {
@@ -693,21 +906,21 @@ class _FakeClaimsGateway implements AccountClaimsGateway {
 }
 
 Matcher _failsWith(AppAccountErrorCode code) => throwsA(
-      isA<AppAccountException>().having(
-        (error) => error.code,
-        'code',
-        code,
-      ),
-    );
+  isA<AppAccountException>().having((error) => error.code, 'code', code),
+);
 
 class _FakeAccountGateway
-    implements AppAccountAuthGateway, AppAnonymousIdentityGateway {
+    implements
+        AppAccountAuthGateway,
+        AppAnonymousIdentityGateway,
+        AppEmailVerificationGateway {
   _FakeAccountGateway({
     AppAccountUser? currentUser,
     this.createUser,
     this.loginUser,
     this.loginError,
     this.createCompleter,
+    this.reloadUser,
   }) : _currentUser = currentUser;
 
   final StreamController<AppAccountUser?> _controller =
@@ -717,6 +930,7 @@ class _FakeAccountGateway
   final AppAccountUser? loginUser;
   final Object? loginError;
   final Completer<AppAccountUser>? createCompleter;
+  final AppAccountUser? reloadUser;
 
   int createCalls = 0;
   int loginCalls = 0;
@@ -727,6 +941,7 @@ class _FakeAccountGateway
   int operationalDataCalls = 0;
   int anonymousCalls = 0;
   int refreshCalls = 0;
+  int reloadCalls = 0;
   String? lastResetEmail;
 
   @override
@@ -741,15 +956,16 @@ class _FakeAccountGateway
     required String password,
   }) async {
     createCalls++;
-    final user = createCompleter == null
-        ? (createUser ??
-            AppAccountUser(
-              uid: 'created-uid',
-              email: email,
-              emailVerified: false,
-              isAnonymous: false,
-            ))
-        : await createCompleter!.future;
+    final user =
+        createCompleter == null
+            ? (createUser ??
+                AppAccountUser(
+                  uid: 'created-uid',
+                  email: email,
+                  emailVerified: false,
+                  isAnonymous: false,
+                ))
+            : await createCompleter!.future;
     _currentUser = user;
     _controller.add(user);
     return user;
@@ -762,7 +978,8 @@ class _FakeAccountGateway
   }) async {
     loginCalls++;
     if (loginError != null) throw loginError!;
-    final user = loginUser ??
+    final user =
+        loginUser ??
         AppAccountUser(
           uid: 'login-uid',
           email: email,
@@ -777,6 +994,13 @@ class _FakeAccountGateway
   @override
   Future<void> sendEmailVerification() async {
     verificationCalls++;
+  }
+
+  @override
+  Future<AppAccountUser> reloadCurrentUser() async {
+    reloadCalls++;
+    _currentUser = reloadUser ?? _currentUser;
+    return _currentUser!;
   }
 
   @override
@@ -810,11 +1034,30 @@ class _FakeAccountGateway
   Future<AppAccountUser> linkWithEmailCredential({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> forceRefreshIdToken() async => refreshCalls++;
+
+  void emitUser(AppAccountUser user) {
+    _currentUser = user;
+    _controller.add(user);
+  }
+}
+
+class _FakeGoogleGateway implements AppGoogleIdentityGateway {
+  _FakeGoogleGateway({this.result, this.error});
+
+  final AppAccountUser? result;
+  final Object? error;
+  int calls = 0;
+
+  @override
+  Future<AppAccountUser?> linkWithGoogleCredential() async {
+    calls++;
+    if (error case final value?) throw value;
+    return result;
+  }
 }
 
 class _FakeAnonymousProfileGateway implements AnonymousProfileGateway {
@@ -824,6 +1067,7 @@ class _FakeAnonymousProfileGateway implements AnonymousProfileGateway {
   final Future<Map<String, dynamic>>? reconcileFuture;
   int bootstrapCalls = 0;
   int reconcileCalls = 0;
+  int transitionCalls = 0;
 
   @override
   Future<void> bootstrapAnonymousBeginnerProfile() async {
@@ -832,7 +1076,9 @@ class _FakeAnonymousProfileGateway implements AnonymousProfileGateway {
   }
 
   @override
-  Future<void> transitionAnonymousProfileToLinked() async {}
+  Future<void> transitionAnonymousProfileToLinked() async {
+    transitionCalls++;
+  }
 
   @override
   Future<Map<String, dynamic>> reconcilePersonalTier() async {

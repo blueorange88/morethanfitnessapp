@@ -2118,3 +2118,117 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [x] release checkpoint allowlist 134개만 명시적으로 stage했고 staged 경로 일치, secret/generated/probe 0, cached diff check, analyze error 0, upload-signed PROD AAB 재빌드를 통과했다. 이 기록을 포함한 단일 checkpoint commit으로 마무리하며 push하지 않는다.
 - [ ] checkpoint 이후 Play Console 신규 앱 생성, Play App Signing 활성화, app-signing certificate 확인, AAB Internal Testing 업로드는 별도 승인 후 진행한다. 현재 anonymous/email Auth에는 SHA가 즉시 필요하지 않으며 Google Sign-In/App Check 활성화 시 Play app-signing SHA를 Firebase/Google Console에 등록한다.
 - [x] Firebase/PROD data/Galaxy/Play upload/commit/push 작업은 0건이다. 다음 단계로 자동 이동하지 않는다.
+
+## 2026-08-26 신규 회원 canonical 저장 회귀
+
+- [x] root cause 수정: full 신규 create에서 빠진 `membershipGrade`, canonical nested `membership`, `anniversaryDate`, `anniversaryLabel`과 update의 `membershipGrade`를 Flutter/Functions 계약에 추가했다.
+- [x] 저장 성공 검증 강화: callable 성공만이 아니라 server canonical readback과 owner snapshot에서 등급·회원권·D-DAY·taxonomy까지 확인한다. quick-register와 과거 호출은 선택 필드 생략 호환성을 유지한다.
+- [x] 고객리스트 표기: 회원권 잔여일을 `회원권-n`, 당일 `회원권-0`, 종료 후 `만료`로 표시하고 `회원권+N`은 제거했다. 별도 D-DAY 계산/표기는 유지한다. 320/360/384/411dp 긴 이름 조합 overflow 0 테스트를 추가했다.
+- [x] 자동 검증: 관련 Flutter 70개, 전체 Flutter 685개, managed-member Emulator 66개, taxonomy Emulator 25개, Functions lint/build, analyze error 0, `git diff --check`, DEV APK 통과.
+- [x] DEV 선택 배포: `createManagedMember`, `updateManagedMember`만 `more-than-fitness-dev-mft`에 배포했다. 두 함수의 `asia-northeast3` successful update를 확인했고 cleanup policy 경고 외 배포 오류는 없었다. Rules/indexes/Storage/Hosting과 다른 함수는 배포하지 않았다.
+- [x] Galaxy DEV: GOLD+lesson+membership+D-DAY create와 SILVER+120일 membership+D-DAY update를 canonical callable, server readback, owner snapshot으로 통과했다. 고객리스트 `회원권-119`, 고객카드 재진입, 앱 재시작 유지도 확인했다.
+- [x] fixture cleanup: canonical soft-delete 후 active 목록 fixture 0, managed count 2, 일정 11, 레슨일지 0, tier Amateur, 기본 그룹 `MORE THAN GYM`, widget `brandLight`를 복원했다. soft-delete tombstone은 기존 보존 정책에 따라 owner 전체 문서에 남는다.
+- [x] DEV 회원 저장 blocker 해소. PROD/Play Store 반영은 별도 승인 전 시작하지 않는다.
+- [x] PROD/Play Store/Firebase PROD/실회원/migration/commit/push 작업은 0건이다. 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-08-26 PROD 신규 회원 저장 계정 연결 gate
+
+- [x] 실기기 8단계 trace로 `createManagedMember`의 `failed-precondition / account_link_required`를 확정했다. 로컬 검증·전화번호 검증은 통과했고 callable 실패 뒤 readback/snapshot/write는 진행되지 않았다.
+- [x] `BRONZE`, 레슨, 회원권 입력과 현재 active 회원 8명은 원인에서 제외했다. 실제 기준은 익명 계정의 누적 유효 회원 10명이며 11번째 생성부터 계정 연결이 필요하다.
+- [x] 고객카드 저장 안내가 계정 연결 필요 사유와 마이페이지 경로, 입력값 보존·재시도를 명시하도록 최소 수정하고 관련 Flutter 30개, diff check, PROD APK build/sign/install을 통과했다.
+- [ ] 사용자가 기존 UID 유지 이메일 계정 연결을 완료한 뒤 같은 고객카드에서 재시도하고 callable, canonical readback, owner snapshot, 중복 생성 0을 확인한다.
+- [ ] 위 재검증 전에는 PROD 신규 회원 저장 blocker를 종료하지 않는다. Firebase 배포·정책 완화·누적 count 조작·commit/push는 금지한다.
+
+## 2026-08-28 계정 연결 Phase 2
+
+- [x] 이메일 credential 연결과 Firebase 이메일 인증을 별도 단계로 유지했다. 연결 성공 뒤 사용자가 인증메일 발송 또는 나중에를 선택하며 SMTP·자체 인증코드는 만들지 않았다.
+- [x] MyPage에 마스킹 이메일, 미인증/인증 완료 상태, 인증메일 재발송, `reload()` 기반 인증 확인을 추가했다. Galaxy DEV에서 실제 메일 인증 뒤 `emailVerified=true`를 확인했다.
+- [x] 미인증 상태에서도 기존 정책대로 canonical 회원 저장이 가능하고, 인증·앱 재실행 뒤에도 동일 owner의 회원/일정/tier가 유지됨을 확인했다. 이메일 인증을 새 저장 gate로 만들지 않았다.
+- [x] 중앙 dialog의 이메일 primary·소셜 secondary 구조, social disabled/준비 중 상태, 3테마·320/360/384/411dp·키보드·validation·scroll 회귀를 자동 테스트로 확인했다.
+- [x] Google은 SDK/OAuth client/DEV provider/SHA가 없는 구조적 미구현, Kakao/Naver는 SDK·OAuth redirect·custom-token backend가 없는 미구현 상태로 분류했다. 눌러도 동작하지 않는 활성 UI는 노출하지 않는다.
+- [x] 관련 Flutter 84개, 전체 Flutter 740개, managed-member Emulator 67개, taxonomy Emulator 25개, Functions lint/build, analyze error 0, diff check, DEV APK와 Galaxy DEV 검증을 통과했다.
+- [ ] Google 실제 연결은 `google_sign_in` 의존성 승인, DEV/PROD별 Firebase Google provider·OAuth client·SHA 구성, credential collision UX 설계 후 별도 Phase에서 진행한다.
+- [ ] Kakao/Naver 실제 연결은 공식 SDK/redirect와 owner UID 보존 custom-token backend 설계를 별도 승인 후 진행한다. 이번 Phase에서는 구현하지 않는다.
+- [ ] 연결 이메일 변경은 재인증·보안 정책을 포함한 별도 backlog로 유지한다.
+- [x] PROD Firebase/Auth/앱, Play Store, Firebase 배포, commit/push 작업은 0건이다. 다음 기능으로 자동 이동하지 않는다.
+
+## 2026-08-28 계정 연결 Phase 3 Google
+
+- [x] DEV Google provider 활성화, DEV debug SHA-1/SHA-256 등록, 최신 DEV Firebase Android config 반영을 완료했다. Email/Password와 Anonymous provider는 유지했다.
+- [x] Galaxy DEV에서 기존 사용자에 Google credential을 `linkWithCredential`로 연결했다. 연결 직후와 앱 재시작 후 identity hash 동일, password+google provider 2개, tier Amateur, 회원 6, 일정 11, 레슨일지 0, managed count 6을 확인했다.
+- [x] PROD Google provider와 현재 legacy local PROD signer SHA를 올바른 PROD Android 앱에 설정하고 최신 PROD Firebase config를 반영했다. PROD 실제 사용자 연결·데이터 write·앱 조작은 하지 않았다.
+- [ ] Play Store 설치본에서 Google 로그인을 사용하기 전에 Play App Signing 인증서 SHA-1/SHA-256을 Firebase PROD Android 앱에 추가한다. Play upload key SHA를 런타임 signer로 대신 등록하지 않는다.
+- [ ] Kakao/Naver는 SDK·OAuth redirect·provider token 검증·Firebase custom-token backend와 UID 보존 연결 정책을 별도 설계/승인한 뒤 구현한다. 현재는 disabled `준비 중` 상태를 유지한다.
+- [x] 관련 Flutter 127개, 전체 Flutter 749개, managed-member Emulator 67개, taxonomy Emulator 25개, Functions lint/build, analyze error 0, diff check, DEV Debug/R8 APK, Galaxy DEV 안전 로그를 통과했다.
+- [x] PROD 실제 계정 연결, Firebase deploy, Rules/indexes/Storage/Hosting, Play Store, commit, push는 0건이다. 다음 단계로 자동 이동하지 않는다.
+
+## 2026-08-31 MORE DAY·동의·동일 이름 일정 연결
+
+- [x] MORE DAY가 범용 날짜 picker의 `lastDate=오늘`을 상속하던 회귀를 수정해 해당 picker만 미래 10년까지 허용했다.
+- [x] 개인정보 동의 snapshot listener 오류를 비동기 미처리 예외로 남기지 않고 제어된 실패로 처리하며, 실패 시 화면·재시도 상태를 유지하도록 보강했다.
+- [x] 같은 주의 동일 이름·미연결 일정을 기본 체크 목록으로 제안하고 선택분만 owner-scoped transaction으로 함께 연결하는 시트를 추가했다.
+- [x] 관련 Flutter 47개, Home 회귀 32개, 전체 Flutter 755개, Personal schedule Emulator 27개, analyze error 0, `git diff --check`, DEV APK가 통과했다.
+- [ ] 최신 DEV APK를 데이터 보존 설치한 뒤 MORE DAY 미래 선택, 동의 실패/재시도, 동일 이름 일정 선택 연결을 DEV fixture로 실기기 검증한다.
+- [ ] PROD `updateManagedMemberConsent` 배포 상태와 Firestore `permission-denied` 원인을 별도 승인 후 감사한다. PROD 동의 저장은 현재 미통과이며 함수/Rules 배포를 추정 실행하지 않는다.
+- [ ] permission-denied 중단 때문에 남은 검증용 PROD 회원 1건을 승인된 canonical 삭제 경로로 안전하게 정리한다.
+- [x] Firebase 배포, PROD 빌드·설치, commit, push는 수행하지 않았다. 다음 작업으로 자동 이동하지 않는다.
+
+## 2026-08-31 동일 이름 일정 연결 DEV 실검증·PROD 동의 감사
+
+- [x] Galaxy DEV에서 같은 주 동일 이름·미연결 후보 시트 표시와 기본 체크를 확인했다.
+- [x] 일부 선택, 전부 해제, 전부 선택을 각각 canonical server readback으로 확인했다. 현재 일정 항상 연결, 다음 주·다른 이름 제외, 기연결 일정 보호, 앱 재시작 유지가 통과했다.
+- [x] 시스템 뒤로가기 취소 시 현재 일정 포함 연결 write 0인 현재 semantics를 실기기와 readback으로 확인했다.
+- [x] 현재 이름 정규화 정책과 light/dark/lululala·320/360/384/411dp 회귀 테스트를 보강했다.
+- [x] 이번 DEV marker 회원·일정을 전부 정리하고 actual tier Amateur, 회원 6, 일정 11, 레슨일지 0, managed count 6 baseline을 복원했다. 최종 DEV PID 안전 로그는 이상 0건이다.
+- [x] PROD read-only 감사에서 Firestore Rules가 로컬과 일치하고 잔여 fixture owner/workspace/path가 정상임을 확인했다.
+- [ ] PROD `updateManagedMemberConsent`가 미배포이므로 동의 저장은 계속 미통과다. 별도 승인 후 해당 함수 1개만 선택 배포하고 실제 동의 저장·server readback·snapshot을 재검증한다. Rules 배포는 필요하지 않다.
+- [x] 과거 permission-denied 4건은 기기/Cloud 로그 원본이 남아 있지 않아 사건별 원인을 추측 분류하지 않았다. 현재 감사에서는 owner/workspace/path/Rules/query 불일치를 재현하지 못했다.
+- [x] 잔여 PROD marker 문서는 이미 deleted tombstone이고 일정·레슨일지·taxonomy·consent linkage가 0이다. 이번 read-only 범위에서는 추가 cleanup write를 하지 않는다.
+- [x] 관련 Flutter 16개, 전체 Flutter 768개, Personal schedule Emulator 27개, analyze error 0, `git diff --check`, DEV APK를 통과했다.
+- [x] PROD write/install/실행, Firebase deploy, Rules/indexes/Storage/Hosting, Play Store, commit, push는 0건이다. 다음 단계로 자동 이동하지 않는다.
+
+## 2026-08-31 PROD 회원 동의 저장 blocker 완료
+
+- [x] PROD에 없던 `updateManagedMemberConsent`만 `more-than-fitness-f6adb`에 선택 배포했다. `asia-northeast3`, Node.js 22, `ACTIVE`와 갱신 시각을 확인했다.
+- [x] auth/current owner/Personal workspace/허용 필드/transaction 계약과 Flutter의 callable → server readback → owner snapshot 완료 순서를 재확인했다.
+- [x] deleted 또는 pending-delete 회원의 동의 변경을 `member_deleted`로 write 전에 거부하도록 보강하고 Emulator 회귀를 추가했다.
+- [x] Galaxy PROD에서 개인정보 없는 신규 fixture의 동의 저장, canonical agreed/timestamp readback, 고객카드 재진입, 앱 재실행 유지가 통과했다.
+- [x] fixture를 canonical soft-delete로 정리해 active 회원 28, managed count 28, 일정 318, 레슨일지 0, 그룹 2, 태그 0, tier Semi-Pro, 기본 그룹 `MORE THAN GYM` baseline을 복원했다. 정책상 새 deleted tombstone 1건은 보존하며 기존 tombstone과 실회원은 변경하지 않았다.
+- [x] 관련 Flutter 63개, 전체 Flutter 768개, managed-member Emulator 68개, Functions lint/build, analyze error 0, `git diff --check`, 최종 PROD PID 안전 로그가 통과했다.
+- [x] PROD 회원 동의 저장 blocker를 종료한다. 다른 Functions·Rules·indexes·Storage·Hosting, Play Store, AAB, commit, push는 0건이며 다음 작업으로 자동 이동하지 않는다.
+
+## 2026-09-01 최신 PROD client validation
+
+- [x] PROD build graph에 동일 이름 일정 연결, MORE DAY 미래 picker, consent retry, account dialog/Email·Google, keyboard-aware feedback, membership/D-DAY, 회원권 label, startup/Drawer, schedule hotfix, taxonomy, R8 keep이 포함됨을 확인했다.
+- [x] Galaxy PROD `1.0.4 (15)`에서 versionCode만 16으로 올린 legacy validation APK를 만들었다. 잘못 서명된 최초 산출물은 설치 전에 차단했고, 설치본과 signer가 일치하는 APK만 `adb install -r`했다. UID/dataDir/firstInstallTime/Auth session/DEV package가 유지됐다.
+- [x] PROD fixture로 동일 이름 후보 3건 기본 체크, 일부 선택, 다음 주·다른 이름·기연결 보호, Android back 취소 write 0, canonical readback, 재진입·재시작 유지, duplicate schedule 0을 확인했다.
+- [x] PROD fixture 고객카드에서 GOLD+3개월 membership+미래 D-DAY 저장/readback과 회원권 표기, 개인정보 동의 저장/readback을 확인했다. 계정 provider 상태는 읽기 전용으로 확인해 PROD Auth를 변경하지 않았다.
+- [x] 키보드 열린 빠른등록 시트의 로컬 validation 오류 feedback이 키보드 위에 표시되고 시트가 유지되며 callable/write 0임을 실기기에서 확인했다.
+- [x] 숫자 marker가 전화번호 부분검색과 겹쳐 실제 회원 1건을 잘못 선택한 사건은 즉시 감지했다. 검증 전 상태와 대조해 이번 작업에서 바꾼 MORE DAY만 canonical 미등록 상태로 원복했고 다른 실제 필드는 변경하지 않았다. 이후 숫자 없는 정확한 fixture 검색만 사용했다.
+- [x] fixture 일정 7건과 active fixture 회원 2건을 canonical 경로로 정리해 active 회원 28, managed count 28, 일정 317 baseline과 fixture 검색 0을 복원했다. 레슨일지/그룹/태그/tier/theme/widget은 이번 작업에서 변경하지 않았다.
+- [x] 관련 Flutter 97개, 전체 Flutter 768개, schedule Emulator 27개, managed-member Emulator 68개, taxonomy Emulator 25개, analyze error 0, `git diff --check`, PROD APK와 최종 안전 로그를 통과했다.
+- [x] 최신 PROD client validation 완료. Firebase 추가 배포, Play Store/AAB 업로드, commit, push는 0건이다.
+- [ ] 다음 단계는 별도 승인 후 새 release checkpoint를 만들고 upload-key PROD AAB를 생성·검증하는 것이다. Play Console 업로드는 그 다음 별도 승인까지 시작하지 않는다.
+
+## 2026-09-01 동일 이름 일정 연결 시트 safe-area
+
+- [x] Flutter modal bottom sheet의 `useSafeArea`가 SDK 내부에서 `bottom: false`인 것을 확인해 실제 겹침 원인을 확정했다.
+- [x] 기존 action row에만 `MediaQuery.viewPaddingOf(context).bottom`을 추가했다. 기존 20dp, CTA 스타일·높이, 0.72 maxHeight, Flexible 목록과 연결 정책은 변경하지 않았다.
+- [x] light/dark/lululala·320/360/384/411dp, 후보 1/3/10개에서 safe bottom, CTA visible, 내부 스크롤, overflow 0을 확인했다.
+- [x] Galaxy DEV의 현재 3버튼 navigation 180px 영역에서 CTA 하단과 system bar 사이 75px, 겹침 0을 fixture-only 캡처와 좌표로 확인했다. 실제 gesture mode 변경 대신 24/32dp `viewPadding` widget test로 가변 inset을 검증했다.
+- [x] 실기기 `4개 일정 연결` canonical readback과 Android back 취소 write 0을 확인했다. 연결 후보·보호 일정 정책은 기존과 동일하다.
+- [x] 실수로 삭제된 fixture 일정은 marker/owner/예상 ID guard 아래 남은 fixture만 정리하고 baseline 복원 후 재검증했다. 최종 회원 6, 일정 11, marker 회원·일정 0이다.
+- [x] 시트 18개, 관련 106개, 전체 Flutter 770개, schedule Emulator 27개, analyze error 0, 변경 파일 issue 0, `git diff --check`, DEV APK와 최종 안전 로그가 통과했다.
+- [x] safe-area 출시 blocker 해소. PROD/Firebase 배포/AAB/checkpoint/Play Store/commit/push는 0건이다.
+
+## 2026-09-01 최종 Play Store 후보 checkpoint/AAB
+
+- [x] 이전 checkpoint 이후 release allowlist 39개를 확정했다: 제품/backend/config 23개, 테스트 14개, 문서 2개. tracked 수정 30개와 신규 9개만 명시 stage했고 allowlist 밖·누락·삭제는 0이다.
+- [x] secret 감사 통과: `android/key.properties` ignored, keystore/certificate/private key/token/credential staged·tracked 0. 남은 검증·prompt·audit·temp untracked 331개는 제외했다.
+- [x] `1.0.4 (17)`로 versionCode를 올리고 동일 이름 일정 연결 safe-area, account link, 회원 저장·동의, taxonomy, schedule/Drawer/R8 최신 source를 checkpoint에 포함했다.
+- [x] 최신 검증은 전체 Flutter 770개, Personal schedule Emulator 27개, analyze error 0(기존 warning/info 1166), diff check 통과다. version bump 외 제품 로직 변경이 없어 전체 test를 중복 실행하지 않았다.
+- [x] upload key PROD AAB 생성 및 검증 완료: `build/app/outputs/bundle/prodRelease/app-prod-release.aab`, 79,011,079 bytes, SHA-256 `AE261ED663C36FC5A700556EC50F60D3351BCD71535F64C537A8EEE79E33C25E`, signer 공개 인증서 SHA-1/SHA-256 일치, `jarsigner` exit 0.
+- [x] manifest/package/version/SDK/debuggable false/PROD Firebase/일반·round·adaptive icon/위젯 provider 3개/R8 receiver 보존을 확인했다. DEV project/package marker는 0이고 PROD widget DEV badge는 false다.
+- [ ] Play Console 앱 생성 후 Internal Testing에 AAB를 업로드한다.
+- [ ] Play App Signing 인증서 SHA-1/SHA-256을 확인해 Firebase PROD Android 앱에 등록한 뒤 Play 설치본 Google 연결 smoke test를 수행한다. upload key SHA를 런타임 signer로 대신 등록하지 않는다.
+- [x] checkpoint commit 1건만 생성했다. Firebase 변경·배포, Play Console 업로드, Galaxy 설치, 추가 commit, push는 수행하지 않았으며 다음 단계로 자동 이동하지 않는다.

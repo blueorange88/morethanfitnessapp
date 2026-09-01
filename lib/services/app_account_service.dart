@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'app_environment.dart';
 import 'mtf_firebase_functions.dart';
@@ -20,7 +21,10 @@ enum AppAccountErrorCode {
   network,
   requestInProgress,
   googleSetupRequired,
+  googleCanceled,
   anonymousProviderDisabled,
+  emailPasswordProviderDisabled,
+  userDisabled,
   unauthenticated,
   credentialAlreadyInUse,
   accountExistsWithDifferentCredential,
@@ -46,12 +50,16 @@ class AppAccountUser {
     required this.email,
     required this.emailVerified,
     required this.isAnonymous,
+    this.providerIds = const <String>[],
   });
 
   final String uid;
   final String email;
   final bool emailVerified;
   final bool isAnonymous;
+  final List<String> providerIds;
+
+  bool hasProvider(String providerId) => providerIds.contains(providerId);
 }
 
 class AppAccountSnapshot {
@@ -62,9 +70,9 @@ class AppAccountSnapshot {
   });
 
   const AppAccountSnapshot.guest()
-      : state = AppAccountState.guest,
-        tier = AppTier.beginner,
-        user = null;
+    : state = AppAccountState.guest,
+      tier = AppTier.beginner,
+      user = null;
 
   final AppAccountState state;
   final AppTier tier;
@@ -77,9 +85,10 @@ class AppAccountSnapshot {
       return const AppAccountSnapshot.guest();
     }
     return AppAccountSnapshot(
-      state: user.emailVerified
-          ? AppAccountState.verified
-          : AppAccountState.linked,
+      state:
+          user.emailVerified
+              ? AppAccountState.verified
+              : AppAccountState.linked,
       tier: AppTier.beginner,
       user: user,
     );
@@ -129,6 +138,14 @@ abstract interface class AppAnonymousIdentityGateway {
   Future<void> forceRefreshIdToken();
 }
 
+abstract interface class AppEmailVerificationGateway {
+  Future<AppAccountUser> reloadCurrentUser();
+}
+
+abstract interface class AppGoogleIdentityGateway {
+  Future<AppAccountUser?> linkWithGoogleCredential();
+}
+
 abstract interface class AnonymousProfileGateway {
   Future<void> bootstrapAnonymousBeginnerProfile();
 
@@ -139,7 +156,7 @@ abstract interface class AnonymousProfileGateway {
 
 class FirebaseAnonymousProfileGateway implements AnonymousProfileGateway {
   FirebaseAnonymousProfileGateway({FirebaseFunctions? functions})
-      : _functions = functions;
+    : _functions = functions;
 
   final FirebaseFunctions? _functions;
 
@@ -176,11 +193,16 @@ class FirebaseAnonymousProfileGateway implements AnonymousProfileGateway {
 }
 
 class FirebaseAppAccountAuthGateway
-    implements AppAccountAuthGateway, AppAnonymousIdentityGateway {
+    implements
+        AppAccountAuthGateway,
+        AppAnonymousIdentityGateway,
+        AppEmailVerificationGateway,
+        AppGoogleIdentityGateway {
   FirebaseAppAccountAuthGateway({FirebaseAuth? auth})
-      : _auth = auth ?? FirebaseAuth.instance;
+    : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
+  static Future<void>? _googleInitialization;
 
   @override
   AppAccountUser? get currentUser => _mapUser(_auth.currentUser);
@@ -253,6 +275,51 @@ class FirebaseAppAccountAuthGateway
   }
 
   @override
+  Future<AppAccountUser> reloadCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AppAccountException(AppAccountErrorCode.unauthenticated);
+    }
+    await user.reload();
+    return _requiredUser(_auth.currentUser);
+  }
+
+  @override
+  Future<AppAccountUser?> linkWithGoogleCredential() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AppAccountException(AppAccountErrorCode.unauthenticated);
+    }
+    if (user.providerData.any(
+      (provider) => provider.providerId == 'google.com',
+    )) {
+      throw const AppAccountException(
+        AppAccountErrorCode.providerAlreadyLinked,
+      );
+    }
+    try {
+      _googleInitialization ??= GoogleSignIn.instance.initialize();
+      await _googleInitialization;
+      if (!GoogleSignIn.instance.supportsAuthenticate()) {
+        throw const AppAccountException(
+          AppAccountErrorCode.googleSetupRequired,
+        );
+      }
+      final account = await GoogleSignIn.instance.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw const AppAccountException(AppAccountErrorCode.invalidCredential);
+      }
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      final result = await user.linkWithCredential(credential);
+      return _requiredUser(result.user);
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled) return null;
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> sendPasswordResetEmail(String email) =>
       _auth.sendPasswordResetEmail(email: email);
 
@@ -272,6 +339,11 @@ class FirebaseAppAccountAuthGateway
       email: (user.email ?? '').trim(),
       emailVerified: user.emailVerified,
       isAnonymous: user.isAnonymous,
+      providerIds: user.providerData
+          .map((provider) => provider.providerId)
+          .where((providerId) => providerId.isNotEmpty)
+          .toSet()
+          .toList(growable: false),
     );
   }
 }
@@ -280,6 +352,7 @@ class AppAccountService {
   AppAccountService({
     AppAccountAuthGateway? gateway,
     AppAnonymousIdentityGateway? anonymousGateway,
+    AppGoogleIdentityGateway? googleGateway,
     AnonymousProfileGateway? profileGateway,
   }) {
     final resolvedGateway = gateway ?? FirebaseAppAccountAuthGateway();
@@ -291,6 +364,17 @@ class AppAccountService {
     } else {
       _anonymousGateway = null;
     }
+    _emailVerificationGateway =
+        resolvedGateway is AppEmailVerificationGateway
+            ? resolvedGateway as AppEmailVerificationGateway
+            : null;
+    if (googleGateway != null) {
+      _googleGateway = googleGateway;
+    } else if (resolvedGateway is AppGoogleIdentityGateway) {
+      _googleGateway = resolvedGateway as AppGoogleIdentityGateway;
+    } else {
+      _googleGateway = null;
+    }
     _profileGateway = profileGateway ?? FirebaseAnonymousProfileGateway();
   }
 
@@ -298,6 +382,8 @@ class AppAccountService {
 
   late final AppAccountAuthGateway _gateway;
   late final AppAnonymousIdentityGateway? _anonymousGateway;
+  late final AppEmailVerificationGateway? _emailVerificationGateway;
+  late final AppGoogleIdentityGateway? _googleGateway;
   late final AnonymousProfileGateway _profileGateway;
   bool _requestInProgress = false;
   Future<AppAccountUser>? _anonymousSessionInFlight;
@@ -307,31 +393,59 @@ class AppAccountService {
 
   AppAccountUser? get currentUser => _gateway.currentUser;
 
-  Stream<AppAccountUser?> userChanges() =>
-      _gateway.authStateChanges().distinct((a, b) =>
-          a?.uid == b?.uid &&
-          a?.isAnonymous == b?.isAnonymous &&
-          a?.emailVerified == b?.emailVerified);
+  Stream<AppAccountUser?> userChanges() => _gateway.authStateChanges().distinct(
+    (a, b) =>
+        a?.uid == b?.uid &&
+        a?.isAnonymous == b?.isAnonymous &&
+        a?.emailVerified == b?.emailVerified &&
+        setEquals(a?.providerIds.toSet(), b?.providerIds.toSet()),
+  );
 
   Future<void> sendCurrentUserEmailVerification() async {
     final current = _gateway.currentUser;
     if (current == null || current.isAnonymous) {
       throw const AppAccountException(AppAccountErrorCode.unauthenticated);
     }
-    try {
-      await _gateway.sendEmailVerification();
-    } catch (error) {
-      throw _translate(error);
+    await _guard(() async {
+      try {
+        await _gateway.sendEmailVerification();
+      } catch (error) {
+        throw _translate(error);
+      }
+    });
+  }
+
+  Future<AppAccountUser> refreshCurrentUser() async {
+    final before = _gateway.currentUser;
+    final verificationGateway = _emailVerificationGateway;
+    if (before == null || before.isAnonymous || verificationGateway == null) {
+      throw const AppAccountException(AppAccountErrorCode.unauthenticated);
     }
+    return _guard(() async {
+      try {
+        final refreshed = await verificationGateway.reloadCurrentUser();
+        if (refreshed.uid != before.uid) {
+          throw const AppAccountException(
+            AppAccountErrorCode.uidChangedUnexpectedly,
+          );
+        }
+        return refreshed;
+      } catch (error) {
+        throw _translate(error);
+      }
+    });
   }
 
   Stream<AppAccountSnapshot> accountStateChanges() => _gateway
       .authStateChanges()
       .map(AppAccountSnapshot.fromUser)
-      .distinct((a, b) =>
-          a.state == b.state &&
-          a.user?.uid == b.user?.uid &&
-          a.user?.emailVerified == b.user?.emailVerified);
+      .distinct(
+        (a, b) =>
+            a.state == b.state &&
+            a.user?.uid == b.user?.uid &&
+            a.user?.emailVerified == b.user?.emailVerified &&
+            setEquals(a.user?.providerIds.toSet(), b.user?.providerIds.toSet()),
+      );
 
   Future<AppAccountUser> ensureAnonymousSession() {
     final current = _gateway.currentUser;
@@ -404,9 +518,10 @@ class AppAccountService {
       return result;
     } catch (error) {
       if (kDebugMode) {
-        final code = error is FirebaseFunctionsException
-            ? error.code
-            : error.runtimeType.toString();
+        final code =
+            error is FirebaseFunctionsException
+                ? error.code
+                : error.runtimeType.toString();
         debugPrint(
           '[MTF_TIER_RECONCILE] '
           'environment=${AppEnvironmentConfig.environmentName} '
@@ -420,9 +535,7 @@ class AppAccountService {
     }
   }
 
-  Future<Map<String, dynamic>> claimTierCelebration(
-    String transitionId,
-  ) async {
+  Future<Map<String, dynamic>> claimTierCelebration(String transitionId) async {
     try {
       final result = await MtfFirebaseFunctions.call(
         'claimTierCelebration',
@@ -448,26 +561,64 @@ class AppAccountService {
     return _guard(() async {
       final before = _gateway.currentUser;
       final gateway = _anonymousGateway;
-      if (before == null || !before.isAnonymous || gateway == null) {
+      if (before == null || gateway == null) {
         throw const AppAccountException(AppAccountErrorCode.unauthenticated);
       }
       try {
-        final linked = await gateway.linkWithEmailCredential(
-          email: cleanEmail,
-          password: password,
-        );
-        if (linked.uid != before.uid) {
-          throw const AppAccountException(
-            AppAccountErrorCode.uidChangedUnexpectedly,
+        final AppAccountUser linked;
+        if (before.isAnonymous) {
+          linked = await gateway.linkWithEmailCredential(
+            email: cleanEmail,
+            password: password,
           );
+          if (linked.uid != before.uid) {
+            throw const AppAccountException(
+              AppAccountErrorCode.uidChangedUnexpectedly,
+            );
+          }
+        } else {
+          if (before.email.trim().toLowerCase() != cleanEmail.toLowerCase()) {
+            throw const AppAccountException(
+              AppAccountErrorCode.providerAlreadyLinked,
+            );
+          }
+          linked = before;
         }
-        await gateway.forceRefreshIdToken();
-        await _profileGateway.transitionAnonymousProfileToLinked();
-        return linked;
+        return await _completeLinkedProfileTransition(
+          gateway: gateway,
+          linked: linked,
+        );
       } catch (error) {
         throw _translate(error);
       }
     });
+  }
+
+  Future<AppAccountUser> completeCurrentEmailLink() {
+    return _guard(() async {
+      final current = _gateway.currentUser;
+      final gateway = _anonymousGateway;
+      if (current == null || current.isAnonymous || gateway == null) {
+        throw const AppAccountException(AppAccountErrorCode.unauthenticated);
+      }
+      try {
+        return await _completeLinkedProfileTransition(
+          gateway: gateway,
+          linked: current,
+        );
+      } catch (error) {
+        throw _translate(error);
+      }
+    });
+  }
+
+  Future<AppAccountUser> _completeLinkedProfileTransition({
+    required AppAnonymousIdentityGateway gateway,
+    required AppAccountUser linked,
+  }) async {
+    await gateway.forceRefreshIdToken();
+    await _profileGateway.transitionAnonymousProfileToLinked();
+    return linked;
   }
 
   Future<AppAccountRegistrationResult> registerWithEmail({
@@ -546,17 +697,61 @@ class AppAccountService {
     });
   }
 
+  Future<AppAccountUser?> linkCurrentUserWithGoogle() async {
+    return _guard(() async {
+      final before = _gateway.currentUser;
+      final googleGateway = _googleGateway;
+      final anonymousGateway = _anonymousGateway;
+      if (before == null || anonymousGateway == null) {
+        throw const AppAccountException(AppAccountErrorCode.unauthenticated);
+      }
+      if (googleGateway == null) {
+        throw const AppAccountException(
+          AppAccountErrorCode.googleSetupRequired,
+        );
+      }
+      if (before.hasProvider('google.com')) {
+        throw const AppAccountException(
+          AppAccountErrorCode.providerAlreadyLinked,
+        );
+      }
+      try {
+        final linked = await googleGateway.linkWithGoogleCredential();
+        if (linked == null) return null;
+        if (linked.uid != before.uid) {
+          throw const AppAccountException(
+            AppAccountErrorCode.uidChangedUnexpectedly,
+          );
+        }
+        return await _completeLinkedProfileTransition(
+          gateway: anonymousGateway,
+          linked: linked,
+        );
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'operation-not-allowed') {
+          throw AppAccountException(
+            AppAccountErrorCode.googleSetupRequired,
+            cause: error,
+          );
+        }
+        throw _translate(error);
+      } catch (error) {
+        throw _translate(error);
+      }
+    });
+  }
+
   Future<AppAccountSnapshot> signInWithGoogle() async {
-    throw const AppAccountException(
-      AppAccountErrorCode.googleSetupRequired,
-    );
+    final linked = await linkCurrentUserWithGoogle();
+    if (linked == null) {
+      throw const AppAccountException(AppAccountErrorCode.googleCanceled);
+    }
+    return AppAccountSnapshot.fromUser(linked);
   }
 
   Future<T> _guard<T>(Future<T> Function() action) async {
     if (_requestInProgress) {
-      throw const AppAccountException(
-        AppAccountErrorCode.requestInProgress,
-      );
+      throw const AppAccountException(AppAccountErrorCode.requestInProgress);
     }
     _requestInProgress = true;
     try {
@@ -581,31 +776,73 @@ class AppAccountService {
 
   static AppAccountException _translate(Object error) {
     if (error is AppAccountException) return error;
+    if (error is FirebaseFunctionsException &&
+        const {
+          'unavailable',
+          'deadline-exceeded',
+          'cancelled',
+        }.contains(error.code)) {
+      return AppAccountException(AppAccountErrorCode.network, cause: error);
+    }
     if (error is FirebaseAuthException) {
-      return AppAccountException(
-        switch (error.code) {
-          'invalid-email' => AppAccountErrorCode.invalidEmail,
-          'weak-password' => AppAccountErrorCode.weakPassword,
-          'email-already-in-use' => AppAccountErrorCode.emailAlreadyInUse,
-          'credential-already-in-use' =>
-            AppAccountErrorCode.credentialAlreadyInUse,
-          'account-exists-with-different-credential' =>
-            AppAccountErrorCode.accountExistsWithDifferentCredential,
-          'provider-already-linked' =>
-            AppAccountErrorCode.providerAlreadyLinked,
-          'requires-recent-login' => AppAccountErrorCode.requiresRecentLogin,
-          'wrong-password' ||
-          'user-not-found' ||
-          'invalid-credential' =>
-            AppAccountErrorCode.invalidCredential,
-          'too-many-requests' => AppAccountErrorCode.tooManyRequests,
-          'network-request-failed' => AppAccountErrorCode.network,
-          _ => AppAccountErrorCode.unknown,
-        },
-        cause: error,
-      );
+      final isNetwork =
+          error.code == 'network-request-failed' ||
+          _looksLikeNetworkFailure(error);
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_ACCOUNT_REQUEST] source=firebase_auth '
+          'code=${error.code} network=$isNetwork',
+        );
+      }
+      if (isNetwork) {
+        return AppAccountException(AppAccountErrorCode.network, cause: error);
+      }
+      return AppAccountException(switch (error.code) {
+        'invalid-email' => AppAccountErrorCode.invalidEmail,
+        'weak-password' => AppAccountErrorCode.weakPassword,
+        'email-already-in-use' => AppAccountErrorCode.emailAlreadyInUse,
+        'credential-already-in-use' =>
+          AppAccountErrorCode.credentialAlreadyInUse,
+        'account-exists-with-different-credential' =>
+          AppAccountErrorCode.accountExistsWithDifferentCredential,
+        'provider-already-linked' => AppAccountErrorCode.providerAlreadyLinked,
+        'requires-recent-login' => AppAccountErrorCode.requiresRecentLogin,
+        'wrong-password' ||
+        'user-not-found' ||
+        'invalid-credential' => AppAccountErrorCode.invalidCredential,
+        'too-many-requests' => AppAccountErrorCode.tooManyRequests,
+        'user-disabled' => AppAccountErrorCode.userDisabled,
+        'operation-not-allowed' =>
+          AppAccountErrorCode.emailPasswordProviderDisabled,
+        _ => AppAccountErrorCode.unknown,
+      }, cause: error);
+    }
+    if (error is GoogleSignInException) {
+      return AppAccountException(switch (error.code) {
+        GoogleSignInExceptionCode.canceled =>
+          AppAccountErrorCode.googleCanceled,
+        GoogleSignInExceptionCode.clientConfigurationError ||
+        GoogleSignInExceptionCode.providerConfigurationError =>
+          AppAccountErrorCode.googleSetupRequired,
+        GoogleSignInExceptionCode.userMismatch =>
+          AppAccountErrorCode.uidChangedUnexpectedly,
+        _ when _looksLikeNetworkFailure(error) => AppAccountErrorCode.network,
+        _ => AppAccountErrorCode.unknown,
+      }, cause: error);
+    }
+    if (_looksLikeNetworkFailure(error)) {
+      return AppAccountException(AppAccountErrorCode.network, cause: error);
     }
     return AppAccountException(AppAccountErrorCode.unknown, cause: error);
+  }
+
+  static bool _looksLikeNetworkFailure(Object error) {
+    final normalized = error.toString().toLowerCase();
+    return normalized.contains('unknownhostexception') ||
+        normalized.contains('unable to resolve host') ||
+        normalized.contains('gaiexception') ||
+        normalized.contains('network is unreachable') ||
+        normalized.contains('network error');
   }
 }
 
@@ -620,12 +857,16 @@ String appAccountErrorMessage(Object error) {
       '이미 사용 중인 이메일이에요. 기록은 자동으로 합치지 않습니다.',
     AppAccountErrorCode.invalidCredential => '이메일 또는 비밀번호가 올바르지 않아요.',
     AppAccountErrorCode.tooManyRequests => '요청이 너무 많아요. 잠시 후 다시 시도해주세요.',
-    AppAccountErrorCode.network => '네트워크 연결을 확인해주세요.',
+    AppAccountErrorCode.network => '네트워크 연결을 확인한 뒤 이 화면에서 다시 시도해주세요.',
     AppAccountErrorCode.requestInProgress => '계정 요청을 처리하고 있어요.',
     AppAccountErrorCode.googleSetupRequired =>
-      'Google 계정 연결은 설정 확인 후 제공할 예정이에요.',
+      'Google 계정 연결 설정을 확인할 수 없어요. 잠시 후 다시 시도해주세요.',
+    AppAccountErrorCode.googleCanceled => 'Google 계정 선택을 취소했어요.',
     AppAccountErrorCode.anonymousProviderDisabled =>
       '익명 시작 기능을 사용할 수 없어요. 잠시 후 다시 시도해주세요.',
+    AppAccountErrorCode.emailPasswordProviderDisabled =>
+      '이메일 계정 연결 기능이 아직 활성화되지 않았어요. 관리자에게 문의해주세요.',
+    AppAccountErrorCode.userDisabled => '사용이 중지된 계정이에요. 관리자에게 문의해주세요.',
     AppAccountErrorCode.unauthenticated => '계정 연결을 시작할 사용자를 확인할 수 없어요.',
     AppAccountErrorCode.credentialAlreadyInUse ||
     AppAccountErrorCode.accountExistsWithDifferentCredential =>

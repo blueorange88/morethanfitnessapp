@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/services/personal_member_card_save_service.dart';
 
@@ -21,6 +24,16 @@ void main() {
       expect(personalMemberBirthDateForSave('1990.2.3'), '1990-02-03');
       expect(
         () => personalMemberBirthDateForSave('2099-01-01'),
+        throwsArgumentError,
+      );
+    });
+
+    test('회원 등급은 지원값만 canonical 대문자로 정규화한다', () {
+      for (final grade in const ['VVIP', 'VIP', 'gold', 'Silver', 'BRONZE']) {
+        expect(personalMemberGradeForSave(grade), grade.toUpperCase());
+      }
+      expect(
+        () => personalMemberGradeForSave('PLATINUM'),
         throwsArgumentError,
       );
     });
@@ -88,6 +101,79 @@ void main() {
       expect(result.type, PersonalMemberGroupSelectionType.canonicalCustom);
       expect(result.groupId, 'personal_group_1');
       expect(result.isValid, isTrue);
+    });
+  });
+
+  group('Personal 회원 저장 trace', () {
+    test('동일한 비식별 trace id로 단계와 상태를 연결한다', () {
+      final logs = <String>[];
+      final trace = PersonalMemberSaveTrace.start(sink: logs.add);
+
+      trace.record(
+        PersonalMemberSaveTraceStage.saveButtonTap,
+        PersonalMemberSaveTraceStatus.start,
+      );
+      trace.record(
+        PersonalMemberSaveTraceStage.callableResponse,
+        PersonalMemberSaveTraceStatus.ok,
+        functionName: 'updateManagedMember',
+      );
+
+      expect(trace.id, startsWith('SAVE-'));
+      expect(logs, hasLength(2));
+      expect(logs.every((log) => log.contains('trace=${trace.id}')), isTrue);
+      expect(logs.first, contains('stage=SAVE_BUTTON_TAP status=START'));
+      expect(
+        logs.last,
+        contains('stage=CALLABLE_RESPONSE status=OK'),
+      );
+      expect(logs.join('\n'), isNot(contains('memberId=')));
+      expect(logs.join('\n'), isNot(contains('phone=')));
+      expect(logs.join('\n'), isNot(contains('uid=')));
+    });
+
+    test('timeout과 DNS 실패를 민감정보 없는 상태로 분류한다', () {
+      final timeout = TimeoutException('readback');
+      final dns = StateError('UnknownHostException: unable to resolve host');
+
+      expect(
+        personalMemberSaveTraceFailureStatus(timeout),
+        PersonalMemberSaveTraceStatus.timeout,
+      );
+      expect(personalMemberSaveTraceFailureOutcome(timeout), 'TIMEOUT');
+      expect(personalMemberSaveTraceFailureOutcome(dns), 'DNS_FAIL');
+    });
+
+    test('허용된 callable 사유 코드만 trace outcome으로 남긴다', () {
+      final known = FirebaseFunctionsException(
+        code: 'failed-precondition',
+        message: 'member_count_conflict',
+      );
+      final unknown = FirebaseFunctionsException(
+        code: 'failed-precondition',
+        message: 'raw server detail',
+      );
+
+      expect(
+        personalMemberSaveTraceFailureOutcome(known),
+        'MEMBER_COUNT_CONFLICT',
+      );
+      expect(personalMemberSaveTraceServerReason(unknown), isNull);
+      expect(personalMemberSaveTraceFailureOutcome(unknown), 'FAIL');
+    });
+
+    test('trace token은 공백과 구분문자를 로그 안전 문자열로 제한한다', () {
+      final logs = <String>[];
+      final trace = PersonalMemberSaveTrace.start(sink: logs.add);
+
+      trace.record(
+        PersonalMemberSaveTraceStage.uiSuccess,
+        PersonalMemberSaveTraceStatus.fail,
+        outcome: 'NETWORK FAIL\nraw detail',
+      );
+
+      expect(logs.single, contains('outcome=NETWORK_FAIL_raw_detail'));
+      expect(logs.single, isNot(contains('\nraw detail')));
     });
   });
 }

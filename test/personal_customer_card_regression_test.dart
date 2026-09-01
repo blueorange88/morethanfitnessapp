@@ -93,10 +93,7 @@ void main() {
   test('주소 검색 HTML은 callback 가능한 HTTPS origin에서 로드한다', () {
     final source = File('lib/pages/client_card_page.dart').readAsStringSync();
 
-    expect(
-      source,
-      contains("baseUrl: 'https://postcode.map.daum.net/'"),
-    );
+    expect(source, contains("baseUrl: 'https://postcode.map.daum.net/'"));
   });
 
   test('주소 callback은 canonical 주소 controller와 저장 payload에 연결된다', () {
@@ -149,6 +146,36 @@ void main() {
     );
   });
 
+  test('Personal 회원 현황은 소속 그룹 아래 복수 태그 높이를 확보한다', () {
+    expect(
+      clientCardMemberSetupPageHeight(
+        isCustomLessonTypeSelected: false,
+        isLessonTypeLockedByContract: false,
+        isLegacyCurrentLessonType: false,
+        includesPersonalTaxonomy: true,
+      ),
+      468,
+    );
+    expect(
+      clientCardMemberSetupPageHeight(
+        isCustomLessonTypeSelected: true,
+        isLessonTypeLockedByContract: false,
+        isLegacyCurrentLessonType: false,
+        includesPersonalTaxonomy: true,
+      ),
+      512,
+    );
+    expect(
+      clientCardMemberSetupPageHeight(
+        isCustomLessonTypeSelected: false,
+        isLessonTypeLockedByContract: false,
+        isLegacyCurrentLessonType: true,
+        includesPersonalTaxonomy: true,
+      ),
+      582,
+    );
+  });
+
   test('320·360·384·411dp 기본정보는 모두 2열 2행 높이를 유지한다', () {
     for (final width in const [320.0, 360.0, 384.0, 411.0]) {
       expect(
@@ -156,12 +183,25 @@ void main() {
         isFalse,
         reason: 'width=$width',
       );
-      expect(
-        clientCardBasicInfoPageHeight(width),
-        260,
-        reason: 'width=$width',
-      );
+      expect(clientCardBasicInfoPageHeight(width), 260, reason: 'width=$width');
     }
+  });
+
+  test('MORE 데이 날짜는 오늘 이후 10년까지 선택할 수 있다', () {
+    final lastDate = clientCardMoreDayLastDate(DateTime(2026, 8, 31));
+
+    expect(lastDate, DateTime(2036, 12, 31));
+    expect(lastDate.isAfter(DateTime(2026, 8, 31)), isTrue);
+  });
+
+  test('동의 snapshot 오류는 비동기 미처리 오류로 다시 던지지 않는다', () {
+    final source = File(
+      'lib/services/personal_member_consent_service.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('onError: (Object error)'));
+    expect(source, contains("StateError('member_consent_snapshot_failed')"));
+    expect(source, isNot(contains('snapshotObserved.completeError(')));
   });
 
   testWidgets('동의 저장 실패 시 화면과 재시도 입력 상태를 유지한다', (tester) async {
@@ -206,9 +246,7 @@ void main() {
     expect(log, contains("entryPoint: 'personal_training_log_direct_route'"));
     expect(
       quickSign,
-      contains(
-        "entryPoint: 'personal_training_log_quick_sign_direct_route'",
-      ),
+      contains("entryPoint: 'personal_training_log_quick_sign_direct_route'"),
     );
   });
 
@@ -289,10 +327,7 @@ void main() {
     );
     final methodSource = source.substring(methodStart, methodEnd);
 
-    expect(
-      methodSource,
-      contains("where('trainerId', isEqualTo: authUid)"),
-    );
+    expect(methodSource, contains("where('trainerId', isEqualTo: authUid)"));
     expect(
       methodSource,
       contains("where('workspaceType', isEqualTo: 'personal')"),
@@ -331,10 +366,31 @@ void main() {
     );
   });
 
+  test('Home 회원권 관리 진입도 Personal owner를 전달한다', () {
+    final home = File('lib/pages/home_page.dart').readAsStringSync();
+    final start = home.indexOf(
+      'Future<void> _openMembershipManageFromHomeLesson',
+    );
+    final end = home.indexOf(
+      'Future<void> _openLessonContractFromHomeLesson',
+      start,
+    );
+
+    expect(start, greaterThanOrEqualTo(0));
+    expect(end, greaterThan(start));
+    final method = home.substring(start, end);
+    expect(method, contains('ClientCardPage.edit('));
+    expect(
+      method,
+      contains(
+        'personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null',
+      ),
+    );
+  });
+
   test('Home 고객카드 소유권 로그는 UID 원문을 출력하지 않는다', () {
-    final source = File(
-      'lib/services/home_member_lookup_service.dart',
-    ).readAsStringSync();
+    final source =
+        File('lib/services/home_member_lookup_service.dart').readAsStringSync();
 
     expect(source, isNot(contains("'uid=\$owner")));
     expect(source, isNot(contains('memberId=\$cleanId')));
@@ -386,7 +442,7 @@ void main() {
     expect(methodSource, isNot(contains('_bindNextReservationStream()')));
   });
 
-  test('Personal 휴대폰 중복 조회는 현재 owner와 workspace로 제한한다', () {
+  test('Personal 휴대폰 중복은 canonical callable에 위임한다', () {
     final source = File('lib/pages/client_card_page.dart').readAsStringSync();
     final methodStart = source.indexOf(
       'Future<bool> _ensurePhoneIsNotDuplicatedBeforeSave() async',
@@ -405,13 +461,16 @@ void main() {
       methodSource,
       contains("where('workspaceType', isEqualTo: 'personal')"),
     );
+    expect(methodSource, contains('.where(target.key, isEqualTo: value)'));
+    expect(methodSource, contains('.timeout(const Duration(seconds: 8))'));
     expect(
       methodSource,
-      contains('query.where(target.key, isEqualTo: value)'),
+      contains('[MTF_MEMBER_SAVE_PREFLIGHT] task=phoneDuplicate'),
     );
+    expect(methodSource, contains('if (_isPersonalWorkspace)'));
     expect(
-      methodSource,
-      contains('if (_isPersonalWorkspace && !_isEditMode)'),
+      methodSource.indexOf('if (_isPersonalWorkspace)'),
+      lessThan(methodSource.indexOf("collection('members')")),
     );
   });
 
@@ -425,16 +484,15 @@ void main() {
     expect(source, contains('if (!focusNode.hasFocus)'));
     expect(
       source,
-      contains(
-        "SystemChannels.textInput.invokeMethod<void>('TextInput.show')",
-      ),
+      contains("SystemChannels.textInput.invokeMethod<void>('TextInput.show')"),
     );
     expect(
       source,
-      contains(
-        '_scrollToBasicInfoField(\n'
-        '        _phoneFieldKey,\n'
-        '        focusNode: _phoneFocusNode,',
+      matches(
+        RegExp(
+          r'_scrollToBasicInfoField\(\s*_phoneFieldKey,\s*'
+          r'focusNode:\s*_phoneFocusNode',
+        ),
       ),
     );
   });
@@ -488,9 +546,7 @@ void main() {
     );
   });
 
-  testWidgets('반복 저장 focus 요청은 이전 필드가 focused여도 현재 첫 오류만 유지한다', (
-    tester,
-  ) async {
+  testWidgets('반복 저장 focus 요청은 이전 필드가 focused여도 현재 첫 오류만 유지한다', (tester) async {
     final nameFocusNode = FocusNode();
     final phoneFocusNode = FocusNode();
     final coordinator = ClientCardValidationFocusCoordinator();
@@ -544,9 +600,7 @@ void main() {
     expect(keyboardShowCount, 5);
   });
 
-  testWidgets('늦게 완료된 이전 focus callback은 새 첫 오류를 덮어쓰지 않는다', (
-    tester,
-  ) async {
+  testWidgets('늦게 완료된 이전 focus callback은 새 첫 오류를 덮어쓰지 않는다', (tester) async {
     final nameFocusNode = FocusNode();
     final phoneFocusNode = FocusNode();
     final coordinator = ClientCardValidationFocusCoordinator();
@@ -625,10 +679,7 @@ void main() {
       methodSource,
       contains('Expanded(flex: 3, child: buildBirthField())'),
     );
-    expect(
-      methodSource,
-      contains('Expanded(flex: 2, child: buildJobField())'),
-    );
+    expect(methodSource, contains('Expanded(flex: 2, child: buildJobField())'));
     expect(methodSource, isNot(contains('height: 236,')));
   });
 
