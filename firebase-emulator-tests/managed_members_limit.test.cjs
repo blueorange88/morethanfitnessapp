@@ -1327,6 +1327,26 @@ async function main() {
       assert.equal(completeWhileAnonymous.body.result.accountLinked, false);
       assert.equal(completeWhileAnonymous.body.result.tier, "Amateur");
     });
+    await scenario("intro one-line bio persists and reads back", async () => {
+      const saved = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {intro: "회원의 목표를 함께 설계하는 트레이너입니다."},
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.intro, "회원의 목표를 함께 설계하는 트레이너입니다.");
+    });
+    await scenario("intro one-line bio update overwrites the previous value", async () => {
+      const saved = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {intro: "운동을 넘어 건강한 일상을 함께 만듭니다."},
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.intro, "운동을 넘어 건강한 일상을 함께 만듭니다.");
+    });
     await scenario("sponsorship does not affect tier", async () => {
       await env.withSecurityRulesDisabled(async (admin) => {
         await updateDoc(
@@ -1410,8 +1430,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 68);
-    process.stdout.write("All 68 anonymous member and tier scenarios passed.\n");
+    assert.equal(passed, 70);
+    process.stdout.write("All 70 anonymous member and tier scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

@@ -672,7 +672,7 @@ export function createUpdatePersonalTrainerProfileHandler(
       "affiliationType", "nickname", "realName", "jobTitle",
       "birth", "contractTrainerNameSource", "contractTrainerCustomName",
       "nameEn", "activityRegions", "gymName", "centerLocation",
-      "memberDefaultGroupLabel", "customLessonTypes",
+      "memberDefaultGroupLabel", "customLessonTypes", "intro",
     ];
     if (Object.keys(data).some((key) => !allowed.includes(key))) {
       throw new functions.https.HttpsError("invalid-argument", "unknown_fields");
@@ -686,7 +686,7 @@ export function createUpdatePersonalTrainerProfileHandler(
         if (key === "activityRegions" || key === "customLessonTypes") continue;
         const maxLength = key === "phone" ? 32 :
           key === "birth" ? 10 : key === "nickname" ? 6 :
-            key === "nameEn" ? 40 : 120;
+            key === "nameEn" ? 40 : key === "intro" ? 200 : 120;
         updates[key] = profileString(data, key, maxLength);
       }
     }

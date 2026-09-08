@@ -626,10 +626,22 @@ class _FakeMemberGateway implements ManagedMemberWorkspaceGateway {
     List<String>? activityRegions,
     String? gymName,
     String? centerLocation,
+    String? intro,
   }) async {
     profileCalls++;
     if (profileError case final error?) throw error;
   }
+
+  @override
+  Future<Map<String, dynamic>> pauseMembership({
+    required String memberId,
+    required int pauseDays,
+  }) async => <String, dynamic>{};
+
+  @override
+  Future<Map<String, dynamic>> resumeMembership({
+    required String memberId,
+  }) async => <String, dynamic>{};
 
   @override
   Future<void> createMember({

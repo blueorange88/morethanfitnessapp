@@ -16,7 +16,9 @@ void main() {
     expect(find.text('첫 회원을 등록해보세요.'), findsOneWidget);
     expect(find.text('첫 회원 등록'), findsOneWidget);
     expect(
-        find.byKey(const Key('create_managed_member_button')), findsOneWidget);
+      find.byKey(const Key('create_managed_member_button')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('회원 등록은 Cloud Function gateway만 한 번 호출한다', (tester) async {
@@ -25,10 +27,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('create_managed_member_button')));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const Key('managed_member_name')),
-      '김회원',
-    );
+    await tester.enterText(find.byKey(const Key('managed_member_name')), '김회원');
     await _fillQualificationFields(tester);
     await tester.tap(find.byKey(const Key('save_managed_member_button')));
     await tester.pumpAndSettle();
@@ -69,7 +68,9 @@ void main() {
     await tester.tap(find.byKey(const Key('create_managed_member_button')));
     await tester.pumpAndSettle();
     await tester.enterText(
-        find.byKey(const Key('managed_member_name')), '열한번째');
+      find.byKey(const Key('managed_member_name')),
+      '열한번째',
+    );
     await _fillQualificationFields(tester);
     await tester.tap(find.byKey(const Key('save_managed_member_button')));
     await tester.pumpAndSettle();
@@ -99,12 +100,14 @@ void main() {
     final gateway = _FakeMemberGateway();
     await _pumpPage(tester, gateway);
 
-    gateway.emitUsage(const ManagedMemberUsage(
-      count: 10,
-      limit: 10,
-      lifetimeQualifiedCount: 10,
-      tier: 'Amateur',
-    ));
+    gateway.emitUsage(
+      const ManagedMemberUsage(
+        count: 10,
+        limit: 10,
+        lifetimeQualifiedCount: 10,
+        tier: 'Amateur',
+      ),
+    );
     await tester.pump();
     expect(find.text('10명 · Amateur'), findsWidgets);
   });
@@ -116,7 +119,9 @@ void main() {
     await tester.tap(find.byKey(const Key('create_managed_member_button')));
     await tester.pumpAndSettle();
     await tester.enterText(
-        find.byKey(const Key('managed_member_name')), '중복방지');
+      find.byKey(const Key('managed_member_name')),
+      '중복방지',
+    );
     await _fillQualificationFields(tester);
     await tester.tap(find.byKey(const Key('save_managed_member_button')));
     await tester.pumpAndSettle();
@@ -162,7 +167,7 @@ Future<void> _pumpPage(
 
 class _FakeMemberGateway implements ManagedMemberWorkspaceGateway {
   _FakeMemberGateway({this.createError, List<ManagedMemberSummary>? members})
-      : _members = members ?? const [];
+    : _members = members ?? const [];
 
   final _usage = StreamController<ManagedMemberUsage>.broadcast(sync: true);
   final List<ManagedMemberSummary> _members;
@@ -201,12 +206,14 @@ class _FakeMemberGateway implements ManagedMemberWorkspaceGateway {
     lastIdempotencyKey = idempotencyKey;
     lastName = name;
     if (createError case final error?) throw error;
-    emitUsage(ManagedMemberUsage(
-      count: _currentUsage.count + 1,
-      limit: _currentUsage.limit,
-      lifetimeQualifiedCount: _currentUsage.lifetimeQualifiedCount + 1,
-      tier: _currentUsage.tier,
-    ));
+    emitUsage(
+      ManagedMemberUsage(
+        count: _currentUsage.count + 1,
+        limit: _currentUsage.limit,
+        lifetimeQualifiedCount: _currentUsage.lifetimeQualifiedCount + 1,
+        tier: _currentUsage.tier,
+      ),
+    );
   }
 
   @override
@@ -241,7 +248,19 @@ class _FakeMemberGateway implements ManagedMemberWorkspaceGateway {
     List<String>? activityRegions,
     String? gymName,
     String? centerLocation,
+    String? intro,
   }) async {}
+
+  @override
+  Future<Map<String, dynamic>> pauseMembership({
+    required String memberId,
+    required int pauseDays,
+  }) async => <String, dynamic>{};
+
+  @override
+  Future<Map<String, dynamic>> resumeMembership({
+    required String memberId,
+  }) async => <String, dynamic>{};
 }
 
 class _FakeAuthGateway implements AppAccountAuthGateway {
@@ -255,8 +274,7 @@ class _FakeAuthGateway implements AppAccountAuthGateway {
   Future<AppAccountUser> createUserWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> sendEmailVerification() => throw UnimplementedError();
@@ -269,8 +287,7 @@ class _FakeAuthGateway implements AppAccountAuthGateway {
   Future<AppAccountUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> signOut() async {}

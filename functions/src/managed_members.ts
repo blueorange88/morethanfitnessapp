@@ -991,3 +991,247 @@ export function updateManagedMemberConsentHandler(
     }
   };
 }
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const KOREA_UTC_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+// members/{id} 클라이언트 직접 write는 Firestore Rules(workspaceType=='personal')로
+// 차단되어 있어, 고객카드의 회원권 정지/재개는 이 서버 함수를 통해서만 반영된다.
+// 날짜 계산은 트레이너 기기(한국 로컬 시간) 기준으로 client_card_page.dart가 쓰던
+// 기존 계산식을 그대로 옮긴 것으로, 새 정책을 만들지 않는다.
+function koreaDateOnly(instant: Date): Date {
+  const shifted = new Date(instant.getTime() + KOREA_UTC_OFFSET_MS);
+  return new Date(Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+  ));
+}
+
+function daysBetweenKoreaDates(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / MS_PER_DAY);
+}
+
+export function updateManagedMemberMembershipPauseHandler(
+  db: FirebaseFirestore.Firestore,
+) {
+  return async (raw: unknown, ctx: functions.https.CallableContext) => {
+    const uid = requireUid(ctx);
+    const data = objectData(raw);
+    allowOnly(data, ["memberId", "action", "pauseDays"]);
+    const memberId = requiredString(data, "memberId");
+    const action = requiredString(data, "action");
+    if (action !== "pause" && action !== "resume") {
+      throw new functions.https.HttpsError("invalid-argument", "action_invalid");
+    }
+    const profileRef = db.collection("trainer_profiles").doc(uid);
+    const memberRef = db.collection("members").doc(memberId);
+    try {
+      return await db.runTransaction(async (transaction) => {
+        const [profileSnapshot, memberSnapshot] = await Promise.all([
+          transaction.get(profileRef),
+          transaction.get(memberRef),
+        ]);
+        validateProfile(uid, profileSnapshot, ctx);
+        if (!memberSnapshot.exists) {
+          throw new functions.https.HttpsError("not-found", "member_not_found");
+        }
+        const current = memberSnapshot.data() ?? {};
+        if (current.memberId !== memberId || current.trainerId !== uid ||
+            current.workspaceType !== "personal") {
+          throw new functions.https.HttpsError(
+            "permission-denied",
+            "member_owner_mismatch",
+          );
+        }
+        const membership = (current.membership &&
+          typeof current.membership === "object") ?
+          current.membership as Record<string, unknown> : {};
+        const isPaused = membership.status === "paused" ||
+          current.membershipStatus === "paused";
+        const now = Timestamp.now();
+        const nowServer = FieldValue.serverTimestamp();
+        const today = koreaDateOnly(now.toDate());
+
+        if (action === "pause") {
+          if (isPaused) {
+            throw new functions.https.HttpsError(
+              "failed-precondition",
+              "already_paused",
+            );
+          }
+          const endAtRaw = membership.endAt;
+          if (!(endAtRaw instanceof Timestamp)) {
+            throw new functions.https.HttpsError(
+              "failed-precondition",
+              "membership_not_registered",
+            );
+          }
+          const passEnd = koreaDateOnly(endAtRaw.toDate());
+          const remainingDays = daysBetweenKoreaDates(today, passEnd);
+          if (remainingDays <= 0) {
+            throw new functions.https.HttpsError(
+              "failed-precondition",
+              "membership_expired",
+            );
+          }
+          const pauseDays = nullableInteger(data, "pauseDays", 1);
+          if (pauseDays == null) {
+            throw new functions.https.HttpsError(
+              "invalid-argument",
+              "pause_days_required",
+            );
+          }
+          if (pauseDays > remainingDays) {
+            throw new functions.https.HttpsError(
+              "failed-precondition",
+              "pause_days_over_remaining",
+            );
+          }
+          const contractDraftExists =
+            current.membershipContractDraftExists === true ||
+            membership.contractStatus === "draft" ||
+            current.membershipContractStatus === "draft";
+          const contractMax =
+            typeof membership.maxPauseDaysFromContract === "number" ?
+              membership.maxPauseDaysFromContract :
+              typeof current.membershipContractMaxPauseDays === "number" ?
+                current.membershipContractMaxPauseDays : null;
+          const pauseUsedDays =
+            typeof membership.pauseUsedDays === "number" ?
+              membership.pauseUsedDays :
+              typeof current.membershipPauseUsedDays === "number" ?
+                current.membershipPauseUsedDays : 0;
+          if (contractDraftExists && contractMax != null && contractMax > 0) {
+            const contractRemaining = Math.min(
+              contractMax,
+              Math.max(0, contractMax - pauseUsedDays),
+            );
+            const availableDays = Math.min(remainingDays, contractRemaining);
+            if (pauseDays > availableDays) {
+              throw new functions.https.HttpsError(
+                "failed-precondition",
+                "pause_days_over_contract_limit",
+              );
+            }
+          }
+          const resumeDueAt = Timestamp.fromDate(
+            new Date(today.getTime() + pauseDays * MS_PER_DAY),
+          );
+          transaction.update(memberRef, {
+            "memberStatus": "휴면",
+            "membershipStatus": "paused",
+            "membership.status": "paused",
+            "membership.pausedAt": nowServer,
+            "membership.pausePlannedDays": pauseDays,
+            "membership.resumeDueAt": resumeDueAt,
+            "membership.pauseReason": "client_card_membership_pause",
+            "membership.pauseSource": "client_card",
+            "membership.updatedAt": nowServer,
+            "membershipPausePlannedDays": pauseDays,
+            "membershipResumeDueAt": resumeDueAt,
+            "membershipPausedAt": nowServer,
+            "membershipPauseHistory": FieldValue.arrayUnion({
+              type: "pause",
+              at: now,
+              plannedDays: pauseDays,
+              resumeDueAt: resumeDueAt,
+              source: "client_card",
+            }),
+            "updatedAt": nowServer,
+          });
+          return {
+            updated: true,
+            memberId,
+            action,
+            pauseDays,
+            resumeDueAtMillis: resumeDueAt.toMillis(),
+          };
+        }
+
+        if (!isPaused) {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "not_paused",
+          );
+        }
+        const pausedAtRaw = membership.pausedAt ?? current.membershipPausedAt;
+        const pausedAt = pausedAtRaw instanceof Timestamp ?
+          koreaDateOnly(pausedAtRaw.toDate()) : today;
+        const elapsedRaw = daysBetweenKoreaDates(pausedAt, today);
+        const elapsedDays = elapsedRaw <= 0 ? 1 : elapsedRaw;
+        const plannedDaysRaw =
+          typeof membership.pausePlannedDays === "number" ?
+            membership.pausePlannedDays :
+            typeof current.membershipPausePlannedDays === "number" ?
+              current.membershipPausePlannedDays : 0;
+        const plannedDays = plannedDaysRaw <= 0 ? elapsedDays : plannedDaysRaw;
+        const actualPauseDays =
+          elapsedDays > plannedDays ? plannedDays : elapsedDays;
+        const endAtRaw = membership.endAt;
+        const passEnd = endAtRaw instanceof Timestamp ?
+          endAtRaw.toDate() : null;
+        let nextPassEndTimestamp: Timestamp | null = null;
+        let nextDaysValue: number | null = null;
+        if (passEnd != null) {
+          const passEndDateOnly = koreaDateOnly(passEnd);
+          const nextPassEnd = new Date(
+            passEndDateOnly.getTime() + actualPauseDays * MS_PER_DAY,
+          );
+          nextPassEndTimestamp = Timestamp.fromDate(nextPassEnd);
+          const startAtRaw = membership.startAt;
+          if (startAtRaw instanceof Timestamp) {
+            const startDateOnly = koreaDateOnly(startAtRaw.toDate());
+            nextDaysValue =
+              daysBetweenKoreaDates(startDateOnly, nextPassEnd) + 1;
+          }
+        }
+        const pauseUsedDaysCurrent =
+          typeof membership.pauseUsedDays === "number" ?
+            membership.pauseUsedDays :
+            typeof current.membershipPauseUsedDays === "number" ?
+              current.membershipPauseUsedDays : 0;
+        const nextPauseUsedDays = pauseUsedDaysCurrent + actualPauseDays;
+        transaction.update(memberRef, {
+          "memberStatus": "활성",
+          "membershipStatus": "active",
+          "membership.status": "active",
+          "membership.resumedAt": nowServer,
+          "membership.pauseActualDays": actualPauseDays,
+          "membership.lastPauseActualDays": actualPauseDays,
+          "membership.pauseUsedDays": nextPauseUsedDays,
+          "membership.updatedAt": nowServer,
+          ...(nextPassEndTimestamp != null ?
+            {"membership.endAt": nextPassEndTimestamp} : {}),
+          ...(nextDaysValue != null ?
+            {"membership.days": nextDaysValue} : {}),
+          ...(nextPassEndTimestamp != null ?
+            {membershipResumeExtendedEndAt: nextPassEndTimestamp} : {}),
+          "membershipPauseActualDays": actualPauseDays,
+          "membershipPauseUsedDays": nextPauseUsedDays,
+          "membershipPauseHistory": FieldValue.arrayUnion({
+            type: "resume",
+            at: now,
+            actualDays: actualPauseDays,
+            plannedDays: plannedDays,
+            ...(nextPassEndTimestamp != null ?
+              {extendedEndAt: nextPassEndTimestamp} : {}),
+            source: "client_card",
+          }),
+          "updatedAt": nowServer,
+        });
+        return {
+          updated: true,
+          memberId,
+          action,
+          actualPauseDays,
+          plannedDays,
+          nextPassEndMillis: nextPassEndTimestamp?.toMillis() ?? null,
+          nextDays: nextDaysValue,
+        };
+      });
+    } catch (error) {
+      return translateError(error, "updateManagedMemberMembershipPause");
+    }
+  };
+}

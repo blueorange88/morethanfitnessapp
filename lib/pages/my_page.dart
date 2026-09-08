@@ -1480,6 +1480,7 @@ class _MyPageState extends State<MyPage> {
           centerLocation: _centerLocationController.text.trim(),
           contractTrainerNameSource: _contractTrainerNameSource,
           contractTrainerCustomName: contractCustomName,
+          intro: intro,
         );
         try {
           await FirebaseManagedMemberWorkspaceGateway(
@@ -1855,6 +1856,7 @@ class _MyPageState extends State<MyPage> {
         nameEn: normalizeTrainerEnglishName(_nameEnController.text),
         gymName: _gymNameController.text.trim(),
         centerLocation: _centerLocationController.text.trim(),
+        intro: _introController.text.trim(),
       );
       return;
     }
@@ -2332,7 +2334,7 @@ class _MyPageState extends State<MyPage> {
         message:
             '${aifcNicknameLabel(nickname)} 회원님께 어떤 강사님으로 소개할까요?\n레슨 스타일이나 전문 분야를 한 줄로 남겨보세요.',
         label: '한줄 소개',
-        hint: '예: 재활과 체형교정 중심 PT',
+        hint: '예: PT / AT / 필라테스 / 요가 / 발레핏',
         initialValue: _introController.text,
         maxLines: 3,
         onSave: (value) async {
@@ -3892,7 +3894,7 @@ class _MyPageState extends State<MyPage> {
             controller: _introController,
             label: '한줄 소개',
             hint: '회원님께 어떤 강사님으로 소개할까요?',
-            focusHint: '예: 재활과 체형교정 중심 PT',
+            focusHint: '예: PT / AT / 필라테스 / 요가 / 발레핏',
             maxLines: 3,
           ),
         ],

@@ -2232,3 +2232,27 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [ ] Play Console 앱 생성 후 Internal Testing에 AAB를 업로드한다.
 - [ ] Play App Signing 인증서 SHA-1/SHA-256을 확인해 Firebase PROD Android 앱에 등록한 뒤 Play 설치본 Google 연결 smoke test를 수행한다. upload key SHA를 런타임 signer로 대신 등록하지 않는다.
 - [x] checkpoint commit 1건만 생성했다. Firebase 변경·배포, Play Console 업로드, Galaxy 설치, 추가 commit, push는 수행하지 않았으며 다음 단계로 자동 이동하지 않는다.
+
+## 2026-09-02 PROD 주간 전체 붙여넣기 Rules access-budget hotfix
+
+- [x] PROD 실패는 일정 삭제가 아니라 서로 다른 member link 17개를 한 atomic batch에서 검증하며 Firestore Rules access-call 한도를 넘은 `PERMISSION_DENIED`였다. 실패 batch의 server write/delete는 모두 0이다.
+- [x] 주간 copy writes를 서로 다른 member link 최대 10개, write 최대 450개로 분할하고 batch별 server readback·부분 실패 재시도를 추가했다. paste 경로의 기존 일정 delete는 0이다.
+- [x] 일정 mutation 로그의 raw source/target document ID를 제거하고 존재 여부와 건수만 기록한다.
+- [x] 관련 Flutter 22개, 전체 Flutter 775개, Personal schedule Emulator 30개, analyze error 0, `git diff --check`, DEV Debug APK가 통과했다.
+- [x] Galaxy DEV에서 이미 붙여넣어진 주를 빈 다음 주로 다시 복사해 54건 commit/readback/restart 유지가 통과했고, 검증 주를 삭제해 일정 227·target 0 baseline으로 원복했다.
+- [x] 동일 legacy signer의 non-debuggable PROD validation APK `1.0.4 (18)`을 `adb install -r`했다. UID/dataDir/firstInstallTime/session과 PROD 일정 318·active 회원 28 baseline을 보존했다.
+- [ ] 사용자 조작 가능한 시점에 개인정보 없는 PROD marker fixture만 사용해 paste 직후/T+5s/재진입/force-stop 재시작 server persistence, duplicate 0, unintended delete 0과 strict cleanup을 최종 확인한다. 실회원·실일정은 사용하지 않는다.
+- [ ] 위 PROD fixture가 통과한 뒤에만 blocker를 종료하고 versionCode를 새로 올린 release checkpoint와 upload-key AAB를 생성한다. `1.0.4 (17)` AAB는 hotfix 미포함이므로 업로드하지 않는다.
+- [x] Firebase 배포, Play Console/AAB, commit, push는 이번 작업에서 0건이다.
+
+## 2026-09-07 회원권 이용정지/정지내역·강사 한줄소개 blocker
+
+- [x] 원인 확정: 회원권 정지는 `client_card_page.dart`의 클라이언트 직접 `members/{memberId}` write가 `firestore.rules`(personal workspace 문서는 `isLegacyAdmin()`만 update 허용)에 막혀 항상 `permission-denied`로 조용히 실패했다. 한줄소개(`intro`)는 personal workspace 저장 경로(`updatePersonalTrainerProfile` gateway/callable)에 필드 자체가 없어 저장되지 않았다.
+- [x] 회원권 정지/재개를 위한 신규 Cloud Function `updateManagedMemberMembershipPause`를 추가하고(`functions/src/managed_members.ts`, `index.ts`), `client_card_page.dart`가 personal workspace에서 이 callable을 쓰도록 수정했다. 기존 Firestore 필드 스키마와 pause/resume 계산식은 그대로 유지했다.
+- [x] `updatePersonalTrainerProfile`의 allowlist에 `intro`를 추가하고 Flutter gateway·`my_page.dart`의 두 저장 경로 모두 `intro`를 payload에 포함하도록 수정했다.
+- [x] Firestore/Functions Emulator 신규 회귀 테스트: `managed_member_membership_pause.test.cjs`(9개) 신규, `managed_members_limit.test.cjs`에 intro 저장/갱신 2건 추가(68→70). 전체 Flutter 775개, 변경 범위 analyze, functions build/lint, `git diff --check` 통과.
+- [x] 사용자 승인 후 `firebase deploy --only functions --project more-than-fitness-dev-mft`로 DEV에 배포 완료(신규 `updateManagedMemberMembershipPause` 포함 전체 함수 갱신 성공). PROD는 미배포.
+- [x] 배포 중간에 `intro`가 아직 미배포 상태에서 personal workspace의 모든 단일 필드 저장(직책·레슨플레이스·연락처 등)이 함께 실패하는 회귀를 발견해 즉시 hotfix(intro 인자 임시 제거) 후 재배포 확인 뒤 원복했다. 회귀 원인: `_saveSingleProfileField`/`_saveProfile`이 personal workspace에서 매번 전체 필드를 재전송하는 기존 패턴에 `intro`가 섞이면서, 서버가 아직 모르는 필드 하나 때문에 요청 전체가 `unknown_fields`로 거부됨.
+- [x] 한줄소개 실기기 최종 확인 완료: 저장 → 로그상 서버 성공(`updatePersonalTrainerProfile` 에러 없음, 후속 `reconcilePersonalTier` 호출) → force-stop 후 콜드 재시작 → 마이페이지 재진입 → 값 유지 확인.
+- [ ] 회원권 정지는 fixture 계정 tier가 Amateur(요구 Semi-Pro)라 실제 정지 버튼 흐름은 여전히 미확인이다. Semi-Pro 이상 계정이 생기면 정지→정지내역 표시→재개→재시작 유지를 확인한다.
+- [x] Firebase 배포(DEV, 사용자 승인 하에 수행), Rules 변경, PROD 접근, 실회원 데이터 변경, migration, commit, push(배포 제외) 중 배포 외에는 이번 작업에서 0건이다.

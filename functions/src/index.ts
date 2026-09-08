@@ -26,6 +26,7 @@ import {
   transitionManagedMemberStateHandler,
   updateManagedMemberConsentHandler,
   updateManagedMemberHandler,
+  updateManagedMemberMembershipPauseHandler,
 } from "./managed_members.js";
 import {
   createPersonalGroupHandler,
@@ -84,6 +85,9 @@ exports.updateManagedMember = personalFunctions.https.onCall(
 );
 exports.updateManagedMemberConsent = personalFunctions.https.onCall(
   updateManagedMemberConsentHandler(db),
+);
+exports.updateManagedMemberMembershipPause = personalFunctions.https.onCall(
+  updateManagedMemberMembershipPauseHandler(db),
 );
 exports.createPersonalGroup = personalFunctions.https.onCall(
   createPersonalGroupHandler(db),

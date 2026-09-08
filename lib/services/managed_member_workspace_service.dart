@@ -32,7 +32,8 @@ class ManagedMemberUsage {
   final String primaryActivity;
   final String affiliationType;
 
-  int get completedProfileFieldCount => [
+  int get completedProfileFieldCount =>
+      [
         displayName,
         phone,
         activityRegion,
@@ -98,7 +99,15 @@ abstract interface class ManagedMemberWorkspaceGateway {
     List<String>? activityRegions,
     String? gymName,
     String? centerLocation,
+    String? intro,
   });
+
+  Future<Map<String, dynamic>> pauseMembership({
+    required String memberId,
+    required int pauseDays,
+  });
+
+  Future<Map<String, dynamic>> resumeMembership({required String memberId});
 }
 
 class FirebaseManagedMemberWorkspaceGateway
@@ -107,8 +116,8 @@ class FirebaseManagedMemberWorkspaceGateway
     required this.uid,
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? MtfFirebaseFunctions.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? MtfFirebaseFunctions.instance;
 
   final String uid;
   final FirebaseFirestore _firestore;
@@ -116,10 +125,10 @@ class FirebaseManagedMemberWorkspaceGateway
 
   @override
   Stream<ManagedMemberUsage> watchUsage() => _firestore
-          .collection('trainer_profiles')
-          .doc(uid)
-          .snapshots()
-          .map((snapshot) {
+      .collection('trainer_profiles')
+      .doc(uid)
+      .snapshots()
+      .map((snapshot) {
         final data = snapshot.data() ?? const <String, dynamic>{};
         return ManagedMemberUsage(
           count: (data['managedMemberCount'] as num?)?.toInt() ?? 0,
@@ -140,24 +149,25 @@ class FirebaseManagedMemberWorkspaceGateway
 
   @override
   Stream<List<ManagedMemberSummary>> watchMembers() => _firestore
-          .collection('members')
-          .where('trainerId', isEqualTo: uid)
-          .where('workspaceType', isEqualTo: 'personal')
-          .snapshots()
-          .map((snapshot) {
-        final members = snapshot.docs
-            .map((document) {
-              final data = document.data();
-              return ManagedMemberSummary(
-                memberId: document.id,
-                name: (data['name'] as String? ?? '').trim(),
-                phone: (data['phone'] as String? ?? '').trim(),
-                managementState:
-                    (data['managementState'] as String? ?? 'active').trim(),
-              );
-            })
-            .where((member) => member.managementState != 'deleted')
-            .toList();
+      .collection('members')
+      .where('trainerId', isEqualTo: uid)
+      .where('workspaceType', isEqualTo: 'personal')
+      .snapshots()
+      .map((snapshot) {
+        final members =
+            snapshot.docs
+                .map((document) {
+                  final data = document.data();
+                  return ManagedMemberSummary(
+                    memberId: document.id,
+                    name: (data['name'] as String? ?? '').trim(),
+                    phone: (data['phone'] as String? ?? '').trim(),
+                    managementState:
+                        (data['managementState'] as String? ?? 'active').trim(),
+                  );
+                })
+                .where((member) => member.managementState != 'deleted')
+                .toList();
         members.sort((left, right) => left.name.compareTo(right.name));
         return members;
       });
@@ -205,10 +215,7 @@ class FirebaseManagedMemberWorkspaceGateway
     await MtfFirebaseFunctions.call(
       'transitionManagedMemberState',
       functions: _functions,
-      parameters: {
-        'memberId': memberId,
-        'nextState': nextState,
-      },
+      parameters: {'memberId': memberId, 'nextState': nextState},
     );
   }
 
@@ -252,6 +259,7 @@ class FirebaseManagedMemberWorkspaceGateway
     List<String>? activityRegions,
     String? gymName,
     String? centerLocation,
+    String? intro,
   }) async {
     final parameters = <String, dynamic>{
       'displayName': displayName,
@@ -280,11 +288,41 @@ class FirebaseManagedMemberWorkspaceGateway
     if (centerLocation != null) {
       parameters['centerLocation'] = centerLocation;
     }
+    if (intro != null) parameters['intro'] = intro;
     await MtfFirebaseFunctions.call(
       'updatePersonalTrainerProfile',
       functions: _functions,
       parameters: parameters,
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> pauseMembership({
+    required String memberId,
+    required int pauseDays,
+  }) async {
+    final response = await MtfFirebaseFunctions.call(
+      'updateManagedMemberMembershipPause',
+      functions: _functions,
+      parameters: {
+        'memberId': memberId,
+        'action': 'pause',
+        'pauseDays': pauseDays,
+      },
+    );
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  @override
+  Future<Map<String, dynamic>> resumeMembership({
+    required String memberId,
+  }) async {
+    final response = await MtfFirebaseFunctions.call(
+      'updateManagedMemberMembershipPause',
+      functions: _functions,
+      parameters: {'memberId': memberId, 'action': 'resume'},
+    );
+    return Map<String, dynamic>.from(response as Map);
   }
 }
 
@@ -351,4 +389,47 @@ String managedMemberProfileSaveErrorMessage(Object error) {
     }
   }
   return '저장하지 못했어요. 잠시 후 다시 시도해주세요.';
+}
+
+String managedMemberMembershipPauseErrorMessage(Object error) {
+  if (error is FirebaseFunctionsException) {
+    final message = error.message ?? '';
+    if (message.contains('already_paused')) {
+      return '이미 정지된 회원권이에요.';
+    }
+    if (message.contains('not_paused')) {
+      return '정지 중인 회원권이 아니에요.';
+    }
+    if (message.contains('membership_not_registered')) {
+      return '회원권 종료일이 있어야 정지할 수 있어요.';
+    }
+    if (message.contains('membership_expired')) {
+      return '남은 회원권 기간이 없어 정지할 수 없어요.';
+    }
+    if (message.contains('pause_days_over_remaining')) {
+      return '정지기간이 남은 회원권 기간보다 많아요.';
+    }
+    if (message.contains('pause_days_over_contract_limit')) {
+      return '회원권계약서 기준 정지 가능일보다 많아요.';
+    }
+    if (message.contains('pause_days_required') ||
+        message.contains('pause_days_invalid')) {
+      return '정지 일수를 다시 확인해주세요.';
+    }
+    if (message.contains('member_not_found')) {
+      return '회원 정보를 찾을 수 없어요.';
+    }
+    if (message.contains('member_owner_mismatch') ||
+        message.contains('workspace_not_eligible') ||
+        error.code == 'permission-denied') {
+      return '이 작업공간에서 처리할 수 없는 요청이에요.';
+    }
+    if (error.code == 'unauthenticated') {
+      return '로그인 상태를 확인한 뒤 다시 시도해주세요.';
+    }
+    if (error.code == 'internal' || error.code == 'unavailable') {
+      return '서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.';
+    }
+  }
+  return '회원권 정지/재개를 처리하지 못했어요. 잠시 후 다시 시도해주세요.';
 }

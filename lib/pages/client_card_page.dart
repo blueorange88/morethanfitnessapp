@@ -29,6 +29,7 @@ import '../services/app_tier_access_service.dart';
 import '../services/app_account_service.dart';
 import '../services/lesson_product_service.dart';
 import '../services/inbody_camera_permission_service.dart';
+import '../services/managed_member_workspace_service.dart';
 import '../services/personal_member_card_save_service.dart';
 import '../services/personal_member_consent_service.dart';
 import '../services/personal_member_preferences_service.dart';
@@ -5800,39 +5801,58 @@ class _ClientCardPageState extends State<ClientCardPage> {
         return;
       }
 
-      final resumeDueAt = DateTime(
+      var resumeDueAt = DateTime(
         now.year,
         now.month,
         now.day,
       ).add(Duration(days: pauseDays));
 
-      await FirebaseFirestore.instance
-          .collection('members')
-          .doc(widget.memberId)
-          .set({
-            'memberStatus': '휴면',
-            'membershipStatus': 'paused',
-            'membership.status': 'paused',
-            'membership.pausedAt': FieldValue.serverTimestamp(),
-            'membership.pausePlannedDays': pauseDays,
-            'membership.resumeDueAt': Timestamp.fromDate(resumeDueAt),
-            'membership.pauseReason': 'client_card_membership_pause',
-            'membership.pauseSource': 'client_card',
-            'membership.updatedAt': FieldValue.serverTimestamp(),
-            'membershipPausePlannedDays': pauseDays,
-            'membershipResumeDueAt': Timestamp.fromDate(resumeDueAt),
-            'membershipPausedAt': FieldValue.serverTimestamp(),
-            'membershipPauseHistory': FieldValue.arrayUnion([
-              {
-                'type': 'pause',
-                'at': Timestamp.fromDate(now),
-                'plannedDays': pauseDays,
-                'resumeDueAt': Timestamp.fromDate(resumeDueAt),
-                'source': 'client_card',
-              },
-            ]),
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+      if (_isPersonalWorkspace) {
+        try {
+          final result = await FirebaseManagedMemberWorkspaceGateway(
+            uid: widget.personalOwnerUid!.trim(),
+          ).pauseMembership(memberId: widget.memberId, pauseDays: pauseDays);
+          final resumeDueAtMillis =
+              (result['resumeDueAtMillis'] as num?)?.toInt();
+          if (resumeDueAtMillis != null) {
+            resumeDueAt = DateTime.fromMillisecondsSinceEpoch(
+              resumeDueAtMillis,
+            );
+          }
+        } catch (e) {
+          if (!mounted) return;
+          _showAifcToast(managedMemberMembershipPauseErrorMessage(e));
+          return;
+        }
+      } else {
+        await FirebaseFirestore.instance
+            .collection('members')
+            .doc(widget.memberId)
+            .set({
+              'memberStatus': '휴면',
+              'membershipStatus': 'paused',
+              'membership.status': 'paused',
+              'membership.pausedAt': FieldValue.serverTimestamp(),
+              'membership.pausePlannedDays': pauseDays,
+              'membership.resumeDueAt': Timestamp.fromDate(resumeDueAt),
+              'membership.pauseReason': 'client_card_membership_pause',
+              'membership.pauseSource': 'client_card',
+              'membership.updatedAt': FieldValue.serverTimestamp(),
+              'membershipPausePlannedDays': pauseDays,
+              'membershipResumeDueAt': Timestamp.fromDate(resumeDueAt),
+              'membershipPausedAt': FieldValue.serverTimestamp(),
+              'membershipPauseHistory': FieldValue.arrayUnion([
+                {
+                  'type': 'pause',
+                  'at': Timestamp.fromDate(now),
+                  'plannedDays': pauseDays,
+                  'resumeDueAt': Timestamp.fromDate(resumeDueAt),
+                  'source': 'client_card',
+                },
+              ]),
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+      }
 
       if (!mounted) return;
 
@@ -5868,10 +5888,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
             ? elapsedDays
             : _membershipPausePlannedDays;
 
-    final actualPauseDays =
-        elapsedDays > plannedDays ? plannedDays : elapsedDays;
+    var actualPauseDays = elapsedDays > plannedDays ? plannedDays : elapsedDays;
 
-    final nextPassEnd =
+    var nextPassEnd =
         _passEnd == null
             ? null
             : DateTime(
@@ -5896,51 +5915,74 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
     if (!ok || !mounted) return;
 
-    await FirebaseFirestore.instance
-        .collection('members')
-        .doc(widget.memberId)
-        .set({
-          'memberStatus': '활성',
-          'membershipStatus': 'active',
-          'membership.status': 'active',
-          'membership.resumedAt': FieldValue.serverTimestamp(),
-          'membership.pauseActualDays': actualPauseDays,
-          'membership.lastPauseActualDays': actualPauseDays,
-          'membership.pauseUsedDays': FieldValue.increment(actualPauseDays),
-          'membership.updatedAt': FieldValue.serverTimestamp(),
-          if (nextPassEnd != null)
-            'membership.endAt': Timestamp.fromDate(nextPassEnd),
-          if (nextPassEnd != null)
-            'membership.days':
-                _passStart == null
-                    ? null
-                    : nextPassEnd
-                            .difference(
-                              DateTime(
-                                _passStart!.year,
-                                _passStart!.month,
-                                _passStart!.day,
-                              ),
-                            )
-                            .inDays +
-                        1,
-          if (nextPassEnd != null)
-            'membershipResumeExtendedEndAt': Timestamp.fromDate(nextPassEnd),
-          'membershipPauseActualDays': actualPauseDays,
-          'membershipPauseUsedDays': FieldValue.increment(actualPauseDays),
-          'membershipPauseHistory': FieldValue.arrayUnion([
-            {
-              'type': 'resume',
-              'at': Timestamp.fromDate(now),
-              'actualDays': actualPauseDays,
-              'plannedDays': plannedDays,
-              if (nextPassEnd != null)
-                'extendedEndAt': Timestamp.fromDate(nextPassEnd),
-              'source': 'client_card',
-            },
-          ]),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+    if (_isPersonalWorkspace) {
+      try {
+        final result = await FirebaseManagedMemberWorkspaceGateway(
+          uid: widget.personalOwnerUid!.trim(),
+        ).resumeMembership(memberId: widget.memberId);
+        final confirmedActualDays =
+            (result['actualPauseDays'] as num?)?.toInt();
+        if (confirmedActualDays != null) {
+          actualPauseDays = confirmedActualDays;
+        }
+        final nextPassEndMillis =
+            (result['nextPassEndMillis'] as num?)?.toInt();
+        nextPassEnd =
+            nextPassEndMillis == null
+                ? null
+                : DateTime.fromMillisecondsSinceEpoch(nextPassEndMillis);
+      } catch (e) {
+        if (!mounted) return;
+        _showAifcToast(managedMemberMembershipPauseErrorMessage(e));
+        return;
+      }
+    } else {
+      await FirebaseFirestore.instance
+          .collection('members')
+          .doc(widget.memberId)
+          .set({
+            'memberStatus': '활성',
+            'membershipStatus': 'active',
+            'membership.status': 'active',
+            'membership.resumedAt': FieldValue.serverTimestamp(),
+            'membership.pauseActualDays': actualPauseDays,
+            'membership.lastPauseActualDays': actualPauseDays,
+            'membership.pauseUsedDays': FieldValue.increment(actualPauseDays),
+            'membership.updatedAt': FieldValue.serverTimestamp(),
+            if (nextPassEnd != null)
+              'membership.endAt': Timestamp.fromDate(nextPassEnd),
+            if (nextPassEnd != null)
+              'membership.days':
+                  _passStart == null
+                      ? null
+                      : nextPassEnd
+                              .difference(
+                                DateTime(
+                                  _passStart!.year,
+                                  _passStart!.month,
+                                  _passStart!.day,
+                                ),
+                              )
+                              .inDays +
+                          1,
+            if (nextPassEnd != null)
+              'membershipResumeExtendedEndAt': Timestamp.fromDate(nextPassEnd),
+            'membershipPauseActualDays': actualPauseDays,
+            'membershipPauseUsedDays': FieldValue.increment(actualPauseDays),
+            'membershipPauseHistory': FieldValue.arrayUnion([
+              {
+                'type': 'resume',
+                'at': Timestamp.fromDate(now),
+                'actualDays': actualPauseDays,
+                'plannedDays': plannedDays,
+                if (nextPassEnd != null)
+                  'extendedEndAt': Timestamp.fromDate(nextPassEnd),
+                'source': 'client_card',
+              },
+            ]),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+    }
 
     if (!mounted) return;
 
@@ -5962,7 +6004,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             _passStart!.month,
             _passStart!.day,
           );
-          _customDays = nextPassEnd.difference(s).inDays + 1;
+          _customDays = nextPassEnd!.difference(s).inDays + 1;
           _termMonths = null;
         }
       }
