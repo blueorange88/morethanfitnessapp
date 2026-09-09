@@ -1,0 +1,499 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isNonAnonymous() {
+      return isSignedIn()
+        && request.auth.token.get('firebase', {})
+          .get('sign_in_provider', '') != 'anonymous';
+    }
+
+    function isNonAnonymousOwner(uid) {
+      return isNonAnonymous() && request.auth.uid == uid;
+    }
+
+    function isPlatformAdmin() {
+      return isNonAnonymous()
+        && request.auth.token.keys().hasAny(['platformAdmin'])
+        && request.auth.token.platformAdmin == true;
+    }
+
+    function hasLegacyDataAccess() {
+      return isNonAnonymous()
+        && request.auth.token.keys().hasAny(['legacyDataAccessApproved'])
+        && request.auth.token.legacyDataAccessApproved == true;
+    }
+
+    function hasCompletedInitialPasswordChange() {
+      return isSignedIn()
+        && exists(/databases/$(db)/documents/trainer_profiles/$(request.auth.uid))
+        && get(/databases/$(db)/documents/trainer_profiles/$(request.auth.uid)).data.mustChangePassword != true;
+    }
+
+    function isLegacyAdmin() {
+      return isPlatformAdmin()
+        && hasLegacyDataAccess()
+        && hasCompletedInitialPasswordChange();
+    }
+
+    function isLegacyMember(memberId) {
+      return isLegacyAdmin()
+        && exists(/databases/$(db)/documents/members/$(memberId))
+        && isLegacyDocument(
+          get(/databases/$(db)/documents/members/$(memberId)).data
+        );
+    }
+
+    function isLegacyDocument(data) {
+      return !data.keys().hasAny(['workspaceType'])
+        || data.workspaceType != 'personal';
+    }
+
+    match /trainer_profiles/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, delete: if false;
+      allow update: if isNonAnonymousOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName',
+          'nickname',
+          'phone',
+          'profileImageUrl',
+          'locale',
+          'timezone',
+          'contractProfileDraft',
+          'updatedAt'
+        ])
+        && request.resource.data.updatedAt == request.time;
+
+      match /personal_groups/{personalGroupId} {
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create, update, delete: if false;
+      }
+
+      match /personal_tags/{personalTagId} {
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /trainer_profile/{profileId} {
+      allow read, create, update: if profileId == 'me' && isLegacyAdmin();
+      allow delete: if false;
+    }
+
+    match /members/{memberId} {
+      allow read: if (isSignedIn()
+          && resource.data.trainerId == request.auth.uid
+          && resource.data.workspaceType == 'personal')
+        || (isLegacyAdmin() && isLegacyDocument(resource.data));
+
+      allow create: if isLegacyAdmin()
+        && isLegacyDocument(request.resource.data)
+        && validSessions() && validMembership();
+      allow update: if isLegacyAdmin()
+        && isLegacyDocument(resource.data)
+        && isLegacyDocument(request.resource.data)
+        && validSessions() && validMembership();
+      allow delete: if false;
+
+      function validSessions() {
+        let data = request.resource.data;
+        let neu = data.get('sessions', {});
+        return !data.keys().hasAny(['sessions']) || neu == null || (neu is map &&
+          (neu.total is int) && (neu.remain is int) && (neu.done is int) &&
+          (neu.total >= 0) &&
+          (0 <= neu.remain && neu.remain <= neu.total) &&
+          (neu.done == (neu.total - neu.remain))
+        );
+      }
+
+      function validMembership() {
+        let data = request.resource.data;
+        let membership = data.get('membership', {});
+        return !data.keys().hasAny(['membership']) || membership == null || (membership is map &&
+          (membership.notRegistered is bool) &&
+          (membership.termMonths == null || membership.termMonths is int) &&
+          (membership.customDays == null || membership.customDays is int)
+        );
+      }
+
+      match /events/{eventId} {
+        allow read, create: if isLegacyMember(memberId);
+        allow update, delete: if false;
+      }
+
+      match /membership_contracts/{contractId} {
+        allow read, create, update: if isLegacyMember(memberId);
+        allow delete: if false;
+      }
+
+      match /lesson_ledger/{entryId} {
+        allow read, create, update: if isLegacyMember(memberId);
+        allow delete: if false;
+      }
+
+      match /client_card/{cardId} {
+        allow read, create, update: if isLegacyMember(memberId);
+        allow delete: if false;
+      }
+
+      match /training_logs/{logId} {
+        allow read, create, update: if isLegacyMember(memberId);
+        allow delete: if false;
+      }
+
+      match /inbody_records/{recordId} {
+        allow read, create, update, delete: if isLegacyMember(memberId);
+      }
+
+      match /goal_ddays/{goalId} {
+        allow read, create, update, delete: if isLegacyMember(memberId);
+      }
+
+      match /care_milestones/{milestoneId} {
+        allow read, create, update, delete: if isLegacyMember(memberId);
+      }
+
+      match /achievement_badges/{badgeId} {
+        allow read, create, update, delete: if isLegacyMember(memberId);
+      }
+    }
+
+    match /member_groups/{groupId} {
+      allow read, create, update, delete: if isLegacyAdmin();
+    }
+
+    match /schedules/{scheduleId} {
+      function isPersonalSchedulePath() {
+        return isSignedIn()
+          && scheduleId.matches('^' + request.auth.uid + '--.+$');
+      }
+
+      function isPersonalScheduleOwner(data) {
+        return isSignedIn()
+          && data.trainerId == request.auth.uid
+          && data.workspaceType == 'personal';
+      }
+
+      function hasValidPersonalScheduleIdentity(data) {
+        return data.keys().hasAll([
+            'scheduleId',
+            'trainerId',
+            'workspaceType',
+            'schemaVersion',
+            'startAt',
+            'endAt',
+            'dateKey',
+            'slotKey',
+            'name',
+            'type',
+            'status',
+            'updatedAt'
+          ])
+          && data.keys().hasOnly([
+            'scheduleId',
+            'trainerId',
+            'workspaceType',
+            'schemaVersion',
+            'startAt',
+            'endAt',
+            'dateKey',
+            'slotKey',
+            'name',
+            'type',
+            'status',
+            'memberId',
+            'phone',
+            'remainingSessions',
+            'totalSessions',
+            'memo',
+            'typeColorHex',
+            'day',
+            'time',
+            'endTime',
+            'typeName',
+            'typeId',
+            'attended',
+            'createdAt',
+            'updatedAt'
+          ])
+          && data.scheduleId == scheduleId
+          && data.schemaVersion == 1
+          && data.startAt is timestamp
+          && data.endAt is timestamp
+          && data.startAt < data.endAt
+          && data.dateKey is string
+          && data.slotKey is string
+          && data.name is string
+          && data.name.size() > 0
+          && data.name.size() <= 80
+          && data.type is string
+          && data.type.size() > 0
+          && data.type.size() <= 40
+          && data.status in ['scheduled', 'attended', 'cancelled'];
+      }
+
+      function hasValidPersonalMemberLink(data) {
+        return !data.keys().hasAny(['memberId'])
+          || data.memberId == ''
+          || (data.memberId is string
+            && exists(/databases/$(db)/documents/members/$(data.memberId))
+            && get(/databases/$(db)/documents/members/$(data.memberId)).data.trainerId == request.auth.uid
+            && get(/databases/$(db)/documents/members/$(data.memberId)).data.workspaceType == 'personal'
+            && get(/databases/$(db)/documents/members/$(data.memberId)).data.managementState != 'deleted');
+      }
+
+      function hasValidPersonalScheduleMutableFields(data) {
+        return data.startAt is timestamp
+          && data.endAt is timestamp
+          && data.startAt < data.endAt
+          && data.dateKey is string
+          && data.slotKey is string
+          && data.name is string
+          && data.name.size() > 0
+          && data.name.size() <= 80
+          && data.type is string
+          && data.type.size() > 0
+          && data.type.size() <= 40
+          && data.status in ['scheduled', 'attended', 'cancelled'];
+      }
+
+      function isConfirmedSchedule(data) {
+        return (data.keys().hasAny(['lessonConfirmed'])
+            && data.lessonConfirmed == true)
+          || (data.keys().hasAny(['lessonConfirmedAt'])
+            && data.lessonConfirmedAt != null)
+          || (data.keys().hasAny(['lessonConfirmStatus'])
+            && data.lessonConfirmStatus != '')
+          || (data.keys().hasAny(['trainingLogId'])
+            && data.trainingLogId != '');
+      }
+
+      allow get: if (isPersonalSchedulePath()
+          && (resource == null || isPersonalScheduleOwner(resource.data)))
+        || (isLegacyAdmin() && isLegacyDocument(resource.data));
+
+      allow list: if isPersonalScheduleOwner(resource.data)
+        || (isLegacyAdmin() && isLegacyDocument(resource.data));
+
+      allow create: if (isPersonalSchedulePath()
+          && isPersonalScheduleOwner(request.resource.data)
+          && hasValidPersonalScheduleIdentity(request.resource.data)
+          && hasValidPersonalMemberLink(request.resource.data)
+          && (!request.resource.data.keys().hasAny(['createdAt'])
+            || request.resource.data.createdAt == request.time)
+          && request.resource.data.updatedAt == request.time)
+        || (isLegacyAdmin() && isLegacyDocument(request.resource.data));
+
+      allow update: if (isPersonalScheduleOwner(resource.data)
+          && isPersonalScheduleOwner(request.resource.data)
+          && !isConfirmedSchedule(resource.data)
+          && request.resource.data.scheduleId == resource.data.scheduleId
+          && request.resource.data.trainerId == resource.data.trainerId
+          && request.resource.data.workspaceType == resource.data.workspaceType
+          && request.resource.data.schemaVersion == resource.data.schemaVersion
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'startAt',
+            'endAt',
+            'dateKey',
+            'slotKey',
+            'name',
+            'type',
+            'status',
+            'memberId',
+            'phone',
+            'remainingSessions',
+            'totalSessions',
+            'memo',
+            'typeColorHex',
+            'day',
+            'time',
+            'endTime',
+            'typeName',
+            'typeId',
+            'attended',
+            'updatedAt'
+          ])
+          && hasValidPersonalScheduleMutableFields(request.resource.data)
+          && request.resource.data.updatedAt == request.time
+          && hasValidPersonalMemberLink(request.resource.data))
+        || (isLegacyAdmin()
+          && isLegacyDocument(resource.data)
+          && isLegacyDocument(request.resource.data));
+
+      allow delete: if (isPersonalScheduleOwner(resource.data)
+          && !isConfirmedSchedule(resource.data))
+        || (isLegacyAdmin() && isLegacyDocument(resource.data));
+    }
+
+    match /training_logs/{lessonLogId} {
+      function isPersonalTrainingLogOwner(data) {
+        return isSignedIn()
+          && data.trainerId == request.auth.uid
+          && data.workspaceType == 'personal';
+      }
+
+      function hasValidPersonalTrainingLogIdentity(data) {
+        return data.keys().hasAll([
+            'lessonLogId',
+            'trainerId',
+            'workspaceType',
+            'schemaVersion',
+            'memberId',
+            'lessonDate',
+            'startAt',
+            'endAt',
+            'lessonType',
+            'status',
+            'source',
+            'memo',
+            'createdAt',
+            'updatedAt'
+          ])
+          && data.keys().hasOnly([
+            'lessonLogId',
+            'trainerId',
+            'workspaceType',
+            'schemaVersion',
+            'memberId',
+            'scheduleDocId',
+            'lessonDate',
+            'startAt',
+            'endAt',
+            'lessonType',
+            'status',
+            'source',
+            'memo',
+            'createdAt',
+            'updatedAt'
+          ])
+          && data.lessonLogId == lessonLogId
+          && data.schemaVersion == 1
+          && data.memberId is string
+          && data.memberId.size() > 0
+          && data.lessonDate is timestamp
+          && data.startAt is timestamp
+          && data.endAt is timestamp
+          && data.startAt < data.endAt
+          && data.lessonType is string
+          && data.lessonType.size() > 0
+          && data.lessonType.size() <= 40
+          && data.status == 'draft'
+          && data.source in ['formal', 'home_quick_sign']
+          && data.memo is string
+          && data.memo.size() <= 4000;
+      }
+
+      function hasValidPersonalTrainingLogMember(data) {
+        return exists(/databases/$(db)/documents/members/$(data.memberId))
+          && get(/databases/$(db)/documents/members/$(data.memberId)).data.memberId == data.memberId
+          && get(/databases/$(db)/documents/members/$(data.memberId)).data.trainerId == request.auth.uid
+          && get(/databases/$(db)/documents/members/$(data.memberId)).data.workspaceType == 'personal'
+          && get(/databases/$(db)/documents/members/$(data.memberId)).data.managementState != 'deleted';
+      }
+
+      function hasValidPersonalTrainingLogSchedule(data) {
+        return !data.keys().hasAny(['scheduleDocId'])
+          || data.scheduleDocId == ''
+          || (data.scheduleDocId is string
+            && exists(/databases/$(db)/documents/schedules/$(data.scheduleDocId))
+            && get(/databases/$(db)/documents/schedules/$(data.scheduleDocId)).data.scheduleId == data.scheduleDocId
+            && get(/databases/$(db)/documents/schedules/$(data.scheduleDocId)).data.trainerId == request.auth.uid
+            && get(/databases/$(db)/documents/schedules/$(data.scheduleDocId)).data.workspaceType == 'personal'
+            && get(/databases/$(db)/documents/schedules/$(data.scheduleDocId)).data.memberId == data.memberId);
+      }
+
+      allow read: if isPersonalTrainingLogOwner(resource.data)
+        || (isLegacyAdmin() && isLegacyDocument(resource.data));
+
+      allow create: if (isPersonalTrainingLogOwner(request.resource.data)
+          && hasValidPersonalTrainingLogIdentity(request.resource.data)
+          && hasValidPersonalTrainingLogMember(request.resource.data)
+          && hasValidPersonalTrainingLogSchedule(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time)
+        || (isLegacyAdmin() && isLegacyDocument(request.resource.data));
+
+      allow update: if (isPersonalTrainingLogOwner(resource.data)
+          && isPersonalTrainingLogOwner(request.resource.data)
+          && resource.data.status == 'draft'
+          && request.resource.data.status == 'draft'
+          && request.resource.data.lessonLogId == resource.data.lessonLogId
+          && request.resource.data.trainerId == resource.data.trainerId
+          && request.resource.data.workspaceType == resource.data.workspaceType
+          && request.resource.data.schemaVersion == resource.data.schemaVersion
+          && request.resource.data.memberId == resource.data.memberId
+          && request.resource.data.source == resource.data.source
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'scheduleDocId',
+            'lessonDate',
+            'startAt',
+            'endAt',
+            'lessonType',
+            'memo',
+            'updatedAt'
+          ])
+          && request.resource.data.lessonDate is timestamp
+          && request.resource.data.startAt is timestamp
+          && request.resource.data.endAt is timestamp
+          && request.resource.data.startAt < request.resource.data.endAt
+          && request.resource.data.lessonType is string
+          && request.resource.data.lessonType.size() > 0
+          && request.resource.data.lessonType.size() <= 40
+          && request.resource.data.memo is string
+          && request.resource.data.memo.size() <= 4000
+          && hasValidPersonalTrainingLogSchedule(request.resource.data)
+          && request.resource.data.updatedAt == request.time)
+        || (isLegacyAdmin()
+          && isLegacyDocument(resource.data)
+          && isLegacyDocument(request.resource.data));
+
+      allow delete: if (isPersonalTrainingLogOwner(resource.data)
+          && resource.data.status == 'draft')
+        || (isLegacyAdmin() && isLegacyDocument(resource.data));
+
+      match /anatomyRecords/{anatomyLogId} {
+        allow read, create, update, delete: if isLegacyAdmin();
+      }
+    }
+
+    match /contracts/{contractId} {
+      allow read, create, update: if isLegacyAdmin();
+      allow delete: if false;
+    }
+
+    match /contractCounters/{counterId} {
+      allow read, create, update: if isLegacyAdmin();
+      allow delete: if false;
+    }
+
+    match /sign_requests/{requestId} {
+      allow read, create, update: if isLegacyAdmin();
+      allow delete: if false;
+    }
+
+    match /lesson_products/{productId} {
+      allow read, create, update: if isLegacyAdmin();
+      allow delete: if false;
+    }
+
+    match /talk_notification_queue/{notificationId} {
+      allow read, create: if isLegacyAdmin();
+      allow update, delete: if false;
+    }
+
+    match /more_care_slot_requests/{requestId} {
+      allow read, create, update: if isLegacyAdmin();
+      allow delete: if false;
+    }
+
+    match /organizations/{organizationId}/more_care_slot_requests/{requestId} {
+      allow read, create, update: if isLegacyAdmin();
+      allow delete: if false;
+    }
+  }
+}

@@ -43,3 +43,26 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local dependency and generated output directories
+/node_modules/
+**/node_modules/
+/android/build/
+/artifacts/
+/backup/
+/logs/
+/.codex/
+/.codex_appdata/
+
+# Local build packages
+*.apk
+*.aab
+
+# Firebase app configuration and local credentials
+/android/app/src/dev/google-services.json
+/android/app/src/prod/google-services.json
+**/GoogleService-Info.plist
+.env
+.env.*
+*service-account*.json
+*service_account*.json

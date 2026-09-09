@@ -1,0 +1,33 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "schedules",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "trainerId", "order": "ASCENDING"},
+        {"fieldPath": "workspaceType", "order": "ASCENDING"},
+        {"fieldPath": "startAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "training_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "trainerId", "order": "ASCENDING"},
+        {"fieldPath": "workspaceType", "order": "ASCENDING"},
+        {"fieldPath": "memberId", "order": "ASCENDING"},
+        {"fieldPath": "startAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "training_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "trainerId", "order": "ASCENDING"},
+        {"fieldPath": "workspaceType", "order": "ASCENDING"},
+        {"fieldPath": "startAt", "order": "ASCENDING"}
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

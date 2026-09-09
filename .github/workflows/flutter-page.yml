@@ -11,23 +11,47 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter (stable)
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build web (project pages base-href)
-        run: flutter build web --release --base-href /morethanfitnessapp/
+      # ── base-href 자동 계산 (username.github.io 저장소면 '/' , 그 외는 '/REPO/' )
+      - name: Compute base-href
+        id: base
+        shell: bash
+        run: |
+          REPO="${{ github.event.repository.name }}"
+          if [[ "$REPO" == *".github.io" ]]; then
+            echo "href=/" >> $GITHUB_OUTPUT
+          else
+            echo "href=/${REPO}/" >> $GITHUB_OUTPUT
+          fi
+
+      # 👉 당신 저장소가 프로젝트 페이지(morethanfitnessapp)라면 자동 값은 '/morethanfitnessapp/'가 됩니다.
+      #    특정 값으로 고정하고 싶다면 아래 run 한 줄에서 --base-href 뒤 값을 직접 적어도 됩니다.
+      - name: Build web (release)
+        run: |
+          flutter build web \
+            --release \
+            --web-renderer canvaskit \
+            --base-href "${{ steps.base.outputs.href }}"
 
       - name: SPA 404 fallback
         run: cp build/web/index.html build/web/404.html
 
-      # 디버깅용: 빌드 결과 목록 찍기
       - name: List build output
         run: ls -al build/web
 

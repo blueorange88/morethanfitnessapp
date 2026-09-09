@@ -1,1 +1,82 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"more-than-fitness-f6adb","appId":"1:993248877411:android:799cd556b1752f83bcd156","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"more-than-fitness-f6adb","configurations":{"android":"1:993248877411:android:799cd556b1752f83bcd156","ios":"1:993248877411:ios:caceeadbbd7fbe49bcd156","macos":"1:993248877411:ios:caceeadbbd7fbe49bcd156","web":"1:993248877411:web:c0e6785162cf252fbcd156","windows":"1:993248877411:web:e9edf3db3de58877bcd156"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "more-than-fitness-f6adb",
+          "appId": "1:993248877411:android:799cd556b1752f83bcd156",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "more-than-fitness-f6adb",
+          "configurations": {
+            "android": "1:993248877411:android:799cd556b1752f83bcd156",
+            "ios": "1:993248877411:ios:caceeadbbd7fbe49bcd156",
+            "macos": "1:993248877411:ios:caceeadbbd7fbe49bcd156",
+            "web": "1:993248877411:web:c0e6785162cf252fbcd156",
+            "windows": "1:993248877411:web:e9edf3db3de58877bcd156"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix functions run lint",
+        "npm --prefix functions run build"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "functions": {
+      "port": 5001
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
