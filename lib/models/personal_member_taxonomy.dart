@@ -24,12 +24,13 @@ String? validatePersonalTaxonomyName(String value) {
 }
 
 List<String> normalizePersonalTagIds(Iterable<Object?> values) {
-  final ids = values
-      .map((value) => value?.toString().trim() ?? '')
-      .where((value) => value.isNotEmpty)
-      .toSet()
-      .toList()
-    ..sort();
+  final ids =
+      values
+          .map((value) => value?.toString().trim() ?? '')
+          .where((value) => value.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
   if (ids.length > kPersonalMemberTagLimit) {
     throw ArgumentError('personal_tag_limit_exceeded');
   }
@@ -57,11 +58,13 @@ bool matchesPersonalMemberTaxonomyFilters({
     personalGroupId: personalGroupId,
     availableGroupIds: availableGroupIds,
   );
-  final matchesGroup = selectedGroupId == null ||
+  final matchesGroup =
+      selectedGroupId == null ||
       (selectedGroupId == '__ungrouped__'
           ? resolvedGroupId == null
           : resolvedGroupId == selectedGroupId);
-  final matchesTag = selectedTagId == null ||
+  final matchesTag =
+      selectedTagId == null ||
       personalTagIds.map((id) => id.trim()).contains(selectedTagId);
   return matchesGroup && matchesTag;
 }

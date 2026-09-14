@@ -21,11 +21,7 @@ class HomeCircleIconButton extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.2),
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 18,
-        ),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }

@@ -18,6 +18,7 @@ class HomeMemberSuggestionCandidate {
     required this.workspaceType,
     required this.isDeleted,
     required this.deleteStatus,
+    this.lastLessonAt,
   });
 
   final String id;
@@ -29,11 +30,105 @@ class HomeMemberSuggestionCandidate {
   final String workspaceType;
   final bool isDeleted;
   final String deleteStatus;
+  final DateTime? lastLessonAt;
 }
 
-bool shouldShowHomeMemberSearchSuggestions({
-  required String searchKeyword,
+enum HomeAiRecommendationReason { recent, frequent, absent }
+
+class HomeAiRecommendedMember {
+  const HomeAiRecommendedMember({
+    required this.candidate,
+    required this.reason,
+  });
+
+  final HomeMemberSuggestionCandidate candidate;
+  final HomeAiRecommendationReason reason;
+}
+
+@visibleForTesting
+List<HomeAiRecommendedMember> buildAiRecommendedMembers({
+  required List<HomeMemberSuggestionCandidate> candidatesByRecency,
+  required Map<String, int> recentLessonCounts,
+  required DateTime now,
+  int totalSlots = 6,
+  int maxRecentSlots = 4,
+  int recentWindowDays = 14,
+  int minFrequentLessonCount = 2,
+  int minAbsentDays = 7,
 }) {
+  if (candidatesByRecency.isEmpty) return const [];
+
+  final byId = {for (final c in candidatesByRecency) c.id: c};
+
+  // "최근등록"은 등록일이 실제로 recentWindowDays 이내인 회원만 포함한다.
+  // 신규 등록이 없는 기간이 이어지면 이 목록은 자연히 줄어들고, 비어난 자리는
+  // 자주 레슨한 회원으로 채워져 시트 높이가 함께 줄어든다.
+  final recentCutoff = now.subtract(Duration(days: recentWindowDays));
+  final recentEligible =
+      candidatesByRecency
+          .where(
+            (c) => c.createdAt != null && !c.createdAt!.isBefore(recentCutoff),
+          )
+          .take(maxRecentSlots)
+          .toList();
+  final recentIds = recentEligible.map((c) => c.id).toSet();
+
+  final absentCutoff = now.subtract(Duration(days: minAbsentDays));
+  final absentRanked =
+      candidatesByRecency
+          .where(
+            (c) =>
+                c.lastLessonAt != null &&
+                c.lastLessonAt!.isBefore(absentCutoff) &&
+                !recentIds.contains(c.id),
+          )
+          .toList()
+        ..sort((a, b) => a.lastLessonAt!.compareTo(b.lastLessonAt!));
+  final absent = absentRanked.isEmpty ? null : absentRanked.first;
+
+  final excludedFromFrequent = <String>{
+    ...recentIds,
+    if (absent != null) absent.id,
+  };
+  final frequentRanked =
+      recentLessonCounts.entries
+          .where(
+            (e) =>
+                e.value >= minFrequentLessonCount &&
+                byId.containsKey(e.key) &&
+                !excludedFromFrequent.contains(e.key),
+          )
+          .toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+  final remainingBudget =
+      totalSlots - recentEligible.length - (absent == null ? 0 : 1);
+  final frequentChosen =
+      frequentRanked
+          .take(remainingBudget < 0 ? 0 : remainingBudget)
+          .map((e) => byId[e.key]!)
+          .toList();
+
+  return [
+    for (final candidate in recentEligible)
+      HomeAiRecommendedMember(
+        candidate: candidate,
+        reason: HomeAiRecommendationReason.recent,
+      ),
+    for (final candidate in frequentChosen)
+      HomeAiRecommendedMember(
+        candidate: candidate,
+        reason: HomeAiRecommendationReason.frequent,
+      ),
+    if (absent != null)
+      HomeAiRecommendedMember(
+        candidate: absent,
+        reason: HomeAiRecommendationReason.absent,
+      ),
+  ];
+}
+
+bool shouldShowHomeMemberSearchSuggestions({required String searchKeyword}) {
   return searchKeyword.trim().isNotEmpty;
 }
 
@@ -56,21 +151,22 @@ List<HomeMemberSuggestionCandidate> filterHomeMemberSuggestions({
   final owner = ownerUid.trim();
   if (owner.isEmpty || limit <= 0) return const [];
 
-  final sorted = candidates
-      .where(
-        (candidate) =>
-            candidate.trainerId == owner &&
-            candidate.workspaceType == 'personal' &&
-            !candidate.isDeleted &&
-            candidate.deleteStatus != 'pending_delete' &&
-            (candidate.name.isNotEmpty || candidate.phone.isNotEmpty),
-      )
-      .toList()
-    ..sort((a, b) {
-      final aMillis = a.createdAt?.millisecondsSinceEpoch ?? -1;
-      final bMillis = b.createdAt?.millisecondsSinceEpoch ?? -1;
-      return bMillis.compareTo(aMillis);
-    });
+  final sorted =
+      candidates
+          .where(
+            (candidate) =>
+                candidate.trainerId == owner &&
+                candidate.workspaceType == 'personal' &&
+                !candidate.isDeleted &&
+                candidate.deleteStatus != 'pending_delete' &&
+                (candidate.name.isNotEmpty || candidate.phone.isNotEmpty),
+          )
+          .toList()
+        ..sort((a, b) {
+          final aMillis = a.createdAt?.millisecondsSinceEpoch ?? -1;
+          final bMillis = b.createdAt?.millisecondsSinceEpoch ?? -1;
+          return bMillis.compareTo(aMillis);
+        });
 
   final seenMembers = <String>{};
   return sorted
@@ -193,12 +289,15 @@ DateTime? _createdAtFromMemberData(Map<String, dynamic> data) {
   return null;
 }
 
+DateTime? _lastLessonAtFromMemberData(Map<String, dynamic> data) {
+  final raw = data['lastLessonAt'] ?? data['lastLogAt'];
+  if (raw is Timestamp) return raw.toDate();
+  if (raw is DateTime) return raw;
+  return null;
+}
+
 String _phoneFromMemberData(Map<String, dynamic> data) {
-  return [
-    data['phoneNormalized'],
-    data['phone'],
-    data['phoneDisplay'],
-  ]
+  return [data['phoneNormalized'], data['phone'], data['phoneDisplay']]
       .map((value) => (value ?? '').toString().trim())
       .firstWhere((value) => value.isNotEmpty, orElse: () => '');
 }
@@ -211,14 +310,41 @@ HomeMemberSuggestionCandidate _candidateFromMemberDoc(
     id: doc.id,
     name: (data['name'] ?? '').toString().trim(),
     phone: _phoneFromMemberData(data),
-    sessionCountText:
-        HomeMemberLookupService.sessionCountTextFromMemberData(data),
+    sessionCountText: HomeMemberLookupService.sessionCountTextFromMemberData(
+      data,
+    ),
     createdAt: _createdAtFromMemberData(data),
     trainerId: (data['trainerId'] ?? '').toString().trim(),
     workspaceType: (data['workspaceType'] ?? '').toString().trim(),
     isDeleted: data['isDeleted'] == true,
     deleteStatus: (data['deleteStatus'] ?? '').toString(),
+    lastLessonAt: _lastLessonAtFromMemberData(data),
   );
+}
+
+Query<Map<String, dynamic>> _recentSchedulesQuery(
+  String owner,
+  DateTime since,
+) {
+  return FirebaseFirestore.instance
+      .collection('schedules')
+      .where('trainerId', isEqualTo: owner)
+      .where('workspaceType', isEqualTo: 'personal')
+      .where('startAt', isGreaterThanOrEqualTo: Timestamp.fromDate(since));
+}
+
+@visibleForTesting
+Map<String, int> lessonCountsFromScheduleDocs(
+  Iterable<Map<String, dynamic>> docs,
+) {
+  final counts = <String, int>{};
+  for (final data in docs) {
+    if (data['isDeleted'] == true) continue;
+    final memberId = (data['memberId'] ?? '').toString().trim();
+    if (memberId.isEmpty) continue;
+    counts[memberId] = (counts[memberId] ?? 0) + 1;
+  }
+  return counts;
 }
 
 class HomeMemberSearchSuggestionsOverlay extends StatelessWidget {
@@ -320,7 +446,8 @@ class HomeRecentMembersSection extends StatelessWidget {
     String memberId,
     String phone,
     String sessionCountText,
-  ) onPicked;
+  )
+  onPicked;
 
   @override
   Widget build(BuildContext context) {
@@ -344,7 +471,7 @@ class HomeRecentMembersSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '최근 등록 회원',
+              'AI 레슨 추천 회원',
               style: TextStyle(
                 fontSize: 12,
                 color: colors.onSurfaceVariant,
@@ -358,95 +485,146 @@ class HomeRecentMembersSection extends StatelessWidget {
           ],
         ),
         if (owner.isEmpty)
-          boundedContent(const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              '회원 목록을 불러오지 못했습니다.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+          boundedContent(
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                '회원 목록을 불러오지 못했습니다.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
             ),
-          ))
+          )
         else
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: _homeMembersQuery(owner).snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return boundedContent(const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    '회원 목록을 불러오지 못했습니다.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                return boundedContent(
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      '회원 목록을 불러오지 못했습니다.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ),
-                ));
+                );
               }
 
               if (!snapshot.hasData) {
-                return boundedContent(const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Center(
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                return boundedContent(
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
                   ),
-                ));
+                );
               }
 
               final docs = snapshot.data!.docs;
               final candidates = docs.map(_candidateFromMemberDoc).toList();
-              final members = filterHomeMemberSuggestions(
+              final recencyPool = filterHomeMemberSuggestions(
                 candidates: candidates,
                 ownerUid: owner,
                 searchKeyword: '',
+                limit: 200,
               );
 
-              if (kDebugMode) {
-                debugPrint(
-                  '[MTF_RECENT_MEMBER] ownerScope=personal '
-                  'source=lesson_editor_recent_members candidateCount=${docs.length} '
-                  'validatedCount=${members.length}',
+              if (recencyPool.isEmpty) {
+                return boundedContent(
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      '최근 등록 회원이 없습니다.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
                 );
               }
 
-              if (members.isEmpty) {
-                return boundedContent(const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    '최근 등록 회원이 없습니다.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ));
-              }
-
-              return boundedContent(
-                SingleChildScrollView(
-                  key: const Key('home_recent_members_scroll'),
-                  primary: false,
-                  physics: const ClampingScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: members
-                          .map(
-                            (member) => HomeRecentMemberChip(
-                              name: member.name,
-                              phone: member.phone,
-                              onTap: () {
-                                onPicked(
-                                  member.name,
-                                  member.id,
-                                  member.phone,
-                                  member.sessionCountText,
-                                );
-                              },
+              final now = DateTime.now();
+              return FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                future:
+                    _recentSchedulesQuery(
+                      owner,
+                      now.subtract(const Duration(days: 14)),
+                    ).get(),
+                builder: (context, scheduleSnapshot) {
+                  final lessonCounts =
+                      scheduleSnapshot.hasData
+                          ? lessonCountsFromScheduleDocs(
+                            scheduleSnapshot.data!.docs.map(
+                              (doc) => doc.data(),
                             ),
                           )
-                          .toList(),
+                          : const <String, int>{};
+
+                  final recommended = buildAiRecommendedMembers(
+                    candidatesByRecency: recencyPool,
+                    recentLessonCounts: lessonCounts,
+                    now: now,
+                  );
+
+                  if (kDebugMode) {
+                    debugPrint(
+                      '[MTF_RECENT_MEMBER] ownerScope=personal '
+                      'source=lesson_editor_recent_members candidateCount=${docs.length} '
+                      'recommendedCount=${recommended.length}',
+                    );
+                  }
+
+                  return boundedContent(
+                    SingleChildScrollView(
+                      key: const Key('home_recent_members_scroll'),
+                      primary: false,
+                      physics: const ClampingScrollPhysics(),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            const columns = 3;
+                            const spacing = 8.0;
+                            final chipWidth =
+                                (constraints.maxWidth -
+                                    spacing * (columns - 1)) /
+                                columns;
+                            return Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children:
+                                  recommended
+                                      .map(
+                                        (entry) => SizedBox(
+                                          width: chipWidth,
+                                          child: HomeRecentMemberChip(
+                                            name: entry.candidate.name,
+                                            phone: entry.candidate.phone,
+                                            reason: entry.reason,
+                                            onTap: () {
+                                              onPicked(
+                                                entry.candidate.name,
+                                                entry.candidate.id,
+                                                entry.candidate.phone,
+                                                entry
+                                                    .candidate
+                                                    .sessionCountText,
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               );
             },
           ),
@@ -466,20 +644,44 @@ class HomeRecentMemberChip extends StatelessWidget {
     required this.name,
     required this.phone,
     required this.onTap,
+    this.reason = HomeAiRecommendationReason.recent,
   });
 
   final String name;
   final String phone;
   final VoidCallback onTap;
+  final HomeAiRecommendationReason reason;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final digits = phone.replaceAll(RegExp(r'\D'), '');
-    final phoneLastFour = digits.length >= 4
-        ? digits.substring(digits.length - 4)
-        : (digits.isEmpty ? '-' : digits);
+    final phoneLastFour =
+        digits.length >= 4
+            ? digits.substring(digits.length - 4)
+            : (digits.isEmpty ? '-' : digits);
     final cleanName = name.trim().isEmpty ? '회원' : name.trim();
+
+    final IconData badgeIcon;
+    final Color containerColor;
+    final Color onContainerColor;
+    switch (reason) {
+      case HomeAiRecommendationReason.frequent:
+        badgeIcon = Icons.local_fire_department_rounded;
+        containerColor = colors.tertiaryContainer;
+        onContainerColor = colors.onTertiaryContainer;
+        break;
+      case HomeAiRecommendationReason.absent:
+        badgeIcon = Icons.event_busy_rounded;
+        containerColor = colors.errorContainer;
+        onContainerColor = colors.onErrorContainer;
+        break;
+      case HomeAiRecommendationReason.recent:
+        badgeIcon = Icons.person_outline_rounded;
+        containerColor = colors.secondaryContainer;
+        onContainerColor = colors.onSecondaryContainer;
+        break;
+    }
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 220),
@@ -491,7 +693,7 @@ class HomeRecentMemberChip extends StatelessWidget {
           child: Ink(
             padding: const EdgeInsets.fromLTRB(6, 5, 10, 5),
             decoration: BoxDecoration(
-              color: colors.secondaryContainer,
+              color: containerColor,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: colors.outline),
             ),
@@ -503,14 +705,10 @@ class HomeRecentMemberChip extends StatelessWidget {
                   height: 22,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colors.secondary.withValues(alpha: 0.18),
+                    color: onContainerColor.withValues(alpha: 0.18),
                     border: Border.all(color: colors.outline),
                   ),
-                  child: Icon(
-                    Icons.person_outline_rounded,
-                    size: 14,
-                    color: colors.onSecondaryContainer,
-                  ),
+                  child: Icon(badgeIcon, size: 14, color: onContainerColor),
                 ),
                 const SizedBox(width: 6),
                 Flexible(
@@ -522,7 +720,7 @@ class HomeRecentMemberChip extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
-                      color: colors.onSecondaryContainer,
+                      color: onContainerColor,
                     ),
                   ),
                 ),
@@ -532,7 +730,7 @@ class HomeRecentMemberChip extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
-                      color: colors.onSecondaryContainer,
+                      color: onContainerColor,
                     ),
                   ),
                   Text(
@@ -541,7 +739,7 @@ class HomeRecentMemberChip extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
-                      color: colors.onSecondaryContainer,
+                      color: onContainerColor,
                     ),
                   ),
                 ],

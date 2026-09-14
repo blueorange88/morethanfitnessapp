@@ -1,8 +1,4 @@
-enum AppThemeMode {
-  light,
-  dark,
-  lululala,
-}
+enum AppThemeMode { light, dark, lululala }
 
 AppThemeMode? appThemeModeFromRaw(String? raw) {
   final normalized = raw?.trim();

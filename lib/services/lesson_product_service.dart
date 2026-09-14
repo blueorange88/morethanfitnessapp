@@ -3,18 +3,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/product_model.dart';
 
 class LessonProductService {
-  static final _col =
-  FirebaseFirestore.instance.collection('lesson_products');
+  static final _col = FirebaseFirestore.instance.collection('lesson_products');
 
   static Stream<List<ProductModel>> watchProducts() {
     return _col.snapshots().map((snapshot) {
-      final products = snapshot.docs
-          .where((doc) {
-        final data = doc.data();
-        return data['isDeleted'] != true;
-      })
-          .map((doc) => ProductModel.fromFirestore(doc))
-          .toList();
+      final products =
+          snapshot.docs
+              .where((doc) {
+                final data = doc.data();
+                return data['isDeleted'] != true;
+              })
+              .map((doc) => ProductModel.fromFirestore(doc))
+              .toList();
 
       products.sort((a, b) {
         final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -29,13 +29,14 @@ class LessonProductService {
   static Future<List<ProductModel>> fetchProducts() async {
     final snapshot = await _col.get();
 
-    final products = snapshot.docs
-        .where((doc) {
-      final data = doc.data();
-      return data['isDeleted'] != true;
-    })
-        .map((doc) => ProductModel.fromFirestore(doc))
-        .toList();
+    final products =
+        snapshot.docs
+            .where((doc) {
+              final data = doc.data();
+              return data['isDeleted'] != true;
+            })
+            .map((doc) => ProductModel.fromFirestore(doc))
+            .toList();
 
     products.sort((a, b) {
       final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);

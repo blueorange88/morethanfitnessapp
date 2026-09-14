@@ -80,9 +80,7 @@ class HomeTimeRangeDialog {
                   startTextController.text.trim(),
                 );
 
-                final parsedEnd = int.tryParse(
-                  endTextController.text.trim(),
-                );
+                final parsedEnd = int.tryParse(endTextController.text.trim());
 
                 if (parsedStart == null || parsedEnd == null) {
                   onError('숫자만 입력해주세요. (0~23)');
@@ -154,15 +152,18 @@ class HomeTimeRangeDialog {
                                       controller: startWheelController,
                                       itemCount: 24,
                                       selectedIndex: tempStart,
-                                      labelBuilder: (index) =>
-                                          index.toString().padLeft(2, '0'),
+                                      labelBuilder:
+                                          (index) =>
+                                              index.toString().padLeft(2, '0'),
                                       onChanged: (idx) {
                                         localSetState(() {
                                           tempStart = idx;
 
                                           if (tempEnd < tempStart + 2) {
-                                            tempEnd =
-                                                (tempStart + 2).clamp(2, 23);
+                                            tempEnd = (tempStart + 2).clamp(
+                                              2,
+                                              23,
+                                            );
                                             endWheelController.jumpToItem(
                                               tempEnd,
                                             );
@@ -197,15 +198,18 @@ class HomeTimeRangeDialog {
                                       controller: endWheelController,
                                       itemCount: 24,
                                       selectedIndex: tempEnd,
-                                      labelBuilder: (index) =>
-                                          index.toString().padLeft(2, '0'),
+                                      labelBuilder:
+                                          (index) =>
+                                              index.toString().padLeft(2, '0'),
                                       onChanged: (idx) {
                                         localSetState(() {
                                           tempEnd = idx;
 
                                           if (tempEnd < tempStart + 2) {
-                                            tempStart =
-                                                (tempEnd - 2).clamp(0, 21);
+                                            tempStart = (tempEnd - 2).clamp(
+                                              0,
+                                              21,
+                                            );
                                             startWheelController.jumpToItem(
                                               tempStart,
                                             );
@@ -240,34 +244,38 @@ class HomeTimeRangeDialog {
                                           labelText: '시작',
                                           hintText: '0~23',
                                           filled: true,
-                                          fillColor: Theme.of(dialogContext)
-                                              .inputDecorationTheme
-                                              .fillColor,
+                                          fillColor:
+                                              Theme.of(
+                                                dialogContext,
+                                              ).inputDecorationTheme.fillColor,
                                           isDense: true,
                                           contentPadding:
                                               const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 10,
-                                          ),
+                                                horizontal: 10,
+                                                vertical: 10,
+                                              ),
                                           border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,
@@ -292,34 +300,38 @@ class HomeTimeRangeDialog {
                                           labelText: '종료',
                                           hintText: '0~23',
                                           filled: true,
-                                          fillColor: Theme.of(dialogContext)
-                                              .inputDecorationTheme
-                                              .fillColor,
+                                          fillColor:
+                                              Theme.of(
+                                                dialogContext,
+                                              ).inputDecorationTheme.fillColor,
                                           isDense: true,
                                           contentPadding:
                                               const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 10,
-                                          ),
+                                                horizontal: 10,
+                                                vertical: 10,
+                                              ),
                                           border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,

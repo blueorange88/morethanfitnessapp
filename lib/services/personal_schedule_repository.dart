@@ -48,10 +48,7 @@ abstract interface class PersonalScheduleDataSource {
 
   Future<void> createMany(List<PersonalScheduleWrite> writes);
 
-  Future<void> updateSchedule(
-    String scheduleId,
-    Map<String, dynamic> changes,
-  );
+  Future<void> updateSchedule(String scheduleId, Map<String, dynamic> changes);
 
   Future<void> deleteSchedule(String scheduleId);
 }
@@ -123,10 +120,7 @@ class PersonalScheduleRepository {
     }
   }
 
-  Future<void> update(
-    String scheduleId,
-    PersonalScheduleDraft draft,
-  ) async {
+  Future<void> update(String scheduleId, PersonalScheduleDraft draft) async {
     _requireCurrentOwner();
     _validateDraft(draft);
     await _validateMember(draft.memberId);
@@ -136,10 +130,7 @@ class PersonalScheduleRepository {
         PersonalScheduleFailure.confirmedLocked,
       );
     }
-    await dataSource.updateSchedule(
-      existing.scheduleId,
-      _mutableData(draft),
-    );
+    await dataSource.updateSchedule(existing.scheduleId, _mutableData(draft));
   }
 
   Future<void> move({
@@ -202,10 +193,7 @@ class PersonalScheduleRepository {
         ),
       );
       drafts.add(
-        record.toDraft(
-          startAt: targetStart,
-          endAt: targetStart.add(duration),
-        ),
+        record.toDraft(startAt: targetStart, endAt: targetStart.add(duration)),
       );
     }
     return createMany(drafts);
@@ -220,7 +208,8 @@ class PersonalScheduleRepository {
     }
     if (current != uid) {
       throw const PersonalScheduleException(
-          PersonalScheduleFailure.ownerChanged);
+        PersonalScheduleFailure.ownerChanged,
+      );
     }
   }
 
@@ -313,8 +302,8 @@ class FirebasePersonalScheduleDataSource implements PersonalScheduleDataSource {
   FirebasePersonalScheduleDataSource({
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
@@ -342,13 +331,14 @@ class FirebasePersonalScheduleDataSource implements PersonalScheduleDataSource {
         .where('startAt', isLessThan: Timestamp.fromDate(endExclusive))
         .snapshots()
         .map((snapshot) {
-      final records = snapshot.docs
-          .map((document) => _recordFromSnapshot(document))
-          .whereType<PersonalScheduleRecord>()
-          .toList()
-        ..sort((left, right) => left.startAt.compareTo(right.startAt));
-      return records;
-    });
+          final records =
+              snapshot.docs
+                  .map((document) => _recordFromSnapshot(document))
+                  .whereType<PersonalScheduleRecord>()
+                  .toList()
+                ..sort((left, right) => left.startAt.compareTo(right.startAt));
+          return records;
+        });
   }
 
   @override
@@ -436,7 +426,8 @@ class FirebasePersonalScheduleDataSource implements PersonalScheduleDataSource {
   void _requireUid(String expectedUid) {
     if (_requireSignedIn() != expectedUid) {
       throw const PersonalScheduleException(
-          PersonalScheduleFailure.ownerChanged);
+        PersonalScheduleFailure.ownerChanged,
+      );
     }
   }
 

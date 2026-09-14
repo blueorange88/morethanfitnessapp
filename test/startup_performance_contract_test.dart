@@ -51,9 +51,6 @@ void main() {
 
     expect(firstReadIndex, greaterThan(methodIndex));
     expect(bootstrapIndex, greaterThan(firstReadIndex));
-    expect(
-      source,
-      contains('PersonalProfileReadErrorCode.profileNotFound'),
-    );
+    expect(source, contains('PersonalProfileReadErrorCode.profileNotFound'));
   });
 }

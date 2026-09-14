@@ -103,21 +103,25 @@ class Member {
   }
 
   factory Member.fromFirestore(String id, Map<String, dynamic> d) {
-    final sessions = (d['sessions'] is Map)
-        ? Map<String, dynamic>.from(d['sessions'] as Map)
-        : <String, dynamic>{};
+    final sessions =
+        (d['sessions'] is Map)
+            ? Map<String, dynamic>.from(d['sessions'] as Map)
+            : <String, dynamic>{};
 
-    final membership = (d['membership'] is Map)
-        ? Map<String, dynamic>.from(d['membership'] as Map)
-        : <String, dynamic>{};
+    final membership =
+        (d['membership'] is Map)
+            ? Map<String, dynamic>.from(d['membership'] as Map)
+            : <String, dynamic>{};
 
-    final health = (d['health'] is Map)
-        ? Map<String, dynamic>.from(d['health'] as Map)
-        : <String, dynamic>{};
+    final health =
+        (d['health'] is Map)
+            ? Map<String, dynamic>.from(d['health'] as Map)
+            : <String, dynamic>{};
 
-    final femaleCondition = (health['femaleCondition'] is Map)
-        ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
-        : <String, dynamic>{};
+    final femaleCondition =
+        (health['femaleCondition'] is Map)
+            ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
+            : <String, dynamic>{};
 
     return Member(
       id: id,
@@ -125,11 +129,13 @@ class Member {
       phone: d['phone'] as String?,
       trainer: d['trainer'] as String?,
       grade: d['membershipGrade'] as String?,
-      remainingSessions: (sessions['remain'] as num?)?.toInt() ??
+      remainingSessions:
+          (sessions['remain'] as num?)?.toInt() ??
           (d['remainSessions'] as num?)?.toInt() ??
           (d['remainingSessions'] as num?)?.toInt() ??
           0,
-      totalSessions: (sessions['total'] as num?)?.toInt() ??
+      totalSessions:
+          (sessions['total'] as num?)?.toInt() ??
           (d['totalSessions'] as num?)?.toInt() ??
           0,
       firstDate: _toDate(membership['startAt']) ?? _toDate(d['createdAt']),
@@ -156,13 +162,14 @@ class Member {
       gender: _normGender(d['gender'] as String?),
       groupId: d['groupId'] as String?,
       personalGroupId: (d['personalGroupId'] as String?)?.trim(),
-      personalTagIds: d['personalTagIds'] is Iterable
-          ? (d['personalTagIds'] as Iterable)
-              .map((value) => value.toString().trim())
-              .where((value) => value.isNotEmpty)
-              .toSet()
-              .toList(growable: false)
-          : const <String>[],
+      personalTagIds:
+          d['personalTagIds'] is Iterable
+              ? (d['personalTagIds'] as Iterable)
+                  .map((value) => value.toString().trim())
+                  .where((value) => value.isNotEmpty)
+                  .toSet()
+                  .toList(growable: false)
+              : const <String>[],
     );
   }
 }

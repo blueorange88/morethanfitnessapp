@@ -18,8 +18,7 @@ import '../widgets/mtf_header_neon_overlay.dart';
 bool blocksEntireStatsPage({
   required bool isPersonalWorkspace,
   required bool canUseAdvancedInsights,
-}) =>
-    !canUseAdvancedInsights;
+}) => !canUseAdvancedInsights;
 
 class StatsPage extends StatefulWidget {
   final Map<String, dynamic> scheduleData;
@@ -69,11 +68,12 @@ class _LessonInsightsPageState extends State<StatsPage> {
 
   Future<void> _loadTierAccess() async {
     try {
-      final access = _isPersonalWorkspace
-          ? await AppTierAccessService.loadPersonalTrainerAccess(
-              uid: _personalOwnerUid,
-            )
-          : await AppTierAccessService.loadTrainerAccess();
+      final access =
+          _isPersonalWorkspace
+              ? await AppTierAccessService.loadPersonalTrainerAccess(
+                uid: _personalOwnerUid,
+              )
+              : await AppTierAccessService.loadTrainerAccess();
       if (!mounted) return;
       setState(() {
         _tierAccess = access;
@@ -157,12 +157,9 @@ class _LessonInsightsPageState extends State<StatsPage> {
             'startAt',
             isGreaterThanOrEqualTo: Timestamp.fromDate(range.start),
           )
-          .where(
-            'startAt',
-            isLessThan: Timestamp.fromDate(range.endExclusive),
-          );
-      Query<Map<String, dynamic>> memberQuery =
-          FirebaseFirestore.instance.collection('members');
+          .where('startAt', isLessThan: Timestamp.fromDate(range.endExclusive));
+      Query<Map<String, dynamic>> memberQuery = FirebaseFirestore.instance
+          .collection('members');
       if (_isPersonalWorkspace) {
         scheduleQuery = scheduleQuery
             .where('trainerId', isEqualTo: _personalOwnerUid)
@@ -179,51 +176,55 @@ class _LessonInsightsPageState extends State<StatsPage> {
           results[0] as QuerySnapshot<Map<String, dynamic>>;
       final memberSnapshot = results[1] as QuerySnapshot<Map<String, dynamic>>;
 
-      final lessons = scheduleSnapshot.docs
-          .map((doc) => doc.data())
-          .where((data) => !_isDeleted(data))
-          .map((data) {
-        final startAt = _dateFromAny(data['startAt']);
-        if (startAt == null) return null;
-        return LessonInsightEntry(
-          startAt: startAt,
-          status: (data['lessonConfirmStatus'] ?? '').toString().trim(),
-          type: (data['typeName'] ?? data['type'] ?? '기타').toString(),
-        );
-      }).whereType<LessonInsightEntry>();
+      final lessons =
+          scheduleSnapshot.docs
+              .map((doc) => doc.data())
+              .where((data) => !_isDeleted(data))
+              .map((data) {
+                final startAt = _dateFromAny(data['startAt']);
+                if (startAt == null) return null;
+                return LessonInsightEntry(
+                  startAt: startAt,
+                  status: (data['lessonConfirmStatus'] ?? '').toString().trim(),
+                  type: (data['typeName'] ?? data['type'] ?? '기타').toString(),
+                );
+              })
+              .whereType<LessonInsightEntry>();
 
       final members = memberSnapshot.docs
           .map((doc) => doc.data())
           .where((data) => !_isDeleted(data))
           .map((data) {
-        final sessions = data['sessions'] is Map
-            ? Map<String, dynamic>.from(data['sessions'] as Map)
-            : <String, dynamic>{};
-        final membership = data['membership'] is Map
-            ? Map<String, dynamic>.from(data['membership'] as Map)
-            : <String, dynamic>{};
-        return LessonInsightMember(
-          status: (data['memberStatus'] ?? '').toString().trim(),
-          remainingSessions: _intFromAny(
-            sessions['remain'] ??
-                data['remainSessions'] ??
-                data['remainingSessions'],
-          ),
-          totalSessions: _intFromAny(
-            sessions['total'] ?? data['totalSessions'],
-          ),
-          createdAt: _dateFromAny(data['createdAt']),
-          membershipEndAt: _dateFromAny(
-            membership['endAt'] ??
-                membership['passEnd'] ??
-                data['membershipEndAt'] ??
-                data['expireAt'],
-          ),
-          lastLessonAt: _dateFromAny(
-            data['lastLessonAt'] ?? data['lastLogAt'],
-          ),
-        );
-      });
+            final sessions =
+                data['sessions'] is Map
+                    ? Map<String, dynamic>.from(data['sessions'] as Map)
+                    : <String, dynamic>{};
+            final membership =
+                data['membership'] is Map
+                    ? Map<String, dynamic>.from(data['membership'] as Map)
+                    : <String, dynamic>{};
+            return LessonInsightMember(
+              status: (data['memberStatus'] ?? '').toString().trim(),
+              remainingSessions: _intFromAny(
+                sessions['remain'] ??
+                    data['remainSessions'] ??
+                    data['remainingSessions'],
+              ),
+              totalSessions: _intFromAny(
+                sessions['total'] ?? data['totalSessions'],
+              ),
+              createdAt: _dateFromAny(data['createdAt']),
+              membershipEndAt: _dateFromAny(
+                membership['endAt'] ??
+                    membership['passEnd'] ??
+                    data['membershipEndAt'] ??
+                    data['expireAt'],
+              ),
+              lastLessonAt: _dateFromAny(
+                data['lastLessonAt'] ?? data['lastLogAt'],
+              ),
+            );
+          });
 
       final stats = LessonInsightStats.calculate(
         lessons: lessons,
@@ -287,11 +288,9 @@ class _LessonInsightsPageState extends State<StatsPage> {
         context: context,
         firstDate: DateTime(now.year - 3),
         lastDate: DateTime(now.year + 1),
-        initialDateRange: _customRange ??
-            DateTimeRange(
-              start: DateTime(now.year, now.month, 1),
-              end: now,
-            ),
+        initialDateRange:
+            _customRange ??
+            DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
         helpText: '조회 기간 선택',
         saveText: '적용',
       );
@@ -308,11 +307,12 @@ class _LessonInsightsPageState extends State<StatsPage> {
   }
 
   Future<void> _openTierGuideSheet() async {
-    final access = _tierAccess ??
+    final access =
+        _tierAccess ??
         (_isPersonalWorkspace
             ? await AppTierAccessService.loadPersonalTrainerAccess(
-                uid: _personalOwnerUid,
-              )
+              uid: _personalOwnerUid,
+            )
             : await AppTierAccessService.loadTrainerAccess());
     if (!mounted) return;
     await AifcTierFeatureGateSheet.show(
@@ -336,9 +336,9 @@ class _LessonInsightsPageState extends State<StatsPage> {
     if (!_isPersonalWorkspace || !_canUseStatsPage) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MonthlyLessonHistoryPage(
-          personalOwnerUid: _personalOwnerUid,
-        ),
+        builder:
+            (_) =>
+                MonthlyLessonHistoryPage(personalOwnerUid: _personalOwnerUid),
       ),
     );
   }
@@ -356,20 +356,21 @@ class _LessonInsightsPageState extends State<StatsPage> {
                 title: 'MORE 인사이트',
                 subtitle: '실제 레슨과 회원 데이터를 기간별로 확인해보세요',
                 onBackTap: () => Navigator.of(context).maybePop(),
-                trailing: _isPersonalWorkspace && _canUseStatsPage
-                    ? MtfFloatingMoreMenuButton<String>(
-                        items: const [
-                          MtfMoreMenuItem(
-                            value: 'monthly',
-                            icon: Icons.calendar_month_rounded,
-                            label: '월간 레슨 기록',
-                            subLabel: '확정 레슨을 날짜별로 확인',
-                          ),
-                        ],
-                        onSelected: (_) => _openMonthlyLessonHistory(),
-                        tooltip: '인사이트 더보기',
-                      )
-                    : null,
+                trailing:
+                    _isPersonalWorkspace && _canUseStatsPage
+                        ? MtfFloatingMoreMenuButton<String>(
+                          items: const [
+                            MtfMoreMenuItem(
+                              value: 'monthly',
+                              icon: Icons.calendar_month_rounded,
+                              label: '월간 레슨 기록',
+                              subLabel: '확정 레슨을 날짜별로 확인',
+                            ),
+                          ],
+                          onSelected: (_) => _openMonthlyLessonHistory(),
+                          tooltip: '인사이트 더보기',
+                        )
+                        : null,
               ),
               Expanded(
                 child: RefreshIndicator(
@@ -416,8 +417,9 @@ class _LessonInsightsPageState extends State<StatsPage> {
           if (_isTierAccessLoading)
             Positioned.fill(
               child: Container(
-                color:
-                    Theme.of(context).scaffoldBackgroundColor.withOpacity(0.74),
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor.withOpacity(0.74),
                 child: const Center(child: CircularProgressIndicator()),
               ),
             )
@@ -489,13 +491,14 @@ class _LessonInsightsPageState extends State<StatsPage> {
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: _StatsPeriod.values.map((period) {
-          return ChoiceChip(
-            label: Text(labels[period]!),
-            selected: _period == period,
-            onSelected: (_) => _selectPeriod(period),
-          );
-        }).toList(),
+        children:
+            _StatsPeriod.values.map((period) {
+              return ChoiceChip(
+                label: Text(labels[period]!),
+                selected: _period == period,
+                onSelected: (_) => _selectPeriod(period),
+              );
+            }).toList(),
       ),
     );
   }
@@ -594,9 +597,10 @@ class _LessonInsightsPageState extends State<StatsPage> {
         const SizedBox(height: 12),
         _DashboardCard(
           title: '레슨 종류 비중',
-          child: stats.typeCounts.isEmpty
-              ? const _EmptyMetricText('선택 기간에 등록된 레슨이 없어요.')
-              : _SessionTypeDonut(typeCounts: stats.typeCounts),
+          child:
+              stats.typeCounts.isEmpty
+                  ? const _EmptyMetricText('선택 기간에 등록된 레슨이 없어요.')
+                  : _SessionTypeDonut(typeCounts: stats.typeCounts),
         ),
       ],
     );
@@ -627,8 +631,12 @@ class _LessonInsightsPageState extends State<StatsPage> {
             children: [
               _metricRow('잔여 5회 이하', stats.lowRemainingMembers, '명'),
               _metricRow('기간 내 회원권 만료 예정', stats.expiringMembers, '명'),
-              _metricRow('14일 이상 미방문', stats.longAbsentMembers, '명',
-                  isLast: true),
+              _metricRow(
+                '14일 이상 미방문',
+                stats.longAbsentMembers,
+                '명',
+                isLast: true,
+              ),
             ],
           ),
         ),
@@ -662,9 +670,10 @@ class _LessonInsightsPageState extends State<StatsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : Border(bottom: BorderSide(color: scheme.outlineVariant)),
+        border:
+            isLast
+                ? null
+                : Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
       child: Row(
         children: [
@@ -993,9 +1002,7 @@ class _KpiCard extends StatelessWidget {
 }
 
 class _WeekdayBarChart extends StatelessWidget {
-  const _WeekdayBarChart({
-    required this.values,
-  });
+  const _WeekdayBarChart({required this.values});
 
   final List<int> values;
 
@@ -1030,9 +1037,10 @@ class _WeekdayBarChart extends StatelessWidget {
                   child: Container(
                     height: 120 * ratio.clamp(0.0, 1.0),
                     decoration: BoxDecoration(
-                      color: index >= 5
-                          ? palette.tertiarySeries
-                          : palette.primarySeries,
+                      color:
+                          index >= 5
+                              ? palette.tertiarySeries
+                              : palette.primarySeries,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -1056,17 +1064,15 @@ class _WeekdayBarChart extends StatelessWidget {
 }
 
 class _SessionTypeDonut extends StatelessWidget {
-  const _SessionTypeDonut({
-    required this.typeCounts,
-  });
+  const _SessionTypeDonut({required this.typeCounts});
 
   final Map<String, int> typeCounts;
 
   @override
   Widget build(BuildContext context) {
     final total = typeCounts.values.fold<int>(0, (a, b) => a + b);
-    final entries = typeCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final entries =
+        typeCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     final palette = context.mtfChartPalette;
     final colors = palette.categoricalSeries;
@@ -1145,10 +1151,7 @@ class _SessionTypeDonut extends StatelessWidget {
 }
 
 class _MultiDonutPainter extends CustomPainter {
-  const _MultiDonutPainter({
-    required this.values,
-    required this.colors,
-  });
+  const _MultiDonutPainter({required this.values, required this.colors});
 
   final List<double> values;
   final List<Color> colors;
@@ -1170,11 +1173,12 @@ class _MultiDonutPainter extends CustomPainter {
 
     for (int i = 0; i < values.length; i++) {
       final sweep = (values[i] / total) * math.pi * 2;
-      final paint = Paint()
-        ..color = colors[i % colors.length]
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.butt;
+      final paint =
+          Paint()
+            ..color = colors[i % colors.length]
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = stroke
+            ..strokeCap = StrokeCap.butt;
 
       canvas.drawArc(rect, start, sweep, false, paint);
       start += sweep;
@@ -1203,9 +1207,7 @@ class _StatsProGateChatCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(
-          maxWidth: 380,
-        ),
+        constraints: const BoxConstraints(maxWidth: 380),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         decoration: BoxDecoration(
           color: tokens.cardSurface,
@@ -1308,10 +1310,7 @@ class _StatsProGateChatCard extends StatelessWidget {
                 ),
                 child: const Text(
                   '등급 안내 보기',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
                 ),
               ),
             ),
@@ -1323,10 +1322,7 @@ class _StatsProGateChatCard extends StatelessWidget {
 }
 
 class _StatsGateBenefitRow extends StatelessWidget {
-  const _StatsGateBenefitRow({
-    required this.icon,
-    required this.text,
-  });
+  const _StatsGateBenefitRow({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -1336,11 +1332,7 @@ class _StatsGateBenefitRow extends StatelessWidget {
     return Row(
       children: [
         const SizedBox(width: 1),
-        Icon(
-          icon,
-          size: 16,
-          color: Color(0xFF4F46E5),
-        ),
+        Icon(icon, size: 16, color: Color(0xFF4F46E5)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

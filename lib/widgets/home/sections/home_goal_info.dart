@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 
 class HomeGoalInfo extends StatelessWidget {
-  const HomeGoalInfo({
-    super.key,
-    required this.label,
-    required this.value,
-  });
+  const HomeGoalInfo({super.key, required this.label, required this.value});
 
   final String label;
   final String value;
@@ -18,10 +14,7 @@ class HomeGoalInfo extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: scheme.onSurfaceVariant,
-          ),
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: 4),
         Text(

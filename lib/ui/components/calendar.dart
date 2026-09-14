@@ -12,11 +12,9 @@ class ShadcnCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstDay =
-    DateTime(month.year, month.month, 1);
+    final firstDay = DateTime(month.year, month.month, 1);
     final firstWeekday = firstDay.weekday;
-    final daysInMonth =
-        DateTime(month.year, month.month + 1, 0).day;
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
 
     return Column(
       children: [
@@ -26,7 +24,7 @@ class ShadcnCalendar extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           children: List.generate(
             firstWeekday - 1,
-                (_) => const SizedBox.shrink(),
+            (_) => const SizedBox.shrink(),
           )..addAll(
             List.generate(daysInMonth, (i) {
               final date = DateTime(month.year, month.month, i + 1);
@@ -36,7 +34,7 @@ class ShadcnCalendar extends StatelessWidget {
               );
             }),
           ),
-        )
+        ),
       ],
     );
   }

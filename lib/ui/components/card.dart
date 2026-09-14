@@ -5,12 +5,7 @@ class ShadcnCard extends StatelessWidget {
   final Widget? content;
   final Widget? footer;
 
-  const ShadcnCard({
-    super.key,
-    this.header,
-    this.content,
-    this.footer,
-  });
+  const ShadcnCard({super.key, this.header, this.content, this.footer});
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +22,11 @@ class ShadcnCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (header != null) header!,
-          if (content != null) Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: content!,
-          ),
+          if (content != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: content!,
+            ),
           if (footer != null) footer!,
         ],
       ),

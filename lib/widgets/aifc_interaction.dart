@@ -4,6 +4,15 @@ import '../aifc/core/aifc_chat_sheet.dart';
 import 'aifc_snack_bar.dart';
 import 'aifc_toast.dart';
 
+class AifcInputValidationException implements Exception {
+  const AifcInputValidationException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class AifcInteraction {
   const AifcInteraction._();
 
@@ -46,11 +55,7 @@ class AifcInteraction {
     required String message,
     Duration duration = const Duration(seconds: 4),
   }) {
-    AifcSnackBar.show(
-      context: context,
-      message: message,
-      duration: duration,
-    );
+    AifcSnackBar.show(context: context, message: message, duration: duration);
   }
 
   static Future<String?> ask({

@@ -413,7 +413,7 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
       "activityRegion", "registrationMode", "nextReservationAt",
       "membershipGrade", "membership", "anniversaryDate", "anniversaryLabel",
-      "personalGroupId", "personalTagIds",
+      "personalGroupId", "personalTagIds", "photoUrl",
     ]);
     const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
     const registrationMode = optionalString(data, "registrationMode") || "full";
@@ -457,6 +457,11 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         "invalid-argument",
         "anniversary_pair_invalid",
       );
+    }
+    const photoUrl = hasOwn(data, "photoUrl") ?
+      nullableString(data, "photoUrl") : null;
+    if (photoUrl != null) {
+      requireMaxLength(photoUrl, "photoUrl", 2048);
     }
     requireMaxLength(idempotencyKey, "idempotencyKey", 128);
     requireMaxLength(name, "name", 80);
@@ -557,6 +562,7 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           ...(membership == null ? {} : {membership}),
           ...(anniversaryDate == null ? {} : {anniversaryDate}),
           ...(anniversaryLabel == null ? {} : {anniversaryLabel}),
+          ...(photoUrl == null ? {} : {photoUrl}),
           note,
           ...(nextReservationAt == null ? {} : {nextReservationAt}),
           ...personalMemberTaxonomyCreateFields(taxonomyAssignments),
@@ -714,7 +720,7 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "postal", "address", "detailAddress", "lessonType",
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
       "activityRegion", "membership", "anniversaryDate", "anniversaryLabel",
-      "membershipGrade",
+      "membershipGrade", "photoUrl",
       "personalGroupId", "personalTagIds",
     ]);
     const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
@@ -742,6 +748,11 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         "invalid-argument",
         "anniversary_pair_invalid",
       );
+    }
+    const photoUrl = hasOwn(data, "photoUrl") ?
+      nullableString(data, "photoUrl") : undefined;
+    if (photoUrl != null) {
+      requireMaxLength(photoUrl, "photoUrl", 2048);
     }
     const profileRef = db.collection("trainer_profiles").doc(uid);
     const memberRef = db.collection("members").doc(memberId);
@@ -871,6 +882,9 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         }
         if (anniversaryLabel !== undefined) {
           canonicalUpdate.anniversaryLabel = anniversaryLabel;
+        }
+        if (photoUrl !== undefined) {
+          canonicalUpdate.photoUrl = photoUrl;
         }
         applyPersonalMemberTaxonomyUpdate(
           canonicalUpdate,
@@ -1082,12 +1096,6 @@ export function updateManagedMemberMembershipPauseHandler(
               "pause_days_required",
             );
           }
-          if (pauseDays > remainingDays) {
-            throw new functions.https.HttpsError(
-              "failed-precondition",
-              "pause_days_over_remaining",
-            );
-          }
           const contractDraftExists =
             current.membershipContractDraftExists === true ||
             membership.contractStatus === "draft" ||
@@ -1107,7 +1115,7 @@ export function updateManagedMemberMembershipPauseHandler(
               contractMax,
               Math.max(0, contractMax - pauseUsedDays),
             );
-            const availableDays = Math.min(remainingDays, contractRemaining);
+            const availableDays = contractRemaining;
             if (pauseDays > availableDays) {
               throw new functions.https.HttpsError(
                 "failed-precondition",

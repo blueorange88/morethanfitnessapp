@@ -24,23 +24,15 @@ class HomeLessonEditorHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(
-        minHeight: 70,
-      ),
+      constraints: const BoxConstraints(minHeight: 52),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF7C3AED),
-            Color(0xFF9333EA),
-          ],
+          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF9333EA)],
           stops: [0.0, 0.55, 1.0],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Stack(
         children: [
@@ -48,20 +40,15 @@ class HomeLessonEditorHeader extends StatelessWidget {
             top: 0,
             left: 0,
             right: 0,
-            height: 42,
+            height: 30,
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x2BFFFFFF),
-                    Colors.transparent,
-                  ],
+                  colors: [Color(0x2BFFFFFF), Colors.transparent],
                 ),
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
             ),
           ),
@@ -69,13 +56,10 @@ class HomeLessonEditorHeader extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: Divider(
-              height: 1,
-              color: Color(0x2EFFFFFF),
-            ),
+            child: Divider(height: 1, color: Color(0x2EFFFFFF)),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(27, 24, 27, 27),
+            padding: const EdgeInsets.fromLTRB(24, 13, 24, 13),
             child: Row(
               children: [
                 Container(
@@ -112,7 +96,7 @@ class HomeLessonEditorHeader extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 2,
-                              vertical: 8,
+                              vertical: 3,
                             ),
                             child: Text(
                               startTimeLabel,
@@ -148,7 +132,7 @@ class HomeLessonEditorHeader extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 2,
-                              vertical: 8,
+                              vertical: 3,
                             ),
                             child: Text(
                               endTimeLabel,
@@ -157,9 +141,10 @@ class HomeLessonEditorHeader extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,
-                                color: endTimeIsEmpty
-                                    ? Colors.white.withOpacity(0.40)
-                                    : Colors.white.withOpacity(0.80),
+                                color:
+                                    endTimeIsEmpty
+                                        ? Colors.white.withOpacity(0.40)
+                                        : Colors.white.withOpacity(0.80),
                                 height: 1.0,
                               ),
                             ),

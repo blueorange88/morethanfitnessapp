@@ -51,10 +51,10 @@ void main() {
       },
     );
     expect((await store.load(uid: 'uid-a'))?['nickname'], '라디오');
-    expect(
-      (await store.load(uid: 'uid-a'))?['activityRegions'],
-      ['서울특별시 강남구', '경기도 성남시'],
-    );
+    expect((await store.load(uid: 'uid-a'))?['activityRegions'], [
+      '서울특별시 강남구',
+      '경기도 성남시',
+    ]);
     expect(await store.load(uid: 'uid-b'), isNull);
     await store.clear(uid: 'uid-a');
     expect(await store.load(uid: 'uid-a'), isNull);

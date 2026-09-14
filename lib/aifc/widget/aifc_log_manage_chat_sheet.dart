@@ -8,12 +8,7 @@ import '../core/aifc_theme.dart';
 
 // ─── 레슨 확정 열거형 ─────────────────────────────────────
 
-enum AifcLogStatus {
-  normal,
-  service,
-  noShow,
-  noShowNoDeduct,
-}
+enum AifcLogStatus { normal, service, noShow, noShowNoDeduct }
 
 extension AifcLogStatusX on AifcLogStatus {
   String get localKey {
@@ -120,12 +115,12 @@ extension AifcLogStatusX on AifcLogStatus {
 // ─── 시트 모드 열거형 ─────────────────────────────────────
 
 enum _LogManageMode {
-  initial,         // 첫 메뉴
+  initial, // 첫 메뉴
   changingStatus, // 확정 방법 선택 중
-  statusDone,     // 확정 방법 변경 완료
-  unlockPin,      // 확정 취소 PIN 입력 중
-  unlockDone,     // 확정 취소 완료
-  exitConfirm,    // 진행 중 나가기 확인
+  statusDone, // 확정 방법 변경 완료
+  unlockPin, // 확정 취소 PIN 입력 중
+  unlockDone, // 확정 취소 완료
+  exitConfirm, // 진행 중 나가기 확인
 }
 
 // ─── 메인 위젯 ────────────────────────────────────────────
@@ -179,21 +174,21 @@ class AifcLogManageChatSheet extends StatefulWidget {
       isDismissible: false,
       enableDrag: false,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcLogManageChatSheet(
-        memberName: memberName,
-        currentStatus: currentStatus,
-        isLocked: isLocked,
-        lessonSummaryText: lessonSummaryText,
-        onChangeStatus: onChangeStatus,
-        onConfirmCancel: onConfirmCancel,
-        onViewDetail: onViewDetail,
-      ),
+      builder:
+          (_) => AifcLogManageChatSheet(
+            memberName: memberName,
+            currentStatus: currentStatus,
+            isLocked: isLocked,
+            lessonSummaryText: lessonSummaryText,
+            onChangeStatus: onChangeStatus,
+            onConfirmCancel: onConfirmCancel,
+            onViewDetail: onViewDetail,
+          ),
     );
   }
 
   @override
-  State<AifcLogManageChatSheet> createState() =>
-      _AifcLogManageChatSheetState();
+  State<AifcLogManageChatSheet> createState() => _AifcLogManageChatSheetState();
 }
 
 // ─── State ────────────────────────────────────────────────
@@ -209,7 +204,6 @@ class _AifcLogManageChatSheetState extends State<AifcLogManageChatSheet>
 
   AifcLogStatus get _currentStatus =>
       AifcLogStatusX.fromLocalKey(widget.currentStatus);
-
 
   String get _safeName {
     final v = widget.memberName.trim();
@@ -230,7 +224,8 @@ class _AifcLogManageChatSheetState extends State<AifcLogManageChatSheet>
     aifcSetActiveGroup(_LogManageMode.initial);
 
     aifcAddFcMessage(
-      text: '$_safeName 님의 $_lessonSummary 확정 내역 변경을 도와드릴게요.\n어떤 내역 변경을 도와드릴까요?',
+      text:
+          '$_safeName 님의 $_lessonSummary 확정 내역 변경을 도와드릴게요.\n어떤 내역 변경을 도와드릴까요?',
       groupKey: _LogManageMode.initial,
       child: _InitialMenuCard(
         currentStatus: _currentStatus,
@@ -365,7 +360,8 @@ class _AifcLogManageChatSheetState extends State<AifcLogManageChatSheet>
 
     await aifcUserThenFc(
       userText: '레슨 확정을 취소할게요',
-      fcText: '$_safeName 님의 $_lessonSummary 확정을 취소할까요?\n\n진행하려면 PIN 번호를 입력해주세요.',
+      fcText:
+          '$_safeName 님의 $_lessonSummary 확정을 취소할까요?\n\n진행하려면 PIN 번호를 입력해주세요.',
       groupKey: _LogManageMode.unlockPin,
       fcChild: _PinInputCard(
         controller: _pinController,
@@ -405,14 +401,11 @@ class _AifcLogManageChatSheetState extends State<AifcLogManageChatSheet>
     );
   }
 
-
   // ── 취소 ──────────────────────────────────────────────
 
   bool get _isChangingFlow {
     return _mode != _LogManageMode.initial ||
-        _pinController.text
-            .trim()
-            .isNotEmpty ||
+        _pinController.text.trim().isNotEmpty ||
         aifcMessages.length > 1;
   }
 
@@ -465,7 +458,8 @@ class _AifcLogManageChatSheetState extends State<AifcLogManageChatSheet>
 
     await aifcUserThenFc(
       userText: '취소 할게요',
-      fcText: '레슨 확정 내역 변경을 나중에 할까요?\n\n'
+      fcText:
+          '레슨 확정 내역 변경을 나중에 할까요?\n\n'
           '$_safeName 님 레슨 확정 내역 변경을 취소할까요?\n'
           '* 작성한 내용은 사라져요.',
       groupKey: _LogManageMode.exitConfirm,
@@ -517,19 +511,15 @@ class _AifcLogManageChatSheetState extends State<AifcLogManageChatSheet>
             child: SingleChildScrollView(
               controller: aifcScrollController,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                keyboardOpen ? 220 : 18,
-              ),
+              padding: EdgeInsets.fromLTRB(16, 16, 16, keyboardOpen ? 220 : 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (int i = 0; i < aifcMessages.length; i++)
                     AifcAnimatedChatMessage(
                       controller: aifcMessageAnimations[i],
-                      dimmed: aifcMessages[i].groupKey != null &&
+                      dimmed:
+                          aifcMessages[i].groupKey != null &&
                           aifcActiveGroupKey != null &&
                           aifcMessages[i].groupKey != aifcActiveGroupKey,
                       child: Padding(
@@ -578,7 +568,6 @@ class _AifcLogManageChatSheetState extends State<AifcLogManageChatSheet>
             const SizedBox(height: 10),
         ],
       ),
-
     );
   }
 }
@@ -609,9 +598,7 @@ class _InitialMenuCard extends StatelessWidget {
         const SizedBox(height: 10),
 
         if (isLocked) ...[
-          _NoticeBox(
-            text: '레슨 확정 방법 변경 또는 확정 취소 시 회원에게 알림톡이 발송 대상에 추가돼요.',
-          ),
+          _NoticeBox(text: '레슨 확정 방법 변경 또는 확정 취소 시 회원에게 알림톡이 발송 대상에 추가돼요.'),
           const SizedBox(height: 10),
         ],
 
@@ -650,9 +637,7 @@ class _InitialMenuCard extends StatelessWidget {
 }
 
 class _NoticeBox extends StatelessWidget {
-  const _NoticeBox({
-    required this.text,
-  });
+  const _NoticeBox({required this.text});
 
   final String text;
 
@@ -663,10 +648,7 @@ class _NoticeBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFBEB),
         borderRadius: BorderRadius.circular(AifcRadius.button),
-        border: Border.all(
-          color: const Color(0xFFFDE68A),
-          width: 0.5,
-        ),
+        border: Border.all(color: const Color(0xFFFDE68A), width: 0.5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,10 +679,7 @@ class _NoticeBox extends StatelessWidget {
 // ─── 현재 상태 표시 행 ────────────────────────────────────
 
 class _CurrentStatusRow extends StatelessWidget {
-  const _CurrentStatusRow({
-    required this.status,
-    required this.isLocked,
-  });
+  const _CurrentStatusRow({required this.status, required this.isLocked});
 
   final AifcLogStatus status;
   final bool isLocked;
@@ -827,9 +806,10 @@ class _StatusOptionRow extends StatelessWidget {
                   Text(
                     status.label,
                     style: TextStyle(
-                      color: isCurrent
-                          ? status.color.withOpacity(0.45)
-                          : status.color,
+                      color:
+                          isCurrent
+                              ? status.color.withOpacity(0.45)
+                              : status.color,
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
@@ -838,11 +818,12 @@ class _StatusOptionRow extends StatelessWidget {
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: status.color.withOpacity(0.10),
-                        borderRadius:
-                        BorderRadius.circular(AifcRadius.chip),
+                        borderRadius: BorderRadius.circular(AifcRadius.chip),
                       ),
                       child: Text(
                         '현재',
@@ -860,9 +841,10 @@ class _StatusOptionRow extends StatelessWidget {
             Text(
               status.subLabel,
               style: TextStyle(
-                color: isCurrent
-                    ? status.color.withOpacity(0.35)
-                    : status.color.withOpacity(0.65),
+                color:
+                    isCurrent
+                        ? status.color.withOpacity(0.35)
+                        : status.color.withOpacity(0.65),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -870,9 +852,7 @@ class _StatusOptionRow extends StatelessWidget {
             const SizedBox(width: 4),
             Icon(
               Icons.chevron_right_rounded,
-              color: isCurrent
-                  ? status.color.withOpacity(0.25)
-                  : status.color,
+              color: isCurrent ? status.color.withOpacity(0.25) : status.color,
               size: 17,
             ),
           ],
@@ -916,8 +896,11 @@ class _PinInputCard extends StatelessWidget {
           ),
           child: Row(
             children: const [
-              Icon(Icons.info_outline_rounded,
-                  size: 14, color: Color(0xFF92400E)),
+              Icon(
+                Icons.info_outline_rounded,
+                size: 14,
+                color: Color(0xFF92400E),
+              ),
               SizedBox(width: 7),
               Expanded(
                 child: Text(
@@ -976,7 +959,9 @@ class _PinInputCard extends StatelessWidget {
               IconButton(
                 onPressed: onToggleObscure,
                 icon: Icon(
-                  obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  obscure
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
                   size: 18,
                   color: AifcColors.textMuted,
                 ),
@@ -1002,10 +987,7 @@ class _PinInputCard extends StatelessWidget {
 }
 
 class _ExitConfirmCard extends StatelessWidget {
-  const _ExitConfirmCard({
-    required this.onContinue,
-    required this.onExit,
-  });
+  const _ExitConfirmCard({required this.onContinue, required this.onExit});
 
   final VoidCallback onContinue;
   final VoidCallback onExit;
@@ -1104,10 +1086,7 @@ class _MenuRow extends StatelessWidget {
   }
 }
 
-
-
 // ─── 공통 액션 버튼 ───────────────────────────────────────
-
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({

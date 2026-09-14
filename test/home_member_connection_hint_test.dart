@@ -16,10 +16,7 @@ void main() {
       ),
     );
 
-    expect(
-      find.text('등록된 회원이라면 아래 회원 칩을 선택해주세요.'),
-      findsOneWidget,
-    );
+    expect(find.text('등록된 회원이라면 아래 회원 칩을 선택해주세요.'), findsOneWidget);
     expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
   });
 

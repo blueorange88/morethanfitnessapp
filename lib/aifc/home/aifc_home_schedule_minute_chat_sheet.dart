@@ -6,16 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum _MinuteInputMode {
-  quick,
-  dial,
-}
+enum _MinuteInputMode { quick, dial }
 
 class AifcHomeScheduleMinuteChatSheet {
   const AifcHomeScheduleMinuteChatSheet._();
 
-  static const String _modePrefsKey =
-      'home_schedule_minute_input_mode_v1';
+  static const String _modePrefsKey = 'home_schedule_minute_input_mode_v1';
 
   static Future<int?> show({
     required BuildContext context,
@@ -39,7 +35,7 @@ class AifcHomeScheduleMinuteChatSheet {
     final safeName = _nicknameLabel(nickname);
     final validMinutes = [0, 10, 20, 30, 40, 50];
     final safeCurrentMinute =
-    validMinutes.contains(currentMinute) ? currentMinute : 0;
+        validMinutes.contains(currentMinute) ? currentMinute : 0;
 
     return showModalBottomSheet<int>(
       context: context,
@@ -126,9 +122,10 @@ class _MinuteChatSheetBodyState extends State<_MinuteChatSheetBody> {
 
   void _toggleMode() {
     final current = _mode ?? _MinuteInputMode.quick;
-    final next = current == _MinuteInputMode.quick
-        ? _MinuteInputMode.dial
-        : _MinuteInputMode.quick;
+    final next =
+        current == _MinuteInputMode.quick
+            ? _MinuteInputMode.dial
+            : _MinuteInputMode.quick;
 
     _setMode(next);
   }
@@ -144,9 +141,7 @@ class _MinuteChatSheetBodyState extends State<_MinuteChatSheetBody> {
         child: Container(
           decoration: const BoxDecoration(
             color: Color(0xFFF5F4FF),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(26),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -165,13 +160,14 @@ class _MinuteChatSheetBodyState extends State<_MinuteChatSheetBody> {
 
                 _FcBubble(
                   primaryColor: widget.primaryColor,
-                  trailing: mode == null
-                      ? null
-                      : _InputModeIconButton(
-                    mode: mode,
-                    primaryColor: widget.primaryColor,
-                    onTap: _toggleMode,
-                  ),
+                  trailing:
+                      mode == null
+                          ? null
+                          : _InputModeIconButton(
+                            mode: mode,
+                            primaryColor: widget.primaryColor,
+                            onTap: _toggleMode,
+                          ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -238,9 +234,7 @@ class _MinuteChatSheetBodyState extends State<_MinuteChatSheetBody> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF6B7280),
-                          side: const BorderSide(
-                            color: Color(0xFFE5E7EB),
-                          ),
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -290,12 +284,13 @@ class _MinuteChatSheetBodyState extends State<_MinuteChatSheetBody> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          onPressed: mode == null
-                              ? null
-                              : () {
-                            HapticFeedback.mediumImpact();
-                            Navigator.of(context).pop(_selectedMinute);
-                          },
+                          onPressed:
+                              mode == null
+                                  ? null
+                                  : () {
+                                    HapticFeedback.mediumImpact();
+                                    Navigator.of(context).pop(_selectedMinute);
+                                  },
                           child: Text(
                             widget.confirmLabel,
                             style: const TextStyle(
@@ -363,9 +358,7 @@ class _FcBubble extends StatelessWidget {
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
               ),
-              border: Border.all(
-                color: const Color(0xFFE0DEFF),
-              ),
+              border: Border.all(color: const Color(0xFFE0DEFF)),
               boxShadow: [
                 BoxShadow(
                   color: primaryColor.withOpacity(0.06),
@@ -378,10 +371,7 @@ class _FcBubble extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: child),
-                if (trailing != null) ...[
-                  const SizedBox(width: 8),
-                  trailing!,
-                ],
+                if (trailing != null) ...[const SizedBox(width: 8), trailing!],
               ],
             ),
           ),
@@ -417,14 +407,10 @@ class _InputModeIconButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: primaryColor.withOpacity(0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: primaryColor.withOpacity(0.14),
-            ),
+            border: Border.all(color: primaryColor.withOpacity(0.14)),
           ),
           child: Icon(
-            showDialIcon
-                ? Icons.unfold_more_rounded
-                : Icons.touch_app_rounded,
+            showDialIcon ? Icons.unfold_more_rounded : Icons.touch_app_rounded,
             size: 19,
             color: primaryColor,
           ),
@@ -453,9 +439,7 @@ class _ModePickerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
         children: [
@@ -522,17 +506,11 @@ class _ModeButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: primaryColor.withOpacity(0.055),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: primaryColor.withOpacity(0.13),
-          ),
+          border: Border.all(color: primaryColor.withOpacity(0.13)),
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: primaryColor,
-              size: 24,
-            ),
+            Icon(icon, color: primaryColor, size: 24),
             const SizedBox(height: 7),
             Text(
               title,
@@ -581,53 +559,53 @@ class _QuickMinutePicker extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Wrap(
         alignment: WrapAlignment.center,
         spacing: 8,
         runSpacing: 8,
-        children: minutes.map((minute) {
-          final selected = selectedMinute == minute;
+        children:
+            minutes.map((minute) {
+              final selected = selectedMinute == minute;
 
-          return GestureDetector(
-            onTap: () => onSelected(minute),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: selected ? primaryColor : Colors.white,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected ? primaryColor : const Color(0xFFE5E7EB),
-                  width: selected ? 1.2 : 0.9,
-                ),
-                boxShadow: selected
-                    ? [
-                  BoxShadow(
-                    color: primaryColor.withOpacity(0.22),
-                    blurRadius: 9,
-                    offset: const Offset(0, 3),
+              return GestureDetector(
+                onTap: () => onSelected(minute),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
-                ]
-                    : null,
-              ),
-              child: Text(
-                '${minute.toString().padLeft(2, '0')}분',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: selected ? Colors.white : const Color(0xFF6B7280),
+                  decoration: BoxDecoration(
+                    color: selected ? primaryColor : Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: selected ? primaryColor : const Color(0xFFE5E7EB),
+                      width: selected ? 1.2 : 0.9,
+                    ),
+                    boxShadow:
+                        selected
+                            ? [
+                              BoxShadow(
+                                color: primaryColor.withOpacity(0.22),
+                                blurRadius: 9,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                            : null,
+                  ),
+                  child: Text(
+                    '${minute.toString().padLeft(2, '0')}분',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: selected ? Colors.white : const Color(0xFF6B7280),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
       ),
     );
   }
@@ -725,14 +703,8 @@ class _CompassMinuteDialState extends State<_CompassMinuteDial>
   void _snapToNearest() {
     final target = _position.roundToDouble();
 
-    _snapAnimation = Tween<double>(
-      begin: _position,
-      end: target,
-    ).animate(
-      CurvedAnimation(
-        parent: _snapController,
-        curve: Curves.easeOutCubic,
-      ),
+    _snapAnimation = Tween<double>(begin: _position, end: target).animate(
+      CurvedAnimation(parent: _snapController, curve: Curves.easeOutCubic),
     );
 
     _snapController.forward(from: 0);
@@ -745,10 +717,7 @@ class _CompassMinuteDialState extends State<_CompassMinuteDial>
       begin: _position,
       end: (_position.round() + step).toDouble(),
     ).animate(
-      CurvedAnimation(
-        parent: _snapController,
-        curve: Curves.easeOutCubic,
-      ),
+      CurvedAnimation(parent: _snapController, curve: Curves.easeOutCubic),
     );
 
     _snapController.forward(from: 0);
@@ -782,9 +751,7 @@ class _CompassMinuteDialState extends State<_CompassMinuteDial>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: const Color(0xFFE5E7EB),
-          ),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
           boxShadow: [
             BoxShadow(
               color: widget.primaryColor.withOpacity(0.045),
@@ -870,15 +837,9 @@ class _DialStepButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: primaryColor.withOpacity(0.075),
           shape: BoxShape.circle,
-          border: Border.all(
-            color: primaryColor.withOpacity(0.12),
-          ),
+          border: Border.all(color: primaryColor.withOpacity(0.12)),
         ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: primaryColor,
-        ),
+        child: Icon(icon, size: 20, color: primaryColor),
       ),
     );
   }
@@ -920,15 +881,13 @@ class _CompassMinutePainter extends CustomPainter {
   }
 
   void _drawArcBase(Canvas canvas, double cx, double cy, double radius) {
-    final rect = Rect.fromCircle(
-      center: Offset(cx, cy),
-      radius: radius,
-    );
+    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: radius);
 
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..color = const Color(0xFFE5E7EB).withOpacity(0.82);
+    final paint =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0
+          ..color = const Color(0xFFE5E7EB).withOpacity(0.82);
 
     canvas.drawArc(
       rect,
@@ -940,12 +899,12 @@ class _CompassMinutePainter extends CustomPainter {
   }
 
   void _drawTicks(
-      Canvas canvas,
-      double cx,
-      double cy,
-      double radius,
-      double fractional,
-      ) {
+    Canvas canvas,
+    double cx,
+    double cy,
+    double radius,
+    double fractional,
+  ) {
     const ticksPerMinute = 8;
     final totalTicks = (_visibleUnits * ticksPerMinute).ceil();
 
@@ -972,9 +931,10 @@ class _CompassMinutePainter extends CustomPainter {
       final x2 = cx + innerRadius * math.sin(angle);
       final y2 = cy - innerRadius * math.cos(angle);
 
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round;
+      final paint =
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round;
 
       if (isMajor) {
         paint
@@ -990,22 +950,18 @@ class _CompassMinutePainter extends CustomPainter {
           ..strokeWidth = 0.75;
       }
 
-      canvas.drawLine(
-        Offset(x1, y1),
-        Offset(x2, y2),
-        paint,
-      );
+      canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
     }
   }
 
   void _drawNumbers(
-      Canvas canvas,
-      double cx,
-      double cy,
-      double radius,
-      int selectedIndex,
-      double fractional,
-      ) {
+    Canvas canvas,
+    double cx,
+    double cy,
+    double radius,
+    int selectedIndex,
+    double fractional,
+  ) {
     for (int d = -2; d <= 2; d++) {
       final unit = d - fractional;
       final distance = unit.abs();
@@ -1030,9 +986,10 @@ class _CompassMinutePainter extends CustomPainter {
         text: TextSpan(
           text: text,
           style: TextStyle(
-            color: selected
-                ? primaryColor
-                : primaryColor.withOpacity(0.25 + (fade * 0.52)),
+            color:
+                selected
+                    ? primaryColor
+                    : primaryColor.withOpacity(0.25 + (fade * 0.52)),
             fontSize: selected ? 24 : 12 + (fade * 4),
             fontWeight: selected ? FontWeight.w900 : FontWeight.w800,
             letterSpacing: selected ? 0.6 : 0,
@@ -1047,10 +1004,7 @@ class _CompassMinutePainter extends CustomPainter {
 
       textPainter.paint(
         canvas,
-        Offset(
-          -textPainter.width / 2,
-          -textPainter.height / 2,
-        ),
+        Offset(-textPainter.width / 2, -textPainter.height / 2),
       );
 
       canvas.restore();
@@ -1058,10 +1012,11 @@ class _CompassMinutePainter extends CustomPainter {
   }
 
   void _drawCenterPointer(Canvas canvas, Size size, double centerX) {
-    final linePaint = Paint()
-      ..color = primaryColor.withOpacity(0.22)
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round;
+    final linePaint =
+        Paint()
+          ..color = primaryColor.withOpacity(0.22)
+          ..strokeWidth = 1.2
+          ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(
       Offset(centerX, size.height - 28),

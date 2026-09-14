@@ -8,26 +8,17 @@ import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
 import '../theme/app_colors.dart';
 
-enum AifcConsultChecklistAction {
-  later,
-  saveDraft,
-}
+enum AifcConsultChecklistAction { later, saveDraft }
 
 class AifcConsultChecklistResult {
-  const AifcConsultChecklistResult({
-    required this.items,
-    required this.memo,
-  });
+  const AifcConsultChecklistResult({required this.items, required this.memo});
 
   final List<String> items;
   final String memo;
 }
 
 class AifcConsultChecklistChatSheet extends StatefulWidget {
-  const AifcConsultChecklistChatSheet({
-    super.key,
-    required this.trainerName,
-  });
+  const AifcConsultChecklistChatSheet({super.key, required this.trainerName});
 
   final String trainerName;
 
@@ -39,9 +30,7 @@ class AifcConsultChecklistChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcConsultChecklistChatSheet(
-        trainerName: trainerName,
-      ),
+      builder: (_) => AifcConsultChecklistChatSheet(trainerName: trainerName),
     );
   }
 
@@ -67,14 +56,7 @@ class _AifcConsultChecklistChatSheetState
     _ConsultSectionData(
       title: '목표',
       icon: Icons.flag_rounded,
-      items: [
-        '체중 감량',
-        '근력 증가',
-        '체형 교정',
-        '통증 완화',
-        '바디프로필',
-        '대회 / 촬영',
-      ],
+      items: ['체중 감량', '근력 증가', '체형 교정', '통증 완화', '바디프로필', '대회 / 촬영'],
     ),
     _ConsultSectionData(
       title: '현재 상태',
@@ -91,14 +73,7 @@ class _AifcConsultChecklistChatSheetState
     _ConsultSectionData(
       title: '생활 패턴',
       icon: Icons.schedule_rounded,
-      items: [
-        '수면 부족',
-        '식사 불규칙',
-        '야근 / 교대근무',
-        '음주 잦음',
-        '스트레스 높음',
-        '좌식 시간 많음',
-      ],
+      items: ['수면 부족', '식사 불규칙', '야근 / 교대근무', '음주 잦음', '스트레스 높음', '좌식 시간 많음'],
     ),
     _ConsultSectionData(
       title: '상담 메모',
@@ -191,7 +166,8 @@ class _AifcConsultChecklistChatSheetState
 
     await aifcUserThenFc(
       userText: '상담 내용을 정리해둘게요',
-      fcText: '좋아요. 선택한 상담 포인트를 정리했어요.\n'
+      fcText:
+          '좋아요. 선택한 상담 포인트를 정리했어요.\n'
           '다음 단계에서는 이 내용을 회원카드 SPECIAL NOTE나 상담 기록으로 바로 저장하도록 연결하면 됩니다.',
       groupKey: _groupSave,
     );
@@ -199,12 +175,9 @@ class _AifcConsultChecklistChatSheetState
     await Future.delayed(aifcCloseAfterReplyDelay);
     if (!mounted) return;
 
-    Navigator.of(context).pop(
-      AifcConsultChecklistResult(
-        items: items,
-        memo: memo,
-      ),
-    );
+    Navigator.of(
+      context,
+    ).pop(AifcConsultChecklistResult(items: items, memo: memo));
   }
 
   Future<void> _handleBottomCancel() async {
@@ -230,7 +203,8 @@ class _AifcConsultChecklistChatSheetState
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -290,9 +264,7 @@ class _ConsultSectionData {
 }
 
 class _ConsultIntroBlock extends StatelessWidget {
-  const _ConsultIntroBlock({
-    required this.trainerLabel,
-  });
+  const _ConsultIntroBlock({required this.trainerLabel});
 
   final String trainerLabel;
 
@@ -337,95 +309,91 @@ class _ConsultChecklistBlock extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
     return Column(
-      children: sections.map((section) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: tokens.aifcSurface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: tokens.cardBorder,
-                width: 0.7,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      section.icon,
-                      size: 17,
-                      color: AifcColors.primary,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      section.title,
-                      style: TextStyle(
-                        color: scheme.onSurface,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
+      children:
+          sections.map((section) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                decoration: BoxDecoration(
+                  color: tokens.aifcSurface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: tokens.cardBorder, width: 0.7),
                 ),
-                const SizedBox(height: 9),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: section.items.map((item) {
-                    final selected = selectedItems.contains(item);
-
-                    return GestureDetector(
-                      onTap: () => onToggle(item),
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AifcColors.primary
-                              : tokens.aifcInputSurface,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: selected
-                                ? AifcColors.primary
-                                : tokens.cardBorder,
-                          ),
-                        ),
-                        child: Text(
-                          item,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(section.icon, size: 17, color: AifcColors.primary),
+                        const SizedBox(width: 7),
+                        Text(
+                          section.title,
                           style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : scheme.onSurfaceVariant,
-                            fontSize: 11.5,
+                            color: scheme.onSurface,
+                            fontSize: 13,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children:
+                          section.items.map((item) {
+                            final selected = selectedItems.contains(item);
+
+                            return GestureDetector(
+                              onTap: () => onToggle(item),
+                              behavior: HitTestBehavior.opaque,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 140),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      selected
+                                          ? AifcColors.primary
+                                          : tokens.aifcInputSurface,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color:
+                                        selected
+                                            ? AifcColors.primary
+                                            : tokens.cardBorder,
+                                  ),
+                                ),
+                                child: Text(
+                                  item,
+                                  style: TextStyle(
+                                    color:
+                                        selected
+                                            ? Colors.white
+                                            : scheme.onSurfaceVariant,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+              ),
+            );
+          }).toList(),
     );
   }
 }
 
 class _ConsultMemoField extends StatelessWidget {
-  const _ConsultMemoField({
-    required this.controller,
-  });
+  const _ConsultMemoField({required this.controller});
 
   final TextEditingController controller;
 
@@ -452,10 +420,7 @@ class _ConsultMemoField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: scheme.secondary,
-            width: 1.3,
-          ),
+          borderSide: BorderSide(color: scheme.secondary, width: 1.3),
         ),
       ),
     );
@@ -489,10 +454,7 @@ class _ConsultActionBlock extends StatelessWidget {
         icon: const Icon(Icons.assignment_turned_in_rounded),
         label: Text(
           selectedCount <= 0 ? '상담 내용 확인' : '선택 $selectedCount개 정리하기',
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
         ),
       ),
     );

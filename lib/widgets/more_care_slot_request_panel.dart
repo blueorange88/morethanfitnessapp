@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/more_care_slot_service.dart';
 
 class MoreCareSlotRequestPanel extends StatefulWidget {
-  const MoreCareSlotRequestPanel({
-    super.key,
-    this.compact = false,
-  });
+  const MoreCareSlotRequestPanel({super.key, this.compact = false});
 
   final bool compact;
 
@@ -70,7 +67,7 @@ class _MoreCareSlotRequestPanelState extends State<MoreCareSlotRequestPanel> {
           title: const Text('기본 관리로 유지할까요?'),
           content: Text(
             '${request.memberName}님은 기본 회원관리와 스케줄, 기본 레슨일지는 계속 사용할 수 있어요.\n\n'
-                '다만 MORE 스마트 알림, 계약서/레슨일지 기반 고급 관리는 승인 전까지 열리지 않습니다.',
+            '다만 MORE 스마트 알림, 계약서/레슨일지 기반 고급 관리는 승인 전까지 열리지 않습니다.',
           ),
           actions: [
             TextButton(
@@ -193,11 +190,9 @@ class _MoreCareSlotRequestPanelState extends State<MoreCareSlotRequestPanel> {
           return _buildLoadingCard();
         }
 
-        final actor = actorSnapshot.data ??
-            const MoreCareSlotActor(
-              trainerId: 'me',
-              trainerName: '트레이너',
-            );
+        final actor =
+            actorSnapshot.data ??
+            const MoreCareSlotActor(trainerId: 'me', trainerName: '트레이너');
 
         return StreamBuilder<List<MoreCareSlotRequest>>(
           stream: MoreCareSlotService.watchPendingRequests(
@@ -220,9 +215,7 @@ class _MoreCareSlotRequestPanelState extends State<MoreCareSlotRequestPanel> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: const Color(0xFFE5E7EB),
-                ),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x08000000),
@@ -236,32 +229,25 @@ class _MoreCareSlotRequestPanelState extends State<MoreCareSlotRequestPanel> {
                 children: [
                   _buildHeader(requests.length),
                   const SizedBox(height: 12),
-                  ...requests.map(
-                        (request) {
-                      final busy = _busyRequestIds.contains(request.id);
+                  ...requests.map((request) {
+                    final busy = _busyRequestIds.contains(request.id);
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _MoreCareSlotRequestCard(
-                          request: request,
-                          reasonLabel: _reasonLabel(request.reason),
-                          remainingLabel:
-                          _remainingLabel(request.temporaryUntil),
-                          requestedAtLabel:
-                          _requestedAtLabel(request.requestedAt),
-                          busy: busy,
-                          onApprove: () => _approve(
-                            actor: actor,
-                            request: request,
-                          ),
-                          onReject: () => _reject(
-                            actor: actor,
-                            request: request,
-                          ),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _MoreCareSlotRequestCard(
+                        request: request,
+                        reasonLabel: _reasonLabel(request.reason),
+                        remainingLabel: _remainingLabel(request.temporaryUntil),
+                        requestedAtLabel: _requestedAtLabel(
+                          request.requestedAt,
                         ),
-                      );
-                    },
-                  ),
+                        busy: busy,
+                        onApprove:
+                            () => _approve(actor: actor, request: request),
+                        onReject: () => _reject(actor: actor, request: request),
+                      ),
+                    );
+                  }),
                 ],
               ),
             );
@@ -413,9 +399,7 @@ class _MoreCareSlotRequestCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: const Color(0xFFE5E7EB),
-          ),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,9 +413,7 @@ class _MoreCareSlotRequestCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFFBEB),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFFDE68A),
-                    ),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
                   ),
                   child: const Icon(
                     Icons.pending_actions_rounded,
@@ -508,9 +490,7 @@ class _MoreCareSlotRequestCard extends StatelessWidget {
                     onPressed: busy ? null : onReject,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF6B7280),
-                      side: const BorderSide(
-                        color: Color(0xFFD1D5DB),
-                      ),
+                      side: const BorderSide(color: Color(0xFFD1D5DB)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -542,11 +522,7 @@ class _MoreCareSlotRequestCard extends StatelessWidget {
 }
 
 class _MiniChip extends StatelessWidget {
-  const _MiniChip({
-    required this.text,
-    required this.bg,
-    required this.fg,
-  });
+  const _MiniChip({required this.text, required this.bg, required this.fg});
 
   final String text;
   final Color bg;
@@ -555,10 +531,7 @@ class _MiniChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),

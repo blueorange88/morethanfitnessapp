@@ -14,9 +14,7 @@ class HomeWidgetSyncController {
     _debounce = Timer(delay, () => _run(syncAction));
   }
 
-  void runNow({
-    required Future<void> Function() syncAction,
-  }) {
+  void runNow({required Future<void> Function() syncAction}) {
     _debounce?.cancel();
     _debounce = null;
 

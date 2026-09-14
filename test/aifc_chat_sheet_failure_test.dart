@@ -14,25 +14,26 @@ void main() {
       MaterialApp(
         theme: lightTheme(),
         home: Builder(
-          builder: (context) => Scaffold(
-            body: FilledButton(
-              onPressed: () async {
-                result = await AifcChatSheet.show(
-                  context: context,
-                  question: '기본 그룹 이름을 알려주세요.',
-                  inputLabel: '그룹 이름',
-                  onSave: (value) async {
-                    attempts += 1;
-                    if (attempts == 1) {
-                      throw StateError('save_failed');
-                    }
-                    return '$value 저장 완료';
+          builder:
+              (context) => Scaffold(
+                body: FilledButton(
+                  onPressed: () async {
+                    result = await AifcChatSheet.show(
+                      context: context,
+                      question: '기본 그룹 이름을 알려주세요.',
+                      inputLabel: '그룹 이름',
+                      onSave: (value) async {
+                        attempts += 1;
+                        if (attempts == 1) {
+                          throw StateError('save_failed');
+                        }
+                        return '$value 저장 완료';
+                      },
+                    );
                   },
-                );
-              },
-              child: const Text('열기'),
-            ),
-          ),
+                  child: const Text('열기'),
+                ),
+              ),
         ),
       ),
     );
@@ -71,21 +72,22 @@ void main() {
       MaterialApp(
         theme: lightTheme(),
         home: Builder(
-          builder: (context) => Scaffold(
-            body: FilledButton(
-              onPressed: () async {
-                result = await AifcChatSheet.show(
-                  context: context,
-                  question: '회원권 기간을 알려주세요.',
-                  inputLabel: '예: 120일',
-                  onSave: (_) async => throw StateError('save_failed'),
-                  onSkip: () {},
-                  skipLabel: '나중에',
-                );
-              },
-              child: const Text('열기'),
-            ),
-          ),
+          builder:
+              (context) => Scaffold(
+                body: FilledButton(
+                  onPressed: () async {
+                    result = await AifcChatSheet.show(
+                      context: context,
+                      question: '회원권 기간을 알려주세요.',
+                      inputLabel: '예: 120일',
+                      onSave: (_) async => throw StateError('save_failed'),
+                      onSkip: () {},
+                      skipLabel: '나중에',
+                    );
+                  },
+                  child: const Text('열기'),
+                ),
+              ),
         ),
       ),
     );
@@ -124,27 +126,28 @@ void main() {
       MaterialApp(
         theme: lightTheme(),
         home: Builder(
-          builder: (context) => Scaffold(
-            body: FilledButton(
-              onPressed: () async {
-                final result = await AifcQuickRegisterChatSheet.show(
-                  context: context,
-                  nickname: '테스트 강사',
-                  onFastSave: (value) async {
-                    attempts += 1;
-                    if (attempts == 1) {
-                      throw StateError('unavailable');
+          builder:
+              (context) => Scaffold(
+                body: FilledButton(
+                  onPressed: () async {
+                    final result = await AifcQuickRegisterChatSheet.show(
+                      context: context,
+                      nickname: '테스트 강사',
+                      onFastSave: (value) async {
+                        attempts += 1;
+                        if (attempts == 1) {
+                          throw StateError('unavailable');
+                        }
+                        completedName = value.name;
+                      },
+                    );
+                    if (result?.goDetail == true) {
+                      completedName = 'unexpected-detail';
                     }
-                    completedName = value.name;
                   },
-                );
-                if (result?.goDetail == true) {
-                  completedName = 'unexpected-detail';
-                }
-              },
-              child: const Text('빠른등록 열기'),
-            ),
-          ),
+                  child: const Text('빠른등록 열기'),
+                ),
+              ),
         ),
       ),
     );
@@ -163,10 +166,14 @@ void main() {
     expect(attempts, 1);
     expect(find.byType(AifcQuickRegisterChatSheet), findsOneWidget);
     expect(find.textContaining('입력한 내용은 그대로 유지'), findsOneWidget);
-    expect(tester.widget<TextField>(fields.at(0)).controller!.text,
-        'DEV QUICK RETRY');
     expect(
-        tester.widget<TextField>(fields.at(1)).controller!.text, '01012345678');
+      tester.widget<TextField>(fields.at(0)).controller!.text,
+      'DEV QUICK RETRY',
+    );
+    expect(
+      tester.widget<TextField>(fields.at(1)).controller!.text,
+      '01012345678',
+    );
     expect(completedName, isNull);
 
     await tester.ensureVisible(find.text('빠른등록'));
@@ -188,25 +195,27 @@ void main() {
       MaterialApp(
         theme: lightTheme(),
         home: Builder(
-          builder: (context) => Scaffold(
-            body: FilledButton(
-              onPressed: () => AifcQuickRegisterChatSheet.show(
-                context: context,
-                nickname: '테스트 강사',
-                onFastSave: (_) async {
-                  throw FirebaseFunctionsException(
-                    code: 'failed-precondition',
-                    message: 'account_link_required',
-                  );
-                },
-                onAccountLink: () async {
-                  linkAttempts += 1;
-                  return true;
-                },
+          builder:
+              (context) => Scaffold(
+                body: FilledButton(
+                  onPressed:
+                      () => AifcQuickRegisterChatSheet.show(
+                        context: context,
+                        nickname: '테스트 강사',
+                        onFastSave: (_) async {
+                          throw FirebaseFunctionsException(
+                            code: 'failed-precondition',
+                            message: 'account_link_required',
+                          );
+                        },
+                        onAccountLink: () async {
+                          linkAttempts += 1;
+                          return true;
+                        },
+                      ),
+                  child: const Text('빠른등록 열기'),
+                ),
               ),
-              child: const Text('빠른등록 열기'),
-            ),
-          ),
         ),
       ),
     );

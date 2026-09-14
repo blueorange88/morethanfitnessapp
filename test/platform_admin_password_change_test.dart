@@ -158,8 +158,9 @@ void main() {
 
   for (final width in <double>[320, 360, 412]) {
     for (final scale in <double>[1, 1.3, 1.8]) {
-      testWidgets('비밀번호 화면 ${width.toInt()}dp / $scale 배율 overflow 없음',
-          (tester) async {
+      testWidgets('비밀번호 화면 ${width.toInt()}dp / $scale 배율 overflow 없음', (
+        tester,
+      ) async {
         tester.view.physicalSize = Size(width, 760);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
@@ -241,7 +242,9 @@ void main() {
     );
 
     expect(
-        find.byKey(const Key('platform_admin_workspace_page')), findsOneWidget);
+      find.byKey(const Key('platform_admin_workspace_page')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('open_personal_workspace')), findsOneWidget);
     expect(find.byKey(const Key('open_legacy_workspace')), findsNothing);
   });
@@ -268,7 +271,9 @@ void main() {
 
     expect(find.text('personal workspace'), findsOneWidget);
     expect(
-        find.byKey(const Key('platform_admin_workspace_page')), findsNothing);
+      find.byKey(const Key('platform_admin_workspace_page')),
+      findsNothing,
+    );
   });
 
   testWidgets('관리자 작업공간 선택 후 로그아웃하면 관리자 화면 잔상이 없다', (tester) async {
@@ -295,8 +300,8 @@ void main() {
             PlatformAccountClaims(platformAdmin: true),
           ),
           profileReader: const _FakePersonalProfileStartReader(),
-          personalWorkspaceBuilder: (account) =>
-              Text('personal ${account.uid}'),
+          personalWorkspaceBuilder:
+              (account) => Text('personal ${account.uid}'),
           linkedChild: const Text('legacy workspace'),
         ),
       ),
@@ -311,7 +316,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('personal ${user.uid}'), findsNothing);
     expect(
-        find.byKey(const Key('platform_admin_workspace_page')), findsNothing);
+      find.byKey(const Key('platform_admin_workspace_page')),
+      findsNothing,
+    );
     expect(find.text('personal signed-out-anonymous'), findsOneWidget);
   });
 
@@ -328,7 +335,9 @@ void main() {
     await tester.tap(find.byKey(const Key('open_legacy_workspace')));
     await tester.pump();
     expect(
-        find.byKey(const Key('legacy_admin_workspace_shell')), findsOneWidget);
+      find.byKey(const Key('legacy_admin_workspace_shell')),
+      findsOneWidget,
+    );
     expect(find.text('기존 개발 데이터'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('switch_to_personal_workspace')));
@@ -382,12 +391,8 @@ String _secret(int seed) =>
     List<String>.filled(10, String.fromCharCode(64 + seed)).join();
 
 Matcher _passwordFailure(AccountPasswordErrorCode code) => throwsA(
-      isA<AccountPasswordException>().having(
-        (error) => error.code,
-        'code',
-        code,
-      ),
-    );
+  isA<AccountPasswordException>().having((error) => error.code, 'code', code),
+);
 
 class _FakePasswordGateway implements AccountPasswordGateway {
   _FakePasswordGateway({
@@ -472,8 +477,7 @@ class _FakeAccountGateway
   Future<AppAccountUser> createUserWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> sendEmailVerification() => throw UnimplementedError();
@@ -486,8 +490,7 @@ class _FakeAccountGateway
   Future<AppAccountUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> signOut() async {
@@ -511,8 +514,7 @@ class _FakeAccountGateway
   Future<AppAccountUser> linkWithEmailCredential({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> forceRefreshIdToken() async {}
@@ -527,12 +529,12 @@ class _FakeAnonymousProfileGateway implements AnonymousProfileGateway {
 
   @override
   Future<Map<String, dynamic>> reconcilePersonalTier() async => const {
-        'tier': 'Beginner',
-        'amateurConditionCount': 0,
-        'amateurConditionTotal': 2,
-        'eligible': false,
-        'changed': false,
-      };
+    'tier': 'Beginner',
+    'amateurConditionCount': 0,
+    'amateurConditionTotal': 2,
+    'eligible': false,
+    'changed': false,
+  };
 }
 
 class _FakePersonalProfileStartReader implements PersonalProfileStartReader {

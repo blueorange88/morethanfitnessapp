@@ -186,17 +186,19 @@ class _PersonalTrainingLogTextVoicePageState
   }
 
   String _buildAutoSummaryFromMemo() {
-    final lines = _memoC.text
-        .split('\n')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final lines =
+        _memoC.text
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     if (lines.isEmpty) return '';
 
-    final cleaned = lines
-        .map((e) => e.startsWith('- ') ? e.substring(2).trim() : e)
-        .toList();
+    final cleaned =
+        lines
+            .map((e) => e.startsWith('- ') ? e.substring(2).trim() : e)
+            .toList();
 
     if (cleaned.length == 1) {
       return cleaned.first;
@@ -234,7 +236,8 @@ class _PersonalTrainingLogTextVoicePageState
     const sampleVoiceText =
         '오늘은 하체 근력 위주로 시작했는데 스쿼트 중 오른쪽 무릎 안쪽 통증을 이야기해서 깊이를 줄였고, 런지는 제외했습니다. 이후 체스트프레스와 로우로 상체 운동을 진행했고 마지막에 고관절 스트레칭을 했습니다.';
 
-    const sampleDraft = '하체 운동 중 무릎 통증 확인\n'
+    const sampleDraft =
+        '하체 운동 중 무릎 통증 확인\n'
         '- 스쿼트 깊이 조절\n'
         '- 런지 제외\n'
         '- 상체 운동으로 전환\n'
@@ -268,24 +271,18 @@ class _PersonalTrainingLogTextVoicePageState
 
   Widget _buildBlueHeader() {
     final sessionLabel = (widget.initialSessionLabel ?? '').trim();
-    final title = sessionLabel.isEmpty
-        ? '$_memberName 님 수업일지'
-        : '$_memberName 님 $sessionLabel 수업일지';
+    final title =
+        sessionLabel.isEmpty
+            ? '$_memberName 님 수업일지'
+            : '$_memberName 님 $sessionLabel 수업일지';
 
     final gradient = context.mtfHeaderGradient;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(
-        top: 14,
-        left: 16,
-        right: 16,
-        bottom: 18,
-      ),
+      padding: const EdgeInsets.only(top: 14, left: 16, right: 16, bottom: 18),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -306,11 +303,7 @@ class _PersonalTrainingLogTextVoicePageState
                 child: const SizedBox(
                   width: 42,
                   height: 42,
-                  child: Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 28,
-                  ),
+                  child: Icon(Icons.arrow_back, color: Colors.white, size: 28),
                 ),
               ),
               const SizedBox(width: 6),
@@ -334,9 +327,7 @@ class _PersonalTrainingLogTextVoicePageState
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.18),
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.18)),
                 ),
                 child: const Icon(
                   Icons.mic_none_rounded,
@@ -351,10 +342,7 @@ class _PersonalTrainingLogTextVoicePageState
     );
   }
 
-  Widget _section({
-    required String title,
-    required Widget child,
-  }) {
+  Widget _section({required String title, required Widget child}) {
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
     return Container(
@@ -450,33 +438,38 @@ class _PersonalTrainingLogTextVoicePageState
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: options.map((value) {
-        final selected = selectedValue == value;
-        return InkWell(
-          onTap: () => onChanged(value),
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFFEEF2FF) : Colors.white,
+      children:
+          options.map((value) {
+            final selected = selectedValue == value;
+            return InkWell(
+              onTap: () => onChanged(value),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFF4F46E5)
-                    : const Color(0xFFE5E7EB),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: selected ? const Color(0xFFEEF2FF) : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color:
+                        selected
+                            ? const Color(0xFF4F46E5)
+                            : const Color(0xFFE5E7EB),
+                  ),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? const Color(0xFF4338CA) : Colors.black87,
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-                color: selected ? const Color(0xFF4338CA) : Colors.black87,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
@@ -488,41 +481,47 @@ class _PersonalTrainingLogTextVoicePageState
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: options.map((value) {
-        final selected = selectedValues.contains(value);
-        return InkWell(
-          onTap: () => onToggle(value),
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFFEEF2FF) : Colors.white,
+      children:
+          options.map((value) {
+            final selected = selectedValues.contains(value);
+            return InkWell(
+              onTap: () => onToggle(value),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFF4F46E5)
-                    : const Color(0xFFE5E7EB),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: selected ? const Color(0xFFEEF2FF) : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color:
+                        selected
+                            ? const Color(0xFF4F46E5)
+                            : const Color(0xFFE5E7EB),
+                  ),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? const Color(0xFF4338CA) : Colors.black87,
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-                color: selected ? const Color(0xFF4338CA) : Colors.black87,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
   void _save() {
     final title = _titleC.text.trim();
-    final name = (widget.initialName ?? '').trim().isEmpty
-        ? '회원 미지정'
-        : (widget.initialName ?? '').trim();
+    final name =
+        (widget.initialName ?? '').trim().isEmpty
+            ? '회원 미지정'
+            : (widget.initialName ?? '').trim();
     final memo = _memoC.text.trim();
 
     if (title.isEmpty) {
@@ -610,9 +609,10 @@ class _PersonalTrainingLogTextVoicePageState
                             '음성은 편하게 길게 말해도 괜찮아요. 저장 시에는 핵심 내용만 짧게 정리하고, 원문은 따로 보관됩니다.',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                               height: 1.4,
                             ),
                           ),
@@ -621,8 +621,9 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '시작 전 체크',
                           expanded: _preExpanded,
-                          onToggle: () =>
-                              setState(() => _preExpanded = !_preExpanded),
+                          onToggle:
+                              () =>
+                                  setState(() => _preExpanded = !_preExpanded),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -637,8 +638,8 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['좋음', '보통', '나쁨'],
                                 selectedValue: _preCondition,
-                                onChanged: (v) =>
-                                    setState(() => _preCondition = v),
+                                onChanged:
+                                    (v) => setState(() => _preCondition = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -707,8 +708,8 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['안 함', '조금 함', '충분히 함'],
                                 selectedValue: _preStretching,
-                                onChanged: (v) =>
-                                    setState(() => _preStretching = v),
+                                onChanged:
+                                    (v) => setState(() => _preStretching = v),
                               ),
                             ],
                           ),
@@ -717,8 +718,10 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '수업 내용 작성',
                           expanded: _contentExpanded,
-                          onToggle: () => setState(
-                              () => _contentExpanded = !_contentExpanded),
+                          onToggle:
+                              () => setState(
+                                () => _contentExpanded = !_contentExpanded,
+                              ),
                           child: Column(
                             children: [
                               TextField(
@@ -791,8 +794,10 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '수업 중 체크',
                           expanded: _duringExpanded,
-                          onToggle: () => setState(
-                              () => _duringExpanded = !_duringExpanded),
+                          onToggle:
+                              () => setState(
+                                () => _duringExpanded = !_duringExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -810,7 +815,7 @@ class _PersonalTrainingLogTextVoicePageState
                                   '통증관리',
                                   '근력',
                                   '가동성',
-                                  '체형'
+                                  '체형',
                                 ],
                                 selectedValues: _duringGoals,
                                 onToggle: (v) {
@@ -888,8 +893,10 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '종료 후 체크',
                           expanded: _postExpanded,
-                          onToggle: () =>
-                              setState(() => _postExpanded = !_postExpanded),
+                          onToggle:
+                              () => setState(
+                                () => _postExpanded = !_postExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -904,8 +911,8 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['없음', '감소', '유지', '증가'],
                                 selectedValue: _postPainChange,
-                                onChanged: (v) =>
-                                    setState(() => _postPainChange = v),
+                                onChanged:
+                                    (v) => setState(() => _postPainChange = v),
                               ),
                               if (_postPainChange == '감소' ||
                                   _postPainChange == '유지' ||
@@ -934,8 +941,8 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['낮음', '보통', '좋음'],
                                 selectedValue: _postPerformance,
-                                onChanged: (v) =>
-                                    setState(() => _postPerformance = v),
+                                onChanged:
+                                    (v) => setState(() => _postPerformance = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -949,8 +956,8 @@ class _PersonalTrainingLogTextVoicePageState
                               _singleSelect(
                                 options: const ['유지', '진도업', '통증재체크', '숙제확인'],
                                 selectedValue: _postNextAction,
-                                onChanged: (v) =>
-                                    setState(() => _postNextAction = v),
+                                onChanged:
+                                    (v) => setState(() => _postNextAction = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -967,11 +974,11 @@ class _PersonalTrainingLogTextVoicePageState
                                   '스트레칭',
                                   '복습운동',
                                   '걷기',
-                                  '영상확인'
+                                  '영상확인',
                                 ],
                                 selectedValue: _postHomework,
-                                onChanged: (v) =>
-                                    setState(() => _postHomework = v),
+                                onChanged:
+                                    (v) => setState(() => _postHomework = v),
                               ),
                             ],
                           ),
@@ -980,9 +987,10 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '내부 메모',
                           expanded: _internalExpanded,
-                          onToggle: () => setState(
-                            () => _internalExpanded = !_internalExpanded,
-                          ),
+                          onToggle:
+                              () => setState(
+                                () => _internalExpanded = !_internalExpanded,
+                              ),
                           child: TextField(
                             controller: _internalMemoC,
                             maxLines: 4,
@@ -998,8 +1006,10 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '회원 공개 메모',
                           expanded: _publicExpanded,
-                          onToggle: () => setState(
-                              () => _publicExpanded = !_publicExpanded),
+                          onToggle:
+                              () => setState(
+                                () => _publicExpanded = !_publicExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1020,8 +1030,10 @@ class _PersonalTrainingLogTextVoicePageState
                                         _applyAutoSummary(force: true);
                                       });
                                     },
-                                    icon: const Icon(Icons.auto_awesome,
-                                        size: 16),
+                                    icon: const Icon(
+                                      Icons.auto_awesome,
+                                      size: 16,
+                                    ),
                                     label: const Text('자동 요약'),
                                   ),
                                 ],
@@ -1044,9 +1056,10 @@ class _PersonalTrainingLogTextVoicePageState
                         _buildCollapsibleSection(
                           title: '수업 체크사항',
                           expanded: _lessonEtcExpanded,
-                          onToggle: () => setState(
-                            () => _lessonEtcExpanded = !_lessonEtcExpanded,
-                          ),
+                          onToggle:
+                              () => setState(
+                                () => _lessonEtcExpanded = !_lessonEtcExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1061,50 +1074,57 @@ class _PersonalTrainingLogTextVoicePageState
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
-                                children: _issueChipOptions.map((chip) {
-                                  final selected =
-                                      _selectedIssueChips.contains(chip);
-                                  return InkWell(
-                                    onTap: () {
-                                      setState(() {
-                                        if (selected) {
-                                          _selectedIssueChips.remove(chip);
-                                        } else {
-                                          _selectedIssueChips.add(chip);
-                                        }
-                                      });
-                                    },
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: selected
-                                            ? const Color(0xFFEEF2FF)
-                                            : Colors.white,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: selected
-                                              ? const Color(0xFF4F46E5)
-                                              : const Color(0xFFE5E7EB),
+                                children:
+                                    _issueChipOptions.map((chip) {
+                                      final selected = _selectedIssueChips
+                                          .contains(chip);
+                                      return InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            if (selected) {
+                                              _selectedIssueChips.remove(chip);
+                                            } else {
+                                              _selectedIssueChips.add(chip);
+                                            }
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(
+                                          999,
                                         ),
-                                      ),
-                                      child: Text(
-                                        chip,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: selected
-                                              ? const Color(0xFF4338CA)
-                                              : Colors.black87,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                selected
+                                                    ? const Color(0xFFEEF2FF)
+                                                    : Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  selected
+                                                      ? const Color(0xFF4F46E5)
+                                                      : const Color(0xFFE5E7EB),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            chip,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w800,
+                                              color:
+                                                  selected
+                                                      ? const Color(0xFF4338CA)
+                                                      : Colors.black87,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                                      );
+                                    }).toList(),
                               ),
                               const SizedBox(height: 16),
                               const Text(
@@ -1120,41 +1140,49 @@ class _PersonalTrainingLogTextVoicePageState
                                 runSpacing: 8,
                                 children:
                                     ['없음', '완료', '일부', '미수행'].map((value) {
-                                  final selected = _homeworkStatus == value;
-                                  return InkWell(
-                                    onTap: () =>
-                                        setState(() => _homeworkStatus = value),
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: selected
-                                            ? const Color(0xFFEEF2FF)
-                                            : Colors.white,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: selected
-                                              ? const Color(0xFF4F46E5)
-                                              : const Color(0xFFE5E7EB),
+                                      final selected = _homeworkStatus == value;
+                                      return InkWell(
+                                        onTap:
+                                            () => setState(
+                                              () => _homeworkStatus = value,
+                                            ),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
                                         ),
-                                      ),
-                                      child: Text(
-                                        value,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: selected
-                                              ? const Color(0xFF4338CA)
-                                              : Colors.black87,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                selected
+                                                    ? const Color(0xFFEEF2FF)
+                                                    : Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  selected
+                                                      ? const Color(0xFF4F46E5)
+                                                      : const Color(0xFFE5E7EB),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            value,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w800,
+                                              color:
+                                                  selected
+                                                      ? const Color(0xFF4338CA)
+                                                      : Colors.black87,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                                      );
+                                    }).toList(),
                               ),
                               const SizedBox(height: 16),
                               TextField(
@@ -1178,9 +1206,7 @@ class _PersonalTrainingLogTextVoicePageState
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
+                      border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
                     ),
                     child: SafeArea(
                       top: false,

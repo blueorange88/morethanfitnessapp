@@ -87,9 +87,10 @@ void main() {
     final home = File('lib/pages/home_page.dart').readAsStringSync();
     final log =
         File('lib/pages/personal_training_log_page.dart').readAsStringSync();
-    final quickSign = File(
-      'lib/pages/personal_training_log_quick_sign_page.dart',
-    ).readAsStringSync();
+    final quickSign =
+        File(
+          'lib/pages/personal_training_log_quick_sign_page.dart',
+        ).readAsStringSync();
 
     expect(card, contains("entryPoint: 'client_card_training_log'"));
     expect(list, contains("entryPoint: 'client_list_training_log'"));
@@ -106,23 +107,26 @@ void main() {
   });
 
   test('동의 guard는 callable 뒤 server readback을 다시 확인한다', () {
-    final source = File(
-      'lib/widgets/personal_training_log_entry_guard.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/widgets/personal_training_log_entry_guard.dart',
+        ).readAsStringSync();
 
-    expect(source, contains('PersonalMemberConsentService(uid: owner).update'));
+    expect(source, contains('PersonalMemberConsentService('));
+    expect(source, contains('uid: owner,'));
+    expect(source, contains(').update(memberId: member, agreed: true)'));
     expect(
-      RegExp(r'final readback = await memberRef\.get\([\s\S]*?Source\.server')
-          .hasMatch(source),
+      RegExp(
+        r'final readback = await memberRef\.get\([\s\S]*?Source\.server',
+      ).hasMatch(source),
       isTrue,
     );
     expect(source, contains("identifiersLogged=false"));
   });
 
   test('Personal 레슨일지 초기 로더는 owner 범위 query만 사용한다', () {
-    final source = File(
-      'lib/pages/personal_training_log_page.dart',
-    ).readAsStringSync();
+    final source =
+        File('lib/pages/personal_training_log_page.dart').readAsStringSync();
 
     expect(
       RegExp(
@@ -153,9 +157,8 @@ void main() {
   });
 
   test('Personal 초기 진입은 legacy member 하위 collection을 시작하지 않는다', () {
-    final source = File(
-      'lib/pages/personal_training_log_page.dart',
-    ).readAsStringSync();
+    final source =
+        File('lib/pages/personal_training_log_page.dart').readAsStringSync();
 
     expect(
       RegExp(
@@ -165,10 +168,7 @@ void main() {
       ).hasMatch(source),
       isTrue,
     );
-    for (final method in <String>[
-      '_goalDdaysRef',
-      '_careMilestonesRef',
-    ]) {
+    for (final method in <String>['_goalDdaysRef', '_careMilestonesRef']) {
       expect(
         RegExp(
           'CollectionReference<Map<String, dynamic>>\\? $method\\(\\) '
@@ -187,9 +187,8 @@ void main() {
   });
 
   test('Personal 일정 fallback query는 owner workspace member를 모두 제한한다', () {
-    final source = File(
-      'lib/pages/personal_training_log_page.dart',
-    ).readAsStringSync();
+    final source =
+        File('lib/pages/personal_training_log_page.dart').readAsStringSync();
 
     expect(
       RegExp(
@@ -204,17 +203,13 @@ void main() {
   });
 
   test('레슨일지 read 실패 로그는 오류 코드만 기록한다', () {
-    final source = File(
-      'lib/pages/personal_training_log_page.dart',
-    ).readAsStringSync();
+    final source =
+        File('lib/pages/personal_training_log_page.dart').readAsStringSync();
 
     expect(source, contains('[MTF_TRAINING_LOG_READ]'));
     expect(source, contains('errorCode=\$errorCode'));
     expect(source, contains('identifiersLogged=false'));
-    expect(
-      source,
-      isNot(contains('[MTF_TRAINING_LOG_READ] memberId=')),
-    );
+    expect(source, isNot(contains('[MTF_TRAINING_LOG_READ] memberId=')));
   });
 
   test('동의 완료 후 고객카드 완료 표시만 유지하고 초기화는 숨긴다', () {
@@ -228,7 +223,9 @@ void main() {
       isTrue,
     );
     expect(
-        source, contains("if (_trainingLogConsentAgreed) return '개인정보동의 완료';"));
+      source,
+      contains("if (_trainingLogConsentAgreed) return '개인정보동의 완료';"),
+    );
     expect(source, isNot(contains('_resetTrainingLogConsent')));
     expect(source, isNot(contains('동의 초기화')));
   });

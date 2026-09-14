@@ -26,10 +26,7 @@ class HomeTimeDialogHeader extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            tokens.drawerHeaderBackground,
-            AppColors.deepNavy,
-          ],
+          colors: [tokens.drawerHeaderBackground, AppColors.deepNavy],
           stops: const [0.0, 1.0],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -47,10 +44,7 @@ class HomeTimeDialogHeader extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x2BFFFFFF),
-                    Colors.transparent,
-                  ],
+                  colors: [Color(0x2BFFFFFF), Colors.transparent],
                 ),
               ),
             ),
@@ -59,10 +53,7 @@ class HomeTimeDialogHeader extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: Divider(
-              height: 1,
-              color: Color(0x2EFFFFFF),
-            ),
+            child: Divider(height: 1, color: Color(0x2EFFFFFF)),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 12, 12),
@@ -239,9 +230,10 @@ class HomeDialWheel extends StatelessWidget {
                             fontSize: fontSize,
                             fontWeight: fontWeight,
                             letterSpacing: isSelected ? 0.7 : 0,
-                            color: isSelected
-                                ? tokens.gradeSheetAccent
-                                : theme.colorScheme.onSurfaceVariant,
+                            color:
+                                isSelected
+                                    ? tokens.gradeSheetAccent
+                                    : theme.colorScheme.onSurfaceVariant,
                           ),
                           child: Text(labelBuilder(index)),
                         ),
@@ -340,10 +332,7 @@ class HomeMaxNumberInputFormatter extends TextInputFormatter {
   final int max;
   final int maxLength;
 
-  const HomeMaxNumberInputFormatter({
-    required this.max,
-    this.maxLength = 2,
-  });
+  const HomeMaxNumberInputFormatter({required this.max, this.maxLength = 2});
 
   @override
   TextEditingValue formatEditUpdate(

@@ -7,11 +7,7 @@ import '../services/app_tier_access_service.dart';
 import '../services/personal_member_consent_service.dart';
 import 'aifc_tier_feature_gate_sheet.dart';
 
-enum PersonalTrainingLogMemberAccess {
-  allowed,
-  consentRequired,
-  denied,
-}
+enum PersonalTrainingLogMemberAccess { allowed, consentRequired, denied }
 
 @visibleForTesting
 PersonalTrainingLogMemberAccess resolvePersonalTrainingLogMemberAccess({
@@ -32,10 +28,12 @@ PersonalTrainingLogMemberAccess resolvePersonalTrainingLogMemberAccess({
     return PersonalTrainingLogMemberAccess.denied;
   }
 
-  final lessonSync = data['lessonSync'] is Map
-      ? Map<String, dynamic>.from(data['lessonSync'] as Map)
-      : const <String, dynamic>{};
-  final hasSignedContract = data['contractSigned'] == true ||
+  final lessonSync =
+      data['lessonSync'] is Map
+          ? Map<String, dynamic>.from(data['lessonSync'] as Map)
+          : const <String, dynamic>{};
+  final hasSignedContract =
+      data['contractSigned'] == true ||
       data['contractSignedAt'] != null ||
       (lessonSync['contractId'] ?? '').toString().trim().isNotEmpty;
   if (hasSignedContract || data['trainingLogConsentAgreed'] == true) {
@@ -102,19 +100,21 @@ class PersonalTrainingLogEntryGuard {
       if (!navigator.mounted) return false;
       final agreed = await navigator.push<bool>(
         MaterialPageRoute(
-          builder: (_) => TrainingLogConsentPage(
-            onAgree: () => PersonalMemberConsentService(uid: owner).update(
-              memberId: member,
-              agreed: true,
-            ),
-          ),
+          builder:
+              (_) => TrainingLogConsentPage(
+                onAgree:
+                    () => PersonalMemberConsentService(
+                      uid: owner,
+                    ).update(memberId: member, agreed: true),
+              ),
         ),
       );
       if (agreed != true || !navigator.mounted) {
         _log(
-            entryPoint: entryPoint,
-            result: 'deny',
-            reason: 'consent_cancelled');
+          entryPoint: entryPoint,
+          result: 'deny',
+          reason: 'consent_cancelled',
+        );
         return false;
       }
 
@@ -136,9 +136,10 @@ class PersonalTrainingLogEntryGuard {
       if (!allowed) _showFailure(messenger);
       return allowed;
     } catch (error) {
-      final code = error is FirebaseException
-          ? error.code
-          : error.runtimeType.toString();
+      final code =
+          error is FirebaseException
+              ? error.code
+              : error.runtimeType.toString();
       _log(entryPoint: entryPoint, result: 'error', reason: code);
       _showFailure(messenger);
       return false;
@@ -148,9 +149,7 @@ class PersonalTrainingLogEntryGuard {
   static void _showFailure(ScaffoldMessengerState? messenger) {
     if (messenger == null || !messenger.mounted) return;
     messenger.showSnackBar(
-      const SnackBar(
-        content: Text('회원의 레슨일지 사용 상태를 확인하지 못했어요. 다시 시도해주세요.'),
-      ),
+      const SnackBar(content: Text('회원의 레슨일지 사용 상태를 확인하지 못했어요. 다시 시도해주세요.')),
     );
   }
 

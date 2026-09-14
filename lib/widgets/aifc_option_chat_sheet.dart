@@ -58,16 +58,17 @@ class AifcOptionChatSheet<T> extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcOptionChatSheet<T>(
-        title: title,
-        message: message,
-        items: items,
-        selectedValue: selectedValue,
-        nickname: nickname,
-        closeText: closeText,
-        pickedReplyText: pickedReplyText,
-        guidanceText: guidanceText,
-      ),
+      builder:
+          (_) => AifcOptionChatSheet<T>(
+            title: title,
+            message: message,
+            items: items,
+            selectedValue: selectedValue,
+            nickname: nickname,
+            closeText: closeText,
+            pickedReplyText: pickedReplyText,
+            guidanceText: guidanceText,
+          ),
     );
   }
 
@@ -120,7 +121,8 @@ class _AifcOptionChatSheetState<T> extends State<AifcOptionChatSheet<T>>
 
     await aifcUserThenFc(
       userText: '${item.title} 선택합니다',
-      fcText: widget.pickedReplyText?.call(item) ??
+      fcText:
+          widget.pickedReplyText?.call(item) ??
           '확인되었습니다. ${item.title} 항목으로 적용합니다.',
       groupKey: _groupPicked,
     );
@@ -154,7 +156,8 @@ class _AifcOptionChatSheetState<T> extends State<AifcOptionChatSheet<T>>
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -302,10 +305,7 @@ class _OptionListCard<T> extends StatelessWidget {
             onTap: () => onPick(items[i]),
           ),
           if (i != items.length - 1)
-            Container(
-              height: 0.5,
-              color: AifcColors.cardBorder,
-            ),
+            Container(height: 0.5, color: AifcColors.cardBorder),
         ],
       ],
     );
@@ -338,14 +338,16 @@ class _OptionTile<T> extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: selected
-                    ? AifcColors.primary.withValues(alpha: 0.10)
-                    : AifcColors.cardSoftBg,
+                color:
+                    selected
+                        ? AifcColors.primary.withValues(alpha: 0.10)
+                        : AifcColors.cardSoftBg,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: selected
-                      ? AifcColors.primary.withValues(alpha: 0.22)
-                      : AifcColors.cardBorder,
+                  color:
+                      selected
+                          ? AifcColors.primary.withValues(alpha: 0.22)
+                          : AifcColors.cardBorder,
                   width: 0.7,
                 ),
               ),

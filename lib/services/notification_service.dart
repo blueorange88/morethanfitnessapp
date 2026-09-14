@@ -99,8 +99,9 @@ class NotificationService {
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation(_timeZoneName));
 
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
 
     const iosSettings = DarwinInitializationSettings();
 
@@ -117,8 +118,11 @@ class NotificationService {
   }
 
   Future<void> _createAndroidChannels() async {
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
 
     if (android == null) return;
 
@@ -159,20 +163,23 @@ class NotificationService {
   Future<bool> requestPermission() async {
     await initialize();
 
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
 
     final androidGranted =
         await android?.requestNotificationsPermission() ?? true;
 
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final ios =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >();
 
-    final iosGranted = await ios?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        ) ??
+    final iosGranted =
+        await ios?.requestPermissions(alert: true, badge: true, sound: true) ??
         true;
 
     return androidGranted && iosGranted;
@@ -226,9 +233,12 @@ class NotificationService {
     final smartEnabled = await LessonNotificationPrefs.loadSmartAlarmEnabled();
 
     final ownerUid = (personalOwnerUid ?? '').trim();
-    final tierAccess = ownerUid.isEmpty
-        ? await AppTierAccessService.loadTrainerAccess()
-        : await AppTierAccessService.loadPersonalTrainerAccess(uid: ownerUid);
+    final tierAccess =
+        ownerUid.isEmpty
+            ? await AppTierAccessService.loadTrainerAccess()
+            : await AppTierAccessService.loadPersonalTrainerAccess(
+              uid: ownerUid,
+            );
 
     final smartTierRank = tierAccess.tierRank;
     final canUseSmartAlarm = tierAccess.canUseSmartAlarm;
@@ -268,18 +278,17 @@ class NotificationService {
 
     final now = DateTime.now();
 
-    final sortedItems = items.where((item) {
-      // 미래 레슨은 당연히 포함.
-      if (item.startAt.isAfter(now)) return true;
+    final sortedItems =
+        items.where((item) {
+            // 미래 레슨은 당연히 포함.
+            if (item.startAt.isAfter(now)) return true;
 
-      // 방금 끝났거나 현재 진행 중인 레슨도 포함.
-      // 그래야 첫 미래 레슨이 연속 레슨인지 판단할 수 있어요.
-      final safeEndAt = _safeEndAt(item);
-      return safeEndAt.isAfter(
-        now.subtract(const Duration(hours: 6)),
-      );
-    }).toList()
-      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+            // 방금 끝났거나 현재 진행 중인 레슨도 포함.
+            // 그래야 첫 미래 레슨이 연속 레슨인지 판단할 수 있어요.
+            final safeEndAt = _safeEndAt(item);
+            return safeEndAt.isAfter(now.subtract(const Duration(hours: 6)));
+          }).toList()
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
 
     final futureItems =
         sortedItems.where((item) => item.startAt.isAfter(now)).toList();
@@ -295,24 +304,23 @@ class NotificationService {
       return;
     }
 
-    final targetItems = effectiveSmartEnabled
-        ? _filterSmartAlarmTargets(
-            sortedItems,
-            now: now,
-            gapMinutes: smartGapMinutes,
-            priorityMemoEnabled: priorityMemoEnabled,
-            firstLessonEnabled: firstLessonEnabled,
-            canUseSemiProSmartAlarm: canUseSemiProSmartAlarm,
-          )
-        : futureItems;
+    final targetItems =
+        effectiveSmartEnabled
+            ? _filterSmartAlarmTargets(
+              sortedItems,
+              now: now,
+              gapMinutes: smartGapMinutes,
+              priorityMemoEnabled: priorityMemoEnabled,
+              firstLessonEnabled: firstLessonEnabled,
+              canUseSemiProSmartAlarm: canUseSemiProSmartAlarm,
+            )
+            : futureItems;
 
     int scheduledCount = 0;
 
     for (final item in targetItems) {
       for (final minute in reminderMinutes) {
-        final scheduledAt = item.startAt.subtract(
-          Duration(minutes: minute),
-        );
+        final scheduledAt = item.startAt.subtract(Duration(minutes: minute));
 
         if (!scheduledAt.isAfter(now)) {
           continue;
@@ -362,12 +370,7 @@ class NotificationService {
   }) {
     if (!kDebugMode) return;
     debugPrint(
-      '[MTF_SMART_ALARM] ${buildSmartAlarmDecisionDebugMessage(
-        item: item,
-        decision: decision,
-        reason: reason,
-        gapMinutes: gapMinutes,
-      )}',
+      '[MTF_SMART_ALARM] ${buildSmartAlarmDecisionDebugMessage(item: item, decision: decision, reason: reason, gapMinutes: gapMinutes)}',
     );
   }
 
@@ -389,16 +392,10 @@ class NotificationService {
     final result = <ScheduleItem>[];
 
     for (final current in futureItems) {
-      final previous = _previousLessonBefore(
-        sortedItems,
-        current,
-      );
+      final previous = _previousLessonBefore(sortedItems, current);
 
-      final canUseAdvancedMoreCare = canUseSemiProSmartAlarm &&
-          _canUseAdvancedMoreCare(
-            current,
-            now: now,
-          );
+      final canUseAdvancedMoreCare =
+          canUseSemiProSmartAlarm && _canUseAdvancedMoreCare(current, now: now);
 
       if (previous == null) {
         result.add(current);
@@ -525,10 +522,7 @@ class NotificationService {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  bool _canUseAdvancedMoreCare(
-    ScheduleItem item, {
-    DateTime? now,
-  }) {
+  bool _canUseAdvancedMoreCare(ScheduleItem item, {DateTime? now}) {
     final status = (item.moreCareStatus ?? '').trim().toLowerCase();
     final currentTime = now ?? DateTime.now();
 
@@ -642,15 +636,9 @@ class NotificationService {
   }
 
   bool _hasContractBasedSmartHint(ScheduleItem item) {
-    final contractId = _readStringField(item, [
-      'contractId',
-      'lastContractId',
-    ]);
+    final contractId = _readStringField(item, ['contractId', 'lastContractId']);
 
-    final contractNo = _readStringField(item, [
-      'contractNo',
-      'lastContractNo',
-    ]);
+    final contractNo = _readStringField(item, ['contractNo', 'lastContractNo']);
 
     final contractSigned = _readBoolField(item, [
       'contractSigned',
@@ -665,7 +653,8 @@ class NotificationService {
 
     final memo = (item.memo ?? '').trim().toLowerCase();
 
-    final hasContractMarker = contractId.isNotEmpty ||
+    final hasContractMarker =
+        contractId.isNotEmpty ||
         contractNo.isNotEmpty ||
         contractSigned ||
         lessonSyncSource.contains('contract');
@@ -754,23 +743,25 @@ class NotificationService {
       'lastLessonLogContext',
     ]);
 
-    final contextHint = (context['nextLessonReminderHint'] ??
-            context['lessonLogReminderHint'] ??
-            context['smartAlarmHint'] ??
-            '')
-        .toString()
-        .trim();
+    final contextHint =
+        (context['nextLessonReminderHint'] ??
+                context['lessonLogReminderHint'] ??
+                context['smartAlarmHint'] ??
+                '')
+            .toString()
+            .trim();
 
     if (contextHint.isNotEmpty) {
       return contextHint;
     }
 
-    final summary = (context['lastLessonLogSummary'] ??
-            context['summary'] ??
-            context['memoSummary'] ??
-            '')
-        .toString()
-        .trim();
+    final summary =
+        (context['lastLessonLogSummary'] ??
+                context['summary'] ??
+                context['memoSummary'] ??
+                '')
+            .toString()
+            .trim();
 
     if (_summaryLooksImportant(summary)) {
       return summary;
@@ -811,10 +802,7 @@ class NotificationService {
     return keywords.any((keyword) => text.contains(keyword.toLowerCase()));
   }
 
-  String _readStringField(
-    ScheduleItem item,
-    List<String> fieldNames,
-  ) {
+  String _readStringField(ScheduleItem item, List<String> fieldNames) {
     final dynamic dynamicItem = item;
 
     for (final fieldName in fieldNames) {
@@ -839,10 +827,7 @@ class NotificationService {
     return '';
   }
 
-  bool _readBoolField(
-    ScheduleItem item,
-    List<String> fieldNames,
-  ) {
+  bool _readBoolField(ScheduleItem item, List<String> fieldNames) {
     final dynamic dynamicItem = item;
 
     for (final fieldName in fieldNames) {
@@ -867,10 +852,7 @@ class NotificationService {
     return false;
   }
 
-  int? _readIntField(
-    ScheduleItem item,
-    List<String> fieldNames,
-  ) {
+  int? _readIntField(ScheduleItem item, List<String> fieldNames) {
     final dynamic dynamicItem = item;
 
     for (final fieldName in fieldNames) {
@@ -970,7 +952,8 @@ class NotificationService {
       'lastLessonLogContext',
     ]);
 
-    final rawKeywords = context['lastLessonLogKeywords'] ??
+    final rawKeywords =
+        context['lastLessonLogKeywords'] ??
         context['keywords'] ??
         context['smartAlarmKeywords'];
 
@@ -1005,13 +988,8 @@ class NotificationService {
     );
 
     final details = NotificationDetails(
-      android: _androidDetails(
-        alertStyle: alertStyle,
-        deviceMode: deviceMode,
-      ),
-      iOS: _iosDetails(
-        alertStyle: alertStyle,
-      ),
+      android: _androidDetails(alertStyle: alertStyle, deviceMode: deviceMode),
+      iOS: _iosDetails(alertStyle: alertStyle),
     );
 
     final tzAt = tz.TZDateTime.from(scheduledAt, tz.local);
@@ -1041,13 +1019,15 @@ class NotificationService {
     required LessonNotificationAlertStyle alertStyle,
     required LessonNotificationDeviceMode deviceMode,
   }) {
-    final importance = deviceMode == LessonNotificationDeviceMode.appPreferred
-        ? Importance.high
-        : Importance.defaultImportance;
+    final importance =
+        deviceMode == LessonNotificationDeviceMode.appPreferred
+            ? Importance.high
+            : Importance.defaultImportance;
 
-    final priority = deviceMode == LessonNotificationDeviceMode.appPreferred
-        ? Priority.high
-        : Priority.defaultPriority;
+    final priority =
+        deviceMode == LessonNotificationDeviceMode.appPreferred
+            ? Priority.high
+            : Priority.defaultPriority;
 
     switch (alertStyle) {
       case LessonNotificationAlertStyle.silent:
@@ -1125,10 +1105,7 @@ class NotificationService {
     return 'MORE 레슨 알림 · $minuteBefore분 전';
   }
 
-  String _compactNotificationText(
-    String value, {
-    int maxLength = 44,
-  }) {
+  String _compactNotificationText(String value, {int maxLength = 44}) {
     final text = value.replaceAll(RegExp(r'\s+'), ' ').trim();
 
     if (text.length <= maxLength) return text;
@@ -1161,15 +1138,11 @@ class NotificationService {
     // 스케줄표 메모는 등급과 상관없이 표시.
     // 단, 이것만으로 스마트 알림 우선 대상이 되지는 않습니다.
     if (scheduleMemo.isNotEmpty) {
-      details.add(
-        '스케줄 메모: ${_compactNotificationText(scheduleMemo)}',
-      );
+      details.add('스케줄 메모: ${_compactNotificationText(scheduleMemo)}');
     }
 
     if (lessonLogHint.isNotEmpty) {
-      details.add(
-        '레슨일지 메모: ${_compactNotificationText(lessonLogHint)}',
-      );
+      details.add('레슨일지 메모: ${_compactNotificationText(lessonLogHint)}');
     }
 
     if (details.isNotEmpty) {

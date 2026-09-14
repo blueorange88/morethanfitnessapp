@@ -6,10 +6,7 @@ import 'app_environment.dart';
 
 const String myPageDraftFeatureKey = 'my_page_profile_draft_v1';
 
-String myPageDraftPreferenceKey({
-  required String uid,
-  String? projectId,
-}) {
+String myPageDraftPreferenceKey({required String uid, String? projectId}) {
   return AppEnvironmentConfig.personalPreferenceKey(
     uid: uid,
     featureKey: myPageDraftFeatureKey,
@@ -19,14 +16,15 @@ String myPageDraftPreferenceKey({
 
 Map<String, dynamic> normalizeMyPageDraft(Map<String, dynamic> values) {
   String text(String key) => (values[key] ?? '').toString().trim();
-  final activityRegions = values['activityRegions'] is Iterable
-      ? (values['activityRegions'] as Iterable)
-          .map((value) => value.toString().trim())
-          .where((value) => value.isNotEmpty)
-          .toSet()
-          .take(3)
-          .toList()
-      : <String>[];
+  final activityRegions =
+      values['activityRegions'] is Iterable
+          ? (values['activityRegions'] as Iterable)
+              .map((value) => value.toString().trim())
+              .where((value) => value.isNotEmpty)
+              .toSet()
+              .take(3)
+              .toList()
+          : <String>[];
 
   return <String, dynamic>{
     'realName': text('realName'),

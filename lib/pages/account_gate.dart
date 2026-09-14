@@ -28,11 +28,10 @@ import '../services/app_environment.dart';
 Widget buildCanonicalPersonalHome(
   String ownerUid, {
   Map<String, dynamic>? initialPersonalProfileData,
-}) =>
-    HomePage(
-      personalOwnerUid: ownerUid,
-      initialPersonalProfileData: initialPersonalProfileData,
-    );
+}) => HomePage(
+  personalOwnerUid: ownerUid,
+  initialPersonalProfileData: initialPersonalProfileData,
+);
 
 class AppAccountGate extends StatefulWidget {
   const AppAccountGate({
@@ -187,7 +186,8 @@ class _AppAccountGateState extends State<AppAccountGate> {
           personalWorkspaceBuilder: widget.personalWorkspaceBuilder,
           claimsGateway: widget.claimsGateway ?? FirebaseAccountClaimsGateway(),
           profileReader: _profileReader,
-          nicknameGateway: widget.nicknameGateway ??
+          nicknameGateway:
+              widget.nicknameGateway ??
               FirebasePersonalNicknameOnboardingGateway(),
         );
       },
@@ -213,26 +213,18 @@ class _AppAccountGateState extends State<AppAccountGate> {
             ),
       );
     } on PersonalStartException catch (error) {
-      return _PersonalStartError(
-        error: error,
-        onRetry: _retryPersonalStart,
-      );
+      return _PersonalStartError(error: error, onRetry: _retryPersonalStart);
     }
     if (kDebugMode) {
       debugPrint('[MTF_APP_START] destination=canonicalHome');
-      debugPrint(
-        '[MTF_APP_START] canonicalHome=home_page.dart',
-      );
+      debugPrint('[MTF_APP_START] canonicalHome=home_page.dart');
       debugPrint('[MTF_APP_START] workspaceType=personal');
     }
     return Stack(
       key: ValueKey('personal_workspace_${user.uid}'),
       fit: StackFit.expand,
       children: [
-        AppWorkspaceScope(
-          mode: AppWorkspaceMode.personal,
-          child: workspace,
-        ),
+        AppWorkspaceScope(mode: AppWorkspaceMode.personal, child: workspace),
         if (AppEnvironmentConfig.canOpenDebugLegacyWorkspace)
           Positioned(
             top: 6,
@@ -241,8 +233,8 @@ class _AppAccountGateState extends State<AppAccountGate> {
               child: IconButton.filledTonal(
                 key: const Key('open_debug_legacy_workspace'),
                 tooltip: '기존 개발 데이터 열기',
-                onPressed: () =>
-                    setState(() => _debugLegacyWorkspaceOpen = true),
+                onPressed:
+                    () => setState(() => _debugLegacyWorkspaceOpen = true),
                 icon: const Icon(Icons.developer_mode_rounded),
               ),
             ),
@@ -269,23 +261,24 @@ class _AppAccountGateState extends State<AppAccountGate> {
               .saveNickname(uid: user.uid, nickname: nickname);
           confirmedNickname = nickname.trim();
         },
-        onCompleted: () => setState(() {
-          if (confirmedNickname.isEmpty) return;
-          _personalStart = Future.value(
-            _PersonalStartResult(
-              user: user,
-              profile: PersonalProfileStartResult(
-                nickname: confirmedNickname,
-                onboardingCompleted: true,
-                profileData: <String, dynamic>{
-                  ...profile.profileData,
-                  'nickname': confirmedNickname,
-                  'onboardingCompleted': true,
-                },
-              ),
-            ),
-          );
-        }),
+        onCompleted:
+            () => setState(() {
+              if (confirmedNickname.isEmpty) return;
+              _personalStart = Future.value(
+                _PersonalStartResult(
+                  user: user,
+                  profile: PersonalProfileStartResult(
+                    nickname: confirmedNickname,
+                    onboardingCompleted: true,
+                    profileData: <String, dynamic>{
+                      ...profile.profileData,
+                      'nickname': confirmedNickname,
+                      'onboardingCompleted': true,
+                    },
+                  ),
+                ),
+              );
+            }),
       );
     }
     return _buildPersonalWorkspace(accountService, user, profile);
@@ -319,20 +312,7 @@ class _PersonalStartProgressState extends State<_PersonalStartProgress> {
     '신발 끈만 묶고 바로 갈게요.',
     '마지막으로 한 번만 확인하고 갈게요.',
   ];
-  static const _weightedIndexes = <int>[
-    0,
-    0,
-    1,
-    1,
-    2,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-  ];
+  static const _weightedIndexes = <int>[0, 0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8];
   static int? _lastMessageIndex;
 
   Timer? _messageTimer;
@@ -431,11 +411,11 @@ class _PersonalStartProgressState extends State<_PersonalStartProgress> {
                               duration: const Duration(milliseconds: 320),
                               switchInCurve: Curves.easeInOut,
                               switchOutCurve: Curves.easeInOut,
-                              transitionBuilder: (child, animation) =>
-                                  FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
+                              transitionBuilder:
+                                  (child, animation) => FadeTransition(
+                                    opacity: animation,
+                                    child: child,
+                                  ),
                               child: Text(
                                 _messages[_messageIndex],
                                 key: ValueKey(_messageIndex),
@@ -512,9 +492,10 @@ class _PersonalStartError extends StatelessWidget {
                 emulatorMode
                     ? 'Local Emulator Suite와 USB 포트 연결을 확인해주세요.'
                     : '네트워크를 확인한 뒤 다시 시도해주세요.',
-                key: emulatorMode
-                    ? Key('firebase_emulator_connection_error')
-                    : null,
+                key:
+                    emulatorMode
+                        ? Key('firebase_emulator_connection_error')
+                        : null,
               ),
               const SizedBox(height: 20),
               FilledButton(
@@ -569,9 +550,9 @@ class _LinkedAccountGateState extends State<_LinkedAccountGate> {
   }
 
   void _retry() => setState(() {
-        _adminWorkspaceSelection = null;
-        _check = _load();
-      });
+    _adminWorkspaceSelection = null;
+    _check = _load();
+  });
 
   @override
   void didUpdateWidget(covariant _LinkedAccountGate oldWidget) {
@@ -580,6 +561,14 @@ class _LinkedAccountGateState extends State<_LinkedAccountGate> {
     _adminWorkspaceSelection = null;
     _check = _load();
     _personalProfile = null;
+  }
+
+  Future<void> _reconcilePersonalTierBestEffort() async {
+    try {
+      await widget.service.reconcilePersonalTier();
+    } catch (_) {
+      // 등급 reconcile은 best effort이며 workspace 시작을 차단하지 않는다.
+    }
   }
 
   Future<_LinkedGateResult> _load() async {
@@ -592,11 +581,7 @@ class _LinkedAccountGateState extends State<_LinkedAccountGate> {
     }
     PersonalProfileStartResult? personalProfile;
     if (status == LinkedAccountAccessStatus.personalWorkspaceReady) {
-      try {
-        await widget.service.reconcilePersonalTier();
-      } catch (_) {
-        // 등급 reconcile은 best effort이며 workspace 시작을 차단하지 않는다.
-      }
+      unawaited(_reconcilePersonalTierBestEffort());
       personalProfile = await widget.profileReader.read(widget.user);
     }
     return _LinkedGateResult(
@@ -616,7 +601,8 @@ class _LinkedAccountGateState extends State<_LinkedAccountGate> {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        final result = snapshot.data ??
+        final result =
+            snapshot.data ??
             const _LinkedGateResult(
               status: LinkedAccountAccessStatus.unknown,
               claims: PlatformAccountClaims(),
@@ -645,9 +631,11 @@ class _LinkedAccountGateState extends State<_LinkedAccountGate> {
           return _LinkedPersonalEntry(
             user: widget.user,
             service: widget.service,
-            profileFuture: _personalProfile ??= profile == null
-                ? widget.profileReader.read(widget.user)
-                : Future.value(profile),
+            profileFuture:
+                _personalProfile ??=
+                    profile == null
+                        ? widget.profileReader.read(widget.user)
+                        : Future.value(profile),
             nicknameGateway: widget.nicknameGateway,
             workspaceBuilder: widget.personalWorkspaceBuilder,
             workspaceChild: widget.personalWorkspaceChild,
@@ -673,23 +661,30 @@ class _LinkedAccountGateState extends State<_LinkedAccountGate> {
               key: const ValueKey(AppWorkspaceMode.legacyAdmin),
               mode: AppWorkspaceMode.legacyAdmin,
               child: LegacyAdminWorkspaceShell(
-                onOpenPersonalWorkspace: () => setState(
-                  () => _adminWorkspaceSelection =
-                      _AdminWorkspaceSelection.personal,
-                ),
+                onOpenPersonalWorkspace:
+                    () => setState(
+                      () =>
+                          _adminWorkspaceSelection =
+                              _AdminWorkspaceSelection.personal,
+                    ),
                 child: legacyWorkspace,
               ),
             );
           }
           return PlatformAdminWorkspacePage(
             canOpenLegacyWorkspace: result.claims.legacyDataAccessApproved,
-            onOpenPersonalWorkspace: () => setState(
-              () =>
-                  _adminWorkspaceSelection = _AdminWorkspaceSelection.personal,
-            ),
-            onOpenLegacyWorkspace: () => setState(
-              () => _adminWorkspaceSelection = _AdminWorkspaceSelection.legacy,
-            ),
+            onOpenPersonalWorkspace:
+                () => setState(
+                  () =>
+                      _adminWorkspaceSelection =
+                          _AdminWorkspaceSelection.personal,
+                ),
+            onOpenLegacyWorkspace:
+                () => setState(
+                  () =>
+                      _adminWorkspaceSelection =
+                          _AdminWorkspaceSelection.legacy,
+                ),
           );
         }
         if (status == LinkedAccountAccessStatus.personalWorkspaceReady) {
@@ -766,9 +761,7 @@ class _LinkedPersonalEntryState extends State<_LinkedPersonalEntry> {
         }
         if (kDebugMode) {
           debugPrint('[MTF_APP_START] destination=canonicalHome');
-          debugPrint(
-            '[MTF_APP_START] canonicalHome=home_page.dart',
-          );
+          debugPrint('[MTF_APP_START] canonicalHome=home_page.dart');
           debugPrint('[MTF_APP_START] workspaceType=personal');
         }
         return widget.workspaceBuilder?.call(widget.user) ??

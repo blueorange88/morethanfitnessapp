@@ -60,7 +60,7 @@ class ClientListPage extends StatefulWidget {
 // 예전 이름으로 열리는 곳이 있을 수 있어서 호환용으로 남김
 class MemberDashboardPage extends ClientListPage {
   const MemberDashboardPage({super.key})
-      : super(initialFilter: ClientListInitialFilter.none);
+    : super(initialFilter: ClientListInitialFilter.none);
 }
 
 class _MemberDashboardPageState extends State<ClientListPage> {
@@ -88,15 +88,17 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   ClientListInitialFilter _initialQuickFilter = ClientListInitialFilter.none;
 
   final TextEditingController _searchController = TextEditingController();
-  final ValueNotifier<String> _searchKeywordNotifier =
-      ValueNotifier<String>('');
+  final ValueNotifier<String> _searchKeywordNotifier = ValueNotifier<String>(
+    '',
+  );
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<_DashboardBlueHeaderState> _headerKey =
       GlobalKey<_DashboardBlueHeaderState>();
   final int _headerMessageSeed = DateTime.now().microsecondsSinceEpoch;
   final Map<String, GlobalKey> _memberItemKeys = <String, GlobalKey>{};
-  final ValueNotifier<String?> _highlightNotifier =
-      ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _highlightNotifier = ValueNotifier<String?>(
+    null,
+  );
   int _highlightRequestToken = 0;
 
   bool _sortAscending = true;
@@ -151,9 +153,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   ];
 
   final List<String> _groupIds = [];
-  final Map<String, String> _groupNames = {
-    _ungroupedGroupId: 'MORE THAN GYM',
-  };
+  final Map<String, String> _groupNames = {_ungroupedGroupId: 'MORE THAN GYM'};
 
   List<_MemberCardGroupMenuItem> _buildHeaderGroupFilterItems(
     List<Member> members,
@@ -199,12 +199,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     return buildPersonalTaxonomyFilterEntries(
       defaultGroupId: _ungroupedGroupId,
       defaultGroupLabel: _groupLabel(_ungroupedGroupId),
-      customGroups: {
-        for (final group in _personalGroups) group.id: group.name,
-      },
-      tags: {
-        for (final tag in _personalTags) tag.id: tag.name,
-      },
+      customGroups: {for (final group in _personalGroups) group.id: group.name},
+      tags: {for (final tag in _personalTags) tag.id: tag.name},
       visibleSystemGroups: const {},
       allId: _allGroupId,
       dormantCount: members.where(_isDormantMember).length,
@@ -219,7 +215,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       ValueNotifier<String?>(null);
 
   final ValueNotifier<PersonalMemberStatusFilter>
-      _selectedPersonalStatusFilterNotifier =
+  _selectedPersonalStatusFilterNotifier =
       ValueNotifier<PersonalMemberStatusFilter>(PersonalMemberStatusFilter.all);
 
   final ValueNotifier<_DashboardCareFilter?> _dashboardCareFilterNotifier =
@@ -237,11 +233,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
   String _aifcTrainerNameSourceText = '';
   StreamSubscription<PersonalMemberPreferences>?
-      _personalMemberPreferencesSubscription;
+  _personalMemberPreferencesSubscription;
   StreamSubscription<List<PersonalMemberTaxonomyItem>>?
-      _personalGroupSubscription;
+  _personalGroupSubscription;
   StreamSubscription<List<PersonalMemberTaxonomyItem>>?
-      _personalTagSubscription;
+  _personalTagSubscription;
   List<PersonalMemberTaxonomyItem> _personalGroups = const [];
   List<PersonalMemberTaxonomyItem> _personalTags = const [];
   AppTierAccessSnapshot? _personalTierAccess;
@@ -300,15 +296,17 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     }
 
     final phoneDigits = (member.phone ?? '').replaceAll(RegExp(r'\D'), '');
-    final suffix = phoneDigits.isNotEmpty
-        ? phoneDigits.substring(phoneDigits.length - 1)
-        : '';
+    final suffix =
+        phoneDigits.isNotEmpty
+            ? phoneDigits.substring(phoneDigits.length - 1)
+            : '';
 
     final baseMaxLength =
         suffix.isEmpty ? maxLength : maxLength - suffix.length;
-    final compactBase = rawName.length <= baseMaxLength
-        ? rawName
-        : rawName.substring(0, baseMaxLength);
+    final compactBase =
+        rawName.length <= baseMaxLength
+            ? rawName
+            : rawName.substring(0, baseMaxLength);
 
     return '$compactBase$suffix';
   }
@@ -364,35 +362,39 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   String _trainerNameSourceFromProfileData(Map<String, dynamic>? data) {
     if (data == null) return '';
 
-    final source = (data['trainerNameSource'] ??
-            data['aifcNameSource'] ??
-            data['contractTrainerNameSource'] ??
-            data['nameSource'] ??
-            '')
-        .toString()
-        .trim();
+    final source =
+        (data['trainerNameSource'] ??
+                data['aifcNameSource'] ??
+                data['contractTrainerNameSource'] ??
+                data['nameSource'] ??
+                '')
+            .toString()
+            .trim();
 
-    final nickname = (data['nickname'] ??
-            data['aifcNickname'] ??
-            data['trainerNickname'] ??
-            '')
-        .toString()
-        .trim();
+    final nickname =
+        (data['nickname'] ??
+                data['aifcNickname'] ??
+                data['trainerNickname'] ??
+                '')
+            .toString()
+            .trim();
 
-    final realName = (data['realName'] ??
-            data['trainerRealName'] ??
-            data['trainerName'] ??
-            data['name'] ??
-            '')
-        .toString()
-        .trim();
+    final realName =
+        (data['realName'] ??
+                data['trainerRealName'] ??
+                data['trainerName'] ??
+                data['name'] ??
+                '')
+            .toString()
+            .trim();
 
-    final directName = (data['displayName'] ??
-            data['customTrainerName'] ??
-            data['aifcDisplayName'] ??
-            '')
-        .toString()
-        .trim();
+    final directName =
+        (data['displayName'] ??
+                data['customTrainerName'] ??
+                data['aifcDisplayName'] ??
+                '')
+            .toString()
+            .trim();
 
     if (source == 'nickname' && nickname.isNotEmpty) {
       return nickname;
@@ -416,15 +418,16 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   Future<void> _loadAifcTrainerNameSource() async {
     try {
       final owner = widget.personalOwnerUid?.trim() ?? '';
-      final doc = _isPersonalWorkspace
-          ? await FirebaseFirestore.instance
-              .collection('trainer_profiles')
-              .doc(owner)
-              .get()
-          : await FirebaseFirestore.instance
-              .collection('trainer_profile')
-              .doc('me')
-              .get();
+      final doc =
+          _isPersonalWorkspace
+              ? await FirebaseFirestore.instance
+                  .collection('trainer_profiles')
+                  .doc(owner)
+                  .get()
+              : await FirebaseFirestore.instance
+                  .collection('trainer_profile')
+                  .doc('me')
+                  .get();
 
       final nextName = _trainerNameSourceFromProfileData(doc.data());
 
@@ -445,7 +448,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   Future<void> _loadViewMode() async {
     if (!mounted) return;
 
-    // 고객리스트는 리스트뷰를 기본 화면으로 고정합니다.
+    // 회원리스트는 리스트뷰를 기본 화면으로 고정합니다.
     _isListViewNotifier.value = true;
 
     try {
@@ -487,54 +490,58 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       final owner = widget.personalOwnerUid!.trim();
       final service = PersonalMemberTaxonomyService(uid: owner);
       _personalMemberPreferencesSubscription ??=
-          PersonalMemberPreferencesService(uid: owner).watch().listen(
-        (preferences) {
-          if (!mounted) return;
-          final nextNames = _defaultGroupNames()
-            ..[_ungroupedGroupId] = preferences.defaultGroupLabel;
-          setState(() {
-            _groupNames
-              ..clear()
-              ..addAll(nextNames)
-              ..addEntries(
-                _personalGroups.map((item) => MapEntry(item.id, item.name)),
-              );
-            _groupNamesVersionNotifier.value++;
+          PersonalMemberPreferencesService(uid: owner).watch().listen((
+            preferences,
+          ) {
+            if (!mounted) return;
+            final nextNames =
+                _defaultGroupNames()
+                  ..[_ungroupedGroupId] = preferences.defaultGroupLabel;
+            setState(() {
+              _groupNames
+                ..clear()
+                ..addAll(nextNames)
+                ..addEntries(
+                  _personalGroups.map((item) => MapEntry(item.id, item.name)),
+                );
+              _groupNamesVersionNotifier.value++;
+            });
           });
-        },
-      );
-      _personalGroupSubscription ??=
-          service.watch(PersonalMemberTaxonomyKind.group).listen((items) {
-        if (!mounted) return;
-        final sorted = _sortPersonalTaxonomyItems(items);
-        setState(() {
-          _personalGroups = sorted;
-          _groupIds
-            ..clear()
-            ..addAll(sorted.map((item) => item.id));
-          _groupNames.removeWhere(
-            (key, value) =>
-                key != _ungroupedGroupId && !_systemGroupIds.contains(key),
-          );
-          _groupNames.addEntries(
-            sorted.map((item) => MapEntry(item.id, item.name)),
-          );
-          _groupNamesVersionNotifier.value++;
-        });
-        _loadLastSelectedGroupFilter();
-      });
-      _personalTagSubscription ??=
-          service.watch(PersonalMemberTaxonomyKind.tag).listen((items) {
-        if (!mounted) return;
-        final sorted = _sortPersonalTaxonomyItems(items);
-        setState(() {
-          _personalTags = sorted;
-        });
-        final selected = _selectedPersonalTagIdNotifier.value;
-        if (selected != null && !sorted.any((item) => item.id == selected)) {
-          _selectedPersonalTagIdNotifier.value = null;
-        }
-      });
+      _personalGroupSubscription ??= service
+          .watch(PersonalMemberTaxonomyKind.group)
+          .listen((items) {
+            if (!mounted) return;
+            final sorted = _sortPersonalTaxonomyItems(items);
+            setState(() {
+              _personalGroups = sorted;
+              _groupIds
+                ..clear()
+                ..addAll(sorted.map((item) => item.id));
+              _groupNames.removeWhere(
+                (key, value) =>
+                    key != _ungroupedGroupId && !_systemGroupIds.contains(key),
+              );
+              _groupNames.addEntries(
+                sorted.map((item) => MapEntry(item.id, item.name)),
+              );
+              _groupNamesVersionNotifier.value++;
+            });
+            _loadLastSelectedGroupFilter();
+          });
+      _personalTagSubscription ??= service
+          .watch(PersonalMemberTaxonomyKind.tag)
+          .listen((items) {
+            if (!mounted) return;
+            final sorted = _sortPersonalTaxonomyItems(items);
+            setState(() {
+              _personalTags = sorted;
+            });
+            final selected = _selectedPersonalTagIdNotifier.value;
+            if (selected != null &&
+                !sorted.any((item) => item.id == selected)) {
+              _selectedPersonalTagIdNotifier.value = null;
+            }
+          });
       if (!mounted) return;
       setState(() {
         _groupIds.clear();
@@ -548,8 +555,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     }
 
     try {
-      final groupCollection =
-          FirebaseFirestore.instance.collection('member_groups');
+      final groupCollection = FirebaseFirestore.instance.collection(
+        'member_groups',
+      );
 
       final groupSnap = await groupCollection.get();
 
@@ -794,9 +802,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         _selectedPersonalStatusFilterNotifier.value =
             PersonalMemberStatusFilter.dormant;
         _selectedGroupIdNotifier.value = null;
-        await _saveLastSelectedStatusFilter(
-          PersonalMemberStatusFilter.dormant,
-        );
+        await _saveLastSelectedStatusFilter(PersonalMemberStatusFilter.dormant);
         await _saveLastSelectedGroupFilter(null);
         return;
       }
@@ -804,14 +810,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         _selectedPersonalStatusFilterNotifier.value =
             PersonalMemberStatusFilter.expired;
         _selectedGroupIdNotifier.value = null;
-        await _saveLastSelectedStatusFilter(
-          PersonalMemberStatusFilter.expired,
-        );
+        await _saveLastSelectedStatusFilter(PersonalMemberStatusFilter.expired);
         await _saveLastSelectedGroupFilter(null);
         return;
       }
 
-      final isAllowed = normalized == null ||
+      final isAllowed =
+          normalized == null ||
           normalized == _ungroupedGroupId ||
           normalized == _systemDormantGroupId ||
           normalized == _systemExpiredGroupId ||
@@ -927,10 +932,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       return;
     }
 
-    final nextAlertIds = <String>{
-      ...alertMemberIds,
-      cleanMemberId,
-    };
+    final nextAlertIds = <String>{...alertMemberIds, cleanMemberId};
 
     _closeHeaderOverlayIfNeeded();
 
@@ -1079,9 +1081,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             stream: _membersQuery.snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
+                return const Center(child: CircularProgressIndicator());
               }
 
               if (snapshot.hasError) {
@@ -1098,14 +1098,16 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
               final docs = snapshot.data?.docs ?? [];
 
-              final visibleDocs = docs.where((doc) {
-                final data = doc.data();
-                return data['isDeleted'] != true;
-              }).toList();
+              final visibleDocs =
+                  docs.where((doc) {
+                    final data = doc.data();
+                    return data['isDeleted'] != true;
+                  }).toList();
 
-              final allMembers = visibleDocs
-                  .map((doc) => Member.fromFirestore(doc.id, doc.data()))
-                  .toList();
+              final allMembers =
+                  visibleDocs
+                      .map((doc) => Member.fromFirestore(doc.id, doc.data()))
+                      .toList();
 
               final membershipMetaById = <String, _MemberMembershipMeta>{
                 for (final doc in visibleDocs)
@@ -1115,10 +1117,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
               return Center(
                 child: SizedBox(
                   width: width,
-                  child: _buildBody(
-                    allMembers,
-                    membershipMetaById,
-                  ),
+                  child: _buildBody(allMembers, membershipMetaById),
                 ),
               );
             },
@@ -1149,8 +1148,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
               Listener(
                 behavior: HitTestBehavior.translucent,
                 onPointerDown: (event) {
-                  final isInsideHeader = _headerKey.currentState
-                          ?.containsGlobalPosition(event.position) ??
+                  final isInsideHeader =
+                      _headerKey.currentState?.containsGlobalPosition(
+                        event.position,
+                      ) ??
                       false;
 
                   if (!isInsideHeader) {
@@ -1179,18 +1180,20 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                           onAddCustomer: _openCreate,
                           onToggleListView: _toggleListViewMode,
                           onCreateGroup: _handleHeaderCreateGroup,
-                          onManageTags: () => _openPersonalTaxonomyManagement(
-                            PersonalMemberTaxonomyKind.tag,
-                          ),
+                          onManageTags:
+                              () => _openPersonalTaxonomyManagement(
+                                PersonalMemberTaxonomyKind.tag,
+                              ),
                           onResetFilters: _resetQuickFilters,
                           onRestoreDeletedMembers:
                               _openDeletedMembersRestoreSheet,
                           onAlertTap: (memberId) async {
                             await _handleHeaderAlertTap(
                               memberId,
-                              alertMemberIds: headerData.alerts
-                                  .map((alert) => alert.memberId)
-                                  .toSet(),
+                              alertMemberIds:
+                                  headerData.alerts
+                                      .map((alert) => alert.memberId)
+                                      .toSet(),
                             );
                           },
                         ),
@@ -1199,8 +1202,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _PinnedSearchHeaderDelegate(
-                        minExtentValue: _isPersonalWorkspace ? 174 : 136,
-                        maxExtentValue: _isPersonalWorkspace ? 174 : 136,
+                        minExtentValue: _isPersonalWorkspace ? 148 : 136,
+                        maxExtentValue: _isPersonalWorkspace ? 148 : 136,
                         child: RepaintBoundary(
                           child: Container(
                             color: context.mtfThemeTokens.memberListBackground,
@@ -1254,7 +1257,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                                             break;
 
                                           case _SearchMenuAction
-                                                .sortRecentLesson:
+                                              .sortRecentLesson:
                                             setState(() {
                                               _sortOption =
                                                   SortOption.recentLesson;
@@ -1262,7 +1265,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                                             break;
 
                                           case _SearchMenuAction
-                                                .sortRecentRegistration:
+                                              .sortRecentRegistration:
                                             setState(() {
                                               _sortOption =
                                                   SortOption.recentRegistration;
@@ -1274,13 +1277,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                                             break;
 
                                           case _SearchMenuAction
-                                                .clearLessonDate:
+                                              .clearLessonDate:
                                             setState(() {
                                               _selectedLessonDate = null;
                                             });
                                             break;
                                           case _SearchMenuAction
-                                                .membershipNeedsCheck:
+                                              .membershipNeedsCheck:
                                             setState(() {
                                               _membershipFilter =
                                                   _MembershipListFilter
@@ -1290,7 +1293,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                                             break;
 
                                           case _SearchMenuAction
-                                                .clearMembershipFilter:
+                                              .clearMembershipFilter:
                                             setState(() {
                                               _membershipFilter = null;
                                             });
@@ -1309,8 +1312,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                                       PersonalTaxonomyFilterStrip(
                                         entries:
                                             _buildPersonalTaxonomyFilterEntries(
-                                          allMembers,
-                                        ),
+                                              allMembers,
+                                            ),
                                         selectedGroupId: _selectedGroupId,
                                         selectedTagId: _selectedPersonalTagId,
                                         selectedStatus:
@@ -1392,9 +1395,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       nameCount[name] = (nameCount[name] ?? 0) + 1;
     }
 
-    return nameCount.map(
-      (name, count) => MapEntry(name, count > 1),
-    );
+    return nameCount.map((name, count) => MapEntry(name, count > 1));
   }
 
   String _phoneSuffixForDuplicateDisplay(String? phone) {
@@ -1505,17 +1506,15 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       members: filteredMembers,
       duplicateNameMap: duplicateNameMap,
       membershipMetaById: membershipMetaById,
-      showGroupSectionDividers: selectedCareFilter == null &&
+      showGroupSectionDividers:
+          selectedCareFilter == null &&
           _selectedGroupId == null &&
           !_isAlertFilterActive,
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        selectedDivider,
-        content,
-      ],
+      children: [selectedDivider, content],
     );
   }
 
@@ -1524,47 +1523,49 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     required Map<String, bool> duplicateNameMap,
   }) {
     return Column(
-      children: members.map((member) {
-        final itemKey = _memberItemKeys.putIfAbsent(
-          member.id,
-          () => GlobalKey(),
-        );
+      children:
+          members.map((member) {
+            final itemKey = _memberItemKeys.putIfAbsent(
+              member.id,
+              () => GlobalKey(),
+            );
 
-        final displayName = _duplicateDisplayNameOrNull(
-          member: member,
-          duplicateNameMap: duplicateNameMap,
-        );
+            final displayName = _duplicateDisplayNameOrNull(
+              member: member,
+              duplicateNameMap: duplicateNameMap,
+            );
 
-        return KeyedSubtree(
-          key: itemKey,
-          child: MemberSimpleCard(
-            key: ValueKey('member_card_${member.id}'),
-            member: member,
-            displayName: displayName,
-            trainerNameSourceText: _aifcTrainerNameSourceText,
-            groupLabel: _memberCanonicalGroupId(member) == null
-                ? null
-                : _groupLabel(_memberCanonicalGroupId(member)!),
-            displayGroupLabel: _memberDisplayGroupLabel(member),
-            displayGroupAccentColor: _memberDisplayGroupAccentColor(member),
-            displayGroupTextColor: _memberDisplayGroupTextColor(member),
-            groupMenuItems: _buildMemberCardGroupMenuItems(),
-            onQuickGroupChanged: (groupId) async {
-              await _handleMemberQuickGroupChange(member, groupId);
-            },
-            onContractTap: () {},
-            onEditTap: () => _openEdit(member),
-            onLogTap: () => _openLog(member),
-            onPinTap: () => _togglePin(member),
-            isPinned: _pinnedMemberIds.contains(member.id),
-            onSetExpired: () => _updateMemberStatus(member, '만료'),
-            onSetDormant: () => _updateMemberStatus(member, '휴면'),
-            onSetActive: () => _updateMemberStatus(member, '활성'),
-            onAnyInteraction: _closeHeaderOverlayIfNeeded,
-            highlightListenable: _highlightNotifier,
-          ),
-        );
-      }).toList(),
+            return KeyedSubtree(
+              key: itemKey,
+              child: MemberSimpleCard(
+                key: ValueKey('member_card_${member.id}'),
+                member: member,
+                displayName: displayName,
+                trainerNameSourceText: _aifcTrainerNameSourceText,
+                groupLabel:
+                    _memberCanonicalGroupId(member) == null
+                        ? null
+                        : _groupLabel(_memberCanonicalGroupId(member)!),
+                displayGroupLabel: _memberDisplayGroupLabel(member),
+                displayGroupAccentColor: _memberDisplayGroupAccentColor(member),
+                displayGroupTextColor: _memberDisplayGroupTextColor(member),
+                groupMenuItems: _buildMemberCardGroupMenuItems(),
+                onQuickGroupChanged: (groupId) async {
+                  await _handleMemberQuickGroupChange(member, groupId);
+                },
+                onContractTap: () {},
+                onEditTap: () => _openEdit(member),
+                onLogTap: () => _openLog(member),
+                onPinTap: () => _togglePin(member),
+                isPinned: _pinnedMemberIds.contains(member.id),
+                onSetExpired: () => _updateMemberStatus(member, '만료'),
+                onSetDormant: () => _updateMemberStatus(member, '휴면'),
+                onSetActive: () => _updateMemberStatus(member, '활성'),
+                onAnyInteraction: _closeHeaderOverlayIfNeeded,
+                highlightListenable: _highlightNotifier,
+              ),
+            );
+          }).toList(),
     );
   }
 
@@ -1596,12 +1597,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     final rankCompare = _groupSortRank(
       aLabel,
       isDefaultGroup: aIsDefault,
-    ).compareTo(
-      _groupSortRank(
-        bLabel,
-        isDefaultGroup: bIsDefault,
-      ),
-    );
+    ).compareTo(_groupSortRank(bLabel, isDefaultGroup: bIsDefault));
 
     if (rankCompare != 0) return rankCompare;
 
@@ -1615,15 +1611,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     final displayLabel = label.trim().isEmpty ? 'MORE THAN GYM' : label.trim();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 18, 4, 10),
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 10),
       child: Row(
         children: [
           const Expanded(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: Color(0xFFE5E7EB),
-            ),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1640,11 +1632,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             ),
           ),
           const Expanded(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: Color(0xFFE5E7EB),
-            ),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
           ),
         ],
       ),
@@ -1667,9 +1655,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     String? lastGroupLabel;
 
     for (final member in displayMembers) {
-      final currentGroupLabel = _memberDisplayGroupLabel(member).trim().isEmpty
-          ? 'MORE THAN GYM'
-          : _memberDisplayGroupLabel(member).trim();
+      final currentGroupLabel =
+          _memberDisplayGroupLabel(member).trim().isEmpty
+              ? 'MORE THAN GYM'
+              : _memberDisplayGroupLabel(member).trim();
 
       if (showGroupSectionDividers &&
           _sortOption == SortOption.group &&
@@ -1678,10 +1667,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         lastGroupLabel = currentGroupLabel;
       }
 
-      final itemKey = _memberItemKeys.putIfAbsent(
-        member.id,
-        () => GlobalKey(),
-      );
+      final itemKey = _memberItemKeys.putIfAbsent(member.id, () => GlobalKey());
 
       final displayName = _duplicateDisplayNameOrNull(
         member: member,
@@ -1737,7 +1723,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     final membershipDaysLeft =
         member.expireAt == null ? null : _daysBetween(now, member.expireAt!);
 
-    final bool isMembershipExpirySoon = membershipDaysLeft != null &&
+    final bool isMembershipExpirySoon =
+        membershipDaysLeft != null &&
         membershipDaysLeft >= 0 &&
         membershipDaysLeft <= 10;
 
@@ -1770,22 +1757,28 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     final int? birthdayDaysLeft = _daysUntilNextMonthDay(member.birthDate, now);
 
-    final bool isBirthdaySoon = birthdayDaysLeft != null &&
+    final bool isBirthdaySoon =
+        birthdayDaysLeft != null &&
         birthdayDaysLeft >= 0 &&
         birthdayDaysLeft <= 7;
 
-    final int? anniversaryDaysLeft =
-        _daysUntilNextMonthDay(member.anniversaryDate, now);
+    final int? anniversaryDaysLeft = _daysUntilNextMonthDay(
+      member.anniversaryDate,
+      now,
+    );
 
-    final bool isAnniversarySoon = anniversaryDaysLeft != null &&
+    final bool isAnniversarySoon =
+        anniversaryDaysLeft != null &&
         anniversaryDaysLeft >= 0 &&
         anniversaryDaysLeft <= 14;
 
-    final int? nextMoreDayDaysLeft = member.nextMoreDayAt == null
-        ? null
-        : _daysBetween(now, member.nextMoreDayAt!);
+    final int? nextMoreDayDaysLeft =
+        member.nextMoreDayAt == null
+            ? null
+            : _daysBetween(now, member.nextMoreDayAt!);
 
-    final bool isNextMoreDaySoon = nextMoreDayDaysLeft != null &&
+    final bool isNextMoreDaySoon =
+        nextMoreDayDaysLeft != null &&
         nextMoreDayDaysLeft >= -7 &&
         nextMoreDayDaysLeft <= 14;
 
@@ -1814,8 +1807,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     final bool isNewMember = firstLessonDays >= 0 && firstLessonDays < 7;
 
-    final bool isFemaleConditionCheck =
-        _isFemaleConditionCheckWindow(member, now);
+    final bool isFemaleConditionCheck = _isFemaleConditionCheckWindow(
+      member,
+      now,
+    );
 
     return isNewMember || isFemaleConditionCheck;
   }
@@ -1851,9 +1846,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     final today = DateTime(now.year, now.month, now.day);
 
     final expireAt = member.expireAt ?? meta?.endAt;
-    final expireDate = expireAt == null
-        ? null
-        : DateTime(expireAt.year, expireAt.month, expireAt.day);
+    final expireDate =
+        expireAt == null
+            ? null
+            : DateTime(expireAt.year, expireAt.month, expireAt.day);
 
     int? daysLeft;
     if (expireDate != null) {
@@ -1895,82 +1891,89 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }) {
     final query = search_utils.normalizeSearchText(rawQuery);
 
-    final filtered = members.where((member) {
-      final isAlertFilterActive = alertFilterMemberIds.isNotEmpty;
-      final matchesAlertFilter =
-          !isAlertFilterActive || alertFilterMemberIds.contains(member.id);
+    final filtered =
+        members.where((member) {
+          final isAlertFilterActive = alertFilterMemberIds.isNotEmpty;
+          final matchesAlertFilter =
+              !isAlertFilterActive || alertFilterMemberIds.contains(member.id);
 
-      final memberGroupId = _memberCanonicalGroupId(member);
-      final groupLabel = _memberDisplayGroupLabel(member);
-      final tagLabels = member.personalTagIds.map(_personalTagLabel).toList();
+          final memberGroupId = _memberCanonicalGroupId(member);
+          final groupLabel = _memberDisplayGroupLabel(member);
+          final tagLabels =
+              member.personalTagIds.map(_personalTagLabel).toList();
 
-      final matchesSearch = search_utils.matchesSmartMemberSearch(
-        rawQuery: rawQuery,
-        targets: [
-          member.name ?? '',
-          member.phone ?? '',
-          member.trainer ?? '',
-          member.grade ?? '',
-          groupLabel,
-          ...tagLabels,
-        ],
-      );
+          final matchesSearch = search_utils.matchesSmartMemberSearch(
+            rawQuery: rawQuery,
+            targets: [
+              member.name ?? '',
+              member.phone ?? '',
+              member.trainer ?? '',
+              member.grade ?? '',
+              groupLabel,
+              ...tagLabels,
+            ],
+          );
 
-      final matchesDate = _selectedLessonDate == null
-          ? true
-          : (member.lastLogAt != null &&
-              _isSameDate(member.lastLogAt!, _selectedLessonDate!));
+          final matchesDate =
+              _selectedLessonDate == null
+                  ? true
+                  : (member.lastLogAt != null &&
+                      _isSameDate(member.lastLogAt!, _selectedLessonDate!));
 
-      final matchesClassification = isAlertFilterActive
-          ? true
-          : _isPersonalWorkspace
-              ? matchesPersonalMemberListClassification(
-                  memberStatus: member.memberStatus,
-                  memberGroupId: memberGroupId,
-                  memberTagIds: member.personalTagIds,
-                  statusFilter: statusFilter,
-                  selectedGroupId: groupFilterId,
-                  defaultGroupId: _ungroupedGroupId,
-                  selectedTagId: tagFilterId,
-                )
-              : switch (groupFilterId) {
-                  null => true,
-                  _ungroupedGroupId => !_isExpiredMember(member) &&
-                      !_isDormantMember(member) &&
-                      memberGroupId == null,
-                  _systemDormantGroupId => _isDormantMember(member),
-                  _systemExpiredGroupId => _isExpiredMember(member),
-                  _ => !_isExpiredMember(member) &&
-                      !_isDormantMember(member) &&
-                      memberGroupId == groupFilterId,
-                };
+          final matchesClassification =
+              isAlertFilterActive
+                  ? true
+                  : _isPersonalWorkspace
+                  ? matchesPersonalMemberListClassification(
+                    memberStatus: member.memberStatus,
+                    memberGroupId: memberGroupId,
+                    memberTagIds: member.personalTagIds,
+                    statusFilter: statusFilter,
+                    selectedGroupId: groupFilterId,
+                    defaultGroupId: _ungroupedGroupId,
+                    selectedTagId: tagFilterId,
+                  )
+                  : switch (groupFilterId) {
+                    null => true,
+                    _ungroupedGroupId =>
+                      !_isExpiredMember(member) &&
+                          !_isDormantMember(member) &&
+                          memberGroupId == null,
+                    _systemDormantGroupId => _isDormantMember(member),
+                    _systemExpiredGroupId => _isExpiredMember(member),
+                    _ =>
+                      !_isExpiredMember(member) &&
+                          !_isDormantMember(member) &&
+                          memberGroupId == groupFilterId,
+                  };
 
-      final matchesDashboardCare = isAlertFilterActive
-          ? true
-          : _matchesDashboardCareFilter(member, dashboardCareFilter);
+          final matchesDashboardCare =
+              isAlertFilterActive
+                  ? true
+                  : _matchesDashboardCareFilter(member, dashboardCareFilter);
 
-      final matchesMembershipFilter = _matchesMembershipListFilter(
-        member,
-        membershipMetaById[member.id],
-        _membershipFilter,
-      );
-      if (_initialQuickFilter == ClientListInitialFilter.lowRemaining &&
-          !_isLowRemainingMember(member)) {
-        return false;
-      }
+          final matchesMembershipFilter = _matchesMembershipListFilter(
+            member,
+            membershipMetaById[member.id],
+            _membershipFilter,
+          );
+          if (_initialQuickFilter == ClientListInitialFilter.lowRemaining &&
+              !_isLowRemainingMember(member)) {
+            return false;
+          }
 
-      if (_initialQuickFilter == ClientListInitialFilter.careNeeded &&
-          !_isCareNeededMember(member)) {
-        return false;
-      }
+          if (_initialQuickFilter == ClientListInitialFilter.careNeeded &&
+              !_isCareNeededMember(member)) {
+            return false;
+          }
 
-      return matchesAlertFilter &&
-          matchesSearch &&
-          matchesDate &&
-          matchesClassification &&
-          matchesDashboardCare &&
-          matchesMembershipFilter;
-    }).toList();
+          return matchesAlertFilter &&
+              matchesSearch &&
+              matchesDate &&
+              matchesClassification &&
+              matchesDashboardCare &&
+              matchesMembershipFilter;
+        }).toList();
 
     filtered.sort(_memberComparator(_sortOption));
 
@@ -2019,9 +2022,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }) {
     return AifcConfirmChatSheet.show(
       context: context,
-      nickname: _aifcTrainerNameSourceText.trim().isEmpty
-          ? '강사'
-          : _aifcTrainerNameSourceText,
+      nickname:
+          _aifcTrainerNameSourceText.trim().isEmpty
+              ? '강사'
+              : _aifcTrainerNameSourceText,
       title: title,
       message: message,
       cancelText: cancelText,
@@ -2061,9 +2065,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     final result = await AifcInteraction.ask(
       context: context,
-      question: groupId == _ungroupedGroupId
-          ? '기본 그룹이름을 어떻게 변경해드릴까요?'
-          : _systemGroupIds.contains(groupId)
+      question:
+          groupId == _ungroupedGroupId
+              ? '기본 그룹이름을 어떻게 변경해드릴까요?'
+              : _systemGroupIds.contains(groupId)
               ? '고정 그룹의 이름을 어떻게 변경하고 싶으세요?'
               : '이 그룹은 어떤 이름으로 변경하고 싶으세요?',
       inputLabel: '최대 $maxLength자',
@@ -2073,11 +2078,12 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       onSave: (value) async {
         final newName = value.trim();
 
-        final validationError = groupId == _ungroupedGroupId
-            ? validatePersonalDefaultGroupLabel(newName)
-            : (newName.isEmpty
-                ? 'empty'
-                : newName.length > maxLength
+        final validationError =
+            groupId == _ungroupedGroupId
+                ? validatePersonalDefaultGroupLabel(newName)
+                : (newName.isEmpty
+                    ? 'empty'
+                    : newName.length > maxLength
                     ? 'too_long'
                     : null);
         if (validationError != null) {
@@ -2097,17 +2103,18 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             .collection('member_groups')
             .doc(_groupDocId(groupId))
             .set({
-          'name': newName,
-          'appGroupId': groupId,
-          'isArchived': false,
-          'isSystem': groupId == _ungroupedGroupId ? true : isSystemGroup,
-          'systemType': groupId == _ungroupedGroupId
-              ? 'default'
-              : isSystemGroup
-                  ? 'system'
-                  : 'custom',
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+              'name': newName,
+              'appGroupId': groupId,
+              'isArchived': false,
+              'isSystem': groupId == _ungroupedGroupId ? true : isSystemGroup,
+              'systemType':
+                  groupId == _ungroupedGroupId
+                      ? 'default'
+                      : isSystemGroup
+                      ? 'system'
+                      : 'custom',
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
 
         return '$newName 그룹명으로 적어둘게요.';
       },
@@ -2130,9 +2137,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
   Future<void> _showCreateGroupDialog() async {
     if (_isPersonalWorkspace) {
-      await _openPersonalTaxonomyManagement(
-        PersonalMemberTaxonomyKind.group,
-      );
+      await _openPersonalTaxonomyManagement(PersonalMemberTaxonomyKind.group);
       return;
     }
 
@@ -2146,7 +2151,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     final result = await AifcInteraction.ask(
       context: context,
-      question: '$_aifcNicknameLabel, 새 그룹을 만들어볼까요?\n'
+      question:
+          '$_aifcNicknameLabel, 새 그룹을 만들어볼까요?\n'
           '장소, 반, 소속 이름처럼 정확하게 알려주세요.',
       inputLabel: '예: 오전반 / 오후반 / 모어댄피트니스',
       skipLabel: '나중에',
@@ -2166,14 +2172,14 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             .collection('member_groups')
             .doc(newGroupId)
             .set({
-          'name': newName,
-          'order': _nextGroupOrder(),
-          'isArchived': false,
-          'isSystem': false,
-          'systemType': 'custom',
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+              'name': newName,
+              'order': _nextGroupOrder(),
+              'isArchived': false,
+              'isSystem': false,
+              'systemType': 'custom',
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
 
         return '$newName 그룹을 만들어 둘게요.';
       },
@@ -2194,17 +2200,15 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Future<void> _saveGroupOrder(List<String> orderedGroupIds) async {
-    final normalizedIds = orderedGroupIds
-        .where((groupId) => _groupIds.contains(groupId))
-        .toList();
+    final normalizedIds =
+        orderedGroupIds
+            .where((groupId) => _groupIds.contains(groupId))
+            .toList();
 
     final missingIds =
         _groupIds.where((groupId) => !normalizedIds.contains(groupId)).toList();
 
-    final nextGroupIds = <String>[
-      ...normalizedIds,
-      ...missingIds,
-    ];
+    final nextGroupIds = <String>[...normalizedIds, ...missingIds];
 
     if (nextGroupIds.length != _groupIds.length) {
       _showSnack('그룹 순서를 저장하지 못 했어요.');
@@ -2213,20 +2217,17 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     try {
       final batch = FirebaseFirestore.instance.batch();
-      final groupCollection =
-          FirebaseFirestore.instance.collection('member_groups');
+      final groupCollection = FirebaseFirestore.instance.collection(
+        'member_groups',
+      );
 
       for (int i = 0; i < nextGroupIds.length; i++) {
         final groupId = nextGroupIds[i];
 
-        batch.set(
-          groupCollection.doc(_groupDocId(groupId)),
-          {
-            'order': i + 1,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        batch.set(groupCollection.doc(_groupDocId(groupId)), {
+          'order': i + 1,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       await batch.commit();
@@ -2256,7 +2257,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     final result = await _showAifcConfirm(
       title: '그룹을 삭제할까요?',
-      message: '$groupName 그룹을 삭제하면 해당 회원들은 기본 그룹으로 이동해요.\n'
+      message:
+          '$groupName 그룹을 삭제하면 해당 회원들은 기본 그룹으로 이동해요.\n'
           '회원 정보는 삭제되지 않고 그룹 분류만 해제됩니다.',
       cancelText: '취소',
       confirmText: '삭제',
@@ -2277,22 +2279,20 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       return;
     }
 
-    final memberRefs = await FirebaseFirestore.instance
-        .collection('members')
-        .where('groupId', isEqualTo: groupId)
-        .get();
+    final memberRefs =
+        await FirebaseFirestore.instance
+            .collection('members')
+            .where('groupId', isEqualTo: groupId)
+            .get();
 
     final operations = <void Function(WriteBatch batch)>[];
 
     for (final doc in memberRefs.docs) {
       operations.add((batch) {
-        batch.set(
-            doc.reference,
-            {
-              'groupId': FieldValue.delete(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true));
+        batch.set(doc.reference, {
+          'groupId': FieldValue.delete(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       });
     }
 
@@ -2524,7 +2524,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Future<void> _handleMemberQuickGroupChange(
-      Member member, String targetGroupId) async {
+    Member member,
+    String targetGroupId,
+  ) async {
     _closeHeaderOverlayIfNeeded();
 
     if (_isPersonalWorkspace && !_systemGroupIds.contains(targetGroupId)) {
@@ -2553,58 +2555,43 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       return;
     }
 
-    final memberRef =
-        FirebaseFirestore.instance.collection('members').doc(member.id);
+    final memberRef = FirebaseFirestore.instance
+        .collection('members')
+        .doc(member.id);
 
     final nextGroupMap = Map<String, String>.from(_memberGroupMap);
     final batch = FirebaseFirestore.instance.batch();
 
     if (targetGroupId == _systemDormantGroupId) {
       nextGroupMap.remove(member.id);
-      batch.set(
-        memberRef,
-        {
-          'memberStatus': '휴면',
-          'groupId': FieldValue.delete(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(memberRef, {
+        'memberStatus': '휴면',
+        'groupId': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } else if (targetGroupId == _systemExpiredGroupId) {
       nextGroupMap.remove(member.id);
-      batch.set(
-        memberRef,
-        {
-          'memberStatus': '만료',
-          'groupId': FieldValue.delete(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(memberRef, {
+        'memberStatus': '만료',
+        'groupId': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } else if (targetGroupId == _ungroupedGroupId) {
       nextGroupMap.remove(member.id);
-      batch.set(
-        memberRef,
-        {
-          'memberStatus': '활성',
-          'groupId': FieldValue.delete(),
-          'groupName': _groupLabel(_ungroupedGroupId),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(memberRef, {
+        'memberStatus': '활성',
+        'groupId': FieldValue.delete(),
+        'groupName': _groupLabel(_ungroupedGroupId),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } else {
       nextGroupMap[member.id] = targetGroupId;
-      batch.set(
-        memberRef,
-        {
-          'memberStatus': '활성',
-          'groupId': targetGroupId,
-          'groupName': _groupLabel(targetGroupId),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(memberRef, {
+        'memberStatus': '활성',
+        'groupId': targetGroupId,
+        'groupName': _groupLabel(targetGroupId),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     }
 
     await batch.commit();
@@ -2623,9 +2610,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _closeHeaderOverlayIfNeeded();
 
     if (_isPersonalWorkspace) {
-      await _openPersonalTaxonomyManagement(
-        PersonalMemberTaxonomyKind.group,
-      );
+      await _openPersonalTaxonomyManagement(PersonalMemberTaxonomyKind.group);
       return;
     }
 
@@ -2662,28 +2647,28 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   Future<void> _showPersonalTaxonomyManagementMenu() async {
     final selection =
         await AifcOptionChatSheet.show<PersonalMemberTaxonomyKind>(
-      context: context,
-      nickname: _aifcNicknameLabel,
-      title: '회원 분류를 관리해볼까요?',
-      message: '그룹은 센터·반처럼 한 곳에 소속시키고, 태그는 여러 기준을 함께 표시할 때 사용해요.',
-      selectedValue: null,
-      closeText: '닫기',
-      guidanceText: '관리할 분류를 선택해주세요.',
-      items: const [
-        AifcOptionItem(
-          value: PersonalMemberTaxonomyKind.group,
-          title: '그룹 관리',
-          subtitle: '센터, 반, 소속처럼 한 곳으로 분류해요.',
-          icon: Icons.folder_open_rounded,
-        ),
-        AifcOptionItem(
-          value: PersonalMemberTaxonomyKind.tag,
-          title: '태그 관리',
-          subtitle: 'VIP, 통증, 목표처럼 여러 기준을 함께 표시해요.',
-          icon: Icons.sell_outlined,
-        ),
-      ],
-    );
+          context: context,
+          nickname: _aifcNicknameLabel,
+          title: '회원 분류를 관리해볼까요?',
+          message: '그룹은 센터·반처럼 한 곳에 소속시키고, 태그는 여러 기준을 함께 표시할 때 사용해요.',
+          selectedValue: null,
+          closeText: '닫기',
+          guidanceText: '관리할 분류를 선택해주세요.',
+          items: const [
+            AifcOptionItem(
+              value: PersonalMemberTaxonomyKind.group,
+              title: '그룹 관리',
+              subtitle: '센터, 반, 소속처럼 한 곳으로 분류해요.',
+              icon: Icons.folder_open_rounded,
+            ),
+            AifcOptionItem(
+              value: PersonalMemberTaxonomyKind.tag,
+              title: '태그 관리',
+              subtitle: 'VIP, 통증, 목표처럼 여러 기준을 함께 표시해요.',
+              icon: Icons.sell_outlined,
+            ),
+          ],
+        );
     if (selection == null || !mounted) return;
     await _openPersonalTaxonomyManagement(selection);
   }
@@ -2692,9 +2677,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     PersonalTaxonomyFilterEntry entry,
   ) async {
     final isGroup = entry.role == PersonalTaxonomyFilterRole.exampleGroup;
-    final kind = isGroup
-        ? PersonalMemberTaxonomyKind.group
-        : PersonalMemberTaxonomyKind.tag;
+    final kind =
+        isGroup
+            ? PersonalMemberTaxonomyKind.group
+            : PersonalMemberTaxonomyKind.tag;
     if (!isGroup) {
       final allowed = await _guardPersonalTaxonomyFeature(
         AppTierFeatureKey.personalTag,
@@ -2706,9 +2692,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       context: context,
       nickname: _aifcNicknameLabel,
       title: isGroup ? '그룹으로 나눠볼까요?' : '태그로 세분화해볼까요?',
-      message: isGroup
-          ? '새 그룹을 만들어 회원을 센터나 반별로 나눌 수 있어요.'
-          : '이런 태그를 직접 만들어 회원을 여러 기준으로 분류할 수 있어요.',
+      message:
+          isGroup
+              ? '새 그룹을 만들어 회원을 센터나 반별로 나눌 수 있어요.'
+              : '이런 태그를 직접 만들어 회원을 여러 기준으로 분류할 수 있어요.',
       selectedValue: null,
       closeText: '닫기',
       guidanceText: '예시 칩은 안내용이며 자동으로 저장되지 않아요.',
@@ -2763,9 +2750,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       context: context,
       access: _personalTierAccess,
       feature: feature,
-      loadAccess: () => AppTierAccessService.loadPersonalTrainerAccess(
-        uid: widget.personalOwnerUid!.trim(),
-      ),
+      loadAccess:
+          () => AppTierAccessService.loadPersonalTrainerAccess(
+            uid: widget.personalOwnerUid!.trim(),
+          ),
       entryPoint: entryPoint,
     );
     if (allowed) await _loadPersonalTierAccess();
@@ -2775,9 +2763,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   Future<void> _openPersonalTaxonomyManagement(
     PersonalMemberTaxonomyKind kind,
   ) async {
-    final feature = kind == PersonalMemberTaxonomyKind.group
-        ? AppTierFeatureKey.personalGroup
-        : AppTierFeatureKey.personalTag;
+    final feature =
+        kind == PersonalMemberTaxonomyKind.group
+            ? AppTierFeatureKey.personalGroup
+            : AppTierFeatureKey.personalTag;
     final allowed = await _guardPersonalTaxonomyFeature(
       feature,
       entryPoint: 'client_list_${kind.name}_management',
@@ -2792,10 +2781,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     }
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => PersonalMemberTaxonomyManagementPage(
-          ownerUid: widget.personalOwnerUid!.trim(),
-          kind: kind,
-        ),
+        builder:
+            (_) => PersonalMemberTaxonomyManagementPage(
+              ownerUid: widget.personalOwnerUid!.trim(),
+              kind: kind,
+            ),
       ),
     );
   }
@@ -2846,8 +2836,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           final rankCompare = aExpiryRank.compareTo(bExpiryRank);
           if (rankCompare != 0) return rankCompare;
 
-          final sessionsCompare =
-              a.remainingSessions.compareTo(b.remainingSessions);
+          final sessionsCompare = a.remainingSessions.compareTo(
+            b.remainingSessions,
+          );
           if (sessionsCompare != 0) return sessionsCompare;
 
           return _compareNameOrder(a.name ?? '', b.name ?? '');
@@ -2877,11 +2868,12 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ClientCardPage.edit(
-          memberId: member.id,
-          initialName: member.name,
-          personalOwnerUid: widget.personalOwnerUid,
-        ),
+        builder:
+            (_) => ClientCardPage.edit(
+              memberId: member.id,
+              initialName: member.name,
+              personalOwnerUid: widget.personalOwnerUid,
+            ),
       ),
     );
     if (!mounted || _isPersonalWorkspace) return;
@@ -2895,8 +2887,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         context: context,
         ownerUid: owner,
         memberId: member.id,
-        loadAccess: () =>
-            AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+        loadAccess:
+            () => AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
         entryPoint: 'client_list_training_log',
       );
       if (!allowed || !mounted) return;
@@ -2904,15 +2896,16 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogPage(
-          memberId: member.id,
-          memberName: member.name ?? '',
-          memberPhone: member.phone ?? '',
-          totalSessions: member.totalSessions,
-          remainingSessions: member.remainingSessions,
-          lastLogAt: member.lastLogAt,
-          personalOwnerUid: owner.isEmpty ? null : owner,
-        ),
+        builder:
+            (_) => PersonalTrainingLogPage(
+              memberId: member.id,
+              memberName: member.name ?? '',
+              memberPhone: member.phone ?? '',
+              totalSessions: member.totalSessions,
+              remainingSessions: member.remainingSessions,
+              lastLogAt: member.lastLogAt,
+              personalOwnerUid: owner.isEmpty ? null : owner,
+            ),
       ),
     );
   }
@@ -2924,8 +2917,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         context: context,
         access: null,
         feature: AppTierFeatureKey.customerCardCreate,
-        loadAccess: () =>
-            AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+        loadAccess:
+            () => AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
         entryPoint: 'client_list_create',
       );
       if (!allowed || !mounted) return;
@@ -2935,10 +2928,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     final result = await Navigator.push<PersonalMemberCardSaveResult>(
       context,
       MaterialPageRoute(
-        builder: (_) => ClientCardPage.newMember(
-          memberId: newId,
-          personalOwnerUid: owner.isEmpty ? null : owner,
-        ),
+        builder:
+            (_) => ClientCardPage.newMember(
+              memberId: newId,
+              personalOwnerUid: owner.isEmpty ? null : owner,
+            ),
       ),
     );
     if (!mounted) return;
@@ -2998,16 +2992,14 @@ class _MemberDashboardPageState extends State<ClientListPage> {
         };
         await PersonalMemberCardSaveService(
           uid: widget.personalOwnerUid!.trim(),
-        ).transitionStateAndVerify(
-          memberId: member.id,
-          nextState: nextState,
-        );
+        ).transitionStateAndVerify(memberId: member.id, nextState: nextState);
         if (!mounted) return;
         _showSnack('${aifcPersonLabel(member.name)} 활동상태가 변경되었어요.');
         return;
       }
-      final memberRef =
-          FirebaseFirestore.instance.collection('members').doc(member.id);
+      final memberRef = FirebaseFirestore.instance
+          .collection('members')
+          .doc(member.id);
 
       final nextGroupMap = Map<String, String>.from(_memberGroupMap);
 
@@ -3039,11 +3031,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
     await AifcInfoChatSheet.show(
       context: context,
-      nickname: _aifcTrainerNameSourceText.trim().isEmpty
-          ? '강사'
-          : _aifcTrainerNameSourceText,
+      nickname:
+          _aifcTrainerNameSourceText.trim().isEmpty
+              ? '강사'
+              : _aifcTrainerNameSourceText,
       title: '삭제 회원 복구 문의',
-      message: '삭제된 회원은 내 회원관리에서는 바로 숨겨집니다.\n'
+      message:
+          '삭제된 회원은 내 회원관리에서는 바로 숨겨집니다.\n'
           '다만 복구 요청을 위해 삭제일 기준 7일간은 보관됩니다.',
       items: const [
         '삭제 후 7일 이내라면 복구 요청이 가능합니다.',
@@ -3076,17 +3070,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 }
 
-enum SortOption {
-  name,
-  group,
-  expirySoon,
-  recentLesson,
-  recentRegistration,
-}
+enum SortOption { name, group, expirySoon, recentLesson, recentRegistration }
 
-enum _MembershipListFilter {
-  needsCheck,
-}
+enum _MembershipListFilter { needsCheck }
 
 String _membershipListFilterLabel(_MembershipListFilter filter) {
   switch (filter) {
@@ -3170,23 +3156,27 @@ class _MemberMembershipMeta {
   factory _MemberMembershipMeta.fromData(Map<String, dynamic> data) {
     final rawMembership = data['membership'];
 
-    final membership = rawMembership is Map
-        ? Map<String, dynamic>.from(rawMembership)
-        : <String, dynamic>{};
+    final membership =
+        rawMembership is Map
+            ? Map<String, dynamic>.from(rawMembership)
+            : <String, dynamic>{};
 
     return _MemberMembershipMeta(
-      status: (membership['status'] ?? data['membershipStatus'] ?? '')
-          .toString()
-          .trim(),
-      contractStatus: (data['membershipContractStatus'] ??
-              membership['contractStatus'] ??
-              '')
-          .toString()
-          .trim(),
+      status:
+          (membership['status'] ?? data['membershipStatus'] ?? '')
+              .toString()
+              .trim(),
+      contractStatus:
+          (data['membershipContractStatus'] ??
+                  membership['contractStatus'] ??
+                  '')
+              .toString()
+              .trim(),
       contractSignedAt: _dateFromAny(
         data['membershipContractSignedAt'] ?? membership['contractSignedAt'],
       ),
-      contractDraftExists: data['membershipContractDraftExists'] == true ||
+      contractDraftExists:
+          data['membershipContractDraftExists'] == true ||
           (data['membershipContractStatus'] ??
                       membership['contractStatus'] ??
                       '')
@@ -3202,12 +3192,8 @@ class _MemberMembershipMeta {
             data['passEnd'] ??
             data['expireAt'],
       ),
-      termMonths: _intFromAny(
-        membership['termMonths'] ?? data['termMonths'],
-      ),
-      customDays: _intFromAny(
-        membership['customDays'] ?? data['customDays'],
-      ),
+      termMonths: _intFromAny(membership['termMonths'] ?? data['termMonths']),
+      customDays: _intFromAny(membership['customDays'] ?? data['customDays']),
     );
   }
 }
@@ -3238,25 +3224,11 @@ enum AlertType {
   painCheck,
 }
 
-enum HeaderFocusType {
-  expiry,
-  newMember,
-  attention,
-  birthday,
-  calm,
-}
+enum HeaderFocusType { expiry, newMember, attention, birthday, calm }
 
-enum ClientListInitialFilter {
-  none,
-  lowRemaining,
-  careNeeded,
-}
+enum ClientListInitialFilter { none, lowRemaining, careNeeded }
 
-enum _DashboardCareFilter {
-  expiry,
-  special,
-  attention,
-}
+enum _DashboardCareFilter { expiry, special, attention }
 
 const Map<AlertType, List<Color>> kAlertRingColors = {
   AlertType.membershipExpiry: [
@@ -3468,19 +3440,23 @@ class DashboardHeaderData {
       final recentReg = member.recentReg;
       final expireAt = member.expireAt;
 
-      final int? femaleConditionDaysLeft =
-          _femaleConditionDaysLeft(member, now);
+      final int? femaleConditionDaysLeft = _femaleConditionDaysLeft(
+        member,
+        now,
+      );
 
-      final bool isFemaleConditionCheck = isActive &&
+      final bool isFemaleConditionCheck =
+          isActive &&
           femaleConditionDaysLeft != null &&
           femaleConditionDaysLeft >= -2 &&
           femaleConditionDaysLeft <= 3;
 
       final DateTime? newMemberBaseDate = recentReg ?? firstDate;
 
-      final firstLessonDays = newMemberBaseDate == null
-          ? 9999
-          : _daysBetween(newMemberBaseDate, now);
+      final firstLessonDays =
+          newMemberBaseDate == null
+              ? 9999
+              : _daysBetween(newMemberBaseDate, now);
 
       final bool isExpirySoon =
           hasLessonRegistration && remaining >= 0 && remaining < 5;
@@ -3491,7 +3467,8 @@ class DashboardHeaderData {
       final int? membershipDaysLeft =
           expireAt == null ? null : _daysBetween(now, expireAt);
 
-      final bool isMembershipExpirySoon = isActive &&
+      final bool isMembershipExpirySoon =
+          isActive &&
           membershipDaysLeft != null &&
           membershipDaysLeft >= 0 &&
           membershipDaysLeft <= 10;
@@ -3511,27 +3488,35 @@ class DashboardHeaderData {
       final bool isHundredLesson =
           isActive && usedSessions >= 93 && usedSessions <= 100;
 
-      final int? birthdayDaysLeft =
-          _daysUntilNextMonthDay(member.birthDate, now);
+      final int? birthdayDaysLeft = _daysUntilNextMonthDay(
+        member.birthDate,
+        now,
+      );
 
-      final bool isBirthdaySoon = isActive &&
+      final bool isBirthdaySoon =
+          isActive &&
           birthdayDaysLeft != null &&
           birthdayDaysLeft >= 0 &&
           birthdayDaysLeft <= 7;
 
-      final int? anniversaryDaysLeft =
-          _daysUntilNextMonthDay(member.anniversaryDate, now);
+      final int? anniversaryDaysLeft = _daysUntilNextMonthDay(
+        member.anniversaryDate,
+        now,
+      );
 
-      final bool isAnniversarySoon = isActive &&
+      final bool isAnniversarySoon =
+          isActive &&
           anniversaryDaysLeft != null &&
           anniversaryDaysLeft >= 0 &&
           anniversaryDaysLeft <= 14;
 
-      final int? nextMoreDayDaysLeft = member.nextMoreDayAt == null
-          ? null
-          : _daysBetween(now, member.nextMoreDayAt!);
+      final int? nextMoreDayDaysLeft =
+          member.nextMoreDayAt == null
+              ? null
+              : _daysBetween(now, member.nextMoreDayAt!);
 
-      final bool isNextMoreDaySoon = isActive &&
+      final bool isNextMoreDaySoon =
+          isActive &&
           nextMoreDayDaysLeft != null &&
           nextMoreDayDaysLeft >= -7 &&
           nextMoreDayDaysLeft <= 14;
@@ -3541,8 +3526,8 @@ class DashboardHeaderData {
               ? 'D-DAY 목표'
               : member.nextMoreDayLabel!.trim();
 
-// 재등록은 만료 임박 쪽에서만 관리
-// MORE 체크에는 넣지 않음
+      // 재등록은 만료 임박 쪽에서만 관리
+      // MORE 체크에는 넣지 않음
 
       if (isNewMember) {
         newMemberCount++;
@@ -3564,18 +3549,20 @@ class DashboardHeaderData {
       }
 
       if (isAnniversarySoon && anniversaryDaysLeft != null) {
-        final anniversaryLabel = (member.anniversaryLabel ?? '').trim().isEmpty
-            ? 'Focus Day'
-            : member.anniversaryLabel!.trim();
+        final anniversaryLabel =
+            (member.anniversaryLabel ?? '').trim().isEmpty
+                ? 'Focus Day'
+                : member.anniversaryLabel!.trim();
 
         alerts.add(
           DashboardAlert(
             memberId: member.id,
             customerName: member.name ?? '이름없음',
             type: AlertType.birthday,
-            label: anniversaryDaysLeft == 0
-                ? '$anniversaryLabel 오늘'
-                : '$anniversaryLabel ${_dDayText(anniversaryDaysLeft)}',
+            label:
+                anniversaryDaysLeft == 0
+                    ? '$anniversaryLabel 오늘'
+                    : '$anniversaryLabel ${_dDayText(anniversaryDaysLeft)}',
             daysLeft: anniversaryDaysLeft,
             priority: 5,
           ),
@@ -3588,9 +3575,10 @@ class DashboardHeaderData {
             memberId: member.id,
             customerName: member.name ?? '이름없음',
             type: AlertType.moreDay,
-            label: nextMoreDayDaysLeft == 0
-                ? '$nextMoreDayLabel 오늘이에요'
-                : '$nextMoreDayLabel 일정이에요',
+            label:
+                nextMoreDayDaysLeft == 0
+                    ? '$nextMoreDayLabel 오늘이에요'
+                    : '$nextMoreDayLabel 일정이에요',
             daysLeft: nextMoreDayDaysLeft,
             priority: 5,
           ),
@@ -3639,38 +3627,42 @@ class DashboardHeaderData {
       }
 
       if (isExpirySoon || needsMembershipCheck) {
-        final String? membershipText = expireAt == null ||
-                membershipDaysLeft == null
-            ? null
-            : membershipDaysLeft < 0
+        final String? membershipText =
+            expireAt == null || membershipDaysLeft == null
+                ? null
+                : membershipDaysLeft < 0
                 ? '회원권 만료됨 · ${_formatDate(expireAt)}'
                 : membershipDaysLeft == 0
-                    ? '회원권 오늘 만료 · ${_formatDate(expireAt)}'
-                    : '회원권 D-$membershipDaysLeft · ${_formatDate(expireAt)}';
+                ? '회원권 오늘 만료 · ${_formatDate(expireAt)}'
+                : '회원권 D-$membershipDaysLeft · ${_formatDate(expireAt)}';
 
-        final String sessionText = isReRegistrationTarget
-            ? '재등록 안내 필요 · ${member.remainingSessions}회 남음'
-            : '레슨만료예정 · ${member.remainingSessions}회 남음';
+        final String sessionText =
+            isReRegistrationTarget
+                ? '재등록 안내 필요 · ${member.remainingSessions}회 남음'
+                : '레슨만료예정 · ${member.remainingSessions}회 남음';
 
         final bool hasSessionAlert = isExpirySoon || isReRegistrationTarget;
 
-        final String label = hasSessionAlert
-            ? membershipText == null
-                ? sessionText
-                : '$sessionText · $membershipText'
-            : membershipText ?? '회원권 만료 임박';
+        final String label =
+            hasSessionAlert
+                ? membershipText == null
+                    ? sessionText
+                    : '$sessionText · $membershipText'
+                : membershipText ?? '회원권 만료 임박';
 
         alerts.add(
           DashboardAlert(
             memberId: member.id,
             customerName: member.name ?? '이름없음',
-            type: isReRegistrationTarget
-                ? AlertType.reRegistration
-                : AlertType.membershipExpiry,
+            type:
+                isReRegistrationTarget
+                    ? AlertType.reRegistration
+                    : AlertType.membershipExpiry,
             label: label,
-            daysLeft: membershipDaysLeft != null && membershipDaysLeft >= 0
-                ? membershipDaysLeft
-                : null,
+            daysLeft:
+                membershipDaysLeft != null && membershipDaysLeft >= 0
+                    ? membershipDaysLeft
+                    : null,
             priority: isReRegistrationTarget ? 2 : 1,
           ),
         );
@@ -3682,9 +3674,10 @@ class DashboardHeaderData {
             memberId: member.id,
             customerName: member.name ?? '이름없음',
             type: AlertType.newMember,
-            label: recentReg != null
-                ? '신규 등록 · ${_formatDate(recentReg)}'
-                : '신규 회원 · ${firstLessonDays + 1}일차',
+            label:
+                recentReg != null
+                    ? '신규 등록 · ${_formatDate(recentReg)}'
+                    : '신규 회원 · ${firstLessonDays + 1}일차',
             daysLeft: null,
             priority: 4,
           ),
@@ -3699,9 +3692,10 @@ class DashboardHeaderData {
             memberId: member.id,
             customerName: member.name ?? '이름없음',
             type: AlertType.hundredDay,
-            label: diff == 0
-                ? '레슨 시작 100일'
-                : diff > 0
+            label:
+                diff == 0
+                    ? '레슨 시작 100일'
+                    : diff > 0
                     ? '레슨 시작 100일 ${_dDayText(diff)}'
                     : '레슨 시작 100일 D+${diff.abs()}',
             daysLeft: diff.abs(),
@@ -3718,9 +3712,10 @@ class DashboardHeaderData {
             memberId: member.id,
             customerName: member.name ?? '이름없음',
             type: AlertType.hundredLesson,
-            label: diff == 0
-                ? '누적 100회 레슨'
-                : diff > 0
+            label:
+                diff == 0
+                    ? '누적 100회 레슨'
+                    : diff > 0
                     ? '누적 100회까지 ${diff}회'
                     : '누적 ${usedSessions}회 레슨',
             daysLeft: diff.abs(),
@@ -3769,17 +3764,11 @@ class DashboardHeaderData {
       alerts: alerts.take(12).toList(),
       focusType: focusType,
       focusCount: focusCount,
-      dailyTitle: _rotatingDailyTitle(
-        focusType,
-        seed: messageSeed,
-      ),
+      dailyTitle: _rotatingDailyTitle(focusType, seed: messageSeed),
     );
   }
 
-  static String _rotatingDailyTitle(
-    HeaderFocusType type, {
-    required int seed,
-  }) {
+  static String _rotatingDailyTitle(HeaderFocusType type, {required int seed}) {
     final expiryLines = [
       '만료 임박 회원이 있어요. 안내 한 번이 재등록으로 이어질 수 있어요.',
       '남은 횟수가 적은 회원부터 먼저 챙겨보세요.',
@@ -3998,7 +3987,8 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                     const SizedBox(height: 10),
                     AifcChatBubble(
                       side: AifcBubbleSide.fc,
-                      text: '$trainerLabel, 제가 챙겨드리는 관리 포인트를 설명드릴게요.\n'
+                      text:
+                          '$trainerLabel, 제가 챙겨드리는 관리 포인트를 설명드릴게요.\n'
                           '회원관리에서 놓치기 쉬운 흐름을 세 가지로 나눠서 보여드려요.\n\n'
                           '같은 회원이 여러 조건에 걸릴 수 있지만, '
                           'AI FC가 더 중요한 내용부터 먼저 알려드리려고 노력하고 있어요.',
@@ -4040,8 +4030,9 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                           backgroundColor: AifcColors.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AifcRadius.button),
+                            borderRadius: BorderRadius.circular(
+                              AifcRadius.button,
+                            ),
                           ),
                         ),
                         child: const Text(
@@ -4214,11 +4205,13 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                               valueListenable: widget.isListViewListenable,
                               builder: (context, isListView, _) {
                                 return MtfFloatingMoreMenuButton<
-                                    _DashboardHeaderMenuAction>(
+                                  _DashboardHeaderMenuAction
+                                >(
                                   tooltip: '더보기',
                                   icon: Icons.more_vert_rounded,
-                                  iconColor:
-                                      Colors.white.withValues(alpha: 0.72),
+                                  iconColor: Colors.white.withValues(
+                                    alpha: 0.72,
+                                  ),
                                   iconSize: 23,
                                   cardWidth: 218,
                                   offset: const Offset(0, 8),
@@ -4226,22 +4219,25 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                                   items: [
                                     if (widget.isPersonalWorkspace) ...[
                                       const MtfMoreMenuItem(
-                                        value: _DashboardHeaderMenuAction
-                                            .addMember,
+                                        value:
+                                            _DashboardHeaderMenuAction
+                                                .addMember,
                                         icon: Icons.person_add_alt_1_rounded,
                                         label: '회원 추가',
-                                        subLabel: '새 고객카드 등록',
+                                        subLabel: '새 회원카드 등록',
                                       ),
                                       const MtfMoreMenuItem(
-                                        value: _DashboardHeaderMenuAction
-                                            .createGroup,
+                                        value:
+                                            _DashboardHeaderMenuAction
+                                                .createGroup,
                                         icon: Icons.folder_open_rounded,
                                         label: '그룹 관리',
                                         subLabel: '기본·사용자 그룹 관리',
                                       ),
                                       const MtfMoreMenuItem(
-                                        value: _DashboardHeaderMenuAction
-                                            .manageTags,
+                                        value:
+                                            _DashboardHeaderMenuAction
+                                                .manageTags,
                                         icon: Icons.sell_outlined,
                                         label: '태그 관리',
                                         subLabel: 'Semi-Pro 복수 태그 관리',
@@ -4249,26 +4245,31 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                                     ],
                                     if (!widget.isPersonalWorkspace)
                                       MtfMoreMenuItem(
-                                        value: _DashboardHeaderMenuAction
-                                            .createGroup,
+                                        value:
+                                            _DashboardHeaderMenuAction
+                                                .createGroup,
                                         icon: Icons.add_box_rounded,
-                                        label: widget.isPersonalWorkspace
-                                            ? '기본 그룹 이름 변경'
-                                            : '새 그룹 만들기',
-                                        subLabel: widget.isPersonalWorkspace
-                                            ? '모든 Personal 회원 표시명'
-                                            : '회원 분류 추가',
+                                        label:
+                                            widget.isPersonalWorkspace
+                                                ? '기본 그룹 이름 변경'
+                                                : '새 그룹 만들기',
+                                        subLabel:
+                                            widget.isPersonalWorkspace
+                                                ? '모든 Personal 회원 표시명'
+                                                : '회원 분류 추가',
                                       ),
                                     MtfMoreMenuItem(
-                                      value: _DashboardHeaderMenuAction
-                                          .resetFilters,
+                                      value:
+                                          _DashboardHeaderMenuAction
+                                              .resetFilters,
                                       icon: Icons.restart_alt_rounded,
                                       label: '필터 초기화',
                                       subLabel: '검색/그룹 조건 해제',
                                     ),
                                     MtfMoreMenuItem(
-                                      value: _DashboardHeaderMenuAction
-                                          .restoreDeletedMembers,
+                                      value:
+                                          _DashboardHeaderMenuAction
+                                              .restoreDeletedMembers,
                                       icon: Icons.support_agent_rounded,
                                       label: '삭제 회원 복구 문의',
                                       subLabel: '삭제된 회원 확인',
@@ -4363,46 +4364,47 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                       duration: const Duration(milliseconds: 260),
                       curve: Curves.easeOutCubic,
                       alignment: Alignment.topCenter,
-                      child: !_expanded
-                          ? const SizedBox(
-                              width: double.infinity,
-                              height: 0,
-                            )
-                          : TweenAnimationBuilder<double>(
-                              tween: Tween<double>(begin: 0, end: 1),
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, value, child) {
-                                return Opacity(
-                                  opacity: value,
-                                  child: Transform.translate(
-                                    offset: Offset(0, -8 * (1 - value)),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 10),
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      _buildFocusSummaryCards(data),
-                                      const SizedBox(height: 10),
-                                      _HeaderSlideOverlay(
-                                        data: widget.data,
-                                        onClose: () {
-                                          setState(() => _expanded = false);
-                                        },
-                                        onAlertTap: widget.onAlertTap,
-                                      ),
-                                    ],
+                      child:
+                          !_expanded
+                              ? const SizedBox(
+                                width: double.infinity,
+                                height: 0,
+                              )
+                              : TweenAnimationBuilder<double>(
+                                tween: Tween<double>(begin: 0, end: 1),
+                                duration: const Duration(milliseconds: 260),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, value, child) {
+                                  return Opacity(
+                                    opacity: value,
+                                    child: Transform.translate(
+                                      offset: Offset(0, -8 * (1 - value)),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        _buildFocusSummaryCards(data),
+                                        const SizedBox(height: 10),
+                                        _HeaderSlideOverlay(
+                                          data: widget.data,
+                                          onClose: () {
+                                            setState(() => _expanded = false);
+                                          },
+                                          onAlertTap: widget.onAlertTap,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                     ),
                   ),
                 ],
@@ -4445,11 +4447,7 @@ class _HeaderSlideOverlayState extends State<_HeaderSlideOverlay> {
   }
 
   String _stableAlertKey(DashboardAlert alert) {
-    return [
-      alert.memberId,
-      alert.type.name,
-      alert.label,
-    ].join('|');
+    return [alert.memberId, alert.type.name, alert.label].join('|');
   }
 
   String _permanentAlertKey(DashboardAlert alert) {
@@ -4460,10 +4458,7 @@ class _HeaderSlideOverlayState extends State<_HeaderSlideOverlay> {
     // 생일 알림 숨김 → 해당 회원 생일 알림 다시 안 보기
     // 회원권 만료 알림 숨김 → 해당 회원 회원권 만료 알림 다시 안 보기
     // MORE 데이 알림 숨김 → 해당 회원 MORE 데이 알림 다시 안 보기
-    return [
-      alert.memberId,
-      alert.type.name,
-    ].join('|');
+    return [alert.memberId, alert.type.name].join('|');
   }
 
   String get _dismissedPrefsKey {
@@ -4535,15 +4530,16 @@ class _HeaderSlideOverlayState extends State<_HeaderSlideOverlay> {
   Widget build(BuildContext context) {
     final indexed = widget.data.alerts.asMap().entries.toList();
 
-    final remaining = indexed.where((e) {
-      final alert = e.value;
+    final remaining =
+        indexed.where((e) {
+          final alert = e.value;
 
-      final todayKey = _alertKey(alert, e.key);
-      final permanentKey = _permanentAlertKey(alert);
+          final todayKey = _alertKey(alert, e.key);
+          final permanentKey = _permanentAlertKey(alert);
 
-      return !_dismissedAlertKeys.contains(todayKey) &&
-          !_permanentlyHiddenAlertKeys.contains(permanentKey);
-    }).toList();
+          return !_dismissedAlertKeys.contains(todayKey) &&
+              !_permanentlyHiddenAlertKeys.contains(permanentKey);
+        }).toList();
 
     final hasAlerts = remaining.isNotEmpty;
 
@@ -4554,84 +4550,86 @@ class _HeaderSlideOverlayState extends State<_HeaderSlideOverlay> {
 
     final visibleHeightCount = remaining.length.clamp(1, maxVisibleCount);
 
-    final double overlayHeight = hasAlerts
-        ? (visibleHeightCount * tileEstimatedHeight) +
-            ((visibleHeightCount - 1) * separatorHeight)
-        : emptyHeight;
+    final double overlayHeight =
+        hasAlerts
+            ? (visibleHeightCount * tileEstimatedHeight) +
+                ((visibleHeightCount - 1) * separatorHeight)
+            : emptyHeight;
 
     return SizedBox(
       height: overlayHeight,
-      child: !hasAlerts
-          ? const _EmptyAiFcAlertCard()
-          : ListView.separated(
-              controller: _alertScrollController,
-              padding: EdgeInsets.zero,
-              physics: remaining.length > maxVisibleCount
-                  ? const BouncingScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              itemCount: remaining.length,
-              separatorBuilder: (_, __) => const SizedBox(
-                height: separatorHeight,
-              ),
-              itemBuilder: (context, i) {
-                final entry = remaining[i];
-                final alert = entry.value;
-                final key = _alertKey(alert, entry.key);
+      child:
+          !hasAlerts
+              ? const _EmptyAiFcAlertCard()
+              : ListView.separated(
+                controller: _alertScrollController,
+                padding: EdgeInsets.zero,
+                physics:
+                    remaining.length > maxVisibleCount
+                        ? const BouncingScrollPhysics()
+                        : const NeverScrollableScrollPhysics(),
+                itemCount: remaining.length,
+                separatorBuilder:
+                    (_, __) => const SizedBox(height: separatorHeight),
+                itemBuilder: (context, i) {
+                  final entry = remaining[i];
+                  final alert = entry.value;
+                  final key = _alertKey(alert, entry.key);
 
-                return Dismissible(
-                  key: ValueKey(key),
-                  direction: DismissDirection.horizontal,
-                  dismissThresholds: const {
-                    DismissDirection.startToEnd: 0.28,
-                    DismissDirection.endToStart: 0.22,
-                  },
-
-                  // 왼쪽 → 오른쪽 : 영구 숨김
-                  background: const _OverlayDismissBackground(
-                    alignment: Alignment.centerLeft,
-                    icon: Icons.delete_forever_rounded,
-                    label: '다시 안 보기',
-                    backgroundColor: Color(0xFFDC2626),
-                  ),
-
-                  // 오른쪽 → 왼쪽 : 오늘 하루 숨김
-                  secondaryBackground: const _OverlayDismissBackground(
-                    alignment: Alignment.centerRight,
-                    icon: Icons.delete_sweep_rounded,
-                    label: '오늘 숨김',
-                    backgroundColor: Color(0xFF2563EB),
-                  ),
-
-                  confirmDismiss: (direction) async {
-                    if (direction == DismissDirection.startToEnd) {
-                      HapticFeedback.mediumImpact();
-                      return _confirmHideAlertPermanently(alert);
-                    }
-
-                    HapticFeedback.lightImpact();
-                    return true;
-                  },
-
-                  onDismissed: (direction) {
-                    if (direction == DismissDirection.startToEnd) {
-                      _hideAlertPermanentlyDirect(alert);
-                      return;
-                    }
-
-                    _dismissAlert(key, alert);
-                  },
-
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      widget.onClose();
-                      widget.onAlertTap?.call(alert.memberId);
+                  return Dismissible(
+                    key: ValueKey(key),
+                    direction: DismissDirection.horizontal,
+                    dismissThresholds: const {
+                      DismissDirection.startToEnd: 0.28,
+                      DismissDirection.endToStart: 0.22,
                     },
-                    child: _OverlayAlertTileBlue(alert: alert),
-                  ),
-                );
-              },
-            ),
+
+                    // 왼쪽 → 오른쪽 : 영구 숨김
+                    background: const _OverlayDismissBackground(
+                      alignment: Alignment.centerLeft,
+                      icon: Icons.delete_forever_rounded,
+                      label: '다시 안 보기',
+                      backgroundColor: Color(0xFFDC2626),
+                    ),
+
+                    // 오른쪽 → 왼쪽 : 오늘 하루 숨김
+                    secondaryBackground: const _OverlayDismissBackground(
+                      alignment: Alignment.centerRight,
+                      icon: Icons.delete_sweep_rounded,
+                      label: '오늘 숨김',
+                      backgroundColor: Color(0xFF2563EB),
+                    ),
+
+                    confirmDismiss: (direction) async {
+                      if (direction == DismissDirection.startToEnd) {
+                        HapticFeedback.mediumImpact();
+                        return _confirmHideAlertPermanently(alert);
+                      }
+
+                      HapticFeedback.lightImpact();
+                      return true;
+                    },
+
+                    onDismissed: (direction) {
+                      if (direction == DismissDirection.startToEnd) {
+                        _hideAlertPermanentlyDirect(alert);
+                        return;
+                      }
+
+                      _dismissAlert(key, alert);
+                    },
+
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        widget.onClose();
+                        widget.onAlertTap?.call(alert.memberId);
+                      },
+                      child: _OverlayAlertTileBlue(alert: alert),
+                    ),
+                  );
+                },
+              ),
     );
   }
 
@@ -4788,9 +4786,7 @@ class _HeaderSlideOverlayState extends State<_HeaderSlideOverlay> {
               ),
               child: const Text(
                 '다시 안 보기',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -4860,9 +4856,7 @@ class _OverlayDismissBackground extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.12),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 18),
       alignment: alignment,
@@ -4872,11 +4866,7 @@ class _OverlayDismissBackground extends StatelessWidget {
             isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
         children: [
           if (isLeft) ...[
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 22,
-            ),
+            Icon(icon, color: Colors.white, size: 22),
             const SizedBox(width: 7),
             Text(
               label,
@@ -4896,11 +4886,7 @@ class _OverlayDismissBackground extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 7),
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 22,
-            ),
+            Icon(icon, color: Colors.white, size: 22),
           ],
         ],
       ),
@@ -4939,7 +4925,8 @@ class _AlertFcAvatarState extends State<_AlertFcAvatar>
 
   @override
   Widget build(BuildContext context) {
-    final ringColors = kAlertRingColors[widget.type] ??
+    final ringColors =
+        kAlertRingColors[widget.type] ??
         kAlertRingColors[AlertType.attentionNeeded]!;
     final badgeColor =
         kAlertBadgeColors[widget.type] ?? const Color(0xFF4F46E5);
@@ -5016,11 +5003,7 @@ class _AlertFcAvatarState extends State<_AlertFcAvatar>
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 1.5),
               ),
-              child: Icon(
-                icon,
-                size: 7,
-                color: Colors.white,
-              ),
+              child: Icon(icon, size: 7, color: Colors.white),
             ),
           ),
         ],
@@ -5045,10 +5028,7 @@ class _EmptyAiFcAlertCard extends StatelessWidget {
           bottomLeft: Radius.circular(14),
           bottomRight: Radius.circular(14),
         ),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 0.6,
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 0.6),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -5099,12 +5079,13 @@ class _OverlayAlertTileBlue extends StatelessWidget {
     final chipLabel = kAlertChipLabels[alert.type] ?? '';
     final bool isTodayAlert = alert.daysLeft == 0;
 
-    final Color tileBg = isTodayAlert
-        ? Color.alphaBlend(
-            borderColor.withValues(alpha: 0.13),
-            Colors.white,
-          )
-        : Colors.white.withValues(alpha: 0.94);
+    final Color tileBg =
+        isTodayAlert
+            ? Color.alphaBlend(
+              borderColor.withValues(alpha: 0.13),
+              Colors.white,
+            )
+            : Colors.white.withValues(alpha: 0.94);
 
     return ClipRRect(
       borderRadius: const BorderRadius.only(
@@ -5122,33 +5103,37 @@ class _OverlayAlertTileBlue extends StatelessWidget {
               width: isTodayAlert ? 4.0 : 2.5,
             ),
             top: BorderSide(
-              color: isTodayAlert
-                  ? borderColor.withValues(alpha: 0.16)
-                  : Colors.white.withValues(alpha: 0.50),
+              color:
+                  isTodayAlert
+                      ? borderColor.withValues(alpha: 0.16)
+                      : Colors.white.withValues(alpha: 0.50),
               width: 0.7,
             ),
             right: BorderSide(
-              color: isTodayAlert
-                  ? borderColor.withValues(alpha: 0.16)
-                  : Colors.white.withValues(alpha: 0.50),
+              color:
+                  isTodayAlert
+                      ? borderColor.withValues(alpha: 0.16)
+                      : Colors.white.withValues(alpha: 0.50),
               width: 0.7,
             ),
             bottom: BorderSide(
-              color: isTodayAlert
-                  ? borderColor.withValues(alpha: 0.16)
-                  : Colors.white.withValues(alpha: 0.50),
+              color:
+                  isTodayAlert
+                      ? borderColor.withValues(alpha: 0.16)
+                      : Colors.white.withValues(alpha: 0.50),
               width: 0.7,
             ),
           ),
-          boxShadow: isTodayAlert
-              ? [
-                  BoxShadow(
-                    color: borderColor.withValues(alpha: 0.18),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
+          boxShadow:
+              isTodayAlert
+                  ? [
+                    BoxShadow(
+                      color: borderColor.withValues(alpha: 0.18),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : null,
         ),
         child: Stack(
           children: [
@@ -5280,11 +5265,7 @@ class _CareGuideItem extends StatelessWidget {
               color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: color,
-            ),
+            child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -5337,11 +5318,7 @@ class _HeaderMenuItem extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 17,
-          color: color,
-        ),
+        Icon(icon, size: 17, color: color),
         const SizedBox(width: 9),
         Expanded(
           child: Text(
@@ -5349,18 +5326,15 @@ class _HeaderMenuItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-              color: isSelected
-                  ? const Color(0xFF5B4BDB)
-                  : const Color(0xFF111827),
+              color:
+                  isSelected
+                      ? const Color(0xFF5B4BDB)
+                      : const Color(0xFF111827),
             ),
           ),
         ),
         if (isSelected)
-          const Icon(
-            Icons.check_rounded,
-            size: 16,
-            color: Color(0xFF5B4BDB),
-          ),
+          const Icon(Icons.check_rounded, size: 16, color: Color(0xFF5B4BDB)),
       ],
     );
   }
@@ -5397,15 +5371,16 @@ class _StatCard extends StatelessWidget {
           color: Colors.white.withValues(alpha: isSelected ? 0.48 : 0.0),
           width: isSelected ? 1.2 : 0,
         ),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : [],
+        boxShadow:
+            isSelected
+                ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                : [],
       ),
       child: Row(
         children: [
@@ -5421,10 +5396,7 @@ class _StatCard extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -5508,9 +5480,10 @@ class _SearchAndFilterCard extends StatelessWidget {
               onChanged: onSearchChanged,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: hasDateFilter
-                    ? '이름/전화번호/그룹명 검색 · ${_formatDate(selectedLessonDate!)}'
-                    : hasMembershipFilter
+                hintText:
+                    hasDateFilter
+                        ? '이름/전화번호/그룹명 검색 · ${_formatDate(selectedLessonDate!)}'
+                        : hasMembershipFilter
                         ? '${_membershipListFilterLabel(membershipFilter!)} · 이름/전화번호/그룹명 검색'
                         : '이름/전화번호/그룹명 검색',
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -5555,83 +5528,87 @@ class _SearchAndFilterCard extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: _SearchMenuAction.sortName,
-                child: Text('정렬 · 이름순'),
-              ),
-              const PopupMenuItem(
-                value: _SearchMenuAction.sortExpirySoon,
-                child: Text('정렬 · 레슨 만료 임박순'),
-              ),
-              const PopupMenuItem(
-                value: _SearchMenuAction.sortRecentLesson,
-                child: Text('정렬 · 최근이용순'),
-              ),
-              const PopupMenuItem(
-                value: _SearchMenuAction.sortRecentRegistration,
-                child: Text('정렬 · 최근등록순'),
-              ),
-              PopupMenuItem(
-                value: _SearchMenuAction.sortGroup,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.folder_open_rounded,
-                      size: 18,
-                      color: sortOption == SortOption.group
-                          ? scheme.primary
-                          : scheme.onSurfaceVariant,
+            itemBuilder:
+                (context) => [
+                  const PopupMenuItem(
+                    value: _SearchMenuAction.sortName,
+                    child: Text('정렬 · 이름순'),
+                  ),
+                  const PopupMenuItem(
+                    value: _SearchMenuAction.sortExpirySoon,
+                    child: Text('정렬 · 레슨 만료 임박순'),
+                  ),
+                  const PopupMenuItem(
+                    value: _SearchMenuAction.sortRecentLesson,
+                    child: Text('정렬 · 최근이용순'),
+                  ),
+                  const PopupMenuItem(
+                    value: _SearchMenuAction.sortRecentRegistration,
+                    child: Text('정렬 · 최근등록순'),
+                  ),
+                  PopupMenuItem(
+                    value: _SearchMenuAction.sortGroup,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.folder_open_rounded,
+                          size: 18,
+                          color:
+                              sortOption == SortOption.group
+                                  ? scheme.primary
+                                  : scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '그룹순',
+                          style: TextStyle(
+                            fontWeight:
+                                sortOption == SortOption.group
+                                    ? FontWeight.w900
+                                    : FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '그룹순',
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: _SearchMenuAction.pickLessonDate,
+                    child: Text('레슨일 선택'),
+                  ),
+                  if (hasDateFilter)
+                    const PopupMenuItem(
+                      value: _SearchMenuAction.clearLessonDate,
+                      child: Text('레슨일 해제'),
+                    ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem<_SearchMenuAction>(
+                    enabled: false,
+                    child: Text(
+                      '회원권',
                       style: TextStyle(
-                        fontWeight: sortOption == SortOption.group
-                            ? FontWeight.w900
-                            : FontWeight.w700,
+                        fontWeight: FontWeight.w900,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: _SearchMenuAction.pickLessonDate,
-                child: Text('레슨일 선택'),
-              ),
-              if (hasDateFilter)
-                const PopupMenuItem(
-                  value: _SearchMenuAction.clearLessonDate,
-                  child: Text('레슨일 해제'),
-                ),
-              const PopupMenuDivider(),
-              PopupMenuItem<_SearchMenuAction>(
-                enabled: false,
-                child: Text(
-                  '회원권',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: scheme.onSurfaceVariant,
                   ),
-                ),
-              ),
-              const PopupMenuItem(
-                value: _SearchMenuAction.membershipNeedsCheck,
-                child: Text('회원권 체크'),
-              ),
-              if (hasMembershipFilter)
-                const PopupMenuItem(
-                  value: _SearchMenuAction.clearMembershipFilter,
-                  child: Text('회원권 필터 해제'),
-                ),
-            ],
+                  const PopupMenuItem(
+                    value: _SearchMenuAction.membershipNeedsCheck,
+                    child: Text('회원권 체크'),
+                  ),
+                  if (hasMembershipFilter)
+                    const PopupMenuItem(
+                      value: _SearchMenuAction.clearMembershipFilter,
+                      child: Text('회원권 필터 해제'),
+                    ),
+                ],
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
-                color: hasDateFilter
-                    ? tokens.memberListSelected
-                    : scheme.surfaceContainerHighest,
+                color:
+                    hasDateFilter
+                        ? tokens.memberListSelected
+                        : scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: tokens.memberListCardBorder),
               ),
@@ -5695,9 +5672,10 @@ class _GroupFilterChipRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <Widget>[
       ...items.map((item) {
-        final bool isSelected = item.id == _MemberDashboardPageState._allGroupId
-            ? selectedGroupId == null
-            : selectedGroupId == item.id;
+        final bool isSelected =
+            item.id == _MemberDashboardPageState._allGroupId
+                ? selectedGroupId == null
+                : selectedGroupId == item.id;
 
         return Padding(
           padding: const EdgeInsets.only(right: 7),
@@ -5764,9 +5742,7 @@ class _GroupFilterChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: Ink(
           height: 32,
-          padding: EdgeInsets.symmetric(
-            horizontal: label == null ? 10 : 12,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: label == null ? 10 : 12),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(999),
@@ -5785,11 +5761,7 @@ class _GroupFilterChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 15,
-                color: fgColor,
-              ),
+              Icon(icon, size: 15, color: fgColor),
               if (label != null) ...[
                 const SizedBox(width: 5),
                 Text(
@@ -5882,17 +5854,20 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
   }
 
   List<String> get _allGroupIds => <String>[
-        widget.ungroupedGroupId,
-        ...widget.groupIds,
-        _MemberDashboardPageState._systemDormantGroupId,
-        _MemberDashboardPageState._systemExpiredGroupId,
-      ];
+    widget.ungroupedGroupId,
+    ...widget.groupIds,
+    _MemberDashboardPageState._systemDormantGroupId,
+    _MemberDashboardPageState._systemExpiredGroupId,
+  ];
 
-  List<String> get _deletableGroupIds => widget.groupIds
-      .where((groupId) =>
-          groupId != widget.ungroupedGroupId &&
-          !widget.systemGroupIds.contains(groupId))
-      .toList();
+  List<String> get _deletableGroupIds =>
+      widget.groupIds
+          .where(
+            (groupId) =>
+                groupId != widget.ungroupedGroupId &&
+                !widget.systemGroupIds.contains(groupId),
+          )
+          .toList();
 
   String _labelOf(String groupId) {
     final label = (widget.groupNames[groupId] ?? '').trim();
@@ -5927,14 +5902,16 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
               children: [
                 AifcChatBubble(
                   side: AifcBubbleSide.fc,
-                  text: _mode == _GroupManagementMode.root
-                      ? '그룹을 어떻게 관리할까요?'
-                      : _mode == _GroupManagementMode.order
+                  text:
+                      _mode == _GroupManagementMode.root
+                          ? '그룹을 어떻게 관리할까요?'
+                          : _mode == _GroupManagementMode.order
                           ? '길게 눌러 그룹 순서를 바꿔주세요.'
                           : '어떤 그룹을 삭제할까요?',
-                  child: _mode == _GroupManagementMode.root
-                      ? _buildRootActions()
-                      : _mode == _GroupManagementMode.order
+                  child:
+                      _mode == _GroupManagementMode.root
+                          ? _buildRootActions()
+                          : _mode == _GroupManagementMode.order
                           ? _buildOrderEditor()
                           : _buildGroupPicker(),
                 ),
@@ -5999,10 +5976,7 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            '순서를 바꾸려면 커스텀 그룹이 2개 이상 필요해요.',
-            style: AifcText.caption,
-          ),
+          const Text('순서를 바꾸려면 커스텀 그룹이 2개 이상 필요해요.', style: AifcText.caption),
           const SizedBox(height: 10),
           _GroupManagementActionButton(
             icon: Icons.arrow_back_rounded,
@@ -6017,8 +5991,10 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
       );
     }
 
-    final double listHeight =
-        math.min(300.0, (_workingOrder.length * 58.0) + 8.0);
+    final double listHeight = math.min(
+      300.0,
+      (_workingOrder.length * 58.0) + 8.0,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -6065,9 +6041,7 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
           icon: Icons.check_rounded,
           title: '이 순서로 저장',
           subtitle: '검색창 아래 그룹 순서에 반영돼요.',
-          onTap: () => _closeThen(
-            () => widget.onReorderGroups(_workingOrder),
-          ),
+          onTap: () => _closeThen(() => widget.onReorderGroups(_workingOrder)),
         ),
         const SizedBox(height: 8),
         _GroupManagementActionButton(
@@ -6085,18 +6059,16 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
   }
 
   Widget _buildGroupPicker() {
-    final ids = _mode == _GroupManagementMode.delete
-        ? _deletableGroupIds
-        : _allGroupIds;
+    final ids =
+        _mode == _GroupManagementMode.delete
+            ? _deletableGroupIds
+            : _allGroupIds;
 
     if (ids.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            '삭제할 수 있는 커스텀 그룹이 아직 없어요.',
-            style: AifcText.caption,
-          ),
+          const Text('삭제할 수 있는 커스텀 그룹이 아직 없어요.', style: AifcText.caption),
           const SizedBox(height: 10),
           _GroupManagementActionButton(
             icon: Icons.arrow_back_rounded,
@@ -6118,17 +6090,20 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: _GroupManagementActionButton(
-              icon: isDelete
-                  ? Icons.folder_delete_outlined
-                  : Icons.folder_open_rounded,
+              icon:
+                  isDelete
+                      ? Icons.folder_delete_outlined
+                      : Icons.folder_open_rounded,
               title: _labelOf(groupId),
               subtitle: isDelete ? '이 그룹을 삭제합니다.' : '이 그룹 이름을 변경합니다.',
               danger: isDelete,
-              onTap: () => _closeThen(
-                () => isDelete
-                    ? widget.onDeleteGroup(groupId)
-                    : widget.onRenameGroup(groupId),
-              ),
+              onTap:
+                  () => _closeThen(
+                    () =>
+                        isDelete
+                            ? widget.onDeleteGroup(groupId)
+                            : widget.onRenameGroup(groupId),
+                  ),
             ),
           );
         }),
@@ -6146,18 +6121,10 @@ class _GroupManagementSheetState extends State<_GroupManagementSheet> {
   }
 }
 
-enum _GroupManagementMode {
-  root,
-  rename,
-  order,
-  delete,
-}
+enum _GroupManagementMode { root, rename, order, delete }
 
 class _GroupOrderTile extends StatelessWidget {
-  const _GroupOrderTile({
-    required this.index,
-    required this.label,
-  });
+  const _GroupOrderTile({required this.index, required this.label});
 
   final int index;
   final String label;
@@ -6262,11 +6229,7 @@ class _GroupManagementActionButton extends StatelessWidget {
                   color: color.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: color,
-                ),
+                child: Icon(icon, size: 18, color: color),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -6447,9 +6410,10 @@ class MemberListRow extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
 
     final expireAt = member.expireAt ?? membershipMeta?.endAt;
-    final expireDate = expireAt == null
-        ? null
-        : DateTime(expireAt.year, expireAt.month, expireAt.day);
+    final expireDate =
+        expireAt == null
+            ? null
+            : DateTime(expireAt.year, expireAt.month, expireAt.day);
 
     int? daysLeft;
     if (expireDate != null) {
@@ -6530,9 +6494,7 @@ class MemberListRow extends StatelessWidget {
 
   List<_IssueChipData> _listEventChips() {
     final now = DateTime.now();
-    final items = <_IssueChipData>[
-      ..._membershipIssueChips(),
-    ];
+    final items = <_IssueChipData>[..._membershipIssueChips()];
 
     if (!_isActiveMember(member)) {
       return items.take(2).toList();
@@ -6545,30 +6507,35 @@ class MemberListRow extends StatelessWidget {
         birthdayDaysLeft <= 7) {
       items.add(
         _IssueChipData(
-          label: birthdayDaysLeft == 0
-              ? '🎂 D-DAY'
-              : '🎂 ${_dDayText(birthdayDaysLeft)}',
+          label:
+              birthdayDaysLeft == 0
+                  ? '🎂 D-DAY'
+                  : '🎂 ${_dDayText(birthdayDaysLeft)}',
           bgColor: const Color(0xFFFBEAF0),
           textColor: const Color(0xFF993556),
         ),
       );
     }
 
-    final anniversaryDaysLeft =
-        _daysUntilNextMonthDay(member.anniversaryDate, now);
+    final anniversaryDaysLeft = _daysUntilNextMonthDay(
+      member.anniversaryDate,
+      now,
+    );
 
     if (anniversaryDaysLeft != null &&
         anniversaryDaysLeft >= 0 &&
         anniversaryDaysLeft <= 14) {
-      final label = (member.anniversaryLabel ?? '').trim().isEmpty
-          ? 'Focus'
-          : member.anniversaryLabel!.trim();
+      final label =
+          (member.anniversaryLabel ?? '').trim().isEmpty
+              ? 'Focus'
+              : member.anniversaryLabel!.trim();
 
       items.add(
         _IssueChipData(
-          label: anniversaryDaysLeft == 0
-              ? '$label D-DAY'
-              : '$label ${_dDayText(anniversaryDaysLeft)}',
+          label:
+              anniversaryDaysLeft == 0
+                  ? '$label D-DAY'
+                  : '$label ${_dDayText(anniversaryDaysLeft)}',
           bgColor: const Color(0xFFE6F1FB),
           textColor: const Color(0xFF185FA5),
         ),
@@ -6589,16 +6556,18 @@ class MemberListRow extends StatelessWidget {
       );
     }
 
-    final nextMoreDayDaysLeft = member.nextMoreDayAt == null
-        ? null
-        : _daysBetween(now, member.nextMoreDayAt!);
+    final nextMoreDayDaysLeft =
+        member.nextMoreDayAt == null
+            ? null
+            : _daysBetween(now, member.nextMoreDayAt!);
 
     if (nextMoreDayDaysLeft != null &&
         nextMoreDayDaysLeft >= -7 &&
         nextMoreDayDaysLeft <= 14) {
-      final label = (member.nextMoreDayLabel ?? '').trim().isEmpty
-          ? 'D-DAY'
-          : member.nextMoreDayLabel!.trim();
+      final label =
+          (member.nextMoreDayLabel ?? '').trim().isEmpty
+              ? 'D-DAY'
+              : member.nextMoreDayLabel!.trim();
 
       items.add(
         _IssueChipData(
@@ -6622,9 +6591,10 @@ class MemberListRow extends StatelessWidget {
         firstLessonDays <= 103) {
       items.add(
         _IssueChipData(
-          label: firstLessonDays == 100
-              ? '100일'
-              : firstLessonDays < 100
+          label:
+              firstLessonDays == 100
+                  ? '100일'
+                  : firstLessonDays < 100
                   ? '100일 D-${100 - firstLessonDays}'
                   : '100일 D+${firstLessonDays - 100}',
           bgColor: const Color(0xFFE6F1FB),
@@ -6727,8 +6697,9 @@ class MemberListRow extends StatelessWidget {
                                     const SizedBox(width: 6),
                                     ...eventChips.map((chip) {
                                       return Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 4),
+                                        padding: const EdgeInsets.only(
+                                          right: 4,
+                                        ),
                                         child: _TinyIssueChip(data: chip),
                                       );
                                     }),
@@ -6761,9 +6732,10 @@ class MemberListRow extends StatelessWidget {
                                       ? Icons.push_pin
                                       : Icons.push_pin_outlined,
                                   size: 18,
-                                  color: isPinned
-                                      ? const Color(0xFFE06A5F)
-                                      : scheme.onSurfaceVariant,
+                                  color:
+                                      isPinned
+                                          ? const Color(0xFFE06A5F)
+                                          : scheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -6851,7 +6823,8 @@ class MemberListRow extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: displayGroupAccentColor.withValues(
-                                    alpha: 0.36),
+                                  alpha: 0.36,
+                                ),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
@@ -6861,10 +6834,11 @@ class MemberListRow extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w900,
-                                  color: Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? scheme.onSurface
-                                      : displayGroupTextColor,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? scheme.onSurface
+                                          : displayGroupTextColor,
                                   letterSpacing: _groupLabelLetterSpacing,
                                 ),
                               ),
@@ -6879,8 +6853,9 @@ class MemberListRow extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                             child: Container(
                               height: 30,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 11),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF5F3FF),
                                 borderRadius: BorderRadius.circular(999),
@@ -7012,9 +6987,10 @@ class MemberSimpleCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: isDark
-                  ? scheme.shadow.withValues(alpha: 0.18)
-                  : _cardShadowColor(member),
+              color:
+                  isDark
+                      ? scheme.shadow.withValues(alpha: 0.18)
+                      : _cardShadowColor(member),
               blurRadius: 12,
               spreadRadius: 0,
               offset: const Offset(0, 5),
@@ -7063,22 +7039,25 @@ class MemberSimpleCard extends StatelessWidget {
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: isPinned
-                                ? const Color(0xFFFFF3F1)
-                                : tokens.cardSurface,
+                            color:
+                                isPinned
+                                    ? const Color(0xFFFFF3F1)
+                                    : tokens.cardSurface,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isPinned
-                                  ? const Color(0xFFF2B2A6)
-                                  : tokens.memberListCardBorder,
+                              color:
+                                  isPinned
+                                      ? const Color(0xFFF2B2A6)
+                                      : tokens.memberListCardBorder,
                             ),
                           ),
                           child: Icon(
                             isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                             size: 18,
-                            color: isPinned
-                                ? const Color(0xFFE06A5F)
-                                : scheme.onSurfaceVariant,
+                            color:
+                                isPinned
+                                    ? const Color(0xFFE06A5F)
+                                    : scheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -7118,8 +7097,9 @@ class MemberSimpleCard extends StatelessWidget {
                                       ),
                                       decoration: BoxDecoration(
                                         color: tokens.cardSurface,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                       ),
                                       child: Text(
                                         '레슨만료예정 ${member.remainingSessions}회',
@@ -7134,23 +7114,26 @@ class MemberSimpleCard extends StatelessWidget {
                               ),
                               _CardMetaRow(
                                 icon: Icons.event_available_rounded,
-                                text: member.nextLessonAt != null
-                                    ? '다음 레슨일 : ${_formatDate(member.nextLessonAt!)}'
-                                    : '다음 레슨일 : 미정',
+                                text:
+                                    member.nextLessonAt != null
+                                        ? '다음 레슨일 : ${_formatDate(member.nextLessonAt!)}'
+                                        : '다음 레슨일 : 미정',
                               ),
                               const SizedBox(height: 2),
                               _CardMetaRow(
                                 icon: Icons.fitness_center_rounded,
-                                text: member.lastLogAt != null
-                                    ? '마지막 레슨일 : ${_formatDate(member.lastLogAt!)}'
-                                    : '기록 없음',
+                                text:
+                                    member.lastLogAt != null
+                                        ? '마지막 레슨일 : ${_formatDate(member.lastLogAt!)}'
+                                        : '기록 없음',
                               ),
                               const SizedBox(height: 2),
                               _CardMetaRow(
                                 icon: Icons.app_registration_rounded,
-                                text: member.recentReg != null
-                                    ? '마지막 등록일 : ${_formatDate(member.recentReg!)}'
-                                    : '기록 없음',
+                                text:
+                                    member.recentReg != null
+                                        ? '마지막 등록일 : ${_formatDate(member.recentReg!)}'
+                                        : '기록 없음',
                               ),
                             ],
                           ),
@@ -7215,11 +7198,7 @@ class MemberSimpleCard extends StatelessWidget {
                       value: item.id,
                       child: Row(
                         children: [
-                          Icon(
-                            item.icon,
-                            size: 17,
-                            color: itemColor,
-                          ),
+                          Icon(item.icon, size: 17, color: itemColor),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -7287,8 +7266,10 @@ class MemberSimpleCard extends StatelessWidget {
         final tokens = ctx.mtfThemeTokens;
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
+          ),
           child: Container(
             decoration: BoxDecoration(
               color: tokens.dialogBackground,
@@ -7329,11 +7310,10 @@ class MemberSimpleCard extends StatelessWidget {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: chips.isEmpty
-                          ? [
-                              const _EmptyInfoChip(label: '표시할 활동상태 정보 없음'),
-                            ]
-                          : chips,
+                      children:
+                          chips.isEmpty
+                              ? [const _EmptyInfoChip(label: '표시할 활동상태 정보 없음')]
+                              : chips,
                     ),
                     const SizedBox(height: 18),
                     _OverlayInfoRow(
@@ -7349,40 +7329,41 @@ class MemberSimpleCard extends StatelessWidget {
                       label: '담당 트레이너',
                       value: member.trainer ?? '미지정',
                     ),
-                    _OverlayInfoRow(
-                      label: '등급',
-                      value: member.grade ?? '미지정',
-                    ),
+                    _OverlayInfoRow(label: '등급', value: member.grade ?? '미지정'),
                     _OverlayInfoRow(
                       label: '다음 레슨일',
-                      value: member.nextLessonAt != null
-                          ? _formatDate(member.nextLessonAt!)
-                          : '미정',
+                      value:
+                          member.nextLessonAt != null
+                              ? _formatDate(member.nextLessonAt!)
+                              : '미정',
                     ),
                     _OverlayInfoRow(
                       label: '마지막 레슨일',
-                      value: member.lastLogAt != null
-                          ? _formatDate(member.lastLogAt!)
-                          : '레슨기록 없음',
+                      value:
+                          member.lastLogAt != null
+                              ? _formatDate(member.lastLogAt!)
+                              : '레슨기록 없음',
                     ),
                     _OverlayInfoRow(
                       label: '마지막 등록일',
-                      value: member.recentReg != null
-                          ? _formatDate(member.recentReg!)
-                          : '기록 없음',
+                      value:
+                          member.recentReg != null
+                              ? _formatDate(member.recentReg!)
+                              : '기록 없음',
                     ),
                     _OverlayInfoRow(
                       label: '만료일',
-                      value: member.expireAt != null
-                          ? _formatDate(member.expireAt!)
-                          : '미정',
+                      value:
+                          member.expireAt != null
+                              ? _formatDate(member.expireAt!)
+                              : '미정',
                     ),
                     const SizedBox(height: 18),
                     Row(
                       children: [
                         Expanded(
                           child: _SideQuickButton(
-                            label: '고객정보',
+                            label: '회원정보',
                             icon: Icons.badge_outlined,
                             onTap: () {
                               Navigator.pop(ctx);
@@ -7447,7 +7428,8 @@ class MemberSimpleCard extends StatelessWidget {
       nickname:
           trainerNameSourceText.trim().isEmpty ? '강사' : trainerNameSourceText,
       title: '${aifcPersonLabel(_resolvedName)} 관리 옵션',
-      message: '회원 활동 상태를 변경할 수 있습니다.\n'
+      message:
+          '회원 활동 상태를 변경할 수 있습니다.\n'
           '상태 변경은 회원 목록의 분류와 표시 방식에 반영됩니다.',
       selectedValue: null,
       closeText: '닫기',
@@ -7504,20 +7486,24 @@ class MemberSimpleCard extends StatelessWidget {
       );
     }
 
-    final anniversaryDaysLeft =
-        _daysUntilNextMonthDay(member.anniversaryDate, now);
+    final anniversaryDaysLeft = _daysUntilNextMonthDay(
+      member.anniversaryDate,
+      now,
+    );
     if (anniversaryDaysLeft != null &&
         anniversaryDaysLeft >= 0 &&
         anniversaryDaysLeft <= 14) {
-      final label = (member.anniversaryLabel ?? '').trim().isEmpty
-          ? 'Focus Day'
-          : member.anniversaryLabel!.trim();
+      final label =
+          (member.anniversaryLabel ?? '').trim().isEmpty
+              ? 'Focus Day'
+              : member.anniversaryLabel!.trim();
 
       items.add(
         _IssueChipData(
-          label: anniversaryDaysLeft == 0
-              ? '$label 오늘'
-              : '$label ${_dDayText(anniversaryDaysLeft)}',
+          label:
+              anniversaryDaysLeft == 0
+                  ? '$label 오늘'
+                  : '$label ${_dDayText(anniversaryDaysLeft)}',
           bgColor: const Color(0xFFE6F1FB),
           textColor: const Color(0xFF185FA5),
         ),
@@ -7537,9 +7523,10 @@ class MemberSimpleCard extends StatelessWidget {
         firstLessonDays <= 103) {
       items.add(
         _IssueChipData(
-          label: firstLessonDays == 100
-              ? '레슨 시작 100일'
-              : firstLessonDays < 100
+          label:
+              firstLessonDays == 100
+                  ? '레슨 시작 100일'
+                  : firstLessonDays < 100
                   ? '100일 D-${100 - firstLessonDays}'
                   : '100일 D+${firstLessonDays - 100}',
           bgColor: const Color(0xFFE6F1FB),
@@ -7627,11 +7614,7 @@ class _MoreChip extends StatelessWidget {
 }
 
 class _SideQuickButton extends StatelessWidget {
-  const _SideQuickButton({
-    required this.label,
-    required this.onTap,
-    this.icon,
-  });
+  const _SideQuickButton({required this.label, required this.onTap, this.icon});
 
   final String label;
   final VoidCallback onTap;
@@ -7652,9 +7635,7 @@ class _SideQuickButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: tokens.cardSurface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: tokens.cardBorder,
-            ),
+            border: Border.all(color: tokens.cardBorder),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -7662,11 +7643,7 @@ class _SideQuickButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null) ...[
-                  Icon(
-                    icon,
-                    size: 15,
-                    color: scheme.onSurfaceVariant,
-                  ),
+                  Icon(icon, size: 15, color: scheme.onSurfaceVariant),
                   const SizedBox(width: 4),
                 ],
                 Flexible(
@@ -7693,10 +7670,7 @@ class _SideQuickButton extends StatelessWidget {
 }
 
 class _CardMetaRow extends StatelessWidget {
-  const _CardMetaRow({
-    required this.icon,
-    required this.text,
-  });
+  const _CardMetaRow({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -7706,11 +7680,7 @@ class _CardMetaRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 14,
-          color: scheme.onSurface,
-        ),
+        Icon(icon, size: 14, color: scheme.onSurface),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
@@ -7731,10 +7701,7 @@ class _CardMetaRow extends StatelessWidget {
 }
 
 class _OverlayInfoRow extends StatelessWidget {
-  const _OverlayInfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _OverlayInfoRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -7953,10 +7920,7 @@ class _CardHighlightWrapper extends StatelessWidget {
         final bool isHighlighted = highlightedMemberId == memberId;
 
         return TweenAnimationBuilder<double>(
-          tween: Tween<double>(
-            begin: -1.55,
-            end: isHighlighted ? 1.55 : -1.55,
-          ),
+          tween: Tween<double>(begin: -1.55, end: isHighlighted ? 1.55 : -1.55),
           duration: const Duration(milliseconds: 1150),
           curve: Curves.easeInOutCubic,
           child: baseChild,
@@ -8007,18 +7971,24 @@ class _CardHighlightWrapper extends StatelessWidget {
                                                 begin: Alignment.centerLeft,
                                                 end: Alignment.centerRight,
                                                 colors: [
-                                                  Colors.white
-                                                      .withValues(alpha: 0.0),
-                                                  Colors.white
-                                                      .withValues(alpha: 0.08),
-                                                  Colors.white
-                                                      .withValues(alpha: 0.22),
-                                                  Colors.white
-                                                      .withValues(alpha: 0.34),
-                                                  Colors.white
-                                                      .withValues(alpha: 0.14),
-                                                  Colors.white
-                                                      .withValues(alpha: 0.0),
+                                                  Colors.white.withValues(
+                                                    alpha: 0.0,
+                                                  ),
+                                                  Colors.white.withValues(
+                                                    alpha: 0.08,
+                                                  ),
+                                                  Colors.white.withValues(
+                                                    alpha: 0.22,
+                                                  ),
+                                                  Colors.white.withValues(
+                                                    alpha: 0.34,
+                                                  ),
+                                                  Colors.white.withValues(
+                                                    alpha: 0.14,
+                                                  ),
+                                                  Colors.white.withValues(
+                                                    alpha: 0.0,
+                                                  ),
                                                 ],
                                                 stops: const [
                                                   0.0,
@@ -8026,7 +7996,7 @@ class _CardHighlightWrapper extends StatelessWidget {
                                                   0.36,
                                                   0.52,
                                                   0.78,
-                                                  1.0
+                                                  1.0,
                                                 ],
                                               ),
                                             ),
@@ -8070,17 +8040,19 @@ class _MiniDonutPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width / 2) - stroke / 2;
 
-    final bgPaint = Paint()
-      ..color = bg
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
+    final bgPaint =
+        Paint()
+          ..color = bg
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.round;
 
-    final fgPaint = Paint()
-      ..color = fg
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
+    final fgPaint =
+        Paint()
+          ..color = fg
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
@@ -8195,11 +8167,7 @@ int? _femaleConditionDaysLeft(Member member, DateTime now) {
   final cycleDays = member.femaleConditionCycleDays.clamp(20, 45);
 
   final today = DateTime(now.year, now.month, now.day);
-  var expected = DateTime(
-    lastStart.year,
-    lastStart.month,
-    lastStart.day,
-  );
+  var expected = DateTime(lastStart.year, lastStart.month, lastStart.day);
 
   while (expected.isBefore(today.subtract(const Duration(days: 2)))) {
     expected = expected.add(Duration(days: cycleDays));

@@ -218,8 +218,9 @@ class AppTierAccessService {
       throw StateError('personal_trainer_profile_not_found');
     }
 
-    final serverAccess =
-        personalSnapshotFromProfile(snapshot.data() ?? const {});
+    final serverAccess = personalSnapshotFromProfile(
+      snapshot.data() ?? const {},
+    );
     final effectiveTierRank = DevTierFixtureController.resolveTierRank(
       serverAccess.tierRank,
     );
@@ -514,9 +515,9 @@ class AppTierAccessService {
         return const AppTierFeatureInfo(
           feature: AppTierFeatureKey.customerCardCreate,
           requiredRank: 1,
-          title: '고객카드 등록',
+          title: '회원카드 등록',
           description: '레슨 일정 10개와 선생님 정보 입력을 완료하면 사용할 수 있어요.',
-          shortBenefit: '회원별 고객카드 관리',
+          shortBenefit: '회원별 회원카드 관리',
           highlightTier: 'amateur',
         );
 
@@ -525,7 +526,7 @@ class AppTierAccessService {
           feature: AppTierFeatureKey.personalGroup,
           requiredRank: 1,
           title: '회원 그룹',
-          description: '회원 그룹 만들기와 고객카드 그룹 지정은 Amateur부터 사용할 수 있어요.',
+          description: '회원 그룹 만들기와 회원카드 그룹 지정은 Amateur부터 사용할 수 있어요.',
           shortBenefit: '회원 그룹 분류',
           highlightTier: 'amateur',
         );
@@ -667,8 +668,8 @@ class AppTierAccessService {
           requiredRank: 2,
           title: '회원권 정지/재개',
           description:
-              '고객카드에 입력된 회원권 기간을 기준으로, 레슨을 잠시 쉬는 회원을 정지 처리하고 휴면회원으로 함께 분류할 수 있어요.',
-          shortBenefit: '고객카드 기준 회원권 정지/재개',
+              '회원카드에 입력된 회원권 기간을 기준으로, 레슨을 잠시 쉬는 회원을 정지 처리하고 휴면회원으로 함께 분류할 수 있어요.',
+          shortBenefit: '회원카드 기준 회원권 정지/재개',
           highlightTier: 'semiPro',
         );
 
@@ -718,20 +719,10 @@ class AppTierAccessService {
   static List<String> tierFeatureSummaryItems(int rank) {
     switch (rank) {
       case 1:
-        return const [
-          '목표 D-DAY 관리',
-          'MORE 스마트 알림',
-          '휴면회원 관리',
-        ];
+        return const ['목표 D-DAY 관리', 'MORE 스마트 알림', '휴면회원 관리'];
 
       case 2:
-        return const [
-          'MORE 데이',
-          '레슨계약서',
-          '계약 이력',
-          '메달 관리',
-          '회원권 정지/재개',
-        ];
+        return const ['MORE 데이', '레슨계약서', '계약 이력', '메달 관리', '회원권 정지/재개'];
 
       case 3:
         return const [
@@ -744,23 +735,14 @@ class AppTierAccessService {
         ];
 
       case 4:
-        return const [
-          '센터 단위 관리',
-          '조직 관리 준비',
-        ];
+        return const ['센터 단위 관리', '조직 관리 준비'];
 
       case 5:
-        return const [
-          '다수 지점 관리',
-          'Grand Prix 운영 흐름',
-        ];
+        return const ['다수 지점 관리', 'Grand Prix 운영 흐름'];
 
       case 0:
       default:
-        return const [
-          '기본 회원관리',
-          '기본 스케줄 관리',
-        ];
+        return const ['기본 회원관리', '기본 스케줄 관리'];
     }
   }
 

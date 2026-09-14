@@ -67,10 +67,7 @@ class HomeWeeklyGoalSection extends StatelessWidget {
                     children: [
                       Text(
                         '주간 횟수',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: scheme.onSurface,
-                        ),
+                        style: TextStyle(fontSize: 14, color: scheme.onSurface),
                       ),
                       Text(
                         '$weekCount/$goalTarget',
@@ -89,19 +86,14 @@ class HomeWeeklyGoalSection extends StatelessWidget {
                       value: progress,
                       minHeight: 10,
                       backgroundColor: primaryColor.withValues(alpha: 0.12),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        primaryColor,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                     ),
                   ),
                   const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
-                        child: HomeGoalInfo(
-                          label: '가장 많은 레슨',
-                          value: topFirst,
-                        ),
+                        child: HomeGoalInfo(label: '가장 많은 레슨', value: topFirst),
                       ),
                       Expanded(
                         child: HomeGoalInfo(

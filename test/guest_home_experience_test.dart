@@ -54,8 +54,9 @@ void main() {
 
   testWidgets('계약서 soft gate는 누적되지 않고 레이아웃을 움직이지 않는다', (tester) async {
     await _pumpGuestHome(tester);
-    final before =
-        tester.getTopLeft(find.byKey(const Key('guest_local_only_notice')));
+    final before = tester.getTopLeft(
+      find.byKey(const Key('guest_local_only_notice')),
+    );
 
     await tester.tap(find.text('계약서'));
     await tester.pump();
@@ -69,11 +70,12 @@ void main() {
     );
   });
 
-  testWidgets('Guest 하단 내비는 선택 상태를 바꾸고 실제 Firebase 페이지를 열지 않는다',
-      (tester) async {
+  testWidgets('Guest 하단 내비는 선택 상태를 바꾸고 실제 Firebase 페이지를 열지 않는다', (
+    tester,
+  ) async {
     await _pumpGuestHome(tester);
 
-    await tester.tap(find.text('고객리스트'));
+    await tester.tap(find.text('회원리스트'));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('회원관리'), findsOneWidget);
     expect(find.text('예시'), findsOneWidget);
@@ -112,7 +114,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(
-        find.byKey(const Key('guest_schedule_limit_message')), findsOneWidget);
+      find.byKey(const Key('guest_schedule_limit_message')),
+      findsOneWidget,
+    );
     expect(find.text('여섯번째 별칭'), findsOneWidget);
     await tester.ensureVisible(
       find.byKey(const Key('guest_schedule_connect_account')),
@@ -155,8 +159,7 @@ class _FakeAuthGateway implements AppAccountAuthGateway {
   Future<AppAccountUser> createUserWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> sendEmailVerification() => throw UnimplementedError();
@@ -169,8 +172,7 @@ class _FakeAuthGateway implements AppAccountAuthGateway {
   Future<AppAccountUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> signOut() async {}

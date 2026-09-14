@@ -5,11 +5,7 @@ class ShadcnNavItem {
   final String label;
   final VoidCallback onTap;
 
-  ShadcnNavItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  ShadcnNavItem({required this.icon, required this.label, required this.onTap});
 }
 
 class ShadcnNavigationMenu extends StatelessWidget {
@@ -36,7 +32,7 @@ class ShadcnNavigationMenu extends StatelessWidget {
             icon: Icon(items[i].icon),
             selectedIcon: Icon(items[i].icon, color: cs.primary),
             label: Text(items[i].label),
-          )
+          ),
       ],
     );
   }

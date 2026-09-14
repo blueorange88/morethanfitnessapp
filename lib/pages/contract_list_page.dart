@@ -99,11 +99,13 @@ class _ContractListPageState extends State<ContractListPage> {
   }
 
   String _formatMoney(dynamic value) {
-    final number = value is num
-        ? value.toInt()
-        : int.tryParse(
-                (value ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '')) ??
-            0;
+    final number =
+        value is num
+            ? value.toInt()
+            : int.tryParse(
+                  (value ?? '').toString().replaceAll(RegExp(r'[^0-9]'), ''),
+                ) ??
+                0;
 
     final raw = number.toString();
     final buffer = StringBuffer();
@@ -176,17 +178,19 @@ class _ContractListPageState extends State<ContractListPage> {
       context: context,
       nickname: '강사님',
       title: isDraftLike ? '임시저장 계약서를 삭제할까요?' : '완료된 계약서를 삭제할까요?',
-      message: isDraftLike
-          ? '$deleteName 문서를 계약서 목록에서 삭제할게요.\n임시저장 문서는 바로 삭제해도 운영 이력에 큰 영향이 적어요.'
-          : '$deleteName 문서는 작성완료 또는 전송 이력이 있는 계약서예요.\n\n지금은 목록에서 숨김 처리하고 삭제 이력을 남길게요.\n추후 회원 알림 또는 관리자 확인 절차를 붙일 수 있어요.',
+      message:
+          isDraftLike
+              ? '$deleteName 문서를 계약서 목록에서 삭제할게요.\n임시저장 문서는 바로 삭제해도 운영 이력에 큰 영향이 적어요.'
+              : '$deleteName 문서는 작성완료 또는 전송 이력이 있는 계약서예요.\n\n지금은 목록에서 숨김 처리하고 삭제 이력을 남길게요.\n추후 회원 알림 또는 관리자 확인 절차를 붙일 수 있어요.',
       cancelText: '취소',
       confirmText: isDraftLike ? '삭제' : '삭제 처리',
       userCancelText: '취소할게요',
       userConfirmText: isDraftLike ? '삭제할게요' : '삭제 처리할게요',
       cancelReplyText: '좋아요. 계약서는 그대로 둘게요.',
-      confirmReplyText: isDraftLike
-          ? '확인했어요. 임시저장 계약서를 삭제할게요.'
-          : '확인했어요. 완료 계약서는 삭제 이력을 남기고 목록에서 숨길게요.',
+      confirmReplyText:
+          isDraftLike
+              ? '확인했어요. 임시저장 계약서를 삭제할게요.'
+              : '확인했어요. 완료 계약서는 삭제 이력을 남기고 목록에서 숨길게요.',
       danger: true,
     );
 
@@ -196,20 +200,17 @@ class _ContractListPageState extends State<ContractListPage> {
       await FirebaseFirestore.instance
           .collection('contracts')
           .doc(contractId)
-          .set(
-        {
-          'isDeleted': true,
-          'deleteStatus': isDraftLike ? 'deleted_draft' : 'deleted_completed',
-          'deletedOriginalStatus': status,
-          'deletedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
+          .set({
+            'isDeleted': true,
+            'deleteStatus': isDraftLike ? 'deleted_draft' : 'deleted_completed',
+            'deletedOriginalStatus': status,
+            'deletedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
 
-          // 추후 회원 알림 / 관리자 PIN / 삭제 사유 연결용 자리
-          'deleteRequiresMemberNotice': isCompletedLike,
-          'deleteRequiresAdminConfirm': isCompletedLike,
-        },
-        SetOptions(merge: true),
-      );
+            // 추후 회원 알림 / 관리자 PIN / 삭제 사유 연결용 자리
+            'deleteRequiresMemberNotice': isCompletedLike,
+            'deleteRequiresAdminConfirm': isCompletedLike,
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -238,9 +239,8 @@ class _ContractListPageState extends State<ContractListPage> {
         context: context,
         access: null,
         feature: AppTierFeatureKey.contract,
-        loadAccess: () => AppTierAccessService.loadPersonalTrainerAccess(
-          uid: ownerUid,
-        ),
+        loadAccess:
+            () => AppTierAccessService.loadPersonalTrainerAccess(uid: ownerUid),
         entryPoint: 'contract_list_create',
       );
       if (!allowed || !context.mounted) return;
@@ -251,13 +251,14 @@ class _ContractListPageState extends State<ContractListPage> {
     String trainerName = '트레이너';
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .doc(
-            ownerUid.isEmpty
-                ? 'trainer_profile/me'
-                : 'trainer_profiles/$ownerUid',
-          )
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .doc(
+                ownerUid.isEmpty
+                    ? 'trainer_profile/me'
+                    : 'trainer_profiles/$ownerUid',
+              )
+              .get();
 
       final data = snap.data();
 
@@ -279,13 +280,14 @@ class _ContractListPageState extends State<ContractListPage> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ContractPage(
-          memberId: newMemberId,
-          memberName: '',
-          trainerName: trainerName,
-          initialStage: ContractStage.requiredInfo,
-          personalOwnerUid: ownerUid.isEmpty ? null : ownerUid,
-        ),
+        builder:
+            (_) => ContractPage(
+              memberId: newMemberId,
+              memberName: '',
+              trainerName: trainerName,
+              initialStage: ContractStage.requiredInfo,
+              personalOwnerUid: ownerUid.isEmpty ? null : ownerUid,
+            ),
       ),
     );
   }
@@ -301,9 +303,10 @@ class _ContractListPageState extends State<ContractListPage> {
     final totalPrice = data['totalPrice'];
     final contractNo = (data['contractNo'] ?? '').toString();
     final contractDate = (data['contractDate'] ?? '').toString();
-    final delivery = data['delivery'] is Map
-        ? Map<String, dynamic>.from(data['delivery'] as Map)
-        : <String, dynamic>{};
+    final delivery =
+        data['delivery'] is Map
+            ? Map<String, dynamic>.from(data['delivery'] as Map)
+            : <String, dynamic>{};
 
     showModalBottomSheet<void>(
       context: context,
@@ -353,16 +356,21 @@ class _ContractListPageState extends State<ContractListPage> {
                 ),
                 const SizedBox(height: 14),
                 _PreviewRow(
-                    label: '계약번호',
-                    value: contractNo.isEmpty ? '저장 전' : contractNo),
+                  label: '계약번호',
+                  value: contractNo.isEmpty ? '저장 전' : contractNo,
+                ),
                 _PreviewRow(
-                    label: '상품명',
-                    value: productName.isEmpty ? '-' : productName),
+                  label: '상품명',
+                  value: productName.isEmpty ? '-' : productName,
+                ),
                 _PreviewRow(
-                    label: '결제금액', value: '${_formatMoney(totalPrice)}원'),
+                  label: '결제금액',
+                  value: '${_formatMoney(totalPrice)}원',
+                ),
                 _PreviewRow(
-                    label: '계약일',
-                    value: contractDate.isEmpty ? '-' : contractDate),
+                  label: '계약일',
+                  value: contractDate.isEmpty ? '-' : contractDate,
+                ),
                 _PreviewRow(
                   label: '수령방식',
                   value: (delivery['methodLabel'] ?? '-').toString(),
@@ -403,15 +411,15 @@ class _ContractListPageState extends State<ContractListPage> {
                             data: data,
                           );
                         },
-                        icon:
-                            const Icon(Icons.delete_outline_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
                         label: const Text('삭제'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFFDC2626),
                           padding: const EdgeInsets.symmetric(vertical: 13),
-                          side: const BorderSide(
-                            color: Color(0xFFFCA5A5),
-                          ),
+                          side: const BorderSide(color: Color(0xFFFCA5A5)),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
@@ -426,18 +434,22 @@ class _ContractListPageState extends State<ContractListPage> {
 
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => ContractPage(
-                                contractId: id,
-                                memberId: (data['memberId'] ?? '').toString(),
-                                memberName: memberName,
-                                trainerName:
-                                    (data['trainerName'] ?? '트레이너').toString(),
-                                personalOwnerUid: widget.personalOwnerUid,
-                                initialStage:
-                                    status == 'draft' || status == 'step1Saved'
-                                        ? ContractStage.requiredInfo
-                                        : ContractStage.detailConfirm,
-                              ),
+                              builder:
+                                  (_) => ContractPage(
+                                    contractId: id,
+                                    memberId:
+                                        (data['memberId'] ?? '').toString(),
+                                    memberName: memberName,
+                                    trainerName:
+                                        (data['trainerName'] ?? '트레이너')
+                                            .toString(),
+                                    personalOwnerUid: widget.personalOwnerUid,
+                                    initialStage:
+                                        status == 'draft' ||
+                                                status == 'step1Saved'
+                                            ? ContractStage.requiredInfo
+                                            : ContractStage.detailConfirm,
+                                  ),
                             ),
                           );
                         },
@@ -493,9 +505,10 @@ class _ContractListPageState extends State<ContractListPage> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: selected
-                    ? scheme.onSecondaryContainer
-                    : scheme.onSurfaceVariant,
+                color:
+                    selected
+                        ? scheme.onSecondaryContainer
+                        : scheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -540,11 +553,12 @@ class _ContractListPageState extends State<ContractListPage> {
                   _buildFilterTabs(),
                   Expanded(
                     child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: FirebaseFirestore.instance
-                          .collection('contracts')
-                          .orderBy('updatedAt', descending: true)
-                          .limit(50)
-                          .snapshots(),
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('contracts')
+                              .orderBy('updatedAt', descending: true)
+                              .limit(50)
+                              .snapshots(),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
                           return const Center(
@@ -560,17 +574,20 @@ class _ContractListPageState extends State<ContractListPage> {
                           );
                         }
 
-                        final allDocs = snapshot.data!.docs.where((doc) {
-                          final data = doc.data();
-                          return data['isDeleted'] != true;
-                        }).toList();
+                        final allDocs =
+                            snapshot.data!.docs.where((doc) {
+                              final data = doc.data();
+                              return data['isDeleted'] != true;
+                            }).toList();
 
-                        final docs = allDocs.where((doc) {
-                          final data = doc.data();
-                          final status = (data['status'] ?? data['stage'] ?? '')
-                              .toString();
-                          return _matchesFilter(status);
-                        }).toList();
+                        final docs =
+                            allDocs.where((doc) {
+                              final data = doc.data();
+                              final status =
+                                  (data['status'] ?? data['stage'] ?? '')
+                                      .toString();
+                              return _matchesFilter(status);
+                            }).toList();
 
                         if (docs.isEmpty) {
                           return Padding(
@@ -582,8 +599,9 @@ class _ContractListPageState extends State<ContractListPage> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(22),
-                                  border:
-                                      Border.all(color: kContractListBorder),
+                                  border: Border.all(
+                                    color: kContractListBorder,
+                                  ),
                                 ),
                                 child: Text(
                                   _filter == 'all'
@@ -604,8 +622,8 @@ class _ContractListPageState extends State<ContractListPage> {
                         return ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                           itemCount: docs.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final doc = docs[index];
                             final data = doc.data();
@@ -616,11 +634,12 @@ class _ContractListPageState extends State<ContractListPage> {
                               statusColor: _statusColor,
                               dateText: _dateText,
                               formatMoney: _formatMoney,
-                              onTap: () => _showContractPreview(
-                                context,
-                                doc.id,
-                                data,
-                              ),
+                              onTap:
+                                  () => _showContractPreview(
+                                    context,
+                                    doc.id,
+                                    data,
+                                  ),
                             );
                           },
                         );
@@ -638,10 +657,7 @@ class _ContractListPageState extends State<ContractListPage> {
 }
 
 class _ContractListHeader extends StatelessWidget {
-  const _ContractListHeader({
-    required this.onBack,
-    required this.onNew,
-  });
+  const _ContractListHeader({required this.onBack, required this.onNew});
 
   final VoidCallback onBack;
   final VoidCallback onNew;
@@ -661,9 +677,7 @@ class _ContractListHeader extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Row(
         children: [
@@ -713,9 +727,7 @@ class _ContractListHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.18),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.20),
-                ),
+                border: Border.all(color: Colors.white.withOpacity(0.20)),
               ),
               child: const Icon(
                 Icons.add_rounded,
@@ -786,11 +798,7 @@ class _ContractListTile extends StatelessWidget {
                 color: color.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                Icons.description_outlined,
-                color: color,
-                size: 21,
-              ),
+              child: Icon(Icons.description_outlined, color: color, size: 21),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -834,10 +842,7 @@ class _ContractListTile extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 9,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.10),
                 borderRadius: BorderRadius.circular(999),
@@ -859,10 +864,7 @@ class _ContractListTile extends StatelessWidget {
 }
 
 class _PreviewRow extends StatelessWidget {
-  const _PreviewRow({
-    required this.label,
-    required this.value,
-  });
+  const _PreviewRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -908,9 +910,7 @@ class _PreviewRow extends StatelessWidget {
 }
 
 class _EmptyContractList extends StatelessWidget {
-  const _EmptyContractList({
-    required this.onNew,
-  });
+  const _EmptyContractList({required this.onNew});
 
   final VoidCallback onNew;
 
@@ -930,11 +930,7 @@ class _EmptyContractList extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.description_outlined,
-              color: scheme.secondary,
-              size: 36,
-            ),
+            Icon(Icons.description_outlined, color: scheme.secondary, size: 36),
             const SizedBox(height: 12),
             Text(
               '아직 저장된 계약서가 없습니다',

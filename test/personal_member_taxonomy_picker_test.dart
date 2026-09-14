@@ -22,33 +22,35 @@ PersonalMemberTaxonomyItem _item({
 
 void main() {
   for (final width in <double>[320, 360, 384, 411]) {
-    testWidgets('group picker는 ${width.toInt()}dp에서 overflow 없이 선택된다',
-        (tester) async {
+    testWidgets('group picker는 ${width.toInt()}dp에서 overflow 없이 선택된다', (
+      tester,
+    ) async {
       PersonalGroupPickerResult? result;
       await tester.binding.setSurfaceSize(Size(width, 720));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () async {
-                  result = await showPersonalGroupPicker(
-                    context: context,
-                    defaultGroupLabel: 'MORE THAN GYM',
-                    groups: [
-                      _item(
-                        id: 'group-a',
-                        name: '아주 긴 이름의 오전 운동 회원 그룹',
-                        kind: PersonalMemberTaxonomyKind.group,
-                      ),
-                    ],
-                    selectedGroupId: null,
-                  );
-                },
-                child: const Text('열기'),
-              ),
-            ),
+            builder:
+                (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () async {
+                      result = await showPersonalGroupPicker(
+                        context: context,
+                        defaultGroupLabel: 'MORE THAN GYM',
+                        groups: [
+                          _item(
+                            id: 'group-a',
+                            name: '아주 긴 이름의 오전 운동 회원 그룹',
+                            kind: PersonalMemberTaxonomyKind.group,
+                          ),
+                        ],
+                        selectedGroupId: null,
+                      );
+                    },
+                    child: const Text('열기'),
+                  ),
+                ),
           ),
         ),
       );
@@ -67,29 +69,30 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () async {
-                result = await showPersonalTagPicker(
-                  context: context,
-                  tags: [
-                    _item(
-                      id: 'tag-b',
-                      name: '다이어트',
-                      kind: PersonalMemberTaxonomyKind.tag,
-                    ),
-                    _item(
-                      id: 'tag-a',
-                      name: 'VIP',
-                      kind: PersonalMemberTaxonomyKind.tag,
-                    ),
-                  ],
-                  selectedTagIds: const [],
-                );
-              },
-              child: const Text('열기'),
-            ),
-          ),
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    result = await showPersonalTagPicker(
+                      context: context,
+                      tags: [
+                        _item(
+                          id: 'tag-b',
+                          name: '다이어트',
+                          kind: PersonalMemberTaxonomyKind.tag,
+                        ),
+                        _item(
+                          id: 'tag-a',
+                          name: 'VIP',
+                          kind: PersonalMemberTaxonomyKind.tag,
+                        ),
+                      ],
+                      selectedTagIds: const [],
+                    );
+                  },
+                  child: const Text('열기'),
+                ),
+              ),
         ),
       ),
     );

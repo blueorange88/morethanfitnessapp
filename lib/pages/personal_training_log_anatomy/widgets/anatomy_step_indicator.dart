@@ -33,9 +33,10 @@ class AnatomyStepIndicator extends StatelessWidget {
                           Expanded(
                             child: Container(
                               height: 2,
-                              color: isCompleted || isCurrent
-                                  ? const Color(0xFF4F46E5)
-                                  : const Color(0xFFE5E7EB),
+                              color:
+                                  isCompleted || isCurrent
+                                      ? const Color(0xFF4F46E5)
+                                      : const Color(0xFFE5E7EB),
                             ),
                           ),
                         // 스텝 원
@@ -44,37 +45,41 @@ class AnatomyStepIndicator extends StatelessWidget {
                           height: 28,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isCompleted
-                                ? const Color(0xFF4F46E5)
-                                : isCurrent
-                                ? Colors.white
-                                : const Color(0xFFF3F4F6),
+                            color:
+                                isCompleted
+                                    ? const Color(0xFF4F46E5)
+                                    : isCurrent
+                                    ? Colors.white
+                                    : const Color(0xFFF3F4F6),
                             border: Border.all(
-                              color: isCurrent
-                                  ? const Color(0xFF4F46E5)
-                                  : isCompleted
-                                  ? const Color(0xFF4F46E5)
-                                  : const Color(0xFFE5E7EB),
+                              color:
+                                  isCurrent
+                                      ? const Color(0xFF4F46E5)
+                                      : isCompleted
+                                      ? const Color(0xFF4F46E5)
+                                      : const Color(0xFFE5E7EB),
                               width: isCurrent ? 2 : 1,
                             ),
                           ),
                           child: Center(
-                            child: isCompleted
-                                ? const Icon(
-                              Icons.check_rounded,
-                              size: 14,
-                              color: Colors.white,
-                            )
-                                : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                color: isCurrent
-                                    ? const Color(0xFF4F46E5)
-                                    : const Color(0xFF9CA3AF),
-                              ),
-                            ),
+                            child:
+                                isCompleted
+                                    ? const Icon(
+                                      Icons.check_rounded,
+                                      size: 14,
+                                      color: Colors.white,
+                                    )
+                                    : Text(
+                                      '${index + 1}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                        color:
+                                            isCurrent
+                                                ? const Color(0xFF4F46E5)
+                                                : const Color(0xFF9CA3AF),
+                                      ),
+                                    ),
                           ),
                         ),
                         // 연결선 오른쪽
@@ -82,9 +87,10 @@ class AnatomyStepIndicator extends StatelessWidget {
                           Expanded(
                             child: Container(
                               height: 2,
-                              color: isCompleted
-                                  ? const Color(0xFF4F46E5)
-                                  : const Color(0xFFE5E7EB),
+                              color:
+                                  isCompleted
+                                      ? const Color(0xFF4F46E5)
+                                      : const Color(0xFFE5E7EB),
                             ),
                           ),
                       ],
@@ -95,11 +101,12 @@ class AnatomyStepIndicator extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: isCurrent
-                            ? const Color(0xFF4F46E5)
-                            : isCompleted
-                            ? const Color(0xFF6B7280)
-                            : const Color(0xFF9CA3AF),
+                        color:
+                            isCurrent
+                                ? const Color(0xFF4F46E5)
+                                : isCompleted
+                                ? const Color(0xFF6B7280)
+                                : const Color(0xFF9CA3AF),
                       ),
                     ),
                   ],

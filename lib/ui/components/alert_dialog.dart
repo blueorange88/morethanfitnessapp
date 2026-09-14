@@ -17,19 +17,26 @@ class ShadcnAlertDialog {
         return Dialog(
           backgroundColor: cs.surface,
           insetPadding: const EdgeInsets.all(24),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 12),
-                Text(description,
-                    style: TextStyle(fontSize: 14, color: cs.onSurface)),
+                Text(
+                  description,
+                  style: TextStyle(fontSize: 14, color: cs.onSurface),
+                ),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -47,7 +54,7 @@ class ShadcnAlertDialog {
                       child: Text(confirmText),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),

@@ -103,9 +103,11 @@ class HomeWeekPasteConflictService {
     if (!allowOverlappingCandidates) {
       for (var index = 0; index < candidates.length; index++) {
         final first = candidates[index];
-        for (var otherIndex = index + 1;
-            otherIndex < candidates.length;
-            otherIndex++) {
+        for (
+          var otherIndex = index + 1;
+          otherIndex < candidates.length;
+          otherIndex++
+        ) {
           final second = candidates[otherIndex];
           if (!homeScheduleTimeRangesOverlap(
             startA: first.startAt,

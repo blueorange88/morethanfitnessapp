@@ -38,14 +38,16 @@ class HomeRepeatLessonGroupingSheet {
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? tokens.drawerSelectedBackground
-                        : tokens.cardSurface,
+                    color:
+                        selected
+                            ? tokens.drawerSelectedBackground
+                            : tokens.cardSurface,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: selected
-                          ? tokens.scheduleSelectedBorder
-                          : tokens.cardBorder,
+                      color:
+                          selected
+                              ? tokens.scheduleSelectedBorder
+                              : tokens.cardBorder,
                       width: selected ? 1.2 : 1,
                     ),
                   ),
@@ -55,23 +57,24 @@ class HomeRepeatLessonGroupingSheet {
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: selected
-                              ? tokens.gradeSheetAccent
-                              : tokens.cardSurface,
+                          color:
+                              selected
+                                  ? tokens.gradeSheetAccent
+                                  : tokens.cardSurface,
                           borderRadius: BorderRadius.circular(13),
-                          border: selected
-                              ? null
-                              : Border.all(
-                                  color: tokens.cardBorder,
-                                ),
+                          border:
+                              selected
+                                  ? null
+                                  : Border.all(color: tokens.cardBorder),
                         ),
                         child: Icon(
                           selected
                               ? Icons.check_rounded
                               : Icons.calendar_month_outlined,
-                          color: selected
-                              ? theme.colorScheme.onSecondary
-                              : theme.colorScheme.primary,
+                          color:
+                              selected
+                                  ? theme.colorScheme.onSecondary
+                                  : theme.colorScheme.primary,
                           size: 19,
                         ),
                       ),
@@ -83,9 +86,10 @@ class HomeRepeatLessonGroupingSheet {
                             Text(
                               mode.title,
                               style: TextStyle(
-                                color: selected
-                                    ? theme.colorScheme.onSurface
-                                    : theme.colorScheme.onSurface,
+                                color:
+                                    selected
+                                        ? theme.colorScheme.onSurface
+                                        : theme.colorScheme.onSurface,
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -152,7 +156,7 @@ class HomeRepeatLessonGroupingSheet {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '반복 레슨 묶기 방식',
+                                  '동일 회원 요일 자동 체크',
                                   style: TextStyle(
                                     color: theme.colorScheme.onSurface,
                                     fontSize: 16,
@@ -178,9 +182,11 @@ class HomeRepeatLessonGroupingSheet {
                       const SizedBox(height: 16),
                       buildOption(HomeRepeatLessonGroupingMode.none),
                       buildOption(
-                          HomeRepeatLessonGroupingMode.sameMemberSameTime),
+                        HomeRepeatLessonGroupingMode.sameMemberSameTime,
+                      ),
                       buildOption(
-                          HomeRepeatLessonGroupingMode.sameMemberAnyTime),
+                        HomeRepeatLessonGroupingMode.sameMemberAnyTime,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         '주의: 같은 회원 전체 묶기는 시간대가 다른 레슨도 함께 체크합니다. 저장 시 선택된 요일은 현재 시트의 시간 기준으로 맞춰질 수 있어요.',
@@ -202,20 +208,17 @@ class HomeRepeatLessonGroupingSheet {
                               style: OutlinedButton.styleFrom(
                                 foregroundColor:
                                     theme.colorScheme.onSurfaceVariant,
-                                side: BorderSide(
-                                  color: tokens.cardBorder,
+                                side: BorderSide(color: tokens.cardBorder),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 13),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                               ),
                               child: const Text(
                                 '취소',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w800),
                               ),
                             ),
                           ),
@@ -228,17 +231,16 @@ class HomeRepeatLessonGroupingSheet {
                               style: FilledButton.styleFrom(
                                 backgroundColor: tokens.gradeSheetAccent,
                                 foregroundColor: theme.colorScheme.onSecondary,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 13),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                               ),
                               child: const Text(
                                 '적용',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w900),
                               ),
                             ),
                           ),

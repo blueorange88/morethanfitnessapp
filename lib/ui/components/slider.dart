@@ -27,12 +27,7 @@ class ShadcnSlider extends StatelessWidget {
         trackHeight: 4,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
       ),
-      child: Slider(
-        value: value,
-        onChanged: onChanged,
-        min: min,
-        max: max,
-      ),
+      child: Slider(value: value, onChanged: onChanged, min: min, max: max),
     );
   }
 }

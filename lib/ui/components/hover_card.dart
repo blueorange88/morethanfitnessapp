@@ -20,32 +20,33 @@ class _ShadcnHoverCardState extends State<ShadcnHoverCard> {
 
   void _showOverlay() {
     final overlay = OverlayEntry(
-      builder: (context) => Positioned(
-        width: 240,
-        child: CompositedTransformFollower(
-          link: _link,
-          offset: const Offset(0, 8),
-          showWhenUnlinked: false,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
-                  BoxShadow(
-                    blurRadius: 16,
-                    color: Colors.black26,
-                    offset: Offset(0, 8),
-                  )
-                ],
+      builder:
+          (context) => Positioned(
+            width: 240,
+            child: CompositedTransformFollower(
+              link: _link,
+              offset: const Offset(0, 8),
+              showWhenUnlinked: false,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: const [
+                      BoxShadow(
+                        blurRadius: 16,
+                        color: Colors.black26,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: widget.content,
+                ),
               ),
-              padding: const EdgeInsets.all(12),
-              child: widget.content,
             ),
           ),
-        ),
-      ),
     );
 
     Overlay.of(context).insert(overlay);
@@ -62,10 +63,7 @@ class _ShadcnHoverCardState extends State<ShadcnHoverCard> {
     return MouseRegion(
       onEnter: (_) => _showOverlay(),
       onExit: (_) => _hideOverlay(),
-      child: CompositedTransformTarget(
-        link: _link,
-        child: widget.child,
-      ),
+      child: CompositedTransformTarget(link: _link, child: widget.child),
     );
   }
 }

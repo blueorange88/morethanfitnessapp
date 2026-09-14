@@ -21,11 +21,7 @@ GoRouter createRouter() {
         name: 'splash',
         builder: (_, __) => const SplashRouter(),
       ),
-      GoRoute(
-        path: '/',
-        name: 'home',
-        builder: (_, __) => const HomePage(),
-      ),
+      GoRoute(path: '/', name: 'home', builder: (_, __) => const HomePage()),
       GoRoute(
         path: '/schedule',
         name: 'schedule',
@@ -36,11 +32,7 @@ GoRouter createRouter() {
         name: 'settings',
         builder: (_, __) => const SettingsPage(),
       ),
-      GoRoute(
-        path: '/my',
-        name: 'my',
-        builder: (_, __) => const MyPage(),
-      ),
+      GoRoute(path: '/my', name: 'my', builder: (_, __) => const MyPage()),
       GoRoute(
         path: '/clients',
         name: 'clients',

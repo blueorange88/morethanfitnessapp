@@ -10,15 +10,19 @@ void main() {
     final releaseFirst = Completer<void>();
     final secondCompleted = Completer<void>();
 
-    controller.runNow(syncAction: () async {
-      firstStarted.complete();
-      await releaseFirst.future;
-    });
+    controller.runNow(
+      syncAction: () async {
+        firstStarted.complete();
+        await releaseFirst.future;
+      },
+    );
     await firstStarted.future;
 
-    controller.runNow(syncAction: () async {
-      secondCompleted.complete();
-    });
+    controller.runNow(
+      syncAction: () async {
+        secondCompleted.complete();
+      },
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(secondCompleted.isCompleted, isFalse);
@@ -32,16 +36,20 @@ void main() {
     final failedActionStarted = Completer<void>();
     final nextCompleted = Completer<void>();
 
-    controller.runNow(syncAction: () async {
-      failedActionStarted.complete();
-      throw StateError('expected failure');
-    });
+    controller.runNow(
+      syncAction: () async {
+        failedActionStarted.complete();
+        throw StateError('expected failure');
+      },
+    );
     await failedActionStarted.future;
     await Future<void>.delayed(Duration.zero);
 
-    controller.runNow(syncAction: () async {
-      nextCompleted.complete();
-    });
+    controller.runNow(
+      syncAction: () async {
+        nextCompleted.complete();
+      },
+    );
     await nextCompleted.future;
     controller.dispose();
   });

@@ -10,10 +10,7 @@ import 'package:mtf_app/services/app_tier_access_service.dart';
 void main() {
   group('Personal taxonomy normalization', () {
     test('앞뒤와 연속 공백을 정리하고 대소문자 중복키를 만든다', () {
-      expect(
-        normalizePersonalTaxonomyDisplayName('  오전   회원  '),
-        '오전 회원',
-      );
+      expect(normalizePersonalTaxonomyDisplayName('  오전   회원  '), '오전 회원');
       expect(personalTaxonomyComparisonKey(' VIP '), 'vip');
       expect(personalTaxonomyComparisonKey('vip'), 'vip');
     });
@@ -25,10 +22,10 @@ void main() {
     });
 
     test('태그 ID는 trim, 중복 제거, 정렬한다', () {
-      expect(
-        normalizePersonalTagIds([' pt_b ', 'pt_a', 'pt_b', '']),
-        ['pt_a', 'pt_b'],
-      );
+      expect(normalizePersonalTagIds([' pt_b ', 'pt_a', 'pt_b', '']), [
+        'pt_a',
+        'pt_b',
+      ]);
       expect(
         () => normalizePersonalTagIds(
           List<String>.generate(21, (index) => 'pt_$index'),
@@ -41,10 +38,7 @@ void main() {
   group('Personal member assignment contract', () {
     test('Amateur 신규 회원의 기본 그룹은 보내고 빈 태그 변경은 생략한다', () {
       final patch = PersonalMemberAssignmentPatch.forCreate();
-      expect(
-        patch.toCallableMap(),
-        {'personalGroupId': null},
-      );
+      expect(patch.toCallableMap(), {'personalGroupId': null});
       expect(patch.matchesMember(const <String, dynamic>{}), isTrue);
     });
 
@@ -53,13 +47,10 @@ void main() {
         personalTagIds: const [' pt_vip ', 'pt_diet', 'pt_vip'],
       );
 
-      expect(
-        patch.toCallableMap(),
-        {
-          'personalGroupId': null,
-          'personalTagIds': <String>['pt_diet', 'pt_vip'],
-        },
-      );
+      expect(patch.toCallableMap(), {
+        'personalGroupId': null,
+        'personalTagIds': <String>['pt_diet', 'pt_vip'],
+      });
     });
 
     test('그룹 하나와 복수 태그를 canonical field로만 저장한다', () {
@@ -69,13 +60,10 @@ void main() {
         tagsProvided: true,
         personalTagIds: ['pt_vip', 'pt_diet'],
       );
-      expect(
-        patch.toCallableMap(),
-        {
-          'personalGroupId': 'pg_owner_group',
-          'personalTagIds': ['pt_diet', 'pt_vip'],
-        },
-      );
+      expect(patch.toCallableMap(), {
+        'personalGroupId': 'pg_owner_group',
+        'personalTagIds': ['pt_diet', 'pt_vip'],
+      });
       expect(
         patch.matchesMember({
           'personalGroupId': 'pg_owner_group',
@@ -191,31 +179,24 @@ void main() {
     test('Phase 2 UI는 canonical service만 사용한다', () {
       final listSource =
           File('lib/pages/client_list_page.dart').readAsStringSync();
-      final filterStripSource = File(
-        'lib/widgets/personal_taxonomy_filter_strip.dart',
-      ).readAsStringSync();
+      final filterStripSource =
+          File(
+            'lib/widgets/personal_taxonomy_filter_strip.dart',
+          ).readAsStringSync();
       final cardSource =
           File('lib/pages/client_card_page.dart').readAsStringSync();
-      final managementSource = File(
-        'lib/pages/personal_member_taxonomy_management_page.dart',
-      ).readAsStringSync();
+      final managementSource =
+          File(
+            'lib/pages/personal_member_taxonomy_management_page.dart',
+          ).readAsStringSync();
       expect(listSource, contains('PersonalMemberTaxonomyService'));
       expect(cardSource, contains('PersonalMemberAssignmentPatch.forCreate'));
       expect(cardSource, contains('clientCardPersonalTagsChanged('));
       expect(cardSource, contains('loadedTagIds: _loadedPersonalTagIds'));
-      expect(
-        listSource,
-        contains('AifcPersonalTagManagementChatSheet.show'),
-      );
-      expect(
-        cardSource,
-        contains('AifcPersonalTagManagementChatSheet.show'),
-      );
+      expect(listSource, contains('AifcPersonalTagManagementChatSheet.show'));
+      expect(cardSource, contains('AifcPersonalTagManagementChatSheet.show'));
       expect(listSource, contains('PersonalTaxonomyFilterStrip'));
-      expect(
-        filterStripSource,
-        contains("semanticLabel: '분류 관리'"),
-      );
+      expect(filterStripSource, contains("semanticLabel: '분류 관리'"));
       expect(cardSource, contains('client_card_selected_tag_scroll'));
       expect(managementSource, isNot(contains('.set(')));
       expect(managementSource, isNot(contains('.update(')));
@@ -223,9 +204,10 @@ void main() {
     });
 
     test('태그 관리는 page push가 아닌 deterministic AIFC sheet를 사용한다', () {
-      final source = File(
-        'lib/widgets/aifc_personal_tag_management_chat_sheet.dart',
-      ).readAsStringSync();
+      final source =
+          File(
+            'lib/widgets/aifc_personal_tag_management_chat_sheet.dart',
+          ).readAsStringSync();
       expect(source, contains('AifcSheetFrame'));
       expect(source, contains('AifcChatBubble'));
       expect(source, contains('PersonalMemberTaxonomyService'));
@@ -239,18 +221,18 @@ void main() {
   });
 
   test('taxonomy document는 canonical schema를 검증한다', () {
-    final source = File(
-      'lib/models/personal_member_taxonomy.dart',
-    ).readAsStringSync();
+    final source =
+        File('lib/models/personal_member_taxonomy.dart').readAsStringSync();
     expect(source, contains("data['schemaVersion'] != 1"));
     expect(source, contains("createdAt is! Timestamp"));
     expect(source, contains("updatedAt is! Timestamp"));
   });
 
   test('taxonomy service는 callable과 server readback만 사용한다', () {
-    final source = File(
-      'lib/services/personal_member_taxonomy_service.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/services/personal_member_taxonomy_service.dart',
+        ).readAsStringSync();
     for (final callable in <String>[
       'createPersonalGroup',
       'renamePersonalGroup',
@@ -269,9 +251,10 @@ void main() {
   });
 
   test('save service는 assignment payload와 readback 검증을 연결한다', () {
-    final source = File(
-      'lib/services/personal_member_card_save_service.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/services/personal_member_card_save_service.dart',
+        ).readAsStringSync();
     expect(source, contains('...assignments.toCallableMap(),'));
     expect(source, contains('assignments.matchesMember(member)'));
   });

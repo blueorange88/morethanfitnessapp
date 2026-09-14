@@ -37,8 +37,8 @@ class FirebaseLinkedAccountAccessGateway implements LinkedAccountAccessGateway {
   FirebaseLinkedAccountAccessGateway({
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? MtfFirebaseFunctions.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? MtfFirebaseFunctions.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;

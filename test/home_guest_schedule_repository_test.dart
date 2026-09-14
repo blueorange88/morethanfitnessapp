@@ -20,8 +20,10 @@ void main() {
   test('체험 일정은 5개까지 저장한다', () async {
     final repository = GuestScheduleRepository();
     for (var index = 0; index < 5; index++) {
-      expect((await _save(repository, index)).status,
-          GuestScheduleSaveStatus.saved);
+      expect(
+        (await _save(repository, index)).status,
+        GuestScheduleSaveStatus.saved,
+      );
     }
     expect(await repository.load(), hasLength(5));
   });
@@ -106,18 +108,19 @@ void main() {
     final item = (jsonDecode(raw) as List).single as Map<String, dynamic>;
 
     expect(
-        item.keys,
-        containsAll([
-          'guestScheduleId',
-          'nameOrAlias',
-          'lessonType',
-          'startAt',
-          'endAt',
-          'memo',
-          'colorHex',
-          'createdAtLocal',
-          'updatedAtLocal',
-        ]));
+      item.keys,
+      containsAll([
+        'guestScheduleId',
+        'nameOrAlias',
+        'lessonType',
+        'startAt',
+        'endAt',
+        'memo',
+        'colorHex',
+        'createdAtLocal',
+        'updatedAtLocal',
+      ]),
+    );
     expect(item.keys, isNot(contains('phone')));
     expect(item.keys, isNot(contains('memberId')));
     expect(item.keys, isNot(contains('trainerId')));

@@ -29,28 +29,30 @@ abstract final class FirebaseEmulatorConfig {
     required bool debugMode,
     required bool requested,
     bool isWeb = false,
-  }) =>
-      debugMode && requested && !isWeb;
+  }) => debugMode && requested && !isWeb;
 
   static Future<void> configure() async {
     if (!isEnabled) return;
     await configureConnectors(
       enabled: true,
-      auth: () => FirebaseAuth.instance.useAuthEmulator(
-        host,
-        authPort,
-        automaticHostMapping: false,
-      ),
-      firestore: () => FirebaseFirestore.instance.useFirestoreEmulator(
-        host,
-        firestorePort,
-        automaticHostMapping: false,
-      ),
-      functions: () => MtfFirebaseFunctions.useEmulator(
-        host: host,
-        port: functionsPort,
-        automaticHostMapping: false,
-      ),
+      auth:
+          () => FirebaseAuth.instance.useAuthEmulator(
+            host,
+            authPort,
+            automaticHostMapping: false,
+          ),
+      firestore:
+          () => FirebaseFirestore.instance.useFirestoreEmulator(
+            host,
+            firestorePort,
+            automaticHostMapping: false,
+          ),
+      functions:
+          () => MtfFirebaseFunctions.useEmulator(
+            host: host,
+            port: functionsPort,
+            automaticHostMapping: false,
+          ),
     );
     debugPrint(
       '[MTF_FIREBASE_EMULATOR] connected '

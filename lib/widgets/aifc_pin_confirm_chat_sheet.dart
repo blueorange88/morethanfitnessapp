@@ -55,19 +55,20 @@ class AifcPinConfirmChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcPinConfirmChatSheet(
-        title: title,
-        question: question,
-        onVerify: onVerify,
-        nickname: nickname,
-        pinGuide: pinGuide,
-        inputLabel: inputLabel,
-        successText: successText,
-        wrongText: wrongText,
-        errorText: errorText,
-        minLength: minLength,
-        maxLength: maxLength,
-      ),
+      builder:
+          (_) => AifcPinConfirmChatSheet(
+            title: title,
+            question: question,
+            onVerify: onVerify,
+            nickname: nickname,
+            pinGuide: pinGuide,
+            inputLabel: inputLabel,
+            successText: successText,
+            wrongText: wrongText,
+            errorText: errorText,
+            minLength: minLength,
+            maxLength: maxLength,
+          ),
     );
   }
 
@@ -102,8 +103,8 @@ class _AifcPinConfirmChatSheetState extends State<AifcPinConfirmChatSheet>
           _PinConfirmQuestionBlock(
             title: widget.title,
             message: widget.question,
-            pinGuide: widget.pinGuide ??
-                '진행하려면 $_safeNicknameLabel PIN 번호를 입력해주세요.',
+            pinGuide:
+                widget.pinGuide ?? '진행하려면 $_safeNicknameLabel PIN 번호를 입력해주세요.',
           ),
           const SizedBox(height: 12),
           _PinInputCard(
@@ -128,10 +129,7 @@ class _AifcPinConfirmChatSheetState extends State<AifcPinConfirmChatSheet>
 
     aifcSetActiveGroup(_groupChecking);
 
-    aifcAddUserMessage(
-      text: 'PIN 입력했어요',
-      groupKey: _groupChecking,
-    );
+    aifcAddUserMessage(text: 'PIN 입력했어요', groupKey: _groupChecking);
 
     await Future.delayed(const Duration(milliseconds: 120));
     if (!mounted) return;
@@ -149,7 +147,7 @@ class _AifcPinConfirmChatSheetState extends State<AifcPinConfirmChatSheet>
     try {
       await Future.wait<void>([
         Future.delayed(aifcTypingDuration),
-            () async {
+        () async {
           verified = await widget.onVerify(value);
         }(),
       ]);
@@ -199,10 +197,7 @@ class _AifcPinConfirmChatSheetState extends State<AifcPinConfirmChatSheet>
       return;
     }
 
-    aifcAddFcMessage(
-      text: widget.successText,
-      groupKey: _groupChecking,
-    );
+    aifcAddFcMessage(text: widget.successText, groupKey: _groupChecking);
 
     await Future.delayed(aifcCloseAfterReplyDelay);
     if (!mounted) return;
@@ -213,9 +208,7 @@ class _AifcPinConfirmChatSheetState extends State<AifcPinConfirmChatSheet>
   Future<void> _handleCancel() async {
     HapticFeedback.lightImpact();
 
-    await aifcHandleCancel(
-      isDirty: false,
-    );
+    await aifcHandleCancel(isDirty: false);
   }
 
   @override
@@ -234,7 +227,8 @@ class _AifcPinConfirmChatSheetState extends State<AifcPinConfirmChatSheet>
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -460,10 +454,7 @@ class _PinConfirmQuestionBlock extends StatelessWidget {
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: AifcColors.primary.withOpacity(0.08),
             borderRadius: BorderRadius.circular(AifcRadius.button),

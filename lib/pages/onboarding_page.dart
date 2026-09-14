@@ -13,11 +13,7 @@ const Color kOnboardingMuted = Color(0xFF6B7280);
 const Color kOnboardingBorder = Color(0xFFE5E7EB);
 
 class OnboardingPage extends StatefulWidget {
-  const OnboardingPage({
-    super.key,
-    this.onSave,
-    this.onCompleted,
-  });
+  const OnboardingPage({super.key, this.onSave, this.onCompleted});
 
   final Future<void> Function(String nickname)? onSave;
   final VoidCallback? onCompleted;
@@ -95,36 +91,32 @@ class _OnboardingPageState extends State<OnboardingPage> {
           .collection(_profileCollection)
           .doc(_profileDocId)
           .set({
-        'displayName': nickname,
-        'shortName': shortName,
-        'onboardingCompleted': true,
-        'onboardingCompletedAt': FieldValue.serverTimestamp(),
+            'displayName': nickname,
+            'shortName': shortName,
+            'onboardingCompleted': true,
+            'onboardingCompletedAt': FieldValue.serverTimestamp(),
 
-        // 나중에 AI FC 넛지 흐름에서 사용
-        'aiFcNudge': {
-          'firstLessonGuideShown': false,
-          'notificationPromptShown': false,
-          'customerCardPromptShown': false,
-          'contractPromptShown': false,
-          'kakaoConnectPromptShown': false,
-        },
-      }, SetOptions(merge: true));
+            // 나중에 AI FC 넛지 흐름에서 사용
+            'aiFcNudge': {
+              'firstLessonGuideShown': false,
+              'notificationPromptShown': false,
+              'customerCardPromptShown': false,
+              'contractPromptShown': false,
+              'kakaoConnectPromptShown': false,
+            },
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const HomePage(),
-        ),
+        MaterialPageRoute(builder: (_) => const HomePage()),
         (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('시작 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요.'),
-        ),
+        const SnackBar(content: Text('시작 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요.')),
       );
     } finally {
       if (mounted) {
@@ -164,10 +156,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   child: PageView(
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _buildIntroStep(),
-                      _buildNicknameStep(),
-                    ],
+                    children: [_buildIntroStep(), _buildNicknameStep()],
                   ),
                 ),
               ],
@@ -211,10 +200,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               padding: const EdgeInsets.fromLTRB(24, 30, 24, 26),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [
-                    kOnboardingPrimary,
-                    kOnboardingPrimary2,
-                  ],
+                  colors: [kOnboardingPrimary, kOnboardingPrimary2],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -259,9 +245,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.16),
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.22),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.22)),
                     ),
                     child: const Text(
                       '편하게 AI FC라고 불러주세요',
@@ -303,10 +287,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               ),
               child: const Text(
                 '좋아요, 시작할게요',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                ),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -372,25 +353,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(
-                  color: colors.secondary,
-                  width: 1.4,
-                ),
+                borderSide: BorderSide(color: colors.secondary, width: 1.4),
               ),
             ),
           ),
           const SizedBox(height: 18),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
-            child: nickname.isEmpty
-                ? const _AiFcMiniMessage(
-                    key: ValueKey('empty'),
-                    message: '편한 이름만 알려주시면 바로 시작할게요.',
-                  )
-                : _AiFcMiniMessage(
-                    key: const ValueKey('filled'),
-                    message: '좋아요. 앞으로 $nicknameLabel께 맞춰 도와드릴게요.',
-                  ),
+            child:
+                nickname.isEmpty
+                    ? const _AiFcMiniMessage(
+                      key: ValueKey('empty'),
+                      message: '편한 이름만 알려주시면 바로 시작할게요.',
+                    )
+                    : _AiFcMiniMessage(
+                      key: const ValueKey('filled'),
+                      message: '좋아요. 앞으로 $nicknameLabel께 맞춰 도와드릴게요.',
+                    ),
           ),
           const Spacer(),
           SizedBox(
@@ -408,22 +387,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 19,
-                      height: 19,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+              child:
+                  _isSaving
+                      ? const SizedBox(
+                        width: 19,
+                        height: 19,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : const Text(
+                        '시작하기',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    )
-                  : const Text(
-                      '시작하기',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
             ),
           ),
         ],
@@ -433,10 +413,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 }
 
 class _AiFcMiniMessage extends StatelessWidget {
-  const _AiFcMiniMessage({
-    super.key,
-    required this.message,
-  });
+  const _AiFcMiniMessage({super.key, required this.message});
 
   final String message;
 
@@ -448,9 +425,7 @@ class _AiFcMiniMessage extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFEEF2FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFC7D2FE),
-        ),
+        border: Border.all(color: const Color(0xFFC7D2FE)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

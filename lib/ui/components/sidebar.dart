@@ -16,11 +16,7 @@ class ShadcnSidebar extends StatelessWidget {
   final List<ShadcnSidebarItem> items;
   final double width;
 
-  const ShadcnSidebar({
-    super.key,
-    required this.items,
-    this.width = 220,
-  });
+  const ShadcnSidebar({super.key, required this.items, this.width = 220});
 
   @override
   Widget build(BuildContext context) {
@@ -30,9 +26,7 @@ class ShadcnSidebar extends StatelessWidget {
       width: width,
       decoration: BoxDecoration(
         color: cs.surface,
-        border: Border(
-          right: BorderSide(color: cs.outline.withOpacity(0.3)),
-        ),
+        border: Border(right: BorderSide(color: cs.outline.withOpacity(0.3))),
       ),
       child: ListView(
         children: [
@@ -41,7 +35,7 @@ class ShadcnSidebar extends StatelessWidget {
               leading: Icon(item.icon, color: cs.onSurfaceVariant),
               title: Text(item.label),
               onTap: item.onTap,
-            )
+            ),
         ],
       ),
     );

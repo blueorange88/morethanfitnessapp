@@ -6,10 +6,7 @@ import '../aifc/core/aifc_avatar.dart';
 import '../services/app_tier_access_service.dart';
 import '../theme/app_colors.dart';
 
-enum AifcTierFeatureGateAction {
-  later,
-  showTierGuide,
-}
+enum AifcTierFeatureGateAction { later, showTierGuide }
 
 class AifcTierFeatureGateSheet {
   const AifcTierFeatureGateSheet._();
@@ -27,10 +24,7 @@ class AifcTierFeatureGateSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AifcTierFeatureGateBody(
-        access: access,
-        info: info,
-      ),
+      builder: (_) => _AifcTierFeatureGateBody(access: access, info: info),
     );
   }
 
@@ -91,10 +85,7 @@ class AifcTierFeatureGateSheet {
 }
 
 class _AifcTierFeatureGateBody extends StatelessWidget {
-  const _AifcTierFeatureGateBody({
-    required this.access,
-    required this.info,
-  });
+  const _AifcTierFeatureGateBody({required this.access, required this.info});
 
   final AppTierAccessSnapshot access;
   final AppTierFeatureInfo info;
@@ -105,8 +96,9 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
     final tokens = context.mtfThemeTokens;
     final currentTier = access.tierLabel;
     final requiredTier = info.requiredTierLabel;
-    final requiredItems =
-        AppTierAccessService.tierFeatureSummaryItems(info.requiredRank);
+    final requiredItems = AppTierAccessService.tierFeatureSummaryItems(
+      info.requiredRank,
+    );
 
     return SafeArea(
       top: false,
@@ -147,7 +139,8 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _FcMessageBubble(
-                        text: '${info.title}은 $requiredTier부터 사용할 수 있어요.\n'
+                        text:
+                            '${info.title}은 $requiredTier부터 사용할 수 있어요.\n'
                             '현재 등급은 $currentTier예요.',
                       ),
                       const SizedBox(height: 12),
@@ -172,14 +165,13 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
-                          Navigator.of(context)
-                              .pop(AifcTierFeatureGateAction.later);
+                          Navigator.of(
+                            context,
+                          ).pop(AifcTierFeatureGateAction.later);
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: theme.colorScheme.onSurfaceVariant,
-                          side: BorderSide(
-                            color: tokens.cardBorder,
-                          ),
+                          side: BorderSide(color: tokens.cardBorder),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -187,9 +179,7 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                         ),
                         child: const Text(
                           '닫기',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
                     ),
@@ -198,8 +188,9 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                       child: FilledButton(
                         onPressed: () {
                           HapticFeedback.mediumImpact();
-                          Navigator.of(context)
-                              .pop(AifcTierFeatureGateAction.showTierGuide);
+                          Navigator.of(
+                            context,
+                          ).pop(AifcTierFeatureGateAction.showTierGuide);
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor: tokens.gradeSheetAccent,
@@ -211,9 +202,7 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
                         ),
                         child: const Text(
                           '등급 안내 보기',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ),
                     ),
@@ -229,9 +218,7 @@ class _AifcTierFeatureGateBody extends StatelessWidget {
 }
 
 class _FcMessageBubble extends StatelessWidget {
-  const _FcMessageBubble({
-    required this.text,
-  });
+  const _FcMessageBubble({required this.text});
 
   final String text;
 
@@ -259,9 +246,7 @@ class _FcMessageBubble extends StatelessWidget {
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
               ),
-              border: Border.all(
-                color: tokens.cardBorder,
-              ),
+              border: Border.all(color: tokens.cardBorder),
             ),
             child: Text(
               text,
@@ -363,10 +348,7 @@ class _FeatureLockCard extends StatelessWidget {
 }
 
 class _TierBenefitCard extends StatelessWidget {
-  const _TierBenefitCard({
-    required this.tierName,
-    required this.items,
-  });
+  const _TierBenefitCard({required this.tierName, required this.items});
 
   final String tierName;
   final List<String> items;
@@ -380,9 +362,7 @@ class _TierBenefitCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.drawerSelectedBackground.withOpacity(0.72),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: tokens.gradeSheetAccent.withOpacity(0.44),
-        ),
+        border: Border.all(color: tokens.gradeSheetAccent.withOpacity(0.44)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

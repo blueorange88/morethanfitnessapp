@@ -133,39 +133,73 @@ class MtfHomeWidgetService {
     await HomeWidget.saveWidgetData<String>(keyWidgetThemeMode, type.name);
 
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_header_start', theme.headerStartColor);
+      'mtf_widget_header_start',
+      theme.headerStartColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_header_end', theme.headerEndColor);
+      'mtf_widget_header_end',
+      theme.headerEndColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_body_bg', theme.bodyBgColor);
+      'mtf_widget_body_bg',
+      theme.bodyBgColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_time_col_bg', theme.timeColBgColor);
+      'mtf_widget_time_col_bg',
+      theme.timeColBgColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_row_even', theme.rowEvenColor);
+      'mtf_widget_row_even',
+      theme.rowEvenColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_row_odd', theme.rowOddColor);
+      'mtf_widget_row_odd',
+      theme.rowOddColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_today_col', theme.todayColColor);
+      'mtf_widget_today_col',
+      theme.todayColColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_today_header', theme.todayHeaderColor);
+      'mtf_widget_today_header',
+      theme.todayHeaderColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_today_border', theme.todayBorderColor);
+      'mtf_widget_today_border',
+      theme.todayBorderColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_grid_line', theme.gridLineColor);
+      'mtf_widget_grid_line',
+      theme.gridLineColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_time_col_line', theme.timeColLineColor);
+      'mtf_widget_time_col_line',
+      theme.timeColLineColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_day_text', theme.dayTextColor);
+      'mtf_widget_day_text',
+      theme.dayTextColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_time_text', theme.timeTextColor);
+      'mtf_widget_time_text',
+      theme.timeTextColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_header_text', theme.headerTextColor);
+      'mtf_widget_header_text',
+      theme.headerTextColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_icon_color', theme.iconColor);
+      'mtf_widget_icon_color',
+      theme.iconColor,
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_is_dark', theme.isDark.toString());
+      'mtf_widget_is_dark',
+      theme.isDark.toString(),
+    );
     await HomeWidget.saveWidgetData<String>(
-        'mtf_widget_is_ttobak', theme.isTtobak.toString());
+      'mtf_widget_is_ttobak',
+      theme.isTtobak.toString(),
+    );
 
     await updateAllWidgets();
   }
@@ -192,10 +226,7 @@ class MtfHomeWidgetService {
   }
 
   static Future<void> syncTodayLessonRollup(String encodedItems) async {
-    await HomeWidget.saveWidgetData<String>(
-      keyTodayRollupItems,
-      encodedItems,
-    );
+    await HomeWidget.saveWidgetData<String>(keyTodayRollupItems, encodedItems);
     await HomeWidget.updateWidget(
       name: 'MtfTodayLessonRollupWidgetReceiver',
       androidName: 'MtfTodayLessonRollupWidgetReceiver',
@@ -255,10 +286,7 @@ class MtfHomeWidgetService {
       }
 
       await targetStorage.writeString(keyPersonalOwnerUid, cleanOwnerUid);
-      await targetStorage.writeString(
-        keyPersonalEnvironment,
-        cleanEnvironment,
-      );
+      await targetStorage.writeString(keyPersonalEnvironment, cleanEnvironment);
       await targetStorage.writeString(keyPersonalProjectId, cleanProjectId);
       await targetStorage.writeString(
         keyPersonalWorkspaceType,
@@ -273,16 +301,17 @@ class MtfHomeWidgetService {
 
       final ownerMatched =
           (await targetStorage.readString(keyPersonalOwnerUid)).trim() ==
-              cleanOwnerUid;
+          cleanOwnerUid;
       environmentMatched =
           (await targetStorage.readString(keyPersonalEnvironment)).trim() ==
-                  cleanEnvironment &&
-              (await targetStorage.readString(keyPersonalProjectId)).trim() ==
-                  cleanProjectId;
+              cleanEnvironment &&
+          (await targetStorage.readString(keyPersonalProjectId)).trim() ==
+              cleanProjectId;
       workspaceMatched =
           (await targetStorage.readString(keyPersonalWorkspaceType)).trim() ==
-              cleanWorkspaceType;
-      ownerReadback = ownerMatched &&
+          cleanWorkspaceType;
+      ownerReadback =
+          ownerMatched &&
           environmentMatched &&
           workspaceMatched &&
           await targetStorage.readInt(keyTodayRollupGeneratedAt) ==
@@ -293,8 +322,9 @@ class MtfHomeWidgetService {
         throw StateError('personal_widget_owner_readback_failed');
       }
 
-      final previousPayload =
-          await targetStorage.readString(keyTodayRollupItems);
+      final previousPayload = await targetStorage.readString(
+        keyTodayRollupItems,
+      );
       if (previousPayload.trim().startsWith('{')) {
         try {
           final previousJson =
@@ -313,13 +343,15 @@ class MtfHomeWidgetService {
 
       await targetStorage.writeString(keyTodayRollupItems, encodedItems);
       payloadWrite = true;
-      final readbackEncoded =
-          await targetStorage.readString(keyTodayRollupItems);
+      final readbackEncoded = await targetStorage.readString(
+        keyTodayRollupItems,
+      );
       final readback = jsonDecode(readbackEncoded) as Map<String, dynamic>;
       readbackItemCount = (readback['items'] as List?)?.length ?? -1;
       readbackRevision = (readback['payloadRevision'] as num?)?.toInt() ?? -1;
       localDateMatched = readback['localDate'] == localDate;
-      payloadReadback = readbackEncoded == encodedItems &&
+      payloadReadback =
+          readbackEncoded == encodedItems &&
           readback['schemaVersion'] == 2 &&
           readbackRevision == payloadRevision &&
           readbackItemCount == payloadItemCount &&
@@ -332,15 +364,16 @@ class MtfHomeWidgetService {
       updateTriggered = true;
       result = 'success';
     } catch (_) {
-      errorCode = !ownerWrite
-          ? 'owner_write_failed'
-          : !ownerReadback
+      errorCode =
+          !ownerWrite
+              ? 'owner_write_failed'
+              : !ownerReadback
               ? 'owner_readback_failed'
               : !payloadWrite
-                  ? 'payload_write_failed'
-                  : !payloadReadback
-                      ? 'payload_readback_failed'
-                      : 'widget_update_failed';
+              ? 'payload_write_failed'
+              : !payloadReadback
+              ? 'payload_readback_failed'
+              : 'widget_update_failed';
       try {
         await targetStorage.writeString(keyTodayRollupItems, '[]');
       } catch (_) {}
@@ -384,48 +417,31 @@ class MtfHomeWidgetService {
   static Future<void> rolloverCachedNextWeekToCurrentWeek() async {
     final now = DateTime.now();
 
-    final rows1 = await HomeWidget.getWidgetData<String>(
-          keyRows1,
-          defaultValue: '',
-        ) ??
+    final rows1 =
+        await HomeWidget.getWidgetData<String>(keyRows1, defaultValue: '') ??
         '';
 
-    final blocks1 = await HomeWidget.getWidgetData<String>(
-          keyBlocks1,
-          defaultValue: '',
-        ) ??
+    final blocks1 =
+        await HomeWidget.getWidgetData<String>(keyBlocks1, defaultValue: '') ??
         '';
 
-    final days1 = await HomeWidget.getWidgetData<String>(
-          keyDays1,
-          defaultValue: '',
-        ) ??
+    final days1 =
+        await HomeWidget.getWidgetData<String>(keyDays1, defaultValue: '') ??
         '';
 
-    final header1 = await HomeWidget.getWidgetData<String>(
-          keyHeader1,
-          defaultValue: '',
-        ) ??
+    final header1 =
+        await HomeWidget.getWidgetData<String>(keyHeader1, defaultValue: '') ??
         '';
 
-    final startHour = await HomeWidget.getWidgetData<int>(
-          keyStartHour,
-          defaultValue: 6,
-        ) ??
-        6;
+    final startHour =
+        await HomeWidget.getWidgetData<int>(keyStartHour, defaultValue: 6) ?? 6;
 
-    final endHour = await HomeWidget.getWidgetData<int>(
-          keyEndHour,
-          defaultValue: 22,
-        ) ??
-        22;
+    final endHour =
+        await HomeWidget.getWidgetData<int>(keyEndHour, defaultValue: 22) ?? 22;
 
     await HomeWidget.saveWidgetData<int>(keyActiveOffset, 0);
 
-    await HomeWidget.saveWidgetData<String>(
-      keyTitle0,
-      '이번 주 스케줄',
-    );
+    await HomeWidget.saveWidgetData<String>(keyTitle0, '이번 주 스케줄');
 
     await HomeWidget.saveWidgetData<String>(
       keyHeader0,
@@ -434,21 +450,12 @@ class MtfHomeWidgetService {
 
     await HomeWidget.saveWidgetData<String>(
       keyRows0,
-      _markCurrentRow(
-        packedRows: rows1,
-        now: now,
-      ),
+      _markCurrentRow(packedRows: rows1, now: now),
     );
 
-    await HomeWidget.saveWidgetData<String>(
-      keyDays0,
-      days1,
-    );
+    await HomeWidget.saveWidgetData<String>(keyDays0, days1);
 
-    await HomeWidget.saveWidgetData<String>(
-      keyBlocks0,
-      blocks1,
-    );
+    await HomeWidget.saveWidgetData<String>(keyBlocks0, blocks1);
 
     await HomeWidget.saveWidgetData<String>(
       keyCurrentMarkerRatio0,
@@ -460,15 +467,9 @@ class MtfHomeWidgetService {
     );
 
     // 다음 주 데이터는 앱을 다시 열 때 정확히 재동기화됩니다.
-    await HomeWidget.saveWidgetData<String>(
-      keyTitle1,
-      '다음 주 스케줄',
-    );
+    await HomeWidget.saveWidgetData<String>(keyTitle1, '다음 주 스케줄');
 
-    await HomeWidget.saveWidgetData<String>(
-      keyHeader1,
-      '앱을 열면 다음 주 스케줄이 갱신돼요',
-    );
+    await HomeWidget.saveWidgetData<String>(keyHeader1, '앱을 열면 다음 주 스케줄이 갱신돼요');
 
     await HomeWidget.saveWidgetData<String>(keyRows1, '');
     await HomeWidget.saveWidgetData<String>(keyBlocks1, '');
@@ -485,38 +486,39 @@ class MtfHomeWidgetService {
 
     final currentMinutes = now.hour * 60 + now.minute;
 
-    final rows = packedRows
-        .split(_rowSeparator)
-        .where((e) => e.trim().isNotEmpty)
-        .map((row) {
-      final parts = row.split('|');
+    final rows =
+        packedRows.split(_rowSeparator).where((e) => e.trim().isNotEmpty).map((
+          row,
+        ) {
+          final parts = row.split('|');
 
-      if (parts.length < 2) return row;
+          if (parts.length < 2) return row;
 
-      final time = parts.first.trim();
-      final timeParts = time.split(':');
+          final time = parts.first.trim();
+          final timeParts = time.split(':');
 
-      if (timeParts.length != 2) {
-        parts[1] = '0';
-        return parts.join('|');
-      }
+          if (timeParts.length != 2) {
+            parts[1] = '0';
+            return parts.join('|');
+          }
 
-      final hour = int.tryParse(timeParts[0]) ?? -1;
-      final minute = int.tryParse(timeParts[1]) ?? 0;
+          final hour = int.tryParse(timeParts[0]) ?? -1;
+          final minute = int.tryParse(timeParts[1]) ?? 0;
 
-      if (hour < 0) {
-        parts[1] = '0';
-        return parts.join('|');
-      }
+          if (hour < 0) {
+            parts[1] = '0';
+            return parts.join('|');
+          }
 
-      final rowStartMinutes = hour * 60 + minute;
-      final isCurrent = currentMinutes >= rowStartMinutes &&
-          currentMinutes < rowStartMinutes + 60;
+          final rowStartMinutes = hour * 60 + minute;
+          final isCurrent =
+              currentMinutes >= rowStartMinutes &&
+              currentMinutes < rowStartMinutes + 60;
 
-      parts[1] = isCurrent ? '1' : '0';
+          parts[1] = isCurrent ? '1' : '0';
 
-      return parts.join('|');
-    }).toList();
+          return parts.join('|');
+        }).toList();
 
     return rows.join(_rowSeparator);
   }
@@ -586,8 +588,9 @@ class MtfHomeWidgetService {
     required double? currentMarkerRatio1,
   }) async {
     final int currentOffset = (await HomeWidget.getWidgetData<int>(
-                keyActiveOffset,
-                defaultValue: 0) ??
+              keyActiveOffset,
+              defaultValue: 0,
+            ) ??
             0)
         .clamp(0, _maxWeeks - 1);
 
@@ -601,9 +604,13 @@ class MtfHomeWidgetService {
     await HomeWidget.saveWidgetData<int>(keyEndHour, endHour);
 
     await HomeWidget.saveWidgetData<String>(
-        keyRows0, rows0.join(_rowSeparator));
+      keyRows0,
+      rows0.join(_rowSeparator),
+    );
     await HomeWidget.saveWidgetData<String>(
-        keyRows1, rows1.join(_rowSeparator));
+      keyRows1,
+      rows1.join(_rowSeparator),
+    );
 
     // ✅ 요일 저장
     await HomeWidget.saveWidgetData<String>(keyDays0, days0.join('|'));
@@ -611,9 +618,13 @@ class MtfHomeWidgetService {
 
     // ✅ 블럭 저장
     await HomeWidget.saveWidgetData<String>(
-        keyBlocks0, blocks0.join(_rowSeparator));
+      keyBlocks0,
+      blocks0.join(_rowSeparator),
+    );
     await HomeWidget.saveWidgetData<String>(
-        keyBlocks1, blocks1.join(_rowSeparator));
+      keyBlocks1,
+      blocks1.join(_rowSeparator),
+    );
 
     // ✅ 현재시간 줄 비율 저장
     await HomeWidget.saveWidgetData<String>(
@@ -630,13 +641,13 @@ class MtfHomeWidgetService {
   }
 
   static Future<void> shiftWeek(int delta) async {
-    final int currentOffset = ((await HomeWidget.getWidgetData<int>(
+    final int currentOffset =
+        ((await HomeWidget.getWidgetData<int>(
                   keyActiveOffset,
                   defaultValue: 0,
                 ) ??
                 0)
-            .clamp(0, _maxWeeks - 1))
-        .toInt();
+            .clamp(0, _maxWeeks - 1)).toInt();
 
     final int nextOffset =
         (currentOffset + delta).clamp(0, _maxWeeks - 1).toInt();
@@ -724,9 +735,9 @@ class HomeWidgetPluginStorage implements MtfHomeWidgetStorage {
 
   @override
   Future<void> updateTodayLessonRollup() => HomeWidget.updateWidget(
-        name: 'MtfTodayLessonRollupWidgetReceiver',
-        androidName: 'MtfTodayLessonRollupWidgetReceiver',
-        qualifiedAndroidName:
-            'com.example.mtf_app.MtfTodayLessonRollupWidgetReceiver',
-      );
+    name: 'MtfTodayLessonRollupWidgetReceiver',
+    androidName: 'MtfTodayLessonRollupWidgetReceiver',
+    qualifiedAndroidName:
+        'com.example.mtf_app.MtfTodayLessonRollupWidgetReceiver',
+  );
 }

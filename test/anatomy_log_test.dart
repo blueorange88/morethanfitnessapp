@@ -87,8 +87,10 @@ void main() {
 
   test('같은 기록 수정 시 ID를 유지하고 중복을 만들지 않는다', () {
     final original = record();
-    final updated =
-        original.copyWith(memo: '수정 메모', updatedAt: DateTime(2026, 7, 16));
+    final updated = original.copyWith(
+      memo: '수정 메모',
+      updatedAt: DateTime(2026, 7, 16),
+    );
     final records = AnatomyRecordCollection.upsert([original], updated);
 
     expect(records, hasLength(1));
@@ -126,20 +128,23 @@ void main() {
       recordedAt: DateTime(2026, 7, 14),
       createdAt: DateTime(2026, 7, 15, 20),
     );
-    final earlierCreated = record(id: 'earlier-created').copyWith(
-      createdAt: DateTime(2026, 7, 15, 14),
-    );
-    final laterCreated = record(id: 'later-created').copyWith(
-      createdAt: DateTime(2026, 7, 15, 16),
-    );
+    final earlierCreated = record(
+      id: 'earlier-created',
+    ).copyWith(createdAt: DateTime(2026, 7, 15, 14));
+    final laterCreated = record(
+      id: 'later-created',
+    ).copyWith(createdAt: DateTime(2026, 7, 15, 16));
 
-    final sorted = AnatomyRecordCollection.sorted(
-      [olderLesson, earlierCreated, laterCreated],
-    );
-    expect(
-      sorted.map((e) => e.anatomyLogId),
-      ['later-created', 'earlier-created', 'older'],
-    );
+    final sorted = AnatomyRecordCollection.sorted([
+      olderLesson,
+      earlierCreated,
+      laterCreated,
+    ]);
+    expect(sorted.map((e) => e.anatomyLogId), [
+      'later-created',
+      'earlier-created',
+      'older',
+    ]);
   });
 
   test('필수 연결 ID가 하나라도 없으면 저장 context를 거부한다', () {
@@ -181,10 +186,7 @@ void main() {
 
     setUp(() {
       store = _FakeAnatomyLogStore();
-      service = AnatomyLogService(
-        store: store,
-        currentUid: () => 'trainer-1',
-      );
+      service = AnatomyLogService(store: store, currentUid: () => 'trainer-1');
     });
 
     test('상위 training_log가 없으면 저장을 중단하고 부모를 만들지 않는다', () async {
@@ -322,14 +324,16 @@ void main() {
       expect(store.records['lesson-1']!['anatomy-1']!['memo'], '변경된 메모');
     });
 
-    for (final change in <String, AnatomyLogRecord Function(AnatomyLogRecord)>{
-      'trainerId': (value) => value.copyWith(trainerId: 'another-trainer'),
-      'memberId': (value) => value.copyWith(memberId: 'another-member'),
-      'lessonLogId': (value) => value.copyWith(lessonLogId: 'lesson-2'),
-      'createdAt': (value) => value.copyWith(
-            createdAt: value.createdAt.add(const Duration(seconds: 1)),
-          ),
-    }.entries) {
+    for (final change
+        in <String, AnatomyLogRecord Function(AnatomyLogRecord)>{
+          'trainerId': (value) => value.copyWith(trainerId: 'another-trainer'),
+          'memberId': (value) => value.copyWith(memberId: 'another-member'),
+          'lessonLogId': (value) => value.copyWith(lessonLogId: 'lesson-2'),
+          'createdAt':
+              (value) => value.copyWith(
+                createdAt: value.createdAt.add(const Duration(seconds: 1)),
+              ),
+        }.entries) {
       test('수정 시 ${change.key} 변경을 차단한다', () async {
         store.seedParent();
         store.seedRecord(record());
@@ -420,12 +424,8 @@ void main() {
 }
 
 Matcher _failsWith(AnatomyLogErrorCode code) => throwsA(
-      isA<AnatomyLogException>().having(
-        (error) => error.code,
-        'code',
-        code,
-      ),
-    );
+  isA<AnatomyLogException>().having((error) => error.code, 'code', code),
+);
 
 class _FakeAnatomyLogStore implements AnatomyLogStore, AnatomyLogTransaction {
   final Map<String, Map<String, dynamic>> parents = {};
@@ -462,8 +462,7 @@ class _FakeAnatomyLogStore implements AnatomyLogStore, AnatomyLogTransaction {
 
   @override
   Future<List<AnatomyLogDocument>> getRecords(String lessonLogId) async =>
-      (records[lessonLogId] ?? const {})
-          .entries
+      (records[lessonLogId] ?? const {}).entries
           .map(
             (entry) => AnatomyLogDocument(
               id: entry.key,
@@ -475,8 +474,7 @@ class _FakeAnatomyLogStore implements AnatomyLogStore, AnatomyLogTransaction {
   @override
   Future<T> runTransaction<T>(
     Future<T> Function(AnatomyLogTransaction transaction) action,
-  ) =>
-      action(this);
+  ) => action(this);
 
   @override
   Future<Map<String, dynamic>?> getRecord(
@@ -502,8 +500,10 @@ class _FakeAnatomyLogStore implements AnatomyLogStore, AnatomyLogTransaction {
     Map<String, dynamic> data,
   ) {
     createdRecordCount++;
-    records.putIfAbsent(lessonLogId, () => {})[anatomyLogId] =
-        _withResolvedServerTimes(data);
+    records.putIfAbsent(
+      lessonLogId,
+      () => {},
+    )[anatomyLogId] = _withResolvedServerTimes(data);
   }
 
   @override
@@ -512,9 +512,7 @@ class _FakeAnatomyLogStore implements AnatomyLogStore, AnatomyLogTransaction {
     String anatomyLogId,
     Map<String, dynamic> data,
   ) {
-    records[lessonLogId]![anatomyLogId]!.addAll(
-      _withResolvedServerTimes(data),
-    );
+    records[lessonLogId]![anatomyLogId]!.addAll(_withResolvedServerTimes(data));
   }
 
   @override

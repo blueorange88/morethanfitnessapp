@@ -10,7 +10,7 @@ enum HomeMoreSenseKind {
   membershipExpiry,
   dDay,
   milestone,
-  lowSessions
+  lowSessions,
 }
 
 class HomeMoreSenseContext {
@@ -66,7 +66,7 @@ enum HomeHeaderWorkloadBucket {
   steady,
   full,
   busy,
-  veryBusy
+  veryBusy,
 }
 
 class HomeHeaderWorkloadFeedback {
@@ -172,11 +172,16 @@ class HomeHeaderMessageEngine {
     final sorted = [...lessons]..sort((a, b) => a.startAt.compareTo(b.startAt));
     final future = sorted.where((item) => item.endAt.isAfter(now)).toList();
 
-    void add(String key, String text,
-        {String? eventKey, bool question = false}) {
+    void add(
+      String key,
+      String text, {
+      String? eventKey,
+      bool question = false,
+    }) {
       if (question && askedQuestionKeysToday.contains(key)) return;
-      candidates
-          .add(_Candidate(key, text, eventKey: eventKey, question: question));
+      candidates.add(
+        _Candidate(key, text, eventKey: eventKey, question: question),
+      );
     }
 
     add('mood_future', '오늘은 어떤 하루가 될까요?', question: true);
@@ -228,8 +233,11 @@ class HomeHeaderMessageEngine {
       if (previous != null && next.startAt.isAfter(now)) {
         final gap = next.startAt.difference(previous.endAt).inMinutes;
         if (gap >= 120) {
-          add('gap_long_question', '레슨 사이에 여유가 있네요. 운동하실 예정인가요?',
-              question: true);
+          add(
+            'gap_long_question',
+            '레슨 사이에 여유가 있네요. 운동하실 예정인가요?',
+            question: true,
+          );
           add('gap_long_coffee', '커피 한잔하며 정리할 시간이 있겠는데요.');
           add('gap_long_log', '미뤄둔 레슨일지를 정리하기 좋은 시간이네요.');
           if (now.hour >= 11 && now.hour < 14) {
@@ -247,28 +255,37 @@ class HomeHeaderMessageEngine {
       final eventKey = item.key;
       switch (item.kind) {
         case HomeMoreSenseKind.birthday:
-          add('sense_birthday_$eventKey',
-              name.isEmpty ? '오늘 생일인 회원님이 있어요.' : '오늘은 $name 회원님의 생일이에요.',
-              eventKey: eventKey);
+          add(
+            'sense_birthday_$eventKey',
+            name.isEmpty ? '오늘 생일인 회원님이 있어요.' : '오늘은 $name 회원님의 생일이에요.',
+            eventKey: eventKey,
+          );
         case HomeMoreSenseKind.membershipExpiry:
-          add('sense_expiry_$eventKey',
-              name.isEmpty ? '오늘 만료되는 회원권이 있어요.' : '$name 회원권이 오늘 만료돼요.',
-              eventKey: eventKey);
+          add(
+            'sense_expiry_$eventKey',
+            name.isEmpty ? '오늘 만료되는 회원권이 있어요.' : '$name 회원권이 오늘 만료돼요.',
+            eventKey: eventKey,
+          );
         case HomeMoreSenseKind.dDay:
-          add('sense_dday_$eventKey',
-              name.isEmpty ? '오늘 챙길 회원 일정이 있어요.' : '$name 회원님의 D-DAY예요.',
-              eventKey: eventKey);
+          add(
+            'sense_dday_$eventKey',
+            name.isEmpty ? '오늘 챙길 회원 일정이 있어요.' : '$name 회원님의 D-DAY예요.',
+            eventKey: eventKey,
+          );
         case HomeMoreSenseKind.milestone:
           add(
-              'sense_milestone_$eventKey',
-              name.isEmpty
-                  ? '의미 있는 회원 마일스톤이 도착했어요.'
-                  : '$name 회원님과 함께한 지 ${item.days}일이에요.',
-              eventKey: eventKey);
+            'sense_milestone_$eventKey',
+            name.isEmpty
+                ? '의미 있는 회원 마일스톤이 도착했어요.'
+                : '$name 회원님과 함께한 지 ${item.days}일이에요.',
+            eventKey: eventKey,
+          );
         case HomeMoreSenseKind.lowSessions:
-          add('sense_low_$eventKey',
-              name.isEmpty ? '재등록을 살펴볼 회원님이 있어요.' : '$name 회원님의 잔여 레슨이 적어요.',
-              eventKey: eventKey);
+          add(
+            'sense_low_$eventKey',
+            name.isEmpty ? '재등록을 살펴볼 회원님이 있어요.' : '$name 회원님의 잔여 레슨이 적어요.',
+            eventKey: eventKey,
+          );
       }
     }
 
@@ -312,28 +329,37 @@ class HomeHeaderMessageEngine {
       final name = item.memberName.trim();
       switch (item.kind) {
         case HomeMoreSenseKind.birthday:
-          return _Candidate('expanded_${item.key}',
-              name.isEmpty ? '오늘 생일인 회원님이 있어요.' : '오늘은 $name 회원님의 생일이에요.',
-              eventKey: item.key);
+          return _Candidate(
+            'expanded_${item.key}',
+            name.isEmpty ? '오늘 생일인 회원님이 있어요.' : '오늘은 $name 회원님의 생일이에요.',
+            eventKey: item.key,
+          );
         case HomeMoreSenseKind.membershipExpiry:
-          return _Candidate('expanded_${item.key}',
-              name.isEmpty ? '오늘 만료되는 회원권이 있어요.' : '$name 회원권이 오늘 만료돼요.',
-              eventKey: item.key);
+          return _Candidate(
+            'expanded_${item.key}',
+            name.isEmpty ? '오늘 만료되는 회원권이 있어요.' : '$name 회원권이 오늘 만료돼요.',
+            eventKey: item.key,
+          );
         case HomeMoreSenseKind.dDay:
-          return _Candidate('expanded_${item.key}',
-              name.isEmpty ? '오늘 챙길 회원 일정이 있어요.' : '$name 회원님의 D-DAY예요.',
-              eventKey: item.key);
+          return _Candidate(
+            'expanded_${item.key}',
+            name.isEmpty ? '오늘 챙길 회원 일정이 있어요.' : '$name 회원님의 D-DAY예요.',
+            eventKey: item.key,
+          );
         case HomeMoreSenseKind.milestone:
           return _Candidate(
-              'expanded_${item.key}',
-              name.isEmpty
-                  ? '의미 있는 마일스톤이 도착했어요.'
-                  : '$name 회원님과 함께한 지 ${item.days}일이에요.',
-              eventKey: item.key);
+            'expanded_${item.key}',
+            name.isEmpty
+                ? '의미 있는 마일스톤이 도착했어요.'
+                : '$name 회원님과 함께한 지 ${item.days}일이에요.',
+            eventKey: item.key,
+          );
         case HomeMoreSenseKind.lowSessions:
-          return _Candidate('expanded_${item.key}',
-              name.isEmpty ? '재등록을 살펴볼 회원님이 있어요.' : '$name 회원님의 잔여 레슨이 적어요.',
-              eventKey: item.key);
+          return _Candidate(
+            'expanded_${item.key}',
+            name.isEmpty ? '재등록을 살펴볼 회원님이 있어요.' : '$name 회원님의 잔여 레슨이 적어요.',
+            eventKey: item.key,
+          );
       }
     }
     if (count > 0) {

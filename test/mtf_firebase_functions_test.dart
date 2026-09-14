@@ -16,9 +16,10 @@ void main() {
       if (normalized.endsWith('/services/mtf_firebase_functions.dart')) {
         continue;
       }
-      final source = entity
-          .readAsStringSync()
-          .replaceAll('MtfFirebaseFunctions.instance', '');
+      final source = entity.readAsStringSync().replaceAll(
+        'MtfFirebaseFunctions.instance',
+        '',
+      );
       for (final pattern in [
         'FirebaseFunctions.instanceFor',
         'FirebaseFunctions.instance',

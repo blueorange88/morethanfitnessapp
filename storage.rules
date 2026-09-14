@@ -29,6 +29,27 @@ service firebase.storage {
         && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
     }
 
+    // 개인워크스페이스 회원 프로필 사진: 경로에 트레이너 UID를 포함시켜
+    // Firestore 교차조회 없이 request.auth.uid와 직접 비교합니다.
+    match /member_profiles_personal/{trainerUid}/{memberId}/{fileName} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == trainerUid
+        && fileName.matches('profile_[0-9]+[.]jpg')
+        && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
+    }
+
+    // 트레이너 본인 명함 프로필 사진: 경로의 uid가 본인 auth.uid와 같을 때만 허용.
+    match /trainer_photos/{trainerUid}/{fileName} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == trainerUid
+        && fileName.matches('photo_[0-9]+[.]jpg')
+        && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
+    }
+
     match /member_inbody/{memberId}/{fileName} {
       allow read, delete: if isLegacyAdmin();
       allow create, update: if isLegacyAdmin()

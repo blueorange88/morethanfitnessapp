@@ -1,15 +1,7 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-enum MoreCareSlotStatus {
-  basic,
-  temporary,
-  pending,
-  active,
-  rejected,
-  expired,
-}
+enum MoreCareSlotStatus { basic, temporary, pending, active, rejected, expired }
 
 extension MoreCareSlotStatusX on MoreCareSlotStatus {
   String get value {
@@ -111,8 +103,8 @@ class MoreCareSlotRequest {
   }
 
   factory MoreCareSlotRequest.fromDoc(
-      DocumentSnapshot<Map<String, dynamic>> doc,
-      ) {
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data() ?? <String, dynamic>{};
 
     final statusText = (data['status'] ?? '').toString();
@@ -158,19 +150,20 @@ class MoreCareSlotService {
     if (cleanMemberId.isEmpty) return '회원';
 
     try {
-      final snap = await _memberRef(cleanMemberId)
-          .get()
-          .timeout(const Duration(seconds: 2));
+      final snap = await _memberRef(
+        cleanMemberId,
+      ).get().timeout(const Duration(seconds: 2));
 
       final data = snap.data() ?? <String, dynamic>{};
 
-      final name = (
-          data['name'] ??
-              data['memberName'] ??
-              data['clientName'] ??
-              data['displayName'] ??
-              ''
-      ).toString().trim();
+      final name =
+          (data['name'] ??
+                  data['memberName'] ??
+                  data['clientName'] ??
+                  data['displayName'] ??
+                  '')
+              .toString()
+              .trim();
 
       return name.isEmpty ? '회원' : name;
     } catch (e) {
@@ -181,34 +174,37 @@ class MoreCareSlotService {
 
   static Future<MoreCareSlotActor> _loadCurrentTrainerActor() async {
     try {
-      final snap = await _trainerProfileRef
-          .get()
-          .timeout(const Duration(seconds: 2));
+      final snap = await _trainerProfileRef.get().timeout(
+        const Duration(seconds: 2),
+      );
 
       final data = snap.data() ?? <String, dynamic>{};
 
-      final trainerId = (
-          data['trainerId'] ??
-              data['uid'] ??
-              data['userId'] ??
-              data['ownerId'] ??
-              'me'
-      ).toString().trim();
+      final trainerId =
+          (data['trainerId'] ??
+                  data['uid'] ??
+                  data['userId'] ??
+                  data['ownerId'] ??
+                  'me')
+              .toString()
+              .trim();
 
-      final trainerName = (
-          data['trainerName'] ??
-              data['name'] ??
-              data['displayName'] ??
-              data['nickname'] ??
-              '트레이너'
-      ).toString().trim();
+      final trainerName =
+          (data['trainerName'] ??
+                  data['name'] ??
+                  data['displayName'] ??
+                  data['nickname'] ??
+                  '트레이너')
+              .toString()
+              .trim();
 
-      final organizationId = (
-          data['organizationId'] ??
-              data['orgId'] ??
-              data['centerOrganizationId'] ??
-              ''
-      ).toString().trim();
+      final organizationId =
+          (data['organizationId'] ??
+                  data['orgId'] ??
+                  data['centerOrganizationId'] ??
+                  '')
+              .toString()
+              .trim();
 
       return MoreCareSlotActor(
         trainerId: trainerId.isEmpty ? 'me' : trainerId,
@@ -218,10 +214,7 @@ class MoreCareSlotService {
     } catch (e) {
       debugPrint('[MTF_MORE_SLOT] trainer actor load failed: $e');
 
-      return const MoreCareSlotActor(
-        trainerId: 'me',
-        trainerName: '트레이너',
-      );
+      return const MoreCareSlotActor(trainerId: 'me', trainerName: '트레이너');
     }
   }
 
@@ -240,9 +233,7 @@ class MoreCareSlotService {
   }) {
     final requestId = 'member_$memberId';
 
-    return _requestCollection(
-      organizationId: organizationId,
-    ).doc(requestId);
+    return _requestCollection(organizationId: organizationId).doc(requestId);
   }
 
   static CollectionReference<Map<String, dynamic>> _requestCollection({
@@ -267,27 +258,28 @@ class MoreCareSlotService {
     return null;
   }
 
-  static MoreCareSlotStatus _statusFromMemberData(
-      Map<String, dynamic> data,
-      ) {
-    final slot = data['moreCareSlot'] is Map
-        ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
-        : <String, dynamic>{};
+  static MoreCareSlotStatus _statusFromMemberData(Map<String, dynamic> data) {
+    final slot =
+        data['moreCareSlot'] is Map
+            ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
+            : <String, dynamic>{};
 
     final raw = (slot['status'] ?? data['moreCareStatus'] ?? '').toString();
 
     return MoreCareSlotStatusX.fromText(raw);
   }
 
-  static DateTime? _temporaryUntilFromMemberData(
-      Map<String, dynamic> data,
-      ) {
-    final slot = data['moreCareSlot'] is Map
-        ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
-        : <String, dynamic>{};
+  static DateTime? _temporaryUntilFromMemberData(Map<String, dynamic> data) {
+    final slot =
+        data['moreCareSlot'] is Map
+            ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
+            : <String, dynamic>{};
 
-    return _dateFromAny(slot['temporaryUntil'] ?? data['moreCareTemporaryUntil']);
+    return _dateFromAny(
+      slot['temporaryUntil'] ?? data['moreCareTemporaryUntil'],
+    );
   }
+
   /// 현재 로그인/프로필 기준 강사 정보로 MORE 관리 슬롯을 임시 요청합니다.
   ///
   /// 레슨일지, 계약서, 스마트 알림 같은 현장 기능에서는
@@ -419,33 +411,24 @@ class MoreCareSlotService {
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
-        tx.set(
-          requestRef,
-          requestPayload,
-          SetOptions(merge: true),
-        );
+        tx.set(requestRef, requestPayload, SetOptions(merge: true));
 
-        tx.set(
-          memberRef,
-          {
-            'moreCareStatus': MoreCareSlotStatus.temporary.value,
-            'moreCareSlot': {
-              'status': MoreCareSlotStatus.temporary.value,
-              'requestId': requestRef.id,
-              'memberId': cleanMemberId,
-              'trainerId': cleanTrainerId,
-              'trainerName':
-              cleanTrainerName.isEmpty ? '트레이너' : cleanTrainerName,
-              if (cleanOrgId.isNotEmpty) 'organizationId': cleanOrgId,
-              'temporaryUntil': Timestamp.fromDate(temporaryUntil),
-              'requestedAt': FieldValue.serverTimestamp(),
-              'source': 'field_trainer_nudge',
-              'reason': reason,
-            },
-            'updatedAt': FieldValue.serverTimestamp(),
+        tx.set(memberRef, {
+          'moreCareStatus': MoreCareSlotStatus.temporary.value,
+          'moreCareSlot': {
+            'status': MoreCareSlotStatus.temporary.value,
+            'requestId': requestRef.id,
+            'memberId': cleanMemberId,
+            'trainerId': cleanTrainerId,
+            'trainerName': cleanTrainerName.isEmpty ? '트레이너' : cleanTrainerName,
+            if (cleanOrgId.isNotEmpty) 'organizationId': cleanOrgId,
+            'temporaryUntil': Timestamp.fromDate(temporaryUntil),
+            'requestedAt': FieldValue.serverTimestamp(),
+            'source': 'field_trainer_nudge',
+            'reason': reason,
           },
-          SetOptions(merge: true),
-        );
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       });
 
       return decision;
@@ -467,33 +450,32 @@ class MoreCareSlotService {
     String? organizationId,
     int limit = 50,
   }) {
-    return _requestCollection(
-      organizationId: organizationId,
-    )
+    return _requestCollection(organizationId: organizationId)
         .where('status', isEqualTo: MoreCareSlotStatus.pending.value)
         .limit(limit)
         .snapshots()
         .map((snapshot) {
-      final requests = snapshot.docs
-          .map(MoreCareSlotRequest.fromDoc)
-          .where((request) => request.memberId.trim().isNotEmpty)
-          .toList();
+          final requests =
+              snapshot.docs
+                  .map(MoreCareSlotRequest.fromDoc)
+                  .where((request) => request.memberId.trim().isNotEmpty)
+                  .toList();
 
-      requests.sort((a, b) {
-        final aTime = a.requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bTime = b.requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          requests.sort((a, b) {
+            final aTime =
+                a.requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final bTime =
+                b.requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
-        return bTime.compareTo(aTime);
-      });
+            return bTime.compareTo(aTime);
+          });
 
-      return requests;
-    });
+          return requests;
+        });
   }
 
   /// 관리자 헤더/마이페이지 배지에 쓸 승인 대기 요청 개수입니다.
-  static Stream<int> watchPendingRequestCount({
-    String? organizationId,
-  }) {
+  static Stream<int> watchPendingRequestCount({String? organizationId}) {
     return watchPendingRequests(
       organizationId: organizationId,
       limit: 100,
@@ -609,25 +591,17 @@ class MoreCareSlotService {
     };
 
     await _db.runTransaction((tx) async {
-      tx.set(
-        requestRef,
-        nowPayload,
-        SetOptions(merge: true),
-      );
+      tx.set(requestRef, nowPayload, SetOptions(merge: true));
 
-      tx.set(
-        memberRef,
-        {
-          'moreCareStatus': MoreCareSlotStatus.active.value,
-          'moreCareSlot.status': MoreCareSlotStatus.active.value,
-          'moreCareSlot.approvedByTrainerId': cleanApproverId,
-          'moreCareSlot.approvedAt': FieldValue.serverTimestamp(),
-          'moreCareSlot.rejectedAt': FieldValue.delete(),
-          'moreCareSlot.expiredAt': FieldValue.delete(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      tx.set(memberRef, {
+        'moreCareStatus': MoreCareSlotStatus.active.value,
+        'moreCareSlot.status': MoreCareSlotStatus.active.value,
+        'moreCareSlot.approvedByTrainerId': cleanApproverId,
+        'moreCareSlot.approvedAt': FieldValue.serverTimestamp(),
+        'moreCareSlot.rejectedAt': FieldValue.delete(),
+        'moreCareSlot.expiredAt': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     });
   }
 
@@ -654,30 +628,22 @@ class MoreCareSlotService {
     );
 
     await _db.runTransaction((tx) async {
-      tx.set(
-        requestRef,
-        {
-          'status': MoreCareSlotStatus.rejected.value,
-          'rejectedByTrainerId': cleanRejectorId,
-          'rejectReason': reason,
-          'rejectedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      tx.set(requestRef, {
+        'status': MoreCareSlotStatus.rejected.value,
+        'rejectedByTrainerId': cleanRejectorId,
+        'rejectReason': reason,
+        'rejectedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-      tx.set(
-        memberRef,
-        {
-          'moreCareStatus': MoreCareSlotStatus.rejected.value,
-          'moreCareSlot.status': MoreCareSlotStatus.rejected.value,
-          'moreCareSlot.rejectedByTrainerId': cleanRejectorId,
-          'moreCareSlot.rejectReason': reason,
-          'moreCareSlot.rejectedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      tx.set(memberRef, {
+        'moreCareStatus': MoreCareSlotStatus.rejected.value,
+        'moreCareSlot.status': MoreCareSlotStatus.rejected.value,
+        'moreCareSlot.rejectedByTrainerId': cleanRejectorId,
+        'moreCareSlot.rejectReason': reason,
+        'moreCareSlot.rejectedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     });
   }
 }

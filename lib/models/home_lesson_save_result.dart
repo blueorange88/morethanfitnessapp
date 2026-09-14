@@ -22,10 +22,10 @@ class HomeLessonSaveResult {
   const HomeLessonSaveResult.failed({
     this.failureMessage = '레슨일정을 저장하지 못했어요.',
     this.errorCode = 'unknown',
-  })  : success = false,
-        isLinkedMember = false,
-        targetDocId = null,
-        targetStartAt = null,
-        isMultiDay = false,
-        createdScheduleCount = 0;
+  }) : success = false,
+       isLinkedMember = false,
+       targetDocId = null,
+       targetStartAt = null,
+       isMultiDay = false,
+       createdScheduleCount = 0;
 }

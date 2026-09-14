@@ -96,7 +96,8 @@ class PersonalScheduleDocumentIdentity {
       '${value.month.toString().padLeft(2, '0')}-'
       '${value.day.toString().padLeft(2, '0')}';
 
-  static String slotKey(DateTime value) => '${dateKey(value)}T'
+  static String slotKey(DateTime value) =>
+      '${dateKey(value)}T'
       '${value.hour.toString().padLeft(2, '0')}:'
       '${value.minute.toString().padLeft(2, '0')}';
 }

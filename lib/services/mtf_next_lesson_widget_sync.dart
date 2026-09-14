@@ -15,17 +15,16 @@ class WidgetLessonEvent {
 }
 
 Future<void> syncNextLessonWidgetFromEvents(
-    List<WidgetLessonEvent> events,
-    ) async {
+  List<WidgetLessonEvent> events,
+) async {
   final now = DateTime.now();
 
-  final upcoming = events
-      .where((event) {
-    final visibleUntil = event.startAt.add(const Duration(hours: 2));
-    return visibleUntil.isAfter(now);
-  })
-      .toList()
-    ..sort((a, b) => a.startAt.compareTo(b.startAt));
+  final upcoming =
+      events.where((event) {
+          final visibleUntil = event.startAt.add(const Duration(hours: 2));
+          return visibleUntil.isAfter(now);
+        }).toList()
+        ..sort((a, b) => a.startAt.compareTo(b.startAt));
 
   final next = upcoming.isNotEmpty ? upcoming[0] : null;
   final second = upcoming.length >= 2 ? upcoming[1] : null;

@@ -673,6 +673,7 @@ export function createUpdatePersonalTrainerProfileHandler(
       "birth", "contractTrainerNameSource", "contractTrainerCustomName",
       "nameEn", "activityRegions", "gymName", "centerLocation",
       "memberDefaultGroupLabel", "customLessonTypes", "intro",
+      "businessCardPhotoUrl", "businessCardPhotoAlign",
     ];
     if (Object.keys(data).some((key) => !allowed.includes(key))) {
       throw new functions.https.HttpsError("invalid-argument", "unknown_fields");
@@ -686,7 +687,9 @@ export function createUpdatePersonalTrainerProfileHandler(
         if (key === "activityRegions" || key === "customLessonTypes") continue;
         const maxLength = key === "phone" ? 32 :
           key === "birth" ? 10 : key === "nickname" ? 6 :
-            key === "nameEn" ? 40 : key === "intro" ? 200 : 120;
+            key === "nameEn" ? 40 : key === "intro" ? 200 :
+              key === "businessCardPhotoUrl" ? 2048 :
+                key === "businessCardPhotoAlign" ? 20 : 120;
         updates[key] = profileString(data, key, maxLength);
       }
     }
@@ -775,6 +778,18 @@ export function createUpdatePersonalTrainerProfileHandler(
       "activity_region_invalid",
     );
     validateOptional("nameEn", isValidTrainerEnglishName, "name_en_invalid");
+    validateOptional(
+      "businessCardPhotoAlign",
+      (value) => {
+        const coord = "-?(0(\\.\\d{1,2})?|1(\\.0{1,2})?)";
+        const scale = "(0\\.\\d{1,2}|[1-4](\\.\\d{1,2})?)";
+        const pattern = new RegExp(
+          `^${coord},${coord}(,${scale})?$`,
+        );
+        return pattern.test(String(value));
+      },
+      "business_card_photo_align_invalid",
+    );
     if (Object.prototype.hasOwnProperty.call(updates, "nameEn")) {
       updates.nameEn = String(updates.nameEn).replace(/\s+/g, " ");
     }

@@ -216,12 +216,13 @@ void main() {
       uid: 'trainer-a',
       dataSource: source,
     );
-    final records = await reopenedRepository
-        .watchRange(
-          start: DateTime(2026, 7, 20),
-          endExclusive: DateTime(2026, 7, 21),
-        )
-        .first;
+    final records =
+        await reopenedRepository
+            .watchRange(
+              start: DateTime(2026, 7, 20),
+              endExclusive: DateTime(2026, 7, 21),
+            )
+            .first;
     expect(records.map((record) => record.scheduleId), [id]);
   });
 
@@ -267,9 +268,7 @@ void main() {
       uid: 'trainer-new',
       gateway: gateway,
     );
-    await service.sync([
-      _record(id: 'new', uid: 'trainer-new', start: start),
-    ]);
+    await service.sync([_record(id: 'new', uid: 'trainer-new', start: start)]);
     expect(gateway.clearCalls, 1);
     expect(gateway.owner, 'trainer-new');
     await service.clearForSignOut();
@@ -386,12 +385,14 @@ class _MemoryScheduleDataSource implements PersonalScheduleDataSource {
       name: changes['name'] as String? ?? current.name,
       type: changes['type'] as String? ?? current.type,
       status: changes['status'] as String? ?? current.status,
-      memberId: changes.containsKey('memberId')
-          ? _nullable(changes['memberId'])
-          : current.memberId,
-      phone: changes.containsKey('phone')
-          ? _nullable(changes['phone'])
-          : current.phone,
+      memberId:
+          changes.containsKey('memberId')
+              ? _nullable(changes['memberId'])
+              : current.memberId,
+      phone:
+          changes.containsKey('phone')
+              ? _nullable(changes['phone'])
+              : current.phone,
       remainingSessions:
           changes['remainingSessions'] as int? ?? current.remainingSessions,
       totalSessions: changes['totalSessions'] as int? ?? current.totalSessions,
@@ -450,10 +451,7 @@ class _FakeWidgetGateway implements PersonalScheduleWidgetGateway {
   Future<void> saveOwnerUid(String uid) async => owner = uid;
 
   @override
-  Future<void> sync(
-    String uid,
-    List<PersonalScheduleRecord> schedules,
-  ) async {
+  Future<void> sync(String uid, List<PersonalScheduleRecord> schedules) async {
     synced = schedules;
   }
 }

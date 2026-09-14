@@ -23,9 +23,7 @@ class HomeMemberSignRequestSheet {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: SafeArea(
             top: false,
@@ -68,9 +66,7 @@ class HomeMemberSignRequestSheet {
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                      ),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
                     child: QrImageView(
                       data: link,
@@ -86,9 +82,7 @@ class HomeMemberSignRequestSheet {
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                      ),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
                     child: Text(
                       link,
@@ -108,26 +102,16 @@ class HomeMemberSignRequestSheet {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: link),
-                            );
+                            await Clipboard.setData(ClipboardData(text: link));
 
                             if (!sheetContext.mounted) return;
 
-                            onShowToast(
-                              sheetContext,
-                              '서명 링크를 복사했어요.',
-                            );
+                            onShowToast(sheetContext, '서명 링크를 복사했어요.');
                           },
-                          icon: const Icon(
-                            Icons.copy_rounded,
-                            size: 18,
-                          ),
+                          icon: const Icon(Icons.copy_rounded, size: 18),
                           label: const Text(
                             '링크 복사',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: primaryColor,
@@ -145,15 +129,10 @@ class HomeMemberSignRequestSheet {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () => Navigator.of(sheetContext).pop(),
-                          icon: const Icon(
-                            Icons.check_rounded,
-                            size: 18,
-                          ),
+                          icon: const Icon(Icons.check_rounded, size: 18),
                           label: const Text(
                             '완료',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.w900),
                           ),
                           style: FilledButton.styleFrom(
                             backgroundColor: primaryColor,

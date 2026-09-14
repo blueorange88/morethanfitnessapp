@@ -27,8 +27,7 @@ class HomeMemberLookupService {
   static bool matchesPersonalOwner(
     Map<String, dynamic> data,
     String? ownerUid,
-  ) =>
-      _matchesOwner(data, ownerUid);
+  ) => _matchesOwner(data, ownerUid);
 
   static Future<bool> validateMemberCardOwner(
     String memberId, {
@@ -43,7 +42,8 @@ class HomeMemberLookupService {
       final snapshot = await _members.doc(cleanId).get();
       final data = snapshot.data();
       final ownerValid = data != null && _matchesOwner(data, ownerUid);
-      final active = ownerValid &&
+      final active =
+          ownerValid &&
           data['isDeleted'] != true &&
           (data['deleteStatus'] ?? '').toString() != 'pending_delete';
       if (kDebugMode) {
@@ -87,7 +87,8 @@ class HomeMemberLookupService {
   }
 
   static String memberGenderLabel(Map<String, dynamic> data) {
-    final raw = data['gender'] ??
+    final raw =
+        data['gender'] ??
         data['sex'] ??
         data['genderLabel'] ??
         data['memberGender'];
@@ -117,11 +118,13 @@ class HomeMemberLookupService {
   static Map<String, String> memberSessionCountFieldsFromData(
     Map<String, dynamic> data,
   ) {
-    final sessions = data['sessions'] is Map
-        ? Map<String, dynamic>.from(data['sessions'] as Map)
-        : <String, dynamic>{};
+    final sessions =
+        data['sessions'] is Map
+            ? Map<String, dynamic>.from(data['sessions'] as Map)
+            : <String, dynamic>{};
 
-    final remainRaw = data['remainSessions'] ??
+    final remainRaw =
+        data['remainSessions'] ??
         data['remainingSessions'] ??
         sessions['remain'] ??
         data['remainingPt'] ??
@@ -130,13 +133,15 @@ class HomeMemberLookupService {
     final totalRaw =
         data['totalSessions'] ?? sessions['total'] ?? data['sessionTotal'];
 
-    final remain = remainRaw is num
-        ? remainRaw.toInt()
-        : int.tryParse((remainRaw ?? '').toString()) ?? 0;
+    final remain =
+        remainRaw is num
+            ? remainRaw.toInt()
+            : int.tryParse((remainRaw ?? '').toString()) ?? 0;
 
-    final total = totalRaw is num
-        ? totalRaw.toInt()
-        : int.tryParse((totalRaw ?? '').toString()) ?? 0;
+    final total =
+        totalRaw is num
+            ? totalRaw.toInt()
+            : int.tryParse((totalRaw ?? '').toString()) ?? 0;
 
     if (remain <= 0 && total <= 0) return {};
 
@@ -282,17 +287,16 @@ class HomeMemberLookupService {
           'id': doc.id,
           'name': (data['name'] ?? '').toString().trim(),
           'phone': (data['phone'] ?? '').toString().trim(),
-          'phoneDisplay': formatPhoneDisplay(
-            (data['phone'] ?? '').toString(),
-          ),
+          'phoneDisplay': formatPhoneDisplay((data['phone'] ?? '').toString()),
           'gender': memberGenderLabel(data),
-          'job': (data['job'] ??
-                  data['occupation'] ??
-                  data['work'] ??
-                  data['memberJob'] ??
-                  '')
-              .toString()
-              .trim(),
+          'job':
+              (data['job'] ??
+                      data['occupation'] ??
+                      data['work'] ??
+                      data['memberJob'] ??
+                      '')
+                  .toString()
+                  .trim(),
           'totalSessions': total,
           'remainingSessions': remain,
           'nextLessonAt': nextLessonAt,
@@ -301,19 +305,19 @@ class HomeMemberLookupService {
     }
 
     if (normalizedDigits.length >= 9) {
-      final byPhone = await _ownedMembers(ownerUid)
-          .where('phone', isEqualTo: normalizedDigits)
-          .limit(10)
-          .get();
+      final byPhone =
+          await _ownedMembers(
+            ownerUid,
+          ).where('phone', isEqualTo: normalizedDigits).limit(10).get();
 
       addDocs(byPhone);
     }
 
     if (cleanText.isNotEmpty) {
-      final byName = await _ownedMembers(ownerUid)
-          .where('name', isEqualTo: cleanText)
-          .limit(10)
-          .get();
+      final byName =
+          await _ownedMembers(
+            ownerUid,
+          ).where('name', isEqualTo: cleanText).limit(10).get();
 
       addDocs(byName);
     }
@@ -365,13 +369,15 @@ class HomeMemberLookupService {
     final remain = picked['remainingSessions'];
     final total = picked['totalSessions'];
 
-    final remainValue = remain is num
-        ? remain.toInt()
-        : int.tryParse((remain ?? '').toString()) ?? 0;
+    final remainValue =
+        remain is num
+            ? remain.toInt()
+            : int.tryParse((remain ?? '').toString()) ?? 0;
 
-    final totalValue = total is num
-        ? total.toInt()
-        : int.tryParse((total ?? '').toString()) ?? 0;
+    final totalValue =
+        total is num
+            ? total.toInt()
+            : int.tryParse((total ?? '').toString()) ?? 0;
 
     return {
       'memberId': picked['id']?.toString(),

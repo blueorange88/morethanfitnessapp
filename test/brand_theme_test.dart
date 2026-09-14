@@ -165,8 +165,9 @@ void main() {
 
     final title = tester.widget<Text>(find.text('오늘 다음 레슨'));
     final emptyText = tester.widget<Text>(find.text('오늘 남은 레슨이 없습니다.'));
-    final emptyIcon =
-        tester.widget<Icon>(find.byIcon(Icons.check_circle_outline));
+    final emptyIcon = tester.widget<Icon>(
+      find.byIcon(Icons.check_circle_outline),
+    );
 
     expect(title.style?.color, AppColors.darkTextPrimary);
     expect(emptyText.style?.color, AppColors.darkTextSecondary);
@@ -196,8 +197,10 @@ void main() {
     expect(_hasContainerColor(tester, AppColors.darkSurface), isTrue);
     expect(_hasContainerColor(tester, const Color(0xFF10283A)), isTrue);
     expect(_hasBorderColor(tester, AppColors.darkBorder), isTrue);
-    expect(tester.widget<Text>(find.text('일')).style?.color,
-        AppColors.darkTextPrimary);
+    expect(
+      tester.widget<Text>(find.text('일')).style?.color,
+      AppColors.darkTextPrimary,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -206,18 +209,19 @@ void main() {
       MaterialApp(
         theme: darkTheme(),
         home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () {
-                AifcTierFeatureGateSheet.show(
-                  context: context,
-                  access: _beginnerAccess,
-                  feature: AppTierFeatureKey.contract,
-                );
-              },
-              child: const Text('열기'),
-            ),
-          ),
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () {
+                    AifcTierFeatureGateSheet.show(
+                      context: context,
+                      access: _beginnerAccess,
+                      feature: AppTierFeatureKey.contract,
+                    );
+                  },
+                  child: const Text('열기'),
+                ),
+              ),
         ),
       ),
     );
@@ -226,10 +230,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    final cta = tester.widget<FilledButton>(find.widgetWithText(
-      FilledButton,
-      '등급 안내 보기',
-    ));
+    final cta = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, '등급 안내 보기'),
+    );
     expect(
       cta.style?.backgroundColor?.resolve(<WidgetState>{}),
       AppColors.warmYellow,
@@ -237,26 +240,28 @@ void main() {
     expect(_hasContainerColor(tester, AppColors.darkDialogSurface), isTrue);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('dark common confirm sheet uses themed surface and brand CTA',
-      (tester) async {
+  testWidgets('dark common confirm sheet uses themed surface and brand CTA', (
+    tester,
+  ) async {
     final theme = darkTheme();
 
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
         home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () {
-                AifcConfirmChatSheet.show(
-                  context: context,
-                  title: 'confirm title',
-                  message: 'confirm message',
-                );
-              },
-              child: const Text('open confirm sheet'),
-            ),
-          ),
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () {
+                    AifcConfirmChatSheet.show(
+                      context: context,
+                      title: 'confirm title',
+                      message: 'confirm message',
+                    );
+                  },
+                  child: const Text('open confirm sheet'),
+                ),
+              ),
         ),
       ),
     );

@@ -153,16 +153,17 @@ class _HomeLessonMemberInputSectionState
                         horizontal: 11,
                         vertical: 10,
                       ),
-                      suffixIcon: widget.nameController.text.trim().isEmpty
-                          ? null
-                          : GestureDetector(
-                              onTap: widget.onClearName,
-                              child: Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: colors.onSurfaceVariant,
+                      suffixIcon:
+                          widget.nameController.text.trim().isEmpty
+                              ? null
+                              : GestureDetector(
+                                onTap: widget.onClearName,
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: colors.onSurfaceVariant,
+                                ),
                               ),
-                            ),
                       suffixIconConstraints: const BoxConstraints(
                         minWidth: 32,
                         minHeight: 32,
@@ -191,9 +192,10 @@ class _HomeLessonMemberInputSectionState
                     fontSize: 12,
                     color: colors.onSurfaceVariant,
                   ),
-                  fillColor: widget.hasLinkedMember
-                      ? colors.surfaceContainerHigh
-                      : theme.inputDecorationTheme.fillColor,
+                  fillColor:
+                      widget.hasLinkedMember
+                          ? colors.surfaceContainerHigh
+                          : theme.inputDecorationTheme.fillColor,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 10,
@@ -209,10 +211,7 @@ class _HomeLessonMemberInputSectionState
 }
 
 class HomeLessonMemoSection extends StatelessWidget {
-  const HomeLessonMemoSection({
-    super.key,
-    required this.memoController,
-  });
+  const HomeLessonMemoSection({super.key, required this.memoController});
 
   final TextEditingController memoController;
 
@@ -225,16 +224,10 @@ class HomeLessonMemoSection extends StatelessWidget {
       minLines: 1,
       maxLines: 1,
       textInputAction: TextInputAction.done,
-      style: TextStyle(
-        fontSize: 13,
-        color: colors.onSurface,
-      ),
+      style: TextStyle(fontSize: 13, color: colors.onSurface),
       decoration: InputDecoration(
         hintText: '메모 (선택) — 예: 하체운동, 무릎 체크',
-        hintStyle: TextStyle(
-          fontSize: 12,
-          color: colors.onSurfaceVariant,
-        ),
+        hintStyle: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 11,
           vertical: 10,

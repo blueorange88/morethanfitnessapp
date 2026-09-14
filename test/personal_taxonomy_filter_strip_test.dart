@@ -58,19 +58,16 @@ Widget _app({
 void main() {
   test('group 0 / tag 0이면 기본 그룹과 예시, 마지막 전체를 만든다', () {
     final entries = _entries();
-    expect(
-      entries.map((entry) => entry.label),
-      [
-        'MORE THAN GYM',
-        '모어헬스',
-        'VIP',
-        '허리통증',
-        '다이어트',
-        '전체',
-        '휴면 2',
-        '만료 3',
-      ],
-    );
+    expect(entries.map((entry) => entry.label), [
+      'MORE THAN GYM',
+      '모어헬스',
+      'VIP',
+      '허리통증',
+      '다이어트',
+      '전체',
+      '휴면 2',
+      '만료 3',
+    ]);
     expect(entries[5].role, PersonalTaxonomyFilterRole.all);
     expect(entries[6].role, PersonalTaxonomyFilterRole.statusDormant);
     expect(entries[7].role, PersonalTaxonomyFilterRole.statusExpired);
@@ -79,10 +76,7 @@ void main() {
 
   test('실제 custom group이 있으면 group 예시는 숨기고 중복하지 않는다', () {
     final entries = _entries(groups: const {'group-health': '모어헬스'});
-    expect(
-      entries.where((entry) => entry.label == '모어헬스'),
-      hasLength(1),
-    );
+    expect(entries.where((entry) => entry.label == '모어헬스'), hasLength(1));
     expect(
       entries.any(
         (entry) => entry.role == PersonalTaxonomyFilterRole.exampleGroup,
@@ -110,11 +104,11 @@ void main() {
       tags: const {'tag-vip': 'VIP'},
     );
     bool selected(String label) => isPersonalTaxonomyFilterEntrySelected(
-          entry: entries.singleWhere((entry) => entry.label == label),
-          selectedGroupId: 'group-a',
-          selectedTagId: 'tag-vip',
-          selectedStatus: PersonalMemberStatusFilter.expired,
-        );
+      entry: entries.singleWhere((entry) => entry.label == label),
+      selectedGroupId: 'group-a',
+      selectedTagId: 'tag-vip',
+      selectedStatus: PersonalMemberStatusFilter.expired,
+    );
 
     expect(selected('센터B'), isTrue);
     expect(selected('VIP'), isTrue);
@@ -149,8 +143,9 @@ void main() {
 
   for (final width in <double>[320, 360, 384, 411]) {
     for (final count in <int>[10, 20]) {
-      testWidgets('${width.toInt()}dp $count개에서도 한 줄이며 gear가 고정된다',
-          (tester) async {
+      testWidgets('${width.toInt()}dp $count개에서도 한 줄이며 gear가 고정된다', (
+        tester,
+      ) async {
         await tester.binding.setSurfaceSize(Size(width, 720));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         final tags = {
@@ -168,8 +163,10 @@ void main() {
           tester.getSize(find.byType(PersonalTaxonomyFilterStrip)).height,
           32,
         );
-        expect(find.byKey(const ValueKey('personal_member_status_filter_bar')),
-            findsNothing);
+        expect(
+          find.byKey(const ValueKey('personal_member_status_filter_bar')),
+          findsNothing,
+        );
         await tester.drag(scroll, const Offset(-900, 0));
         await tester.pumpAndSettle();
         expect(tester.getTopLeft(gear), before);
@@ -285,8 +282,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('비선택 group·tag·dormant·expired는 같은 크기에서 약한 역할 위계를 유지한다',
-      (tester) async {
+  testWidgets('비선택 group·tag·dormant·expired는 같은 크기에서 약한 역할 위계를 유지한다', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1000, 720));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -312,17 +310,15 @@ void main() {
       backgroundFor(personalTaxonomyExpiredStatusId),
     };
     expect(colors.length, greaterThanOrEqualTo(3));
-    expect(
-      tester.getSize(find.byType(PersonalTaxonomyFilterStrip)).height,
-      32,
-    );
+    expect(tester.getSize(find.byType(PersonalTaxonomyFilterStrip)).height, 32);
     expect(tester.takeException(), isNull);
   });
 
   test('empty-state strip은 Firestore 또는 taxonomy service를 직접 호출하지 않는다', () {
-    final source = File(
-      'lib/widgets/personal_taxonomy_filter_strip.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/widgets/personal_taxonomy_filter_strip.dart',
+        ).readAsStringSync();
     expect(source, isNot(contains('FirebaseFirestore')));
     expect(source, isNot(contains('PersonalMemberTaxonomyService')));
     expect(source, isNot(contains('.set(')));
@@ -334,8 +330,9 @@ void main() {
     MapEntry('dark', darkTheme()),
     MapEntry('lululala', lululalaTheme()),
   ]) {
-    testWidgets('${theme.key} empty-state strip이 overflow 없이 표시된다',
-        (tester) async {
+    testWidgets('${theme.key} empty-state strip이 overflow 없이 표시된다', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(320, 720));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(

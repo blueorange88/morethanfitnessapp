@@ -32,7 +32,5 @@ FutureOr<void> mtfWidgetBackgroundCallback(Uri? uri) async {
 }
 
 Future<void> registerMtfWidgetInteractivity() async {
-  await HomeWidget.registerInteractivityCallback(
-    mtfWidgetBackgroundCallback,
-  );
+  await HomeWidget.registerInteractivityCallback(mtfWidgetBackgroundCallback);
 }

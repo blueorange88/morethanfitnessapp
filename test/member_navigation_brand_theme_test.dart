@@ -11,10 +11,7 @@ void main() {
     final source = File('lib/pages/client_list_page.dart').readAsStringSync();
 
     expect(source, contains(".where('trainerId', isEqualTo: owner)"));
-    expect(
-      source,
-      contains(".where('workspaceType', isEqualTo: 'personal')"),
-    );
+    expect(source, contains(".where('workspaceType', isEqualTo: 'personal')"));
     expect(source, contains('memberListBackground'));
     expect(source, contains('tokens.memberListCard'));
     expect(source, contains('tokens.memberListCardBorder'));
@@ -47,18 +44,8 @@ void main() {
   });
 
   for (final entry in <(String, ThemeData, Color, Color)>[
-    (
-      '라이트',
-      lightTheme(),
-      AppColors.lightSurface,
-      const Color(0xFFFFF1C2),
-    ),
-    (
-      '다크',
-      darkTheme(),
-      AppColors.darkDialogSurface,
-      const Color(0xFF4A401F),
-    ),
+    ('라이트', lightTheme(), AppColors.lightSurface, const Color(0xFFFFF1C2)),
+    ('다크', darkTheme(), AppColors.darkDialogSurface, const Color(0xFF4A401F)),
   ]) {
     testWidgets('${entry.$1} 홈 메뉴가 브랜드 surface와 선택 배경을 사용한다', (tester) async {
       await tester.pumpWidget(
@@ -119,7 +106,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('고객리스트'));
+    await tester.tap(find.text('회원리스트'));
     expect(selected, 3);
 
     await tester.tap(find.byIcon(Icons.person_add_alt_1));

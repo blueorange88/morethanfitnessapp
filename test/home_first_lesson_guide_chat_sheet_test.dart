@@ -7,15 +7,17 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () => HomeFirstLessonGuideChatSheet.show(
-                context: context,
-                canCreateCustomerCard: false,
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed:
+                      () => HomeFirstLessonGuideChatSheet.show(
+                        context: context,
+                        canCreateCustomerCard: false,
+                      ),
+                  child: const Text('열기'),
+                ),
               ),
-              child: const Text('열기'),
-            ),
-          ),
         ),
       ),
     );
@@ -35,22 +37,24 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () => HomeFirstLessonGuideChatSheet.show(
-                context: context,
-                canCreateCustomerCard: false,
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed:
+                      () => HomeFirstLessonGuideChatSheet.show(
+                        context: context,
+                        canCreateCustomerCard: false,
+                      ),
+                  child: const Text('열기'),
+                ),
               ),
-              child: const Text('열기'),
-            ),
-          ),
         ),
       ),
     );
 
     await tester.tap(find.text('열기'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('고객카드 등록 알아보기'));
+    await tester.tap(find.text('회원카드 등록 알아보기'));
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.textContaining('Amateur부터 사용할 수 있어요'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));

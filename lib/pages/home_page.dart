@@ -193,18 +193,17 @@ String homeSchedulePreferenceKey(
   return owner.isEmpty
       ? baseKey
       : AppEnvironmentConfig.personalPreferenceKey(
-          uid: owner,
-          featureKey: baseKey,
-          projectId: projectId,
-        );
+        uid: owner,
+        featureKey: baseKey,
+        projectId: projectId,
+      );
 }
 
 @visibleForTesting
 bool shouldApplyPersonalProfileSnapshot({
   required bool hasInitialProfile,
   required bool fromCache,
-}) =>
-    !hasInitialProfile || !fromCache;
+}) => !hasInitialProfile || !fromCache;
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -318,8 +317,8 @@ class _HomePageState extends State<HomePage>
 
   late final HomeHeaderMessageHistory _headerMessageHistory =
       HomeHeaderMessageHistory(
-    scopeKey: _isPersonalWorkspace ? _personalPreferenceScope : 'legacy',
-  );
+        scopeKey: _isPersonalWorkspace ? _personalPreferenceScope : 'legacy',
+      );
 
   int _kakaoCardLinkedMemberCount = 0;
   int _contractSignedMemberCount = 0;
@@ -334,12 +333,13 @@ class _HomePageState extends State<HomePage>
   bool _bannerTierReadFailed = false;
   String _lastHeaderWorkloadLogSignature = '';
 
-  bool get _bannerStateReady => _isPersonalWorkspace
-      ? _bannerProfileReady
-      : _bannerProfileReady &&
-          _bannerMembersReady &&
-          _bannerProductsReady &&
-          _scheduleStreamReady;
+  bool get _bannerStateReady =>
+      _isPersonalWorkspace
+          ? _bannerProfileReady
+          : _bannerProfileReady &&
+              _bannerMembersReady &&
+              _bannerProductsReady &&
+              _scheduleStreamReady;
 
   String get _bannerTierName {
     if (_bannerTierReadFailed) return '확인실패';
@@ -399,23 +399,37 @@ class _HomePageState extends State<HomePage>
 
     if (!canUse || !mounted) return;
 
-    final member = await _showMembershipContractMemberPicker();
+    final _HomeMembershipContractMember? member;
+    try {
+      member = await _showMembershipContractMemberPicker();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[MTF_MEMBERSHIP_CONTRACT] member_picker_failed error=$e');
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('회원 목록을 불러오지 못했어요. 잠시 후 다시 시도해주세요.')),
+      );
+      return;
+    }
 
     if (!mounted || member == null) return;
+    final selectedMember = member;
 
     final ok = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => MembershipContractPage(
-          memberId: member.id,
-          memberName: member.name,
-          trainerName: member.trainerName,
-          lessonType: member.lessonType,
-          totalSessions: member.totalSessions,
-          remainingSessions: member.remainingSessions,
-          membershipStartAt: member.membershipStartAt,
-          membershipEndAt: member.membershipEndAt,
-          membershipPaused: member.membershipPaused,
-        ),
+        builder:
+            (_) => MembershipContractPage(
+              memberId: selectedMember.id,
+              memberName: selectedMember.name,
+              trainerName: selectedMember.trainerName,
+              lessonType: selectedMember.lessonType,
+              totalSessions: selectedMember.totalSessions,
+              remainingSessions: selectedMember.remainingSessions,
+              membershipStartAt: selectedMember.membershipStartAt,
+              membershipEndAt: selectedMember.membershipEndAt,
+              membershipPaused: selectedMember.membershipPaused,
+            ),
       ),
     );
 
@@ -427,23 +441,23 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<_HomeMembershipContractMember?>
-      _showMembershipContractMemberPicker() async {
-    final snapshot = await _ownedCollectionQuery(
-      'members',
-    ).where('isDeleted', isNotEqualTo: true).limit(80).get();
+  _showMembershipContractMemberPicker() async {
+    final snapshot = await _ownedCollectionQuery('members').limit(200).get();
 
     if (!mounted) return null;
 
-    final members = snapshot.docs
-        .map((doc) {
-          return _HomeMembershipContractMember.fromFirestore(
-            doc.id,
-            doc.data(),
-          );
-        })
-        .where((member) => member.name.trim().isNotEmpty)
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final members =
+        snapshot.docs
+            .where((doc) => doc.data()['isDeleted'] != true)
+            .map((doc) {
+              return _HomeMembershipContractMember.fromFirestore(
+                doc.id,
+                doc.data(),
+              );
+            })
+            .where((member) => member.name.trim().isNotEmpty)
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
     if (members.isEmpty) {
       ScaffoldMessenger.of(
@@ -517,10 +531,11 @@ class _HomePageState extends State<HomePage>
                       itemBuilder: (context, index) {
                         final member = members[index];
 
-                        final periodText = member.membershipStartAt == null &&
-                                member.membershipEndAt == null
-                            ? '회원권 기간 미등록'
-                            : '${_homeMembershipDateText(member.membershipStartAt)} ~ ${_homeMembershipDateText(member.membershipEndAt)}';
+                        final periodText =
+                            member.membershipStartAt == null &&
+                                    member.membershipEndAt == null
+                                ? '회원권 기간 미등록'
+                                : '${_homeMembershipDateText(member.membershipStartAt)} ~ ${_homeMembershipDateText(member.membershipEndAt)}';
 
                         return InkWell(
                           borderRadius: BorderRadius.circular(18),
@@ -724,8 +739,10 @@ class _HomePageState extends State<HomePage>
     _bannerTrainerName = _trainerHeaderNameFromData(profileData);
     _trainerInfoDone = _personalTierProgress.teacherInfoCompleted;
     _isSponsor = profileData['isSponsor'] == true;
-    _bannerMemberCount = ((profileData['validMemberCount'] ??
-                profileData['lifetimeQualifiedMemberCount']) as num?)
+    _bannerMemberCount =
+        ((profileData['validMemberCount'] ??
+                    profileData['lifetimeQualifiedMemberCount'])
+                as num?)
             ?.toInt() ??
         0;
     final tier = parsePersonalTierLabel(profileData['tier']);
@@ -866,13 +883,14 @@ class _HomePageState extends State<HomePage>
       try {
         final decoded = jsonDecode(raw);
         if (decoded is List) {
-          nextItems = decoded
-              .whereType<Map>()
-              .map(
-                (e) => LessonTypeItem.fromMap(Map<String, dynamic>.from(e)),
-              )
-              .where((e) => e.id.isNotEmpty && e.name.trim().isNotEmpty)
-              .toList();
+          nextItems =
+              decoded
+                  .whereType<Map>()
+                  .map(
+                    (e) => LessonTypeItem.fromMap(Map<String, dynamic>.from(e)),
+                  )
+                  .where((e) => e.id.isNotEmpty && e.name.trim().isNotEmpty)
+                  .toList();
         }
       } catch (_) {}
     }
@@ -982,7 +1000,7 @@ class _HomePageState extends State<HomePage>
 
     _showActionToast(
       context,
-      '반복 레슨 모아보기 방식을 ${mode.shortLabel}으로 변경했어요.',
+      '동일 회원 요일 자동 체크를 ${mode.shortLabel}으로 변경했어요.',
       bottomOffset: 110,
     );
   }
@@ -1126,9 +1144,10 @@ class _HomePageState extends State<HomePage>
     return LessonTypeItem(
       id: _generateLessonTypeId(),
       name: typeName,
-      colorHex: typeColorHex?.isNotEmpty == true
-          ? typeColorHex!
-          : _colorToHex(_legacyLessonTypeColor(typeName)),
+      colorHex:
+          typeColorHex?.isNotEmpty == true
+              ? typeColorHex!
+              : _colorToHex(_legacyLessonTypeColor(typeName)),
     );
   }
 
@@ -1163,430 +1182,456 @@ class _HomePageState extends State<HomePage>
         .where('startAt', isLessThan: Timestamp.fromDate(endExclusive))
         .snapshots()
         .listen(
-      (snapshot) async {
-      final snapshotId = ++latestSnapshotId;
-
-      if (kDebugMode) {
-        debugPrint(
-          '[MTF_SCHEDULE_STREAM] binding=$bindingId revision=$snapshotId '
-          'fromCache=${snapshot.metadata.isFromCache} '
-          'pendingWrites=${snapshot.metadata.hasPendingWrites} '
-          'docCount=${snapshot.docs.length}',
-        );
-      }
-
-      Set<String> deletedMemberIds;
-      try {
-          deletedMemberIds = await _deletedMemberIdsFromScheduleDocs(
-            snapshot.docs,
-          );
-      } catch (error) {
-        if (kDebugMode) {
-          final errorCode = error is FirebaseException
-              ? error.code
-              : error.runtimeType.toString();
-          debugPrint(
-            '[MTF_SCHEDULE_MEMBER_RESOLUTION] result=failure '
-            'errorCode=$errorCode',
-          );
-        }
-        if (!mounted || bindingId != _scheduleStreamBindingId) return;
-        setState(() {
-          _scheduleStreamReady = true;
-          scheduleData.clear();
-        });
-        _queueHomeWidgetSync(source: 'scheduleSnapshot');
-        return;
-      }
-
-      // 새 snapshot 또는 새 stream binding이 이미 시작됐다면 이 결과는 폐기합니다.
-      // 그렇지 않으면 오래된 snapshot이 삭제된 레슨을 다시 화면에 올릴 수 있습니다.
-      if (!mounted ||
-          !shouldApplyHomeScheduleSnapshot(
-            bindingId: bindingId,
-            currentBindingId: _scheduleStreamBindingId,
-            revision: snapshotId,
-            latestRevision: latestSnapshotId,
-          )) {
-        debugPrint(
-          '[MTF_SCHEDULE_STREAM] stale snapshot ignored '
-          'binding=$bindingId snapshot=$snapshotId latest=$latestSnapshotId',
-        );
-        return;
-      }
-
-      _reconcileRecentlyDeletedScheduleDocIds(
-        snapshot.docs,
-        isFromCache: snapshot.metadata.isFromCache,
-        hasPendingWrites: snapshot.metadata.hasPendingWrites,
-        revision: snapshotId,
-      );
-
-      if (shouldCleanupDeletedMemberScheduleLinks(
-        isFromCache: snapshot.metadata.isFromCache,
-        hasPendingWrites: snapshot.metadata.hasPendingWrites,
-        hasDeletedMemberIds: deletedMemberIds.isNotEmpty,
-      )) {
-        unawaited(
-          _cleanupDeletedMemberScheduleLinks(
-            docs: snapshot.docs,
-            deletedMemberIds: deletedMemberIds,
-          ),
-        );
-      }
-
-      final next = <String, dynamic>{};
-
-      for (final doc in snapshot.docs) {
-        final docId = doc.id.trim();
-
-        if (_isScheduleDocTemporarilyHidden(docId)) {
-            debugPrint(
-              '[MTF_SCHEDULE_DELETE] hidden from stream docId=$docId',
-            );
-          continue;
-        }
-
-        final data = doc.data();
-        final dataDocId = (data['docId'] ?? '').toString().trim();
-
-        if (kDebugMode) {
-          if (dataDocId.isNotEmpty && dataDocId != docId) {
-            debugPrint(
-              '[MTF_SCHEDULE_STREAM] actualDocId=$docId '
-              'dataDocId=$dataDocId mismatch=true revision=$snapshotId',
-            );
-          }
-        }
-
-        if (_isScheduleDataDeleted(data)) {
-          continue;
-        }
-
-        final ts = data['startAt'];
-        if (ts is! Timestamp) continue;
-
-        final dt = ts.toDate();
-        final key = _makeKey(
-          ((_mondayOfWeek(dt).difference(anchorMonday).inDays) / 7).round(),
-          _weekDaysAll[dt.weekday - 1],
-          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
-        );
-
-        DateTime? endDt;
-        final endTs = data['endAt'];
-        if (endTs is Timestamp) {
-          endDt = endTs.toDate();
-        }
-
-        final memberIdText = (data['memberId'] ?? '').toString().trim();
-
-          final bool linkedMemberDeleted =
-              data['linkedMemberDeleted'] == true ||
-            (memberIdText.isNotEmpty &&
-                deletedMemberIds.contains(memberIdText));
-
-        final sessionsMap = data['sessions'] is Map
-            ? Map<String, dynamic>.from(data['sessions'] as Map)
-            : <String, dynamic>{};
-
-        final lessonSyncMap = data['lessonSync'] is Map
-            ? Map<String, dynamic>.from(data['lessonSync'] as Map)
-            : <String, dynamic>{};
-
-        final lastContractSummaryMap = data['lastContractSummary'] is Map
-              ? Map<String, dynamic>.from(
-                  data['lastContractSummary'] as Map,
-                )
-            : <String, dynamic>{};
-
-        final smartAlarmContextMap = data['smartAlarmContext'] is Map
-              ? Map<String, dynamic>.from(
-                  data['smartAlarmContext'] as Map,
-                )
-            : <String, dynamic>{};
-
-        final moreCareSlotMap = data['moreCareSlot'] is Map
-            ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
-            : <String, dynamic>{};
-
-        final moreCareStatusText =
-            (data['moreCareStatus'] ?? moreCareSlotMap['status'] ?? '')
-                .toString()
-                .trim();
-
-        final moreCareRequestIdText =
-            (data['moreCareRequestId'] ?? moreCareSlotMap['requestId'] ?? '')
-                .toString()
-                .trim();
-
-          final moreCareTemporaryUntilValue = data['moreCareTemporaryUntil'] ??
-              moreCareSlotMap['temporaryUntil'];
-
-        final contractIdText = (data['contractId'] ??
-                lessonSyncMap['contractId'] ??
-                lastContractSummaryMap['contractId'] ??
-                '')
-            .toString()
-            .trim();
-
-        final contractNoText =
-            (data['contractNo'] ?? lastContractSummaryMap['contractNo'] ?? '')
-                .toString()
-                .trim();
-
-        final lessonSyncSourceText = (data['lessonSyncSource'] ??
-                data['contractLessonSyncSource'] ??
-                lessonSyncMap['source'] ??
-                '')
-            .toString()
-            .trim();
-
-        final bool contractSignedValue = data['contractSigned'] == true ||
-            data['isContractSigned'] == true ||
-            data['finalSigned'] == true ||
-            lessonSyncMap['contractSigned'] == true ||
-            contractIdText.isNotEmpty;
-
-        final nextItem = <String, dynamic>{
-          'actualDocumentId': doc.id,
-          'dataDocumentId': dataDocId,
-          'docId': doc.id,
-          'startAt': dt,
-          'name': (data['name'] ?? '').toString(),
-          'type': (data['type'] ?? 'PT').toString(),
-
-          if (data['lessonConfirmed'] != null)
-            'lessonConfirmed': data['lessonConfirmed'] == true,
-          if (data['lessonConfirmedAt'] != null)
-            'lessonConfirmedAt': data['lessonConfirmedAt'],
-          if (data['lessonConfirmStatus'] != null)
-            'lessonConfirmStatus': data['lessonConfirmStatus'].toString(),
-
-          if (data['basis'] != null) 'basis': data['basis'].toString(),
-          if (data['contractLinked'] != null)
-            'contractLinked': data['contractLinked'] == true,
-
-          if (contractIdText.isNotEmpty) 'contractId': contractIdText,
-
-          if (contractNoText.isNotEmpty) 'contractNo': contractNoText,
-
-          if (contractSignedValue) 'contractSigned': true,
-
-          if (lessonSyncSourceText.isNotEmpty)
-            'lessonSyncSource': lessonSyncSourceText,
-
-          if (data['cancelLockedByContract'] != null)
-            'cancelLockedByContract': data['cancelLockedByContract'] == true,
-          if (data['cancelLockContractReason'] != null)
-            'cancelLockContractReason':
-                data['cancelLockContractReason'].toString(),
-
-          if (data['trainingLogId'] != null)
-            'trainingLogId': data['trainingLogId'].toString(),
-          if (data['quickTrainingLogId'] != null)
-            'quickTrainingLogId': data['quickTrainingLogId'].toString(),
-          if (data['lastTrainingLogId'] != null)
-            'lastTrainingLogId': data['lastTrainingLogId'].toString(),
-
-          if (data['memberSigned'] != null)
-            'memberSigned': data['memberSigned'] == true,
-          if (data['customerSigned'] != null)
-            'customerSigned': data['customerSigned'] == true,
-
-          if (data['memberSignedAt'] != null)
-            'memberSignedAt': data['memberSignedAt'],
-          if (data['customerSignedAt'] != null)
-            'customerSignedAt': data['customerSignedAt'],
-
-          if (data['memberSignature'] != null)
-            'memberSignature': data['memberSignature'],
-          if (data['customerSignature'] != null)
-            'customerSignature': data['customerSignature'],
-
-            if (data['typeName'] != null)
-              'typeName': data['typeName'].toString(),
-          if (data['typeId'] != null) 'typeId': data['typeId'].toString(),
-          if (data['typeColorHex'] != null)
-            'typeColorHex': data['typeColorHex'].toString(),
-
-          'attended': data['attended'] == true,
-            'endAt': endDt ??
-                dt.add(Duration(minutes: _defaultLessonDurationMinutes)),
-          'endTime': (data['endTime'] ?? '').toString(),
-
-          if (data['attendanceOverride'] != null)
-            'attendanceOverride': data['attendanceOverride'],
-
-          if (data['sessionSnapshotTotal'] != null)
-            'sessionSnapshotTotal': data['sessionSnapshotTotal'],
-          if (data['sessionSnapshotRemainBefore'] != null)
-              'sessionSnapshotRemainBefore':
-                  data['sessionSnapshotRemainBefore'],
-          if (data['sessionSnapshotRemainAfter'] != null)
-            'sessionSnapshotRemainAfter': data['sessionSnapshotRemainAfter'],
-          if (data['sessionSnapshotDoneBefore'] != null)
-            'sessionSnapshotDoneBefore': data['sessionSnapshotDoneBefore'],
-          if (data['sessionSnapshotDoneAfter'] != null)
-            'sessionSnapshotDoneAfter': data['sessionSnapshotDoneAfter'],
-          if (data['sessionSnapshotLessonNumber'] != null)
-              'sessionSnapshotLessonNumber':
-                  data['sessionSnapshotLessonNumber'],
-          if (data['sessionSnapshotLabel'] != null)
-            'sessionSnapshotLabel': data['sessionSnapshotLabel'].toString(),
-
-          // 삭제 회원과 연결된 스케줄은 회원카드/레슨일지 연결 정보 제외
-          if (!linkedMemberDeleted && memberIdText.isNotEmpty)
-            'memberId': memberIdText,
-
-          if (!linkedMemberDeleted && data['phone'] != null)
-            'phone': data['phone'].toString(),
-
-          if (!linkedMemberDeleted && data['totalSessions'] != null)
-            'totalSessions': data['totalSessions'].toString(),
-
-          if (!linkedMemberDeleted && data['remainingSessions'] != null)
-            'remainingSessions': data['remainingSessions'].toString(),
-
-          if (!linkedMemberDeleted && data['remainSessions'] != null)
-            'remainSessions': data['remainSessions'].toString(),
-
-          if (!linkedMemberDeleted &&
-              (data['doneSessions'] != null || sessionsMap['done'] != null))
-            'doneSessions':
-                (data['doneSessions'] ?? sessionsMap['done']).toString(),
-
-          if (!linkedMemberDeleted &&
-              data['totalSessions'] == null &&
-              sessionsMap['total'] != null)
-            'totalSessions': sessionsMap['total'].toString(),
-
-          if (!linkedMemberDeleted &&
-              data['remainingSessions'] == null &&
-              data['remainSessions'] == null &&
-              sessionsMap['remain'] != null)
-            'remainingSessions': sessionsMap['remain'].toString(),
-
-          if (linkedMemberDeleted) 'linkedMemberDeleted': true,
-
-          if (data['deletedMemberId'] != null)
-            'deletedMemberId': data['deletedMemberId'].toString(),
-
-          if (data['deletedMemberName'] != null)
-            'deletedMemberName': data['deletedMemberName'].toString(),
-
-          if (data['memo'] != null) 'memo': data['memo'].toString(),
-
-          if (smartAlarmContextMap.isNotEmpty)
-            'smartAlarmContext': smartAlarmContextMap,
-
-          if (data['lastLessonLogSummary'] != null)
-            'lastLessonLogSummary': data['lastLessonLogSummary'].toString(),
-
-          if (data['lastLessonLogKeywords'] is List)
-            'lastLessonLogKeywords': (data['lastLessonLogKeywords'] as List)
-                .map((e) => e.toString())
-                .toList(),
-
-          if (data['nextLessonReminderHint'] != null)
-              'nextLessonReminderHint':
-                  data['nextLessonReminderHint'].toString(),
-
-          if (moreCareStatusText.isNotEmpty)
-            'moreCareStatus': moreCareStatusText,
-
-          if (moreCareRequestIdText.isNotEmpty)
-            'moreCareRequestId': moreCareRequestIdText,
-
-          if (moreCareTemporaryUntilValue != null)
-            'moreCareTemporaryUntil': moreCareTemporaryUntilValue,
-
-          if (moreCareSlotMap.isNotEmpty) 'moreCareSlot': moreCareSlotMap,
-        };
-
-        final existingAtSameTime = next[key];
-        if (existingAtSameTime is Map<String, dynamic>) {
-          final existingDocId =
-              (existingAtSameTime['docId'] ?? '').toString().trim();
-          final duplicateIds = <String>{
-            ...((existingAtSameTime['duplicateDocIds'] as List?) ?? const [])
-                .map((id) => id.toString().trim()),
-          }..removeWhere((id) => id.isEmpty);
-
-          if (_hasSameScheduleIdentity(existingAtSameTime, nextItem)) {
-            duplicateIds.add(docId);
-            existingAtSameTime['duplicateDocIds'] = duplicateIds.toList();
-            next[key] = existingAtSameTime;
+          (snapshot) async {
+            final snapshotId = ++latestSnapshotId;
 
             if (kDebugMode) {
               debugPrint(
-                '[MTF_SCHEDULE_STREAM] exactDuplicate key=$key '
-                'primaryDocId=$existingDocId duplicateDocIds=${duplicateIds.join(',')}',
+                '[MTF_SCHEDULE_STREAM] binding=$bindingId revision=$snapshotId '
+                'fromCache=${snapshot.metadata.isFromCache} '
+                'pendingWrites=${snapshot.metadata.hasPendingWrites} '
+                'docCount=${snapshot.docs.length}',
               );
             }
-          } else {
-            final conflictIds = <String>{
-              ...((existingAtSameTime['conflictingDocIds'] as List?) ??
-                      const [])
-                  .map((id) => id.toString().trim()),
-              docId,
-            }..removeWhere((id) => id.isEmpty);
-            existingAtSameTime['conflictingDocIds'] = conflictIds.toList();
-            next[key] = existingAtSameTime;
 
-            if (kDebugMode) {
+            Set<String> deletedMemberIds;
+            try {
+              deletedMemberIds = await _deletedMemberIdsFromScheduleDocs(
+                snapshot.docs,
+              );
+            } catch (error) {
+              if (kDebugMode) {
+                final errorCode =
+                    error is FirebaseException
+                        ? error.code
+                        : error.runtimeType.toString();
+                debugPrint(
+                  '[MTF_SCHEDULE_MEMBER_RESOLUTION] result=failure '
+                  'errorCode=$errorCode',
+                );
+              }
+              if (!mounted || bindingId != _scheduleStreamBindingId) return;
+              setState(() {
+                _scheduleStreamReady = true;
+                scheduleData.clear();
+              });
+              _queueHomeWidgetSync(source: 'scheduleSnapshot');
+              return;
+            }
+
+            // 새 snapshot 또는 새 stream binding이 이미 시작됐다면 이 결과는 폐기합니다.
+            // 그렇지 않으면 오래된 snapshot이 삭제된 레슨을 다시 화면에 올릴 수 있습니다.
+            if (!mounted ||
+                !shouldApplyHomeScheduleSnapshot(
+                  bindingId: bindingId,
+                  currentBindingId: _scheduleStreamBindingId,
+                  revision: snapshotId,
+                  latestRevision: latestSnapshotId,
+                )) {
               debugPrint(
-                '[MTF_SCHEDULE_STREAM] unsafeTimeCollision key=$key '
-                'primaryDocId=$existingDocId conflictDocIds=${conflictIds.join(',')}',
+                '[MTF_SCHEDULE_STREAM] stale snapshot ignored '
+                'binding=$bindingId snapshot=$snapshotId latest=$latestSnapshotId',
+              );
+              return;
+            }
+
+            _reconcileRecentlyDeletedScheduleDocIds(
+              snapshot.docs,
+              isFromCache: snapshot.metadata.isFromCache,
+              hasPendingWrites: snapshot.metadata.hasPendingWrites,
+              revision: snapshotId,
+            );
+
+            if (shouldCleanupDeletedMemberScheduleLinks(
+              isFromCache: snapshot.metadata.isFromCache,
+              hasPendingWrites: snapshot.metadata.hasPendingWrites,
+              hasDeletedMemberIds: deletedMemberIds.isNotEmpty,
+            )) {
+              unawaited(
+                _cleanupDeletedMemberScheduleLinks(
+                  docs: snapshot.docs,
+                  deletedMemberIds: deletedMemberIds,
+                ),
               );
             }
-          }
-        } else {
-          next[key] = nextItem;
-        }
-      }
 
-      if (!mounted) return;
+            final next = <String, dynamic>{};
 
-      final shouldUpdate = !mapEquals(scheduleData, next);
+            for (final doc in snapshot.docs) {
+              final docId = doc.id.trim();
 
-      if (!shouldUpdate && _scheduleStreamReady) {
-        return;
-      }
+              if (_isScheduleDocTemporarilyHidden(docId)) {
+                debugPrint(
+                  '[MTF_SCHEDULE_DELETE] hidden from stream docId=$docId',
+                );
+                continue;
+              }
 
-      setState(() {
-        _scheduleStreamReady = true;
+              final data = doc.data();
+              final dataDocId = (data['docId'] ?? '').toString().trim();
 
-        if (shouldUpdate) {
-          scheduleData
-            ..clear()
-            ..addAll(next);
-        }
-      });
+              if (kDebugMode) {
+                if (dataDocId.isNotEmpty && dataDocId != docId) {
+                  debugPrint(
+                    '[MTF_SCHEDULE_STREAM] actualDocId=$docId '
+                    'dataDocId=$dataDocId mismatch=true revision=$snapshotId',
+                  );
+                }
+              }
 
-      unawaited(_refreshScheduleCountsFromMembers());
-      _queueHomeWidgetSync(source: 'scheduleSnapshot');
-      _queueNotificationSync();
-      _updateBannerState();
-      },
-      onError: (Object error, StackTrace stackTrace) {
-      if (kDebugMode) {
-        final errorCode = error is FirebaseException
-            ? error.code
-            : error.runtimeType.toString();
-        debugPrint(
-          '[MTF_SCHEDULE_STREAM] binding=$bindingId result=failure '
-          'errorCode=$errorCode',
+              if (_isScheduleDataDeleted(data)) {
+                continue;
+              }
+
+              final ts = data['startAt'];
+              if (ts is! Timestamp) continue;
+
+              final dt = ts.toDate();
+              final key = _makeKey(
+                ((_mondayOfWeek(dt).difference(anchorMonday).inDays) / 7)
+                    .round(),
+                _weekDaysAll[dt.weekday - 1],
+                '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
+              );
+
+              DateTime? endDt;
+              final endTs = data['endAt'];
+              if (endTs is Timestamp) {
+                endDt = endTs.toDate();
+              }
+
+              final memberIdText = (data['memberId'] ?? '').toString().trim();
+
+              final bool linkedMemberDeleted =
+                  data['linkedMemberDeleted'] == true ||
+                  (memberIdText.isNotEmpty &&
+                      deletedMemberIds.contains(memberIdText));
+
+              final sessionsMap =
+                  data['sessions'] is Map
+                      ? Map<String, dynamic>.from(data['sessions'] as Map)
+                      : <String, dynamic>{};
+
+              final lessonSyncMap =
+                  data['lessonSync'] is Map
+                      ? Map<String, dynamic>.from(data['lessonSync'] as Map)
+                      : <String, dynamic>{};
+
+              final lastContractSummaryMap =
+                  data['lastContractSummary'] is Map
+                      ? Map<String, dynamic>.from(
+                        data['lastContractSummary'] as Map,
+                      )
+                      : <String, dynamic>{};
+
+              final smartAlarmContextMap =
+                  data['smartAlarmContext'] is Map
+                      ? Map<String, dynamic>.from(
+                        data['smartAlarmContext'] as Map,
+                      )
+                      : <String, dynamic>{};
+
+              final moreCareSlotMap =
+                  data['moreCareSlot'] is Map
+                      ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
+                      : <String, dynamic>{};
+
+              final moreCareStatusText =
+                  (data['moreCareStatus'] ?? moreCareSlotMap['status'] ?? '')
+                      .toString()
+                      .trim();
+
+              final moreCareRequestIdText =
+                  (data['moreCareRequestId'] ??
+                          moreCareSlotMap['requestId'] ??
+                          '')
+                      .toString()
+                      .trim();
+
+              final moreCareTemporaryUntilValue =
+                  data['moreCareTemporaryUntil'] ??
+                  moreCareSlotMap['temporaryUntil'];
+
+              final contractIdText =
+                  (data['contractId'] ??
+                          lessonSyncMap['contractId'] ??
+                          lastContractSummaryMap['contractId'] ??
+                          '')
+                      .toString()
+                      .trim();
+
+              final contractNoText =
+                  (data['contractNo'] ??
+                          lastContractSummaryMap['contractNo'] ??
+                          '')
+                      .toString()
+                      .trim();
+
+              final lessonSyncSourceText =
+                  (data['lessonSyncSource'] ??
+                          data['contractLessonSyncSource'] ??
+                          lessonSyncMap['source'] ??
+                          '')
+                      .toString()
+                      .trim();
+
+              final bool contractSignedValue =
+                  data['contractSigned'] == true ||
+                  data['isContractSigned'] == true ||
+                  data['finalSigned'] == true ||
+                  lessonSyncMap['contractSigned'] == true ||
+                  contractIdText.isNotEmpty;
+
+              final nextItem = <String, dynamic>{
+                'actualDocumentId': doc.id,
+                'dataDocumentId': dataDocId,
+                'docId': doc.id,
+                'startAt': dt,
+                'name': (data['name'] ?? '').toString(),
+                'type': (data['type'] ?? 'PT').toString(),
+
+                if (data['lessonConfirmed'] != null)
+                  'lessonConfirmed': data['lessonConfirmed'] == true,
+                if (data['lessonConfirmedAt'] != null)
+                  'lessonConfirmedAt': data['lessonConfirmedAt'],
+                if (data['lessonConfirmStatus'] != null)
+                  'lessonConfirmStatus': data['lessonConfirmStatus'].toString(),
+
+                if (data['basis'] != null) 'basis': data['basis'].toString(),
+                if (data['contractLinked'] != null)
+                  'contractLinked': data['contractLinked'] == true,
+
+                if (contractIdText.isNotEmpty) 'contractId': contractIdText,
+
+                if (contractNoText.isNotEmpty) 'contractNo': contractNoText,
+
+                if (contractSignedValue) 'contractSigned': true,
+
+                if (lessonSyncSourceText.isNotEmpty)
+                  'lessonSyncSource': lessonSyncSourceText,
+
+                if (data['cancelLockedByContract'] != null)
+                  'cancelLockedByContract':
+                      data['cancelLockedByContract'] == true,
+                if (data['cancelLockContractReason'] != null)
+                  'cancelLockContractReason':
+                      data['cancelLockContractReason'].toString(),
+
+                if (data['trainingLogId'] != null)
+                  'trainingLogId': data['trainingLogId'].toString(),
+                if (data['quickTrainingLogId'] != null)
+                  'quickTrainingLogId': data['quickTrainingLogId'].toString(),
+                if (data['lastTrainingLogId'] != null)
+                  'lastTrainingLogId': data['lastTrainingLogId'].toString(),
+
+                if (data['memberSigned'] != null)
+                  'memberSigned': data['memberSigned'] == true,
+                if (data['customerSigned'] != null)
+                  'customerSigned': data['customerSigned'] == true,
+
+                if (data['memberSignedAt'] != null)
+                  'memberSignedAt': data['memberSignedAt'],
+                if (data['customerSignedAt'] != null)
+                  'customerSignedAt': data['customerSignedAt'],
+
+                if (data['memberSignature'] != null)
+                  'memberSignature': data['memberSignature'],
+                if (data['customerSignature'] != null)
+                  'customerSignature': data['customerSignature'],
+
+                if (data['typeName'] != null)
+                  'typeName': data['typeName'].toString(),
+                if (data['typeId'] != null) 'typeId': data['typeId'].toString(),
+                if (data['typeColorHex'] != null)
+                  'typeColorHex': data['typeColorHex'].toString(),
+
+                'attended': data['attended'] == true,
+                'endAt':
+                    endDt ??
+                    dt.add(Duration(minutes: _defaultLessonDurationMinutes)),
+                'endTime': (data['endTime'] ?? '').toString(),
+
+                if (data['attendanceOverride'] != null)
+                  'attendanceOverride': data['attendanceOverride'],
+
+                if (data['sessionSnapshotTotal'] != null)
+                  'sessionSnapshotTotal': data['sessionSnapshotTotal'],
+                if (data['sessionSnapshotRemainBefore'] != null)
+                  'sessionSnapshotRemainBefore':
+                      data['sessionSnapshotRemainBefore'],
+                if (data['sessionSnapshotRemainAfter'] != null)
+                  'sessionSnapshotRemainAfter':
+                      data['sessionSnapshotRemainAfter'],
+                if (data['sessionSnapshotDoneBefore'] != null)
+                  'sessionSnapshotDoneBefore':
+                      data['sessionSnapshotDoneBefore'],
+                if (data['sessionSnapshotDoneAfter'] != null)
+                  'sessionSnapshotDoneAfter': data['sessionSnapshotDoneAfter'],
+                if (data['sessionSnapshotLessonNumber'] != null)
+                  'sessionSnapshotLessonNumber':
+                      data['sessionSnapshotLessonNumber'],
+                if (data['sessionSnapshotLabel'] != null)
+                  'sessionSnapshotLabel':
+                      data['sessionSnapshotLabel'].toString(),
+
+                // 삭제 회원과 연결된 스케줄은 회원카드/레슨일지 연결 정보 제외
+                if (!linkedMemberDeleted && memberIdText.isNotEmpty)
+                  'memberId': memberIdText,
+
+                if (!linkedMemberDeleted && data['phone'] != null)
+                  'phone': data['phone'].toString(),
+
+                if (!linkedMemberDeleted && data['totalSessions'] != null)
+                  'totalSessions': data['totalSessions'].toString(),
+
+                if (!linkedMemberDeleted && data['remainingSessions'] != null)
+                  'remainingSessions': data['remainingSessions'].toString(),
+
+                if (!linkedMemberDeleted && data['remainSessions'] != null)
+                  'remainSessions': data['remainSessions'].toString(),
+
+                if (!linkedMemberDeleted &&
+                    (data['doneSessions'] != null ||
+                        sessionsMap['done'] != null))
+                  'doneSessions':
+                      (data['doneSessions'] ?? sessionsMap['done']).toString(),
+
+                if (!linkedMemberDeleted &&
+                    data['totalSessions'] == null &&
+                    sessionsMap['total'] != null)
+                  'totalSessions': sessionsMap['total'].toString(),
+
+                if (!linkedMemberDeleted &&
+                    data['remainingSessions'] == null &&
+                    data['remainSessions'] == null &&
+                    sessionsMap['remain'] != null)
+                  'remainingSessions': sessionsMap['remain'].toString(),
+
+                if (linkedMemberDeleted) 'linkedMemberDeleted': true,
+
+                if (data['deletedMemberId'] != null)
+                  'deletedMemberId': data['deletedMemberId'].toString(),
+
+                if (data['deletedMemberName'] != null)
+                  'deletedMemberName': data['deletedMemberName'].toString(),
+
+                if (data['memo'] != null) 'memo': data['memo'].toString(),
+
+                if (smartAlarmContextMap.isNotEmpty)
+                  'smartAlarmContext': smartAlarmContextMap,
+
+                if (data['lastLessonLogSummary'] != null)
+                  'lastLessonLogSummary':
+                      data['lastLessonLogSummary'].toString(),
+
+                if (data['lastLessonLogKeywords'] is List)
+                  'lastLessonLogKeywords':
+                      (data['lastLessonLogKeywords'] as List)
+                          .map((e) => e.toString())
+                          .toList(),
+
+                if (data['nextLessonReminderHint'] != null)
+                  'nextLessonReminderHint':
+                      data['nextLessonReminderHint'].toString(),
+
+                if (moreCareStatusText.isNotEmpty)
+                  'moreCareStatus': moreCareStatusText,
+
+                if (moreCareRequestIdText.isNotEmpty)
+                  'moreCareRequestId': moreCareRequestIdText,
+
+                if (moreCareTemporaryUntilValue != null)
+                  'moreCareTemporaryUntil': moreCareTemporaryUntilValue,
+
+                if (moreCareSlotMap.isNotEmpty) 'moreCareSlot': moreCareSlotMap,
+              };
+
+              final existingAtSameTime = next[key];
+              if (existingAtSameTime is Map<String, dynamic>) {
+                final existingDocId =
+                    (existingAtSameTime['docId'] ?? '').toString().trim();
+                final duplicateIds = <String>{
+                  ...((existingAtSameTime['duplicateDocIds'] as List?) ??
+                          const [])
+                      .map((id) => id.toString().trim()),
+                }..removeWhere((id) => id.isEmpty);
+
+                if (_hasSameScheduleIdentity(existingAtSameTime, nextItem)) {
+                  duplicateIds.add(docId);
+                  existingAtSameTime['duplicateDocIds'] = duplicateIds.toList();
+                  next[key] = existingAtSameTime;
+
+                  if (kDebugMode) {
+                    debugPrint(
+                      '[MTF_SCHEDULE_STREAM] exactDuplicate key=$key '
+                      'primaryDocId=$existingDocId duplicateDocIds=${duplicateIds.join(',')}',
+                    );
+                  }
+                } else {
+                  final conflictIds = <String>{
+                    ...((existingAtSameTime['conflictingDocIds'] as List?) ??
+                            const [])
+                        .map((id) => id.toString().trim()),
+                    docId,
+                  }..removeWhere((id) => id.isEmpty);
+                  existingAtSameTime['conflictingDocIds'] =
+                      conflictIds.toList();
+                  next[key] = existingAtSameTime;
+
+                  if (kDebugMode) {
+                    debugPrint(
+                      '[MTF_SCHEDULE_STREAM] unsafeTimeCollision key=$key '
+                      'primaryDocId=$existingDocId conflictDocIds=${conflictIds.join(',')}',
+                    );
+                  }
+                }
+              } else {
+                next[key] = nextItem;
+              }
+            }
+
+            if (!mounted) return;
+
+            final shouldUpdate = !mapEquals(scheduleData, next);
+
+            if (!shouldUpdate && _scheduleStreamReady) {
+              return;
+            }
+
+            setState(() {
+              _scheduleStreamReady = true;
+
+              if (shouldUpdate) {
+                scheduleData
+                  ..clear()
+                  ..addAll(next);
+              }
+            });
+
+            unawaited(_refreshScheduleCountsFromMembers());
+            _queueHomeWidgetSync(source: 'scheduleSnapshot');
+            _queueNotificationSync();
+            _updateBannerState();
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (kDebugMode) {
+              final errorCode =
+                  error is FirebaseException
+                      ? error.code
+                      : error.runtimeType.toString();
+              debugPrint(
+                '[MTF_SCHEDULE_STREAM] binding=$bindingId result=failure '
+                'errorCode=$errorCode',
+              );
+            }
+            if (!mounted || bindingId != _scheduleStreamBindingId) return;
+            setState(() {
+              _scheduleStreamReady = true;
+              scheduleData.clear();
+            });
+            _queueHomeWidgetSync(source: 'scheduleSnapshot');
+          },
         );
-      }
-      if (!mounted || bindingId != _scheduleStreamBindingId) return;
-      setState(() {
-        _scheduleStreamReady = true;
-        scheduleData.clear();
-      });
-      _queueHomeWidgetSync(source: 'scheduleSnapshot');
-      },
-    );
   }
 
   Future<Set<String>> _deletedMemberIdsFromScheduleDocs(
@@ -1827,92 +1872,96 @@ class _HomePageState extends State<HomePage>
     _bannerMembersSub?.cancel();
     _bannerProductsSub?.cancel();
 
-    _bannerProfileSub =
-        _trainerProfileRef.snapshots(includeMetadataChanges: true).listen(
-      (snap) {
-      final profileData = snap.data() ?? <String, dynamic>{};
-      final fromCache = snap.metadata.isFromCache;
-      final shouldApply = !_isPersonalWorkspace ||
-          shouldApplyPersonalProfileSnapshot(
-            hasInitialProfile: _hasInitialPersonalProfileData,
-            fromCache: fromCache,
-          );
-      var reason = !_isPersonalWorkspace
-          ? 'legacy_snapshot'
-          : _hasInitialPersonalProfileData && fromCache
-              ? 'initial_profile_protect_cached_snapshot'
-              : fromCache
-                  ? 'cached_snapshot_without_initial_profile'
-                  : 'server_snapshot';
-      if (_isPersonalWorkspace) {
-        final rawTier = profileData['tier'];
-        final parsedTier = parsePersonalTierLabel(rawTier);
-        final success = snap.exists && parsedTier != null;
-        if (!shouldApply) {
-          _logPersonalProfileSnapshot(
-            snap: snap,
-            applied: false,
-            reason: reason,
-          );
-          return;
-        }
-        if (kDebugMode) {
-          debugPrint(
-            '[MTF_TIER_READ] uid=$_personalOwnerUid '
-            'environment=${AppEnvironmentConfig.environmentName} '
-            'profileExists=${snap.exists} '
-            'source=trainer_profiles/$_personalOwnerUid '
-            'rawTier=${(rawTier ?? '').toString()} '
-            'parsedTier=${parsedTier ?? 'none'} '
-            'result=${success ? 'success' : 'failure'} errorCode=none',
-          );
-        }
-        if (!success) {
-          reason = 'invalid_personal_profile';
-          _logPersonalProfileSnapshot(
-            snap: snap,
-            applied: false,
-            reason: reason,
-          );
-          if (mounted) {
-            setState(() {
-              _bannerTierReadFailed = true;
-              _bannerProfileReady = false;
-            });
-          }
-          return;
-        }
-        _bannerTierReadFailed = false;
-      }
-        _logPersonalProfileSnapshot(
-          snap: snap,
-          applied: true,
-          reason: reason,
+    _bannerProfileSub = _trainerProfileRef
+        .snapshots(includeMetadataChanges: true)
+        .listen(
+          (snap) {
+            final profileData = snap.data() ?? <String, dynamic>{};
+            final fromCache = snap.metadata.isFromCache;
+            final shouldApply =
+                !_isPersonalWorkspace ||
+                shouldApplyPersonalProfileSnapshot(
+                  hasInitialProfile: _hasInitialPersonalProfileData,
+                  fromCache: fromCache,
+                );
+            var reason =
+                !_isPersonalWorkspace
+                    ? 'legacy_snapshot'
+                    : _hasInitialPersonalProfileData && fromCache
+                    ? 'initial_profile_protect_cached_snapshot'
+                    : fromCache
+                    ? 'cached_snapshot_without_initial_profile'
+                    : 'server_snapshot';
+            if (_isPersonalWorkspace) {
+              final rawTier = profileData['tier'];
+              final parsedTier = parsePersonalTierLabel(rawTier);
+              final success = snap.exists && parsedTier != null;
+              if (!shouldApply) {
+                _logPersonalProfileSnapshot(
+                  snap: snap,
+                  applied: false,
+                  reason: reason,
+                );
+                return;
+              }
+              if (kDebugMode) {
+                debugPrint(
+                  '[MTF_TIER_READ] uid=$_personalOwnerUid '
+                  'environment=${AppEnvironmentConfig.environmentName} '
+                  'profileExists=${snap.exists} '
+                  'source=trainer_profiles/$_personalOwnerUid '
+                  'rawTier=${(rawTier ?? '').toString()} '
+                  'parsedTier=${parsedTier ?? 'none'} '
+                  'result=${success ? 'success' : 'failure'} errorCode=none',
+                );
+              }
+              if (!success) {
+                reason = 'invalid_personal_profile';
+                _logPersonalProfileSnapshot(
+                  snap: snap,
+                  applied: false,
+                  reason: reason,
+                );
+                if (mounted) {
+                  setState(() {
+                    _bannerTierReadFailed = true;
+                    _bannerProfileReady = false;
+                  });
+                }
+                return;
+              }
+              _bannerTierReadFailed = false;
+            }
+            _logPersonalProfileSnapshot(
+              snap: snap,
+              applied: true,
+              reason: reason,
+            );
+            _updateBannerState(profileData: profileData, profileReady: true);
+          },
+          onError: (Object error) {
+            if (kDebugMode && _isPersonalWorkspace) {
+              final code =
+                  error is FirebaseException
+                      ? error.code
+                      : error.runtimeType.toString();
+              debugPrint(
+                '[MTF_TIER_READ] uid=$_personalOwnerUid '
+                'environment=${AppEnvironmentConfig.environmentName} '
+                'profileExists=unknown source=trainer_profiles/$_personalOwnerUid '
+                'rawTier=unknown parsedTier=none result=failure errorCode=$code',
+              );
+            }
+            if (mounted &&
+                _isPersonalWorkspace &&
+                !_hasInitialPersonalProfileData) {
+              setState(() {
+                _bannerTierReadFailed = true;
+                _bannerProfileReady = false;
+              });
+            }
+          },
         );
-      _updateBannerState(profileData: profileData, profileReady: true);
-      },
-      onError: (Object error) {
-      if (kDebugMode && _isPersonalWorkspace) {
-        final code = error is FirebaseException
-            ? error.code
-            : error.runtimeType.toString();
-        debugPrint(
-          '[MTF_TIER_READ] uid=$_personalOwnerUid '
-          'environment=${AppEnvironmentConfig.environmentName} '
-          'profileExists=unknown source=trainer_profiles/$_personalOwnerUid '
-          'rawTier=unknown parsedTier=none result=failure errorCode=$code',
-        );
-      }
-        if (mounted &&
-            _isPersonalWorkspace &&
-            !_hasInitialPersonalProfileData) {
-        setState(() {
-          _bannerTierReadFailed = true;
-          _bannerProfileReady = false;
-        });
-      }
-      },
-    );
 
     _bannerMembersSub = _ownedCollectionQuery('members').snapshots().listen((
       snapshot,
@@ -1957,11 +2006,13 @@ class _HomePageState extends State<HomePage>
 
       final kakaoCardLinkedMembers = kakaoCardLinkedMemberIds.length;
       final contractSignedMembers = contractSignedMemberIds.length;
-      final serverMemberCount = _isPersonalWorkspace
-          ? ((_bannerProfileData['validMemberCount'] ??
-                  _bannerProfileData['lifetimeQualifiedMemberCount']) as num?)
-              ?.toInt()
-          : null;
+      final serverMemberCount =
+          _isPersonalWorkspace
+              ? ((_bannerProfileData['validMemberCount'] ??
+                          _bannerProfileData['lifetimeQualifiedMemberCount'])
+                      as num?)
+                  ?.toInt()
+              : null;
 
       _updateBannerState(
         memberCount: serverMemberCount ?? activeMembers,
@@ -1991,13 +2042,13 @@ class _HomePageState extends State<HomePage>
         .collection('lesson_products')
         .snapshots()
         .listen((snapshot) {
-      final hasProduct = snapshot.docs.any((doc) {
-        final data = doc.data();
-        return data['isDeleted'] != true;
-      });
+          final hasProduct = snapshot.docs.any((doc) {
+            final data = doc.data();
+            return data['isDeleted'] != true;
+          });
 
-      _updateBannerState(hasProduct: hasProduct, productsReady: true);
-    });
+          _updateBannerState(hasProduct: hasProduct, productsReady: true);
+        });
   }
 
   void _logPersonalProfileSnapshot({
@@ -2008,9 +2059,10 @@ class _HomePageState extends State<HomePage>
     if (!kDebugMode || !_isPersonalWorkspace) return;
     final data = snap.data() ?? const <String, dynamic>{};
     final updatedAt = data['updatedAt'];
-    final updatedAtText = updatedAt is Timestamp
-        ? updatedAt.toDate().toIso8601String()
-        : updatedAt is DateTime
+    final updatedAtText =
+        updatedAt is Timestamp
+            ? updatedAt.toDate().toIso8601String()
+            : updatedAt is DateTime
             ? updatedAt.toIso8601String()
             : updatedAt?.toString() ?? 'null';
     debugPrint(
@@ -2292,9 +2344,9 @@ class _HomePageState extends State<HomePage>
   List<String> get _timeSlots {
     _ensureTimeRowMinutes();
     return List<String>.generate(endHour - startHour, (i) {
-        final hour = startHour + i;
-        final minute = _timeRowMinutes[hour] ?? defaultMinute;
-        return "${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}";
+      final hour = startHour + i;
+      final minute = _timeRowMinutes[hour] ?? defaultMinute;
+      return "${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}";
     });
   }
 
@@ -2532,12 +2584,13 @@ class _HomePageState extends State<HomePage>
 
     final shouldCreateCard = await HomeAifcNudgeSheet.show(
       context: context,
-      title: '${aifcPersonLabel(cleanName)}을 고객카드로 관리해볼까요?',
-      message: '지금은 이름만으로 레슨을 잡아뒀어요.\n'
-          '고객카드를 만들어두면 레슨기록, 상담메모, 결제정보를 한곳에서 관리할 수 있어요.\n\n'
+      title: '${aifcPersonLabel(cleanName)}을 회원카드로 관리해볼까요?',
+      message:
+          '지금은 이름만으로 레슨을 잡아뒀어요.\n'
+          '회원카드를 만들어두면 레슨기록, 상담메모, 결제정보를 한곳에서 관리할 수 있어요.\n\n'
           '지금 바쁘시면 나중에 만들어도 괜찮아요.',
       secondaryLabel: '나중에',
-      primaryLabel: '고객카드 만들기',
+      primaryLabel: '회원카드 만들기',
       primaryColor: kPrimaryColor,
     );
 
@@ -2550,7 +2603,7 @@ class _HomePageState extends State<HomePage>
     if (!shouldCreateCard) {
       _showActionToast(
         context,
-        '알겠습니다. 필요할 때 고객카드로 연결해드릴게요.',
+        '알겠습니다. 필요할 때 회원카드로 연결해드릴게요.',
         bottomOffset: 110,
       );
       return;
@@ -2707,9 +2760,10 @@ class _HomePageState extends State<HomePage>
           'createdScheduleCount': createdScheduleCount,
         },
       );
-      final result = raw is Map
-          ? Map<String, dynamic>.from(raw)
-          : const <String, dynamic>{};
+      final result =
+          raw is Map
+              ? Map<String, dynamic>.from(raw)
+              : const <String, dynamic>{};
       final shouldShow = result['shouldShow'] == true;
       final alreadyShown = result['alreadyShown'] == true;
       if (kDebugMode) {
@@ -2717,7 +2771,11 @@ class _HomePageState extends State<HomePage>
           '[MTF_FIRST_LESSON_GUIDE] uid=$_personalOwnerUid '
           'workspace=personal isFirstSuccessfulCreate=$shouldShow '
           'alreadyShown=$alreadyShown action=${shouldShow ? 'show' : 'skip'} '
-          'reason=${shouldShow ? 'server_claimed' : alreadyShown ? 'already_shown' : 'no_server_schedule'}',
+          'reason=${shouldShow
+              ? 'server_claimed'
+              : alreadyShown
+              ? 'already_shown'
+              : 'no_server_schedule'}',
         );
       }
       if (!shouldShow || !mounted) return;
@@ -2781,7 +2839,8 @@ class _HomePageState extends State<HomePage>
     final wantsNotification = await HomeAifcNudgeSheet.show(
       context: context,
       title: '레슨 전에 제가 체크사항 말씀드릴까요?',
-      message: '수업 시간을 놓치지 않도록 휴대폰에 잠깐 신호보내드릴 수 있어요.\n'
+      message:
+          '수업 시간을 놓치지 않도록 휴대폰에 잠깐 신호보내드릴 수 있어요.\n'
           '불편하시면 따로 알려드리지 않겠습니다. 필요하실때 알려주세요',
       secondaryLabel: '다음에',
       primaryLabel: '알려주세요',
@@ -2919,18 +2978,19 @@ class _HomePageState extends State<HomePage>
   List<HomeWidgetScheduleBlock> _buildWidgetBlocks(int weekOffset) {
     final days = _buildWidgetVisibleDays();
 
-    final blockItems = _scheduleItemsForWeek(
-      weekOffset,
-    ).where((item) => days.contains(item.day)).map((item) {
-      return HomeWidgetBlockItem(
-        startAt: item.startAt,
-        endAt: item.endAt,
-        day: item.day,
-        name: item.name,
-        type: item.type,
-        colorHex: item.typeColorHex ?? _lessonTypeColorHexByName(item.type),
-      );
-    }).toList();
+    final blockItems =
+        _scheduleItemsForWeek(
+          weekOffset,
+        ).where((item) => days.contains(item.day)).map((item) {
+          return HomeWidgetBlockItem(
+            startAt: item.startAt,
+            endAt: item.endAt,
+            day: item.day,
+            name: item.name,
+            type: item.type,
+            colorHex: item.typeColorHex ?? _lessonTypeColorHexByName(item.type),
+          );
+        }).toList();
 
     return HomeWidgetBlockMapper.buildBlocks(
       weekOffset: weekOffset,
@@ -2951,7 +3011,8 @@ class _HomePageState extends State<HomePage>
     if (messages.isEmpty) return '';
 
     // 빌드마다 랜덤 변경되지 않도록 2시간 단위로만 자연스럽게 변경
-    final seed = currentTime.year +
+    final seed =
+        currentTime.year +
         currentTime.month +
         currentTime.day +
         (currentTime.hour ~/ 2) +
@@ -2985,24 +3046,25 @@ class _HomePageState extends State<HomePage>
       return '';
     }
 
-    final isWeekendToday = currentTime.weekday == DateTime.saturday ||
+    final isWeekendToday =
+        currentTime.weekday == DateTime.saturday ||
         currentTime.weekday == DateTime.sunday;
 
     if (dayFilter == 'weekday' && isWeekendToday) {
       return _pickAiFcHeaderMessage([
-          '지금은 평일 보기라 주말 칸이 살짝 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 바로 확인할 수 있어요.',
-          '$trainerLabel, 오늘은 주말인데 화면은 주5 모드예요. 오늘 레슨 $todayCount개는 제가 기억하고 있어요.',
-          '주말 일정은 잠시 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 다시 펼쳐볼 수 있어요.',
-          '오늘 주말 레슨 $todayCount개가 있어요. 화면에 안 보이면 주7 보기로 한 번 펼쳐볼까요?',
+        '지금은 평일 보기라 주말 칸이 살짝 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 바로 확인할 수 있어요.',
+        '$trainerLabel, 오늘은 주말인데 화면은 주5 모드예요. 오늘 레슨 $todayCount개는 제가 기억하고 있어요.',
+        '주말 일정은 잠시 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 다시 펼쳐볼 수 있어요.',
+        '오늘 주말 레슨 $todayCount개가 있어요. 화면에 안 보이면 주7 보기로 한 번 펼쳐볼까요?',
       ], salt: 70 + todayCount);
     }
 
     if (dayFilter == 'weekend' && !isWeekendToday) {
       return _pickAiFcHeaderMessage([
-          '지금은 주말 보기라 평일 칸이 살짝 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 바로 확인할 수 있어요.',
-          '$trainerLabel, 오늘은 평일인데 화면은 주말 모드예요. 오늘 일정 $todayCount개는 제가 놓치지 않고 기억해둘게요.',
-          '평일 일정은 잠시 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 다시 펼쳐볼 수 있어요.',
-          '오늘 평일 레슨 $todayCount개가 있어요. 화면에 안 보이면 주7 보기로 한 번 확인해볼까요?',
+        '지금은 주말 보기라 평일 칸이 살짝 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 바로 확인할 수 있어요.',
+        '$trainerLabel, 오늘은 평일인데 화면은 주말 모드예요. 오늘 일정 $todayCount개는 제가 놓치지 않고 기억해둘게요.',
+        '평일 일정은 잠시 접혀 있어요. 오늘 레슨 $todayCount개는 주7 보기에서 다시 펼쳐볼 수 있어요.',
+        '오늘 평일 레슨 $todayCount개가 있어요. 화면에 안 보이면 주7 보기로 한 번 확인해볼까요?',
       ], salt: 72 + todayCount);
     }
 
@@ -3021,13 +3083,13 @@ class _HomePageState extends State<HomePage>
 
   String _buildFirstHomeWelcomeNotice({required String trainerLabel}) {
     return _pickAiFcHeaderMessage([
-        '안녕하세요 $trainerLabel, 반가워요. 앞으로 레슨 일정도, 회원 관리도 같이 즐겁게 만들어가봐요.',
-        '$trainerLabel, 모어댄에 오신 걸 환영해요. 처음엔 가볍게 시작해도 괜찮아요. 제가 옆에서 하나씩 도와드릴게요.',
-        '반가워요 $trainerLabel. 오늘부터 일정 관리도, 회원 관리도 조금 더 편하고 재밌게 만들어봐요.',
-        '$trainerLabel, 이제 모어댄이 같이 달려볼게요. 첫 레슨 하나부터 천천히 시작해볼까요?',
-        '환영해요 $trainerLabel. 앞으로 바쁜 날도, 여유로운 날도 제가 옆에서 흐름을 같이 챙겨볼게요.',
-        '$trainerLabel, 시작은 가볍게 가도 좋아요. 레슨 일정 하나씩 쌓이면 모어댄이 더 똑똑하게 도와드릴게요.',
-        '안녕하세요 $trainerLabel. 앞으로 회원님들과 만들어갈 좋은 순간들, 제가 옆에서 같이 기록해볼게요.',
+      '안녕하세요 $trainerLabel, 반가워요. 앞으로 레슨 일정도, 회원 관리도 같이 즐겁게 만들어가봐요.',
+      '$trainerLabel, 모어댄에 오신 걸 환영해요. 처음엔 가볍게 시작해도 괜찮아요. 제가 옆에서 하나씩 도와드릴게요.',
+      '반가워요 $trainerLabel. 오늘부터 일정 관리도, 회원 관리도 조금 더 편하고 재밌게 만들어봐요.',
+      '$trainerLabel, 이제 모어댄이 같이 달려볼게요. 첫 레슨 하나부터 천천히 시작해볼까요?',
+      '환영해요 $trainerLabel. 앞으로 바쁜 날도, 여유로운 날도 제가 옆에서 흐름을 같이 챙겨볼게요.',
+      '$trainerLabel, 시작은 가볍게 가도 좋아요. 레슨 일정 하나씩 쌓이면 모어댄이 더 똑똑하게 도와드릴게요.',
+      '안녕하세요 $trainerLabel. 앞으로 회원님들과 만들어갈 좋은 순간들, 제가 옆에서 같이 기록해볼게요.',
     ], salt: 5);
   }
 
@@ -3075,7 +3137,8 @@ class _HomePageState extends State<HomePage>
 
     return _pickAiFcHeaderMessage(
       messages,
-      salt: 200 +
+      salt:
+          200 +
           moreSenseCount +
           (todayHiddenByFilter ? 17 : 0) +
           (dayFilter == 'weekend' ? 3 : 0),
@@ -3113,37 +3176,37 @@ class _HomePageState extends State<HomePage>
     // 2. 아주 바쁜 날은 MORE 센스보다 레슨 개수 문구를 우선합니다.
     if (todayCount >= 15) {
       return _pickAiFcHeaderMessage([
-          '오늘 레슨 $todayCount개… 이건 거의 레슨 괴물 모드예요. 진짜 대단합니다.',
-          '레슨 $todayCount개요? 오늘은 모어댄도 정신 바짝 차리고 따라붙을게요.',
-          '오늘 일정은 레전드급이에요. 하나씩만 가도 충분히 대단한 하루예요.',
-          '$todayCount개 레슨이면 체력과 집중력을 다 쓰는 날이에요. 진짜 멋집니다.',
-          '오늘은 거의 풀가동 데이예요. 체크할 건 제가 먼저 붙잡아둘게요.',
-          '레슨 $todayCount개, 이건 바쁜 날을 넘어선 레슨 챔피언 모드예요.',
-          '오늘 밥은 드셨어요? 이 정도 스케줄 소화하시는 거 보면 진짜 존경스러워요.',
+        '오늘 레슨 $todayCount개… 이건 거의 레슨 괴물 모드예요. 진짜 대단합니다.',
+        '레슨 $todayCount개요? 오늘은 모어댄도 정신 바짝 차리고 따라붙을게요.',
+        '오늘 일정은 레전드급이에요. 하나씩만 가도 충분히 대단한 하루예요.',
+        '$todayCount개 레슨이면 체력과 집중력을 다 쓰는 날이에요. 진짜 멋집니다.',
+        '오늘은 거의 풀가동 데이예요. 체크할 건 제가 먼저 붙잡아둘게요.',
+        '레슨 $todayCount개, 이건 바쁜 날을 넘어선 레슨 챔피언 모드예요.',
+        '오늘 밥은 드셨어요? 이 정도 스케줄 소화하시는 거 보면 진짜 존경스러워요.',
       ], salt: 150 + todayCount);
     }
 
     if (todayCount >= 11) {
       return _pickAiFcHeaderMessage([
-          '오늘 레슨 $todayCount개, 꽤 빡센 하루예요. 체크포인트는 제가 먼저 잡아둘게요.',
-          '$todayCount개 레슨이면 체력전이에요. 무리하지 않게 흐름부터 잡아볼게요.',
-          '오늘은 진짜 바쁜 날이에요. 레슨 사이 작은 틈도 소중하게 써볼까요?',
-          '레슨 $todayCount개, 레슨 집중 모드 켜야 하는 날이에요.',
-          '오늘 일정은 묵직합니다. 그래도 하나씩 가면 충분히 깔끔하게 끝낼 수 있어요.',
-          '$todayCount개면 이미 손꼽히게 바쁜 날이에요. 모어댄이 옆에서 계속 체크할게요.',
-          '이 정도 페이스면 오늘 끼니는 거르신 거 아니에요?',
+        '오늘 레슨 $todayCount개, 꽤 빡센 하루예요. 체크포인트는 제가 먼저 잡아둘게요.',
+        '$todayCount개 레슨이면 체력전이에요. 무리하지 않게 흐름부터 잡아볼게요.',
+        '오늘은 진짜 바쁜 날이에요. 레슨 사이 작은 틈도 소중하게 써볼까요?',
+        '레슨 $todayCount개, 레슨 집중 모드 켜야 하는 날이에요.',
+        '오늘 일정은 묵직합니다. 그래도 하나씩 가면 충분히 깔끔하게 끝낼 수 있어요.',
+        '$todayCount개면 이미 손꼽히게 바쁜 날이에요. 모어댄이 옆에서 계속 체크할게요.',
+        '이 정도 페이스면 오늘 끼니는 거르신 거 아니에요?',
       ], salt: 110 + todayCount);
     }
 
     if (todayCount >= 9) {
       return _pickAiFcHeaderMessage([
-          '오늘 레슨 $todayCount개, 바쁜 날이에요. 페이스 조절은 저랑 같이해요.',
-          '$todayCount개 레슨이면 꽤 묵직한 하루예요. 순서부터 잘 잡아볼게요.',
-          '오늘은 레슨이 많은 날이에요. 놓칠 포인트는 제가 먼저 표시해둘게요.',
-          '레슨 $todayCount개, 이제부터는 체력 관리도 전략이에요.',
-          '오늘 일정 꽉 찼어요. 숨 고를 타이밍은 제가 같이 챙겨볼게요.',
-          '$todayCount개의 무대, 큐시트처럼 순서는 제가 챙겨드릴게요.',
-          '이렇게 바쁜 날은 물이라도 챙겨 드셨어요?',
+        '오늘 레슨 $todayCount개, 바쁜 날이에요. 페이스 조절은 저랑 같이해요.',
+        '$todayCount개 레슨이면 꽤 묵직한 하루예요. 순서부터 잘 잡아볼게요.',
+        '오늘은 레슨이 많은 날이에요. 놓칠 포인트는 제가 먼저 표시해둘게요.',
+        '레슨 $todayCount개, 이제부터는 체력 관리도 전략이에요.',
+        '오늘 일정 꽉 찼어요. 숨 고를 타이밍은 제가 같이 챙겨볼게요.',
+        '$todayCount개의 무대, 큐시트처럼 순서는 제가 챙겨드릴게요.',
+        '이렇게 바쁜 날은 물이라도 챙겨 드셨어요?',
       ], salt: 90 + todayCount);
     }
 
@@ -3151,13 +3214,13 @@ class _HomePageState extends State<HomePage>
     // 단, 최초 진입자는 위에서 이미 환영 문구로 처리됩니다.
     if (weekCount == 0) {
       return _pickAiFcHeaderMessage([
-          '이번 주 시간표, 아직 새하얀 도화지네요. 첫 붓질은 제가 도와드릴게요.',
-          '텅 빈 일정표라니, 사실 뭐든 채울 수 있다는 뜻이에요. 첫 레슨부터 가볼까요?',
-          '이번 주는 무대가 비어 있어요. 탭 한 번이면 시작할 수 있어요.',
-          '일정이 고요해요. 고요한 건 괜찮지만, 심심한 건 조금 아쉽죠?',
-          '이번 주 스케줄이 아주 깨끗해요. 이제 첫 발자국만 남기면 돼요.',
-          '빈 시간표도 시작 전엔 원래 이래요. 첫 레슨 하나만 꽂아볼까요?',
-          '아직 이번 주 레슨이 없어요. 모어댄이 조용히 대기 중입니다.',
+        '이번 주 시간표, 아직 새하얀 도화지네요. 첫 붓질은 제가 도와드릴게요.',
+        '텅 빈 일정표라니, 사실 뭐든 채울 수 있다는 뜻이에요. 첫 레슨부터 가볼까요?',
+        '이번 주는 무대가 비어 있어요. 탭 한 번이면 시작할 수 있어요.',
+        '일정이 고요해요. 고요한 건 괜찮지만, 심심한 건 조금 아쉽죠?',
+        '이번 주 스케줄이 아주 깨끗해요. 이제 첫 발자국만 남기면 돼요.',
+        '빈 시간표도 시작 전엔 원래 이래요. 첫 레슨 하나만 꽂아볼까요?',
+        '아직 이번 주 레슨이 없어요. 모어댄이 조용히 대기 중입니다.',
       ], salt: 10);
     }
 
@@ -3175,62 +3238,62 @@ class _HomePageState extends State<HomePage>
     // 너무 바쁜 날에는 위에서 이미 레슨 개수 문구가 우선됩니다.
     if (moreSenseCount > 0) {
       return _pickAiFcHeaderMessage([
-          'MORE 센스 레이더에 회원님 $moreSenseCount명이 잡혔어요. 제가 먼저 캐치했어요.',
-          '오늘 그냥 지나치기 아까운 회원님 $moreSenseCount명이 있어요. 살짝 챙겨볼까요?',
-          '티 안 나게 놓치기 쉬운 신호, $moreSenseCount명 분 모아뒀어요.',
-          '회원님 $moreSenseCount명에게 오늘 작은 관심 하나 얹어두면 좋겠어요.',
-          '오늘의 숨은 관리 카드 $moreSenseCount장. 먼저 열어보실래요?',
-          '제가 먼저 봐뒀어요. 오늘 챙기면 좋은 회원님 $moreSenseCount명이 있어요.',
-          '관심 온도 살짝 올려두면 좋은 회원님 $moreSenseCount명이 있어요.',
-          '회원님 $moreSenseCount명이 조용히 관리 타이밍을 보내고 있어요. 제가 받아뒀어요.',
+        'MORE 센스 레이더에 회원님 $moreSenseCount명이 잡혔어요. 제가 먼저 캐치했어요.',
+        '오늘 그냥 지나치기 아까운 회원님 $moreSenseCount명이 있어요. 살짝 챙겨볼까요?',
+        '티 안 나게 놓치기 쉬운 신호, $moreSenseCount명 분 모아뒀어요.',
+        '회원님 $moreSenseCount명에게 오늘 작은 관심 하나 얹어두면 좋겠어요.',
+        '오늘의 숨은 관리 카드 $moreSenseCount장. 먼저 열어보실래요?',
+        '제가 먼저 봐뒀어요. 오늘 챙기면 좋은 회원님 $moreSenseCount명이 있어요.',
+        '관심 온도 살짝 올려두면 좋은 회원님 $moreSenseCount명이 있어요.',
+        '회원님 $moreSenseCount명이 조용히 관리 타이밍을 보내고 있어요. 제가 받아뒀어요.',
       ], salt: moreSenseCount);
     }
 
     if (todayCount <= 2) {
       return _pickAiFcHeaderMessage([
-          '오늘은 한 명 한 명 제대로 보기 좋은 날이에요.',
-          '오늘의 주인공은 적지만, 집중력은 100% 발휘하기 좋은 날이에요.',
-          '레슨 $todayCount개, 부담은 가볍게. 디테일은 더 깊게 갈 수 있어요.',
-          '오늘은 원 포인트 레슨일이에요. 화력을 필요한 곳에 모아볼까요?',
-          '레슨 $todayCount개면 오히려 더 알차게 갈 수 있는 날이에요.',
-          '오늘은 속도보다 깊이로 가기 좋은 스케줄이에요.',
-          '오늘처럼 여유 있는 날엔 본인 루틴은 좀 챙기셨어요?',
+        '오늘은 한 명 한 명 제대로 보기 좋은 날이에요.',
+        '오늘의 주인공은 적지만, 집중력은 100% 발휘하기 좋은 날이에요.',
+        '레슨 $todayCount개, 부담은 가볍게. 디테일은 더 깊게 갈 수 있어요.',
+        '오늘은 원 포인트 레슨일이에요. 화력을 필요한 곳에 모아볼까요?',
+        '레슨 $todayCount개면 오히려 더 알차게 갈 수 있는 날이에요.',
+        '오늘은 속도보다 깊이로 가기 좋은 스케줄이에요.',
+        '오늘처럼 여유 있는 날엔 본인 루틴은 좀 챙기셨어요?',
       ], salt: 30 + todayCount);
     }
 
     if (todayCount <= 4) {
       return _pickAiFcHeaderMessage([
-          '오늘 레슨 $todayCount개, 여유 있게 리듬 타기 좋은 날이에요.',
-          '오늘은 너무 빡세지도, 너무 심심하지도 않은 스케줄이에요.',
-          '레슨 $todayCount개면 딱 기분 좋게 일하는 맛 나는 날이에요.',
-          '오늘은 흐름 챙기면서 회원별 포인트도 보기 좋은 날이에요.',
-          '스케줄이 적당히 살아 있어요. 무리 없이 깔끔하게 가볼까요?',
-          '오늘 $todayCount개, 페이스만 잘 잡으면 꽤 산뜻하게 흘러갈 거예요.',
-          '이 정도 페이스면 물 한 잔 마실 틈은 있으시죠?',
+        '오늘 레슨 $todayCount개, 여유 있게 리듬 타기 좋은 날이에요.',
+        '오늘은 너무 빡세지도, 너무 심심하지도 않은 스케줄이에요.',
+        '레슨 $todayCount개면 딱 기분 좋게 일하는 맛 나는 날이에요.',
+        '오늘은 흐름 챙기면서 회원별 포인트도 보기 좋은 날이에요.',
+        '스케줄이 적당히 살아 있어요. 무리 없이 깔끔하게 가볼까요?',
+        '오늘 $todayCount개, 페이스만 잘 잡으면 꽤 산뜻하게 흘러갈 거예요.',
+        '이 정도 페이스면 물 한 잔 마실 틈은 있으시죠?',
       ], salt: 40 + todayCount);
     }
 
     if (todayCount <= 6) {
       return _pickAiFcHeaderMessage([
-          '오늘 레슨 $todayCount개, 무리 없이 레슨 리듬 타기 좋은 날이에요.',
-          '레슨 $todayCount개면 하루 흐름이 슬슬 살아나는 스케줄이에요.',
-          '오늘은 꽉 차진 않았지만, 충분히 일하는 맛 나는 날이에요.',
-          '중간중간 숨 쉴 틈도 있고, 레슨 흐름도 있는 괜찮은 날이에요.',
-          '오늘 $todayCount개, 회원별 포인트만 잘 잡으면 깔끔하게 끝낼 수 있어요.',
-          '무겁진 않지만 가볍지도 않은 날이에요. 모어댄이 흐름 잡아둘게요.',
-          '이 정도면 끼니는 제때 챙기실 수 있겠죠?',
+        '오늘 레슨 $todayCount개, 무리 없이 레슨 리듬 타기 좋은 날이에요.',
+        '레슨 $todayCount개면 하루 흐름이 슬슬 살아나는 스케줄이에요.',
+        '오늘은 꽉 차진 않았지만, 충분히 일하는 맛 나는 날이에요.',
+        '중간중간 숨 쉴 틈도 있고, 레슨 흐름도 있는 괜찮은 날이에요.',
+        '오늘 $todayCount개, 회원별 포인트만 잘 잡으면 깔끔하게 끝낼 수 있어요.',
+        '무겁진 않지만 가볍지도 않은 날이에요. 모어댄이 흐름 잡아둘게요.',
+        '이 정도면 끼니는 제때 챙기실 수 있겠죠?',
       ], salt: 60 + todayCount);
     }
 
     // 7~8개: 꽉 찬 보통 근무일
     return _pickAiFcHeaderMessage([
-        '오늘 레슨 $todayCount개, 딱 일하는 맛 나는 스케줄이에요.',
-        '레슨 $todayCount개면 꽤 꽉 찬 하루예요. 흐름만 잘 타면 좋겠어요.',
-        '오늘은 트레이너다운 하루네요. 순서와 페이스는 제가 같이 볼게요.',
-        '$todayCount개 레슨이면 하루가 알차게 굴러가겠어요.',
-        '오늘은 꽉 찬 보통 근무일이에요. 레슨 사이 체크포인트 챙겨둘게요.',
-        '이 정도면 알차게 레슨하는 날이에요. 무리 없이 리듬 타볼까요?',
-        '오늘처럼 바쁜 날, 단백질 챙길 시간은 있으신가요?',
+      '오늘 레슨 $todayCount개, 딱 일하는 맛 나는 스케줄이에요.',
+      '레슨 $todayCount개면 꽤 꽉 찬 하루예요. 흐름만 잘 타면 좋겠어요.',
+      '오늘은 트레이너다운 하루네요. 순서와 페이스는 제가 같이 볼게요.',
+      '$todayCount개 레슨이면 하루가 알차게 굴러가겠어요.',
+      '오늘은 꽉 찬 보통 근무일이에요. 레슨 사이 체크포인트 챙겨둘게요.',
+      '이 정도면 알차게 레슨하는 날이에요. 무리 없이 리듬 타볼까요?',
+      '오늘처럼 바쁜 날, 단백질 챙길 시간은 있으신가요?',
     ], salt: 80 + todayCount);
   }
 
@@ -3337,9 +3400,10 @@ class _HomePageState extends State<HomePage>
       );
     } catch (error) {
       if (kDebugMode) {
-        final errorCode = error is FirebaseException
-            ? error.code
-            : error.runtimeType.toString();
+        final errorCode =
+            error is FirebaseException
+                ? error.code
+                : error.runtimeType.toString();
         debugPrint('[MTF_SMART_ALARM] result=failure errorCode=$errorCode');
       }
     }
@@ -3364,13 +3428,15 @@ class _HomePageState extends State<HomePage>
     final days0 = _buildWidgetVisibleDays();
     final days1 = _buildWidgetVisibleDays();
 
-    final List<String> blocks0 = _buildWidgetBlocks(
-      0,
-    ).map((HomeWidgetScheduleBlock e) => e.encode()).toList();
+    final List<String> blocks0 =
+        _buildWidgetBlocks(
+          0,
+        ).map((HomeWidgetScheduleBlock e) => e.encode()).toList();
 
-    final List<String> blocks1 = _buildWidgetBlocks(
-      1,
-    ).map((HomeWidgetScheduleBlock e) => e.encode()).toList();
+    final List<String> blocks1 =
+        _buildWidgetBlocks(
+          1,
+        ).map((HomeWidgetScheduleBlock e) => e.encode()).toList();
 
     final currentMarkerRatio0 = _buildWidgetCurrentMarkerRatio(0);
     final currentMarkerRatio1 = _buildWidgetCurrentMarkerRatio(1);
@@ -3381,18 +3447,19 @@ class _HomePageState extends State<HomePage>
     final header1 =
         '${_buildWidgetHeaderText(weekOffset: 1)} · ${rows1.length}줄';
 
-    final lessons = _allScheduleItems().map((item) {
-      return HomeWidgetPreviewLesson(
-        startAt: item.startAt,
-        endAt: item.endAt,
-        memberName: item.name,
-        lessonType: item.type,
-        memo: item.memo ?? '',
-        ownerUid: _personalOwnerUid,
-        workspaceType: _isPersonalWorkspace ? 'personal' : 'legacy',
-        remainingSessions: int.tryParse(item.remainingSessions ?? ''),
-      );
-    }).toList();
+    final lessons =
+        _allScheduleItems().map((item) {
+          return HomeWidgetPreviewLesson(
+            startAt: item.startAt,
+            endAt: item.endAt,
+            memberName: item.name,
+            lessonType: item.type,
+            memo: item.memo ?? '',
+            ownerUid: _personalOwnerUid,
+            workspaceType: _isPersonalWorkspace ? 'personal' : 'legacy',
+            remainingSessions: int.tryParse(item.remainingSessions ?? ''),
+          );
+        }).toList();
 
     await HomeWidgetPreviewSyncService.sync(
       HomeWidgetPreviewSyncPayload(
@@ -3553,9 +3620,9 @@ class _HomePageState extends State<HomePage>
       if (kDebugMode) {
         debugPrint(
           '[MTF_SCHEDULE_MUTATION] action=move '
-          'actualSourceDocId=${movePlan.sourceDocId} '
-          'dataDocId=${movePlan.dataDocId} '
-          'targetDocId=$targetDocId '
+          'actualSourceDocIdPresent=${movePlan.sourceDocId.isNotEmpty} '
+          'dataDocIdPresent=${movePlan.dataDocId.isNotEmpty} '
+          'targetDocIdPresent=${targetDocId.isNotEmpty} '
           'dataDocIdMismatch=${movePlan.hasDataDocIdMismatch} '
           'sourceStartAt=${startAt.toIso8601String()} '
           'targetStartAt=${targetStartAt.toIso8601String()}',
@@ -3583,9 +3650,12 @@ class _HomePageState extends State<HomePage>
       );
 
       final exactSourceDocIds = _exactScheduleSourceDocIds(originalData);
-      final sourceIdsToDelete = movePlan.shouldDeleteSource
-          ? exactSourceDocIds
-          : exactSourceDocIds.where((id) => id != movePlan.sourceDocId).toSet();
+      final sourceIdsToDelete =
+          movePlan.shouldDeleteSource
+              ? exactSourceDocIds
+              : exactSourceDocIds
+                  .where((id) => id != movePlan.sourceDocId)
+                  .toSet();
 
       for (final sourceId in sourceIdsToDelete) {
         deleteDocIds.add(sourceId);
@@ -3661,7 +3731,8 @@ class _HomePageState extends State<HomePage>
       context: context,
       nickname: _bannerTrainerName,
       title: '한 번에 전체 스케줄 시간을 맞춰볼까요?',
-      message: '모든 시간 줄의 시작 분과 새로 등록하는 레슨의 기본 시작 분을 함께 바꿀 수 있어요.\n'
+      message:
+          '모든 시간 줄의 시작 분과 새로 등록하는 레슨의 기본 시작 분을 함께 바꿀 수 있어요.\n'
           '이렇게 바꿔놓으시면 스케줄표와 위젯 기준이 같이 정리돼서 편하실 거예요.',
       currentMinute: defaultMinute,
       primaryColor: kPrimaryColor,
@@ -3686,20 +3757,22 @@ class _HomePageState extends State<HomePage>
 
     if (!mounted) return;
 
-    final successfulHours = moveResults.entries
-        .where((entry) => entry.value != null)
-        .map((entry) => entry.key)
-        .toList();
+    final successfulHours =
+        moveResults.entries
+            .where((entry) => entry.value != null)
+            .map((entry) => entry.key)
+            .toList();
 
-    final conflictHours = moveResults.entries
-        .where((entry) => entry.value == null)
-        .map((entry) => entry.key)
-        .toList();
+    final conflictHours =
+        moveResults.entries
+            .where((entry) => entry.value == null)
+            .map((entry) => entry.key)
+            .toList();
 
     final movedCount = moveResults.values.whereType<int>().fold<int>(
-          0,
-          (sum, value) => sum + value,
-        );
+      0,
+      (sum, value) => sum + value,
+    );
 
     setState(() {
       for (final hour in successfulHours) {
@@ -3901,9 +3974,10 @@ class _HomePageState extends State<HomePage>
   Future<void> _openLegacySettingsPage() async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => SettingsPage(
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => SettingsPage(
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -3933,14 +4007,15 @@ class _HomePageState extends State<HomePage>
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientCardPage.fromQuickRegistration(
-          memberId: newId,
-          initialName: '',
-          initialPhone: '',
-          initialVisitDate: DateTime.now(),
-          initialConsultDate: null,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ClientCardPage.fromQuickRegistration(
+              memberId: newId,
+              initialName: '',
+              initialPhone: '',
+              initialVisitDate: DateTime.now(),
+              initialConsultDate: null,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
   }
@@ -4007,9 +4082,10 @@ class _HomePageState extends State<HomePage>
     if (result == null) return null;
 
     return HomeQuickRegResult(
-      action: result.goDetail
-          ? HomeQuickRegAction.goDetail
-          : HomeQuickRegAction.fastSave,
+      action:
+          result.goDetail
+              ? HomeQuickRegAction.goDetail
+              : HomeQuickRegAction.fastSave,
       name: result.name,
       phone: result.phone,
       visitDate: visitDate,
@@ -4028,14 +4104,16 @@ class _HomePageState extends State<HomePage>
       final newId = FirebaseFirestore.instance.collection('members').doc().id;
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => ClientCardPage.fromQuickRegistration(
-            memberId: newId,
-            initialName: result.name,
-            initialPhone: result.phone,
-            initialVisitDate: result.visitDate,
-            initialConsultDate: result.consultDate,
-            personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-          ),
+          builder:
+              (_) => ClientCardPage.fromQuickRegistration(
+                memberId: newId,
+                initialName: result.name,
+                initialPhone: result.phone,
+                initialVisitDate: result.visitDate,
+                initialConsultDate: result.consultDate,
+                personalOwnerUid:
+                    _isPersonalWorkspace ? _personalOwnerUid : null,
+              ),
         ),
       );
       return;
@@ -4097,11 +4175,12 @@ class _HomePageState extends State<HomePage>
       }
 
       final rawEndAt = value['endAt'];
-      final endAt = rawEndAt is DateTime
-          ? rawEndAt
-          : startAt.add(
-              const Duration(minutes: _defaultLessonDurationMinutes),
-            );
+      final endAt =
+          rawEndAt is DateTime
+              ? rawEndAt
+              : startAt.add(
+                const Duration(minutes: _defaultLessonDurationMinutes),
+              );
 
       final day = _weekDaysAll[startAt.weekday - 1];
       final time =
@@ -4178,9 +4257,10 @@ class _HomePageState extends State<HomePage>
       final isOngoing = item['isOngoing'] == true;
       final bool isNextAfterOngoing =
           i > 0 && result[i - 1]['isOngoing'] == true;
-      final minutesToStart = item['minutesToStart'] is int
-          ? item['minutesToStart'] as int
-          : startAt.difference(now).inMinutes;
+      final minutesToStart =
+          item['minutesToStart'] is int
+              ? item['minutesToStart'] as int
+              : startAt.difference(now).inMinutes;
 
       int? gapFromPreviousMinutes;
       var isSeparatedFromPrevious = false;
@@ -4244,12 +4324,12 @@ class _HomePageState extends State<HomePage>
   String _topWeeklyLessonTypeLabel(Map<String, int> typeCounts, int rank) {
     if (typeCounts.isEmpty) return '-';
 
-    final sorted = typeCounts.entries.toList()
-      ..sort((a, b) {
-        final byCount = b.value.compareTo(a.value);
-        if (byCount != 0) return byCount;
-        return a.key.compareTo(b.key);
-      });
+    final sorted =
+        typeCounts.entries.toList()..sort((a, b) {
+          final byCount = b.value.compareTo(a.value);
+          if (byCount != 0) return byCount;
+          return a.key.compareTo(b.key);
+        });
 
     if (rank < 0 || rank >= sorted.length) return '-';
     return '${sorted[rank].key} ${sorted[rank].value}회';
@@ -4297,9 +4377,9 @@ class _HomePageState extends State<HomePage>
             rowOffset -
             MediaQuery.sizeOf(context).height * 0.35)
         .clamp(
-      _homeScrollController.position.minScrollExtent,
-      _homeScrollController.position.maxScrollExtent,
-    );
+          _homeScrollController.position.minScrollExtent,
+          _homeScrollController.position.maxScrollExtent,
+        );
     await _homeScrollController.animateTo(
       centered.toDouble(),
       duration: const Duration(milliseconds: 320),
@@ -4325,9 +4405,10 @@ class _HomePageState extends State<HomePage>
   Future<void> _openMembersPage() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientListPage(
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ClientListPage(
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -4353,10 +4434,11 @@ class _HomePageState extends State<HomePage>
     }
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => StatsPage(
-          scheduleData: Map<String, dynamic>.from(scheduleData),
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => StatsPage(
+              scheduleData: Map<String, dynamic>.from(scheduleData),
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -4518,13 +4600,14 @@ class _HomePageState extends State<HomePage>
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ContractPage(
-          memberId: newMemberId,
-          memberName: '',
-          trainerName: trainerName,
-          initialStage: ContractStage.requiredInfo,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ContractPage(
+              memberId: newMemberId,
+              memberName: '',
+              trainerName: trainerName,
+              initialStage: ContractStage.requiredInfo,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
   }
@@ -4608,7 +4691,8 @@ class _HomePageState extends State<HomePage>
       return int.tryParse(text);
     }
 
-    final bool isConfirmed = session['lessonConfirmed'] == true ||
+    final bool isConfirmed =
+        session['lessonConfirmed'] == true ||
         session['lessonConfirmedAt'] != null ||
         (session['lessonConfirmStatus'] ?? '').toString().trim().isNotEmpty ||
         (session['trainingLogId'] ?? '').toString().trim().isNotEmpty;
@@ -4696,13 +4780,15 @@ class _HomePageState extends State<HomePage>
   }
 
   int? _homeFemaleConditionDaysLeft(Map<String, dynamic> data, DateTime now) {
-    final health = data['health'] is Map
-        ? Map<String, dynamic>.from(data['health'] as Map)
-        : <String, dynamic>{};
+    final health =
+        data['health'] is Map
+            ? Map<String, dynamic>.from(data['health'] as Map)
+            : <String, dynamic>{};
 
-    final female = health['femaleCondition'] is Map
-        ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
-        : <String, dynamic>{};
+    final female =
+        health['femaleCondition'] is Map
+            ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
+            : <String, dynamic>{};
 
     if (female['enabled'] != true) return null;
 
@@ -4736,9 +4822,10 @@ class _HomePageState extends State<HomePage>
     if (isDormant) return true;
     if (isExpired) return true;
 
-    final sessions = data['sessions'] is Map
-        ? Map<String, dynamic>.from(data['sessions'] as Map)
-        : <String, dynamic>{};
+    final sessions =
+        data['sessions'] is Map
+            ? Map<String, dynamic>.from(data['sessions'] as Map)
+            : <String, dynamic>{};
 
     int intFromAny(dynamic value) {
       if (value is num) return value.toInt();
@@ -4761,10 +4848,11 @@ class _HomePageState extends State<HomePage>
       return true;
     }
 
-    final expireAt = _dateFromAny(data['expireAt']) ??
+    final expireAt =
+        _dateFromAny(data['expireAt']) ??
         _dateFromAny(
           (data['membership'] is Map)
-            ? (data['membership'] as Map)['endAt']
+              ? (data['membership'] as Map)['endAt']
               : null,
         );
 
@@ -4834,24 +4922,25 @@ class _HomePageState extends State<HomePage>
     if (birth != null && birth.month == now.month && birth.day == now.day) {
       result.add(
         HomeMoreSenseContext(
-        key: 'birthday:$memberId:${now.year}',
-        kind: HomeMoreSenseKind.birthday,
-        memberName: name,
+          key: 'birthday:$memberId:${now.year}',
+          kind: HomeMoreSenseKind.birthday,
+          memberName: name,
         ),
       );
     }
 
-    final membership = data['membership'] is Map
-        ? Map<String, dynamic>.from(data['membership'] as Map)
-        : const <String, dynamic>{};
+    final membership =
+        data['membership'] is Map
+            ? Map<String, dynamic>.from(data['membership'] as Map)
+            : const <String, dynamic>{};
     final expiry =
         _dateFromAny(data['expireAt']) ?? _dateFromAny(membership['endAt']);
     if (expiry != null && _homeDaysBetween(now, expiry) == 0) {
       result.add(
         HomeMoreSenseContext(
-        key: 'expiry:$memberId:${now.year}-${now.month}-${now.day}',
-        kind: HomeMoreSenseKind.membershipExpiry,
-        memberName: name,
+          key: 'expiry:$memberId:${now.year}-${now.month}-${now.day}',
+          kind: HomeMoreSenseKind.membershipExpiry,
+          memberName: name,
         ),
       );
     }
@@ -4860,9 +4949,9 @@ class _HomePageState extends State<HomePage>
     if (dDay != null && _homeDaysBetween(now, dDay) == 0) {
       result.add(
         HomeMoreSenseContext(
-        key: 'dday:$memberId:${now.year}-${now.month}-${now.day}',
-        kind: HomeMoreSenseKind.dDay,
-        memberName: name,
+          key: 'dday:$memberId:${now.year}-${now.month}-${now.day}',
+          kind: HomeMoreSenseKind.dDay,
+          memberName: name,
         ),
       );
     }
@@ -4876,26 +4965,29 @@ class _HomePageState extends State<HomePage>
         now.isAfter(anniversary)) {
       result.add(
         HomeMoreSenseContext(
-        key: 'milestone:$memberId:${now.year}',
-        kind: HomeMoreSenseKind.milestone,
-        memberName: name,
-        days: DateTime(now.year, now.month, now.day)
-            .difference(
-                DateTime(
-                  anniversary.year,
-                  anniversary.month,
-                  anniversary.day,
-                ),
-              )
-            .inDays,
+          key: 'milestone:$memberId:${now.year}',
+          kind: HomeMoreSenseKind.milestone,
+          memberName: name,
+          days:
+              DateTime(now.year, now.month, now.day)
+                  .difference(
+                    DateTime(
+                      anniversary.year,
+                      anniversary.month,
+                      anniversary.day,
+                    ),
+                  )
+                  .inDays,
         ),
       );
     }
 
-    final sessions = data['sessions'] is Map
-        ? Map<String, dynamic>.from(data['sessions'] as Map)
-        : const <String, dynamic>{};
-    final rawRemain = data['remainingSessions'] ??
+    final sessions =
+        data['sessions'] is Map
+            ? Map<String, dynamic>.from(data['sessions'] as Map)
+            : const <String, dynamic>{};
+    final rawRemain =
+        data['remainingSessions'] ??
         data['remainSessions'] ??
         sessions['remain'] ??
         data['remainingPt'] ??
@@ -4905,9 +4997,9 @@ class _HomePageState extends State<HomePage>
     if (remain != null && remain >= 0 && remain <= 5) {
       result.add(
         HomeMoreSenseContext(
-        key: 'low:$memberId:$remain',
-        kind: HomeMoreSenseKind.lowSessions,
-        memberName: name,
+          key: 'low:$memberId:$remain',
+          kind: HomeMoreSenseKind.lowSessions,
+          memberName: name,
         ),
       );
     }
@@ -4928,7 +5020,8 @@ class _HomePageState extends State<HomePage>
 
     if (!hasCardCore) return false;
 
-    final kakaoLinked = data['kakaoLinked'] == true ||
+    final kakaoLinked =
+        data['kakaoLinked'] == true ||
         data['kakaoConnected'] == true ||
         data['kakaoSyncEnabled'] == true ||
         data['kakaoCardLinked'] == true ||
@@ -4946,20 +5039,23 @@ class _HomePageState extends State<HomePage>
       return false;
     }
 
-    final lessonSync = data['lessonSync'] is Map
-        ? Map<String, dynamic>.from(data['lessonSync'] as Map)
-        : <String, dynamic>{};
+    final lessonSync =
+        data['lessonSync'] is Map
+            ? Map<String, dynamic>.from(data['lessonSync'] as Map)
+            : <String, dynamic>{};
 
-    final lastContractSummary = data['lastContractSummary'] is Map
-        ? Map<String, dynamic>.from(data['lastContractSummary'] as Map)
-        : <String, dynamic>{};
+    final lastContractSummary =
+        data['lastContractSummary'] is Map
+            ? Map<String, dynamic>.from(data['lastContractSummary'] as Map)
+            : <String, dynamic>{};
 
-    final contractId = (data['contractId'] ??
-            lessonSync['contractId'] ??
-            lastContractSummary['contractId'] ??
-            '')
-        .toString()
-        .trim();
+    final contractId =
+        (data['contractId'] ??
+                lessonSync['contractId'] ??
+                lastContractSummary['contractId'] ??
+                '')
+            .toString()
+            .trim();
 
     return data['contractSigned'] == true ||
         data['isContractSigned'] == true ||
@@ -5016,12 +5112,14 @@ class _HomePageState extends State<HomePage>
       final profileSnap = await profileRef.get();
       final profileData = profileSnap.data() ?? <String, dynamic>{};
 
-      final kakaoLinked = profileData['kakaoLinked'] == true ||
+      final kakaoLinked =
+          profileData['kakaoLinked'] == true ||
           profileData['kakaoConnected'] == true ||
           profileData['kakaoSyncEnabled'] == true ||
           profileData['hasKakaoAccount'] == true;
 
-      final profileCompleted = profileData['profileCompleted'] == true ||
+      final profileCompleted =
+          profileData['profileCompleted'] == true ||
           profileData['trainerInfoDone'] == true ||
           profileData['myInfoCompleted'] == true;
 
@@ -5077,14 +5175,14 @@ class _HomePageState extends State<HomePage>
       );
 
       await profileRef.set({
-          'activeMemberCount': activeMemberCount,
-          'kakaoCardLinkedMemberCount': kakaoCardLinkedMemberCount,
-          'contractSignedMemberCount': contractSignedMemberCount,
-          'profileCompleted': profileCompleted,
-          'myInfoCompleted': profileCompleted,
-          'earnedTier': earnedTier,
-          'effectiveTier': effectiveTier,
-          'tierUpdatedAt': FieldValue.serverTimestamp(),
+        'activeMemberCount': activeMemberCount,
+        'kakaoCardLinkedMemberCount': kakaoCardLinkedMemberCount,
+        'contractSignedMemberCount': contractSignedMemberCount,
+        'profileCompleted': profileCompleted,
+        'myInfoCompleted': profileCompleted,
+        'earnedTier': earnedTier,
+        'effectiveTier': effectiveTier,
+        'tierUpdatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       if (kDebugMode) {
@@ -5122,10 +5220,11 @@ class _HomePageState extends State<HomePage>
     }
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(cleanId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(cleanId)
+              .get();
 
       final data = snap.data();
 
@@ -5186,10 +5285,11 @@ class _HomePageState extends State<HomePage>
     if (cleanMemberId.isEmpty) return const {};
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(cleanMemberId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(cleanMemberId)
+              .get();
 
       final data = snap.data();
       if (data == null) return const {};
@@ -5201,25 +5301,30 @@ class _HomePageState extends State<HomePage>
 
       final result = <String, dynamic>{};
 
-      final sessions = data['sessions'] is Map
-          ? Map<String, dynamic>.from(data['sessions'] as Map)
-          : <String, dynamic>{};
+      final sessions =
+          data['sessions'] is Map
+              ? Map<String, dynamic>.from(data['sessions'] as Map)
+              : <String, dynamic>{};
 
-      final lessonSync = data['lessonSync'] is Map
-          ? Map<String, dynamic>.from(data['lessonSync'] as Map)
-          : <String, dynamic>{};
+      final lessonSync =
+          data['lessonSync'] is Map
+              ? Map<String, dynamic>.from(data['lessonSync'] as Map)
+              : <String, dynamic>{};
 
-      final lastContractSummary = data['lastContractSummary'] is Map
-          ? Map<String, dynamic>.from(data['lastContractSummary'] as Map)
-          : <String, dynamic>{};
+      final lastContractSummary =
+          data['lastContractSummary'] is Map
+              ? Map<String, dynamic>.from(data['lastContractSummary'] as Map)
+              : <String, dynamic>{};
 
-      final smartAlarmContext = data['smartAlarmContext'] is Map
-          ? Map<String, dynamic>.from(data['smartAlarmContext'] as Map)
-          : <String, dynamic>{};
+      final smartAlarmContext =
+          data['smartAlarmContext'] is Map
+              ? Map<String, dynamic>.from(data['smartAlarmContext'] as Map)
+              : <String, dynamic>{};
 
-      final moreCareSlotMap = data['moreCareSlot'] is Map
-          ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
-          : <String, dynamic>{};
+      final moreCareSlotMap =
+          data['moreCareSlot'] is Map
+              ? Map<String, dynamic>.from(data['moreCareSlot'] as Map)
+              : <String, dynamic>{};
 
       final moreCareStatusText =
           (data['moreCareStatus'] ?? moreCareSlotMap['status'] ?? '')
@@ -5245,26 +5350,29 @@ class _HomePageState extends State<HomePage>
         result['doneSessions'] = doneSessions.toString();
       }
 
-      final contractId = (data['contractId'] ??
-              lessonSync['contractId'] ??
-              lastContractSummary['contractId'] ??
-              '')
-          .toString()
-          .trim();
+      final contractId =
+          (data['contractId'] ??
+                  lessonSync['contractId'] ??
+                  lastContractSummary['contractId'] ??
+                  '')
+              .toString()
+              .trim();
 
       final contractNo =
           (data['contractNo'] ?? lastContractSummary['contractNo'] ?? '')
               .toString()
               .trim();
 
-      final lessonSyncSource = (data['lessonSyncSource'] ??
-              data['contractLessonSyncSource'] ??
-              lessonSync['source'] ??
-              '')
-          .toString()
-          .trim();
+      final lessonSyncSource =
+          (data['lessonSyncSource'] ??
+                  data['contractLessonSyncSource'] ??
+                  lessonSync['source'] ??
+                  '')
+              .toString()
+              .trim();
 
-      final contractSigned = data['contractSigned'] == true ||
+      final contractSigned =
+          data['contractSigned'] == true ||
           data['isContractSigned'] == true ||
           data['finalSigned'] == true ||
           lessonSync['contractSigned'] == true ||
@@ -5327,9 +5435,10 @@ class _HomePageState extends State<HomePage>
         result['moreCareSlot'] = moreCareSlotMap;
       }
 
-      final membershipMap = data['membership'] is Map
-          ? Map<String, dynamic>.from(data['membership'] as Map)
-          : <String, dynamic>{};
+      final membershipMap =
+          data['membership'] is Map
+              ? Map<String, dynamic>.from(data['membership'] as Map)
+              : <String, dynamic>{};
 
       final membershipStatus =
           (membershipMap['status'] ?? data['membershipStatus'] ?? '')
@@ -5358,11 +5467,12 @@ class _HomePageState extends State<HomePage>
         result['membershipDDay'] = membershipDaysLeft;
       }
 
-      final membershipContractStatus = (data['membershipContractStatus'] ??
-              membershipMap['contractStatus'] ??
-              '')
-          .toString()
-          .trim();
+      final membershipContractStatus =
+          (data['membershipContractStatus'] ??
+                  membershipMap['contractStatus'] ??
+                  '')
+              .toString()
+              .trim();
 
       final membershipContractSignedAt = _dateFromAny(
         data['membershipContractSignedAt'] ?? membershipMap['contractSignedAt'],
@@ -5370,9 +5480,10 @@ class _HomePageState extends State<HomePage>
 
       final membershipContractDraftExists =
           data['membershipContractDraftExists'] == true ||
-              membershipContractStatus == 'draft';
+          membershipContractStatus == 'draft';
 
-      final membershipContractSigned = membershipContractStatus == 'signed' ||
+      final membershipContractSigned =
+          membershipContractStatus == 'signed' ||
           membershipContractSignedAt != null;
 
       if (membershipContractStatus.isNotEmpty) {
@@ -5462,7 +5573,7 @@ class _HomePageState extends State<HomePage>
       }
 
       // 확정된 레슨은 확정 당시 회차 스냅샷을 유지해야 하므로
-      // 고객카드 최신 회차로 다시 덮어쓰지 않습니다.
+      // 회원카드 최신 회차로 다시 덮어쓰지 않습니다.
       // 단, 스마트 알림 context는 다음 레슨 준비용 정보라서 별도로 반영할 수 있습니다.
       final memberId = (raw['memberId'] ?? '').toString().trim();
       if (memberId.isEmpty) continue;
@@ -5704,12 +5815,14 @@ class _HomePageState extends State<HomePage>
     String text(Map<String, dynamic> data, String key) =>
         (data[key] ?? '').toString().trim();
 
-    final leftType = text(left, 'typeId').isNotEmpty
-        ? text(left, 'typeId')
-        : text(left, 'type');
-    final rightType = text(right, 'typeId').isNotEmpty
-        ? text(right, 'typeId')
-        : text(right, 'type');
+    final leftType =
+        text(left, 'typeId').isNotEmpty
+            ? text(left, 'typeId')
+            : text(left, 'type');
+    final rightType =
+        text(right, 'typeId').isNotEmpty
+            ? text(right, 'typeId')
+            : text(right, 'type');
 
     return sameDate(left['startAt'], right['startAt']) &&
         sameDate(left['endAt'], right['endAt']) &&
@@ -5758,7 +5871,8 @@ class _HomePageState extends State<HomePage>
         docs.map((doc) => doc.id.trim()).where((id) => id.isNotEmpty).toSet();
 
     for (final docId in _recentlyDeletedScheduleDocIds.keys.toList()) {
-      final mutationInFlight = _deletingScheduleDocIds.contains(docId) ||
+      final mutationInFlight =
+          _deletingScheduleDocIds.contains(docId) ||
           _pendingScheduleMutationDocIds.contains(docId);
       final sourcePresent = visibleDocIds.contains(docId);
       final decision = resolveHomeScheduleTombstone(
@@ -5922,7 +6036,7 @@ class _HomePageState extends State<HomePage>
 
     // 같은 문서를 연속 탭/중복 콜백으로 여러 번 삭제 요청하는 것 방지
     if (sourceDocIds.any(_deletingScheduleDocIds.contains)) {
-      debugPrint('레슨 삭제 중복 요청 무시: $cleanDocId');
+      debugPrint('레슨 삭제 중복 요청 무시');
       return false;
     }
 
@@ -5931,8 +6045,9 @@ class _HomePageState extends State<HomePage>
     if (kDebugMode) {
       debugPrint(
         '[MTF_SCHEDULE_MUTATION] action=delete '
-        'actualSourceDocId=$cleanDocId dataDocId=$docId '
-        'sourceDocIds=${sourceDocIds.join(',')} '
+        'actualSourceDocIdPresent=${cleanDocId.isNotEmpty} '
+        'dataDocIdPresent=${docId.isNotEmpty} '
+        'sourceCount=${sourceDocIds.length} '
         '${editSessionLogFields ?? ''}',
       );
     }
@@ -5940,14 +6055,16 @@ class _HomePageState extends State<HomePage>
     try {
       final sourceSnapshotById =
           <String, DocumentSnapshot<Map<String, dynamic>>>{};
-      await Future.wait(sourceDocIds.map((sourceDocId) async {
-        sourceSnapshotById[sourceDocId] =
-            await HomeScheduleFirestoreService.getSchedule(
-          sourceDocId,
-          ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-          source: Source.server,
-        );
-      }));
+      await Future.wait(
+        sourceDocIds.map((sourceDocId) async {
+          sourceSnapshotById[sourceDocId] =
+              await HomeScheduleFirestoreService.getSchedule(
+                sourceDocId,
+                ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+                source: Source.server,
+              );
+        }),
+      );
       if (kDebugMode) {
         debugPrint(
           '[MTF_SCHEDULE_DELETE_TIMING] stage=preflight_completed '
@@ -5974,9 +6091,9 @@ class _HomePageState extends State<HomePage>
         debugPrint(
           '[MTF_SCHEDULE_MUTATION] action=delete resolvedSnapshot '
           'uiTime=${(scheduleData['time'] ?? '').toString()} '
-          'currentActualDocId=$cleanDocId '
-          'currentDataDocId=${(scheduleData['docId'] ?? '').toString()} '
-          'snapshotId=${snap.id} referencePath=${snap.reference.path} '
+          'currentActualDocIdPresent=${cleanDocId.isNotEmpty} '
+          'currentDataDocIdPresent=${(scheduleData['docId'] ?? '').toString().isNotEmpty} '
+          'snapshotExists=${snap.exists} '
           '${editSessionLogFields ?? ''}',
         );
       }
@@ -6099,10 +6216,10 @@ class _HomePageState extends State<HomePage>
   }) async {
     final selectedLink =
         await HomeMemberLookupService.resolveSelectedMemberLink(
-      selectedMemberId: selectedMemberId,
-      selectedMemberPhone: selectedMemberPhone,
-      ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-    );
+          selectedMemberId: selectedMemberId,
+          selectedMemberPhone: selectedMemberPhone,
+          ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+        );
 
     if (selectedLink != null) {
       return selectedLink;
@@ -6147,14 +6264,15 @@ class _HomePageState extends State<HomePage>
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientCardPage.fromQuickRegistration(
-          memberId: newId,
-          initialName: cleanName,
-          initialPhone: cleanPhone,
-          initialVisitDate: DateTime.now(),
-          initialConsultDate: null,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ClientCardPage.fromQuickRegistration(
+              memberId: newId,
+              initialName: cleanName,
+              initialPhone: cleanPhone,
+              initialVisitDate: DateTime.now(),
+              initialConsultDate: null,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -6216,10 +6334,11 @@ class _HomePageState extends State<HomePage>
       return false;
     }
 
-    final scheduleSnap = await FirebaseFirestore.instance
-        .collection('schedules')
-        .doc(cleanScheduleDocId)
-        .get();
+    final scheduleSnap =
+        await FirebaseFirestore.instance
+            .collection('schedules')
+            .doc(cleanScheduleDocId)
+            .get();
 
     final scheduleData = scheduleSnap.data();
 
@@ -6234,11 +6353,12 @@ class _HomePageState extends State<HomePage>
     if (isMemberSignedConfirmed || isContractLinkedConfirmed) {
       if (!mounted) return false;
 
-      final message = isMemberSignedConfirmed
-          ? '회원 서명이 포함된 레슨 확정은 임의로 취소할 수 없어요.\n'
-              '서명 기록 보호를 위해 레슨일지에서 확인만 가능해요.'
-          : '계약서 기준으로 확정된 레슨은 임의로 취소할 수 없어요.\n'
-              '계약서와 연결된 회차 기록은 보호됩니다.';
+      final message =
+          isMemberSignedConfirmed
+              ? '회원 서명이 포함된 레슨 확정은 임의로 취소할 수 없어요.\n'
+                  '서명 기록 보호를 위해 레슨일지에서 확인만 가능해요.'
+              : '계약서 기준으로 확정된 레슨은 임의로 취소할 수 없어요.\n'
+                  '계약서와 연결된 회차 기록은 보호됩니다.';
 
       _showActionToast(
         context,
@@ -6289,10 +6409,11 @@ class _HomePageState extends State<HomePage>
 
     try {
       if (_isPersonalWorkspace) {
-        final scheduleSnapshot = await FirebaseFirestore.instance
-            .collection('schedules')
-            .doc(cleanScheduleDocId)
-            .get();
+        final scheduleSnapshot =
+            await FirebaseFirestore.instance
+                .collection('schedules')
+                .doc(cleanScheduleDocId)
+                .get();
         final schedule = scheduleSnapshot.data();
         final trainingLogId =
             (schedule?['trainingLogId'] ?? '').toString().trim();
@@ -6366,7 +6487,7 @@ class _HomePageState extends State<HomePage>
 
       final cancelledMemberId = result.cancelledMemberId?.trim() ?? '';
       if (cancelledMemberId.isNotEmpty) {
-        await _refreshMemberNextLesson(cancelledMemberId);
+        unawaited(_refreshMemberNextLesson(cancelledMemberId));
       }
 
       return true;
@@ -6422,7 +6543,8 @@ class _HomePageState extends State<HomePage>
       await firestore.runTransaction((transaction) async {
         final memberSnap = await transaction.get(memberRef);
         final memberData = memberSnap.data();
-        final ownerValid = !_isPersonalWorkspace ||
+        final ownerValid =
+            !_isPersonalWorkspace ||
             (memberData?['trainerId'] == _personalOwnerUid &&
                 memberData?['workspaceType'] == 'personal');
         final canonicalMemberId =
@@ -6432,8 +6554,7 @@ class _HomePageState extends State<HomePage>
             !ownerValid ||
             canonicalMemberId != cleanMemberId ||
             memberData['isDeleted'] == true ||
-            (memberData['deleteStatus'] ?? '').toString() ==
-                'pending_delete') {
+            (memberData['deleteStatus'] ?? '').toString() == 'pending_delete') {
           throw StateError('member_link_owner_or_state_invalid');
         }
 
@@ -6444,7 +6565,8 @@ class _HomePageState extends State<HomePage>
 
         for (final scheduleSnap in scheduleSnapshots) {
           final schedule = scheduleSnap.data();
-          final scheduleOwnerValid = !_isPersonalWorkspace ||
+          final scheduleOwnerValid =
+              !_isPersonalWorkspace ||
               (schedule?['trainerId'] == _personalOwnerUid &&
                   schedule?['workspaceType'] == 'personal');
           final existingMemberId =
@@ -6459,19 +6581,15 @@ class _HomePageState extends State<HomePage>
         }
 
         for (final scheduleRef in scheduleRefs) {
-          transaction.set(
-            scheduleRef,
-            {
-              'memberId': cleanMemberId,
-              if (cleanPhone.isNotEmpty) 'phone': cleanPhone,
-              if (sessionCountFields['remainingSessions'] != null)
-                'remainingSessions': sessionCountFields['remainingSessions'],
-              if (sessionCountFields['totalSessions'] != null)
-                'totalSessions': sessionCountFields['totalSessions'],
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
+          transaction.set(scheduleRef, {
+            'memberId': cleanMemberId,
+            if (cleanPhone.isNotEmpty) 'phone': cleanPhone,
+            if (sessionCountFields['remainingSessions'] != null)
+              'remainingSessions': sessionCountFields['remainingSessions'],
+            if (sessionCountFields['totalSessions'] != null)
+              'totalSessions': sessionCountFields['totalSessions'],
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         }
       });
     } catch (_) {
@@ -6493,13 +6611,14 @@ class _HomePageState extends State<HomePage>
       final currentDocId = (value['docId'] ?? '').toString().trim();
       if (!cleanDocIds.contains(currentDocId)) return;
 
-      final next = Map<String, dynamic>.from(value)
-        ..['memberId'] = cleanMemberId
-        ..remove('linkedMemberDeleted')
-        ..remove('memberIsDeleted')
-        ..remove('memberDeleteStatus')
-        ..remove('deletedMemberId')
-        ..remove('deletedMemberName');
+      final next =
+          Map<String, dynamic>.from(value)
+            ..['memberId'] = cleanMemberId
+            ..remove('linkedMemberDeleted')
+            ..remove('memberIsDeleted')
+            ..remove('memberDeleteStatus')
+            ..remove('deletedMemberId')
+            ..remove('deletedMemberName');
 
       if (cleanPhone.isNotEmpty) {
         next['phone'] = cleanPhone;
@@ -6522,7 +6641,7 @@ class _HomePageState extends State<HomePage>
       _patchScheduleData(upsert: upsert, syncWidget: true);
     }
 
-    await _refreshMemberNextLesson(cleanMemberId);
+    unawaited(_refreshMemberNextLesson(cleanMemberId));
 
     if (waitForCountsRefresh) {
       await _refreshScheduleCountsFromMembers();
@@ -6573,13 +6692,15 @@ class _HomePageState extends State<HomePage>
     final remain = picked['remainingSessions'];
     final total = picked['totalSessions'];
 
-    final remainValue = remain is num
-        ? remain.toInt()
-        : int.tryParse((remain ?? '').toString()) ?? 0;
+    final remainValue =
+        remain is num
+            ? remain.toInt()
+            : int.tryParse((remain ?? '').toString()) ?? 0;
 
-    final totalValue = total is num
-        ? total.toInt()
-        : int.tryParse((total ?? '').toString()) ?? 0;
+    final totalValue =
+        total is num
+            ? total.toInt()
+            : int.tryParse((total ?? '').toString()) ?? 0;
 
     final countFields = <String, String>{};
     if (totalValue > 0 || remainValue > 0) {
@@ -6589,8 +6710,8 @@ class _HomePageState extends State<HomePage>
 
     final sameNameCandidates = homeSameNameUnlinkedScheduleCandidates(
       schedules: scheduleData.values.whereType<Map<String, dynamic>>().map(
-            Map<String, dynamic>.from,
-          ),
+        Map<String, dynamic>.from,
+      ),
       currentScheduleDocId: cleanDocId,
       memberName: cleanName,
     );
@@ -6643,14 +6764,15 @@ class _HomePageState extends State<HomePage>
         final localMemberId = (value['memberId'] ?? '').toString().trim();
         if (localMemberId != cleanMemberId) return;
 
-        final next = Map<String, dynamic>.from(value)
-          ..remove('memberId')
-          ..remove('phone')
-          ..remove('totalSessions')
-          ..remove('remainingSessions')
-          ..remove('remainSessions')
-          ..['linkedMemberDeleted'] = true
-          ..['deletedMemberId'] = cleanMemberId;
+        final next =
+            Map<String, dynamic>.from(value)
+              ..remove('memberId')
+              ..remove('phone')
+              ..remove('totalSessions')
+              ..remove('remainingSessions')
+              ..remove('remainSessions')
+              ..['linkedMemberDeleted'] = true
+              ..['deletedMemberId'] = cleanMemberId;
 
         upsert[key] = next;
       });
@@ -6715,13 +6837,14 @@ class _HomePageState extends State<HomePage>
 
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => ContractPage(
-          memberId: newMemberId,
-          memberName: cleanName,
-          trainerName: trainerName,
-          initialStage: ContractStage.requiredInfo,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ContractPage(
+              memberId: newMemberId,
+              memberName: cleanName,
+              trainerName: trainerName,
+              initialStage: ContractStage.requiredInfo,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -6844,18 +6967,19 @@ class _HomePageState extends State<HomePage>
 
     final ok = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => MembershipContractPage(
-          memberId: newMemberId,
-          memberName: cleanName,
-          trainerName: trainerName,
-          lessonType: lessonType.trim().isEmpty ? 'PT' : lessonType.trim(),
-          totalSessions: totalSessions,
-          remainingSessions: remainingSessions,
-          membershipStartAt: null,
-          membershipEndAt: null,
-          membershipPaused: false,
-          loadExistingDraft: false,
-        ),
+        builder:
+            (_) => MembershipContractPage(
+              memberId: newMemberId,
+              memberName: cleanName,
+              trainerName: trainerName,
+              lessonType: lessonType.trim().isEmpty ? 'PT' : lessonType.trim(),
+              totalSessions: totalSessions,
+              remainingSessions: remainingSessions,
+              membershipStartAt: null,
+              membershipEndAt: null,
+              membershipPaused: false,
+              loadExistingDraft: false,
+            ),
       ),
     );
 
@@ -6940,10 +7064,11 @@ class _HomePageState extends State<HomePage>
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientCardPage(
-          memberId: resolvedMemberId,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ClientCardPage(
+              memberId: resolvedMemberId,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -7055,15 +7180,16 @@ class _HomePageState extends State<HomePage>
     final bool membershipSoon =
         membershipDaysLeft != null && membershipDaysLeft <= 30;
 
-    final bool resumeSoon = membershipResumeDaysLeft != null &&
+    final bool resumeSoon =
+        membershipResumeDaysLeft != null &&
         membershipResumeDaysLeft >= 0 &&
         membershipResumeDaysLeft <= 7;
 
     final bool contractNeedsSignature =
         session?['membershipContractNeedsSignature'] == true ||
-            session?['membershipContractDraftExists'] == true ||
-            membershipContractStatus == 'draft' ||
-            membershipContractStatus == 'unsigned';
+        session?['membershipContractDraftExists'] == true ||
+        membershipContractStatus == 'draft' ||
+        membershipContractStatus == 'unsigned';
 
     return _homeSessionIsLowRemaining(session) ||
         paused ||
@@ -7134,15 +7260,17 @@ class _HomePageState extends State<HomePage>
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogPage(
-          memberId: resolvedMemberId,
-          memberName: (logPageArgs['memberName'] ?? memberName).toString(),
-          memberPhone: (logPageArgs['memberPhone'] ?? phone ?? '').toString(),
-          totalSessions: logPageArgs['totalSessions'] as int? ?? 0,
-          remainingSessions: logPageArgs['remainingSessions'] as int? ?? 0,
-          lastLogAt: logPageArgs['lastLogAt'] as DateTime?,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => PersonalTrainingLogPage(
+              memberId: resolvedMemberId,
+              memberName: (logPageArgs['memberName'] ?? memberName).toString(),
+              memberPhone:
+                  (logPageArgs['memberPhone'] ?? phone ?? '').toString(),
+              totalSessions: logPageArgs['totalSessions'] as int? ?? 0,
+              remainingSessions: logPageArgs['remainingSessions'] as int? ?? 0,
+              lastLogAt: logPageArgs['lastLogAt'] as DateTime?,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -7169,8 +7297,9 @@ class _HomePageState extends State<HomePage>
       return null;
     }
 
-    final memberRef =
-        FirebaseFirestore.instance.collection('members').doc(cleanMemberId);
+    final memberRef = FirebaseFirestore.instance
+        .collection('members')
+        .doc(cleanMemberId);
 
     final beforeSnap = await memberRef.get();
     final beforeData = beforeSnap.data();
@@ -7199,9 +7328,10 @@ class _HomePageState extends State<HomePage>
         'sessions': {
           'total': totalSessions,
           'remain': remainingSessions,
-          'done': totalSessions > 0
-              ? (totalSessions - remainingSessions).clamp(0, totalSessions)
-              : 0,
+          'done':
+              totalSessions > 0
+                  ? (totalSessions - remainingSessions).clamp(0, totalSessions)
+                  : 0,
           'notRegistered': false,
         },
       'createdFrom': source,
@@ -7248,12 +7378,13 @@ class _HomePageState extends State<HomePage>
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientCardPage.edit(
-          memberId: cleanMemberId,
-          initialName: cleanMemberName.isEmpty ? null : cleanMemberName,
-          openMembershipManageOnStart: true,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ClientCardPage.edit(
+              memberId: cleanMemberId,
+              initialName: cleanMemberName.isEmpty ? null : cleanMemberName,
+              openMembershipManageOnStart: true,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
 
@@ -7313,12 +7444,13 @@ class _HomePageState extends State<HomePage>
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ContractPage(
-          memberId: cleanMemberId,
-          memberName: cleanMemberName,
-          trainerName: trainerName,
-          initialStage: ContractStage.requiredInfo,
-        ),
+        builder:
+            (_) => ContractPage(
+              memberId: cleanMemberId,
+              memberName: cleanMemberName,
+              trainerName: trainerName,
+              initialStage: ContractStage.requiredInfo,
+            ),
       ),
     );
 
@@ -7376,20 +7508,23 @@ class _HomePageState extends State<HomePage>
       if (!consentAllowed || !mounted) return;
     }
 
-    final memberSnap = await FirebaseFirestore.instance
-        .collection('members')
-        .doc(cleanMemberId)
-        .get();
+    final memberSnap =
+        await FirebaseFirestore.instance
+            .collection('members')
+            .doc(cleanMemberId)
+            .get();
 
     final memberData = memberSnap.data() ?? <String, dynamic>{};
 
-    final sessions = memberData['sessions'] is Map
-        ? Map<String, dynamic>.from(memberData['sessions'] as Map)
-        : <String, dynamic>{};
+    final sessions =
+        memberData['sessions'] is Map
+            ? Map<String, dynamic>.from(memberData['sessions'] as Map)
+            : <String, dynamic>{};
 
-    final lessonSync = memberData['lessonSync'] is Map
-        ? Map<String, dynamic>.from(memberData['lessonSync'] as Map)
-        : <String, dynamic>{};
+    final lessonSync =
+        memberData['lessonSync'] is Map
+            ? Map<String, dynamic>.from(memberData['lessonSync'] as Map)
+            : <String, dynamic>{};
 
     final contractId = (lessonSync['contractId'] ?? '').toString().trim();
 
@@ -7400,16 +7535,18 @@ class _HomePageState extends State<HomePage>
     if (hasSignedContract) {
       final result = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (_) => PersonalTrainingQuickLogSignPage(
-            memberId: cleanMemberId,
-            memberName: memberName,
-            memberPhone: phone,
-            scheduleDocId: scheduleDocId,
-            lessonType: lessonType,
-            startAt: startAt,
-            endAt: endAt,
-            personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-          ),
+          builder:
+              (_) => PersonalTrainingQuickLogSignPage(
+                memberId: cleanMemberId,
+                memberName: memberName,
+                memberPhone: phone,
+                scheduleDocId: scheduleDocId,
+                lessonType: lessonType,
+                startAt: startAt,
+                endAt: endAt,
+                personalOwnerUid:
+                    _isPersonalWorkspace ? _personalOwnerUid : null,
+              ),
         ),
       );
 
@@ -7422,11 +7559,12 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    // ✅ 레슨계약서가 없으면 고객카드 레슨 정보를 기준으로 바로 확정 팝업
+    // ✅ 레슨계약서가 없으면 회원카드 레슨 정보를 기준으로 바로 확정 팝업
     final memberLessonType =
         (memberData['lessonType'] ?? lessonType).toString().trim();
 
-    final lessonNotRegistered = sessions['notRegistered'] == true ||
+    final lessonNotRegistered =
+        sessions['notRegistered'] == true ||
         memberLessonType.isEmpty ||
         memberLessonType == '미입력';
 
@@ -7447,7 +7585,7 @@ class _HomePageState extends State<HomePage>
     if (lessonNotRegistered || totalSessions <= 0) {
       _showActionToast(
         context,
-        '고객카드에 레슨 정보를 먼저 등록하면 빠른서명을 사용할 수 있어요.',
+        '회원카드에 레슨 정보를 먼저 등록하면 빠른서명을 사용할 수 있어요.',
         bottomOffset: 110,
       );
       return;
@@ -7456,7 +7594,7 @@ class _HomePageState extends State<HomePage>
     if (remainSessions <= 0) {
       _showActionToast(
         context,
-        '잔여 횟수가 0회라 소진할 수 없어요. 고객카드를 확인해주세요.',
+        '잔여 횟수가 0회라 소진할 수 없어요. 회원카드를 확인해주세요.',
         bottomOffset: 110,
       );
       return;
@@ -7611,21 +7749,25 @@ class _HomePageState extends State<HomePage>
   HomeQuickSignMemberState _resolveQuickSignMemberState(
     Map<String, dynamic> memberData,
   ) {
-    final sessions = memberData['sessions'] is Map
-        ? Map<String, dynamic>.from(memberData['sessions'] as Map)
-        : <String, dynamic>{};
+    final sessions =
+        memberData['sessions'] is Map
+            ? Map<String, dynamic>.from(memberData['sessions'] as Map)
+            : <String, dynamic>{};
 
-    final lessonSync = memberData['lessonSync'] is Map
-        ? Map<String, dynamic>.from(memberData['lessonSync'] as Map)
-        : <String, dynamic>{};
+    final lessonSync =
+        memberData['lessonSync'] is Map
+            ? Map<String, dynamic>.from(memberData['lessonSync'] as Map)
+            : <String, dynamic>{};
 
-    final source = (lessonSync['source'] ?? memberData['lessonSource'] ?? '')
-        .toString()
-        .trim();
+    final source =
+        (lessonSync['source'] ?? memberData['lessonSource'] ?? '')
+            .toString()
+            .trim();
 
     final contractId = (lessonSync['contractId'] ?? '').toString().trim();
 
-    final hasContract = source == 'contract' ||
+    final hasContract =
+        source == 'contract' ||
         memberData['contractSigned'] == true ||
         contractId.isNotEmpty;
 
@@ -7645,7 +7787,8 @@ class _HomePageState extends State<HomePage>
           memberData['ptRemaining'],
     );
 
-    final notRegistered = sessions['notRegistered'] == true ||
+    final notRegistered =
+        sessions['notRegistered'] == true ||
         memberData['lessonsNotRegistered'] == true ||
         lessonType.isEmpty ||
         lessonType == '미입력' ||
@@ -7653,9 +7796,10 @@ class _HomePageState extends State<HomePage>
 
     final lessonRegistered = !notRegistered;
 
-    final basis = hasContract
-        ? 'contract'
-        : lessonRegistered
+    final basis =
+        hasContract
+            ? 'contract'
+            : lessonRegistered
             ? 'manual'
             : 'none';
 
@@ -7728,7 +7872,8 @@ class _HomePageState extends State<HomePage>
       context: context,
       nickname: nickname,
       title: '일반 확정을 취소할까요?',
-      question: '회원 서명이나 계약서 기준으로 확정된 레슨은 취소할 수 없어요.\n'
+      question:
+          '회원 서명이나 계약서 기준으로 확정된 레슨은 취소할 수 없어요.\n'
           '일반 확정만 PIN 확인 후 취소할 수 있고,\n'
           '차감된 회차가 있다면 회원카드에 되돌립니다.',
       pinGuide: '진행하려면 $nicknameLabel PIN 번호를 입력해주세요.',
@@ -7840,9 +7985,10 @@ class _HomePageState extends State<HomePage>
           'no_show_deducted' => '노쇼 차감으로 확정했어요.',
           'no_show_not_deducted' => '노쇼 미차감으로 확정했어요.',
           'service' => '서비스 레슨으로 확정했어요.',
-          _ => remainingAfter is num && remainingAfter <= 0
-              ? '제가 고객카드 기준으로 확인했어요. 잔여 횟수는 0회입니다.'
-              : '제가 고객카드 기준으로 확인했어요. 잔여 횟수를 소진하고, 담당자 확인 기록으로 남겨둘게요.',
+          _ =>
+            remainingAfter is num && remainingAfter <= 0
+                ? '제가 회원카드 기준으로 확인했어요. 잔여 횟수는 0회입니다.'
+                : '제가 회원카드 기준으로 확인했어요. 잔여 횟수를 소진하고, 담당자 확인 기록으로 남겨둘게요.',
         };
         if (!toastContext.mounted) return;
         _showActionToast(toastContext, message, bottomOffset: 110);
@@ -7883,7 +8029,7 @@ class _HomePageState extends State<HomePage>
       if (result.status == LessonConfirmationResultStatus.lessonNotRegistered) {
         _showActionToast(
           toastContext,
-          '고객카드에 레슨 정보가 없어 소진 할 수 없었어요.',
+          '회원카드에 레슨 정보가 없어 소진 할 수 없었어요.',
           bottomOffset: 110,
         );
         return;
@@ -7950,9 +8096,10 @@ class _HomePageState extends State<HomePage>
         'no_show_deducted' => '노쇼 차감으로 확정했어요.',
         'no_show_not_deducted' => '노쇼 미차감으로 확정했어요.',
         'service' => '서비스 레슨으로 확정했어요.',
-        _ => (result.nextRemainForMessage ?? 0) <= 0
-            ? '제가 고객카드 기준으로 확인했어요. 잔여 횟수는 0회입니다.'
-            : '제가 고객카드 기준으로 확인했어요. 잔여 횟수를 소진하고, 담당자 확인 기록으로 남겨둘게요.',
+        _ =>
+          (result.nextRemainForMessage ?? 0) <= 0
+              ? '제가 회원카드 기준으로 확인했어요. 잔여 횟수는 0회입니다.'
+              : '제가 회원카드 기준으로 확인했어요. 잔여 횟수를 소진하고, 담당자 확인 기록으로 남겨둘게요.',
       };
 
       _showActionToast(toastContext, message, bottomOffset: 110);
@@ -8068,17 +8215,19 @@ class _HomePageState extends State<HomePage>
       startAt: effectiveStartAt,
     );
 
-    final existingLog = await FirebaseFirestore.instance
-        .collection('training_logs')
-        .doc(trainingLogId)
-        .get();
+    final existingLog =
+        await FirebaseFirestore.instance
+            .collection('training_logs')
+            .doc(trainingLogId)
+            .get();
 
     final existingLogData = existingLog.data();
 
     if (existingLogData != null) {
       final locked = existingLogData['locked'] == true;
       final deductionApplied = existingLogData['deductionApplied'] == true;
-      final lessonConfirmed = existingLogData['lessonConfirmed'] == true ||
+      final lessonConfirmed =
+          existingLogData['lessonConfirmed'] == true ||
           existingLogData['lessonConfirmedAt'] != null;
       final waitingTrainerConfirm =
           existingLogData['waitingTrainerConfirm'] == true;
@@ -8100,11 +8249,12 @@ class _HomePageState extends State<HomePage>
     }
 
     // 이미 만들어진 대기 요청이 있으면 새 QR을 만들지 않고 재사용
-    final existingRequestSnapshot = await FirebaseFirestore.instance
-        .collection('sign_requests')
-        .where('trainingLogId', isEqualTo: trainingLogId)
-        .limit(10)
-        .get();
+    final existingRequestSnapshot =
+        await FirebaseFirestore.instance
+            .collection('sign_requests')
+            .where('trainingLogId', isEqualTo: trainingLogId)
+            .limit(10)
+            .get();
 
     final now = DateTime.now();
 
@@ -8124,7 +8274,8 @@ class _HomePageState extends State<HomePage>
 
       final isExpired = expiresAt != null && expiresAt.isBefore(now);
 
-      final isWaiting = status == 'waiting_member_signature' ||
+      final isWaiting =
+          status == 'waiting_member_signature' ||
           status == 'waiting' ||
           status.isEmpty;
 
@@ -8154,24 +8305,24 @@ class _HomePageState extends State<HomePage>
 
     await FirebaseFirestore.instance.collection('sign_requests').doc(token).set(
       {
-      'token': token,
-      'status': 'waiting_member_signature',
-      'used': false,
-      'memberId': cleanMemberId,
-      'memberName': cleanMemberName.isEmpty ? '회원' : cleanMemberName,
-      if (cleanPhone.isNotEmpty) 'memberPhone': cleanPhone,
-      if (cleanScheduleDocId.isNotEmpty) 'scheduleDocId': cleanScheduleDocId,
-      'trainingLogId': trainingLogId,
-      'lessonType': lessonType,
-      'startAt': Timestamp.fromDate(effectiveStartAt),
-      'endAt': Timestamp.fromDate(effectiveEndAt),
-      'requestType': 'member_signature',
-      'source': 'trainer_app',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(
-        DateTime.now().add(const Duration(hours: 24)),
-      ),
+        'token': token,
+        'status': 'waiting_member_signature',
+        'used': false,
+        'memberId': cleanMemberId,
+        'memberName': cleanMemberName.isEmpty ? '회원' : cleanMemberName,
+        if (cleanPhone.isNotEmpty) 'memberPhone': cleanPhone,
+        if (cleanScheduleDocId.isNotEmpty) 'scheduleDocId': cleanScheduleDocId,
+        'trainingLogId': trainingLogId,
+        'lessonType': lessonType,
+        'startAt': Timestamp.fromDate(effectiveStartAt),
+        'endAt': Timestamp.fromDate(effectiveEndAt),
+        'requestType': 'member_signature',
+        'source': 'trainer_app',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'expiresAt': Timestamp.fromDate(
+          DateTime.now().add(const Duration(hours: 24)),
+        ),
       },
       SetOptions(merge: true),
     );
@@ -8427,7 +8578,8 @@ class _HomePageState extends State<HomePage>
         targetStartAt: startAt,
         targetEndAt: endAt,
         ignoreDocIds: ignoreDocIds,
-        isTemporarilyHidden: candidateDocId.isNotEmpty &&
+        isTemporarilyHidden:
+            candidateDocId.isNotEmpty &&
             _isScheduleDocTemporarilyHidden(candidateDocId),
         isDeleted: _isScheduleDataDeleted(value),
       );
@@ -8561,21 +8713,23 @@ class _HomePageState extends State<HomePage>
     if (originalDocId.isEmpty) return false;
     final editPlan = HomeScheduleEditPlan.resolve(
       sourceActualDocId: originalDocId,
-      targetActualDocIds: selectedDays
-          .map(
-            (day) => _actualScheduleTargetDocumentId(
-              _dateForCell(weekOffset, day, editableTime),
-              day,
-            ),
-          )
-          .toSet(),
+      targetActualDocIds:
+          selectedDays
+              .map(
+                (day) => _actualScheduleTargetDocumentId(
+                  _dateForCell(weekOffset, day, editableTime),
+                  day,
+                ),
+              )
+              .toSet(),
     );
 
     final sourceItems = <Map<String, dynamic>>[
       {
-        'key': existingSession['startAt'] is DateTime
-            ? _absoluteKeyFromDate(existingSession['startAt'] as DateTime)
-            : _makeKey(weekOffset, originalDay, originalTime),
+        'key':
+            existingSession['startAt'] is DateTime
+                ? _absoluteKeyFromDate(existingSession['startAt'] as DateTime)
+                : _makeKey(weekOffset, originalDay, originalTime),
         'docId': originalDocId,
         'day': originalDay,
         'time': originalTime,
@@ -8635,9 +8789,10 @@ class _HomePageState extends State<HomePage>
         final sourceStartAt = item['startAt'];
         debugPrint(
           '[MTF_SCHEDULE_MUTATION] action=move '
-          'actualSourceDocId=${movePlan.sourceDocId} '
-          'dataDocId=${movePlan.dataDocId} '
-          'targetDocId=$targetActualDocId sourceStartAt=$sourceStartAt '
+          'actualSourceDocIdPresent=${movePlan.sourceDocId.isNotEmpty} '
+          'dataDocIdPresent=${movePlan.dataDocId.isNotEmpty} '
+          'targetDocIdPresent=${targetActualDocId.isNotEmpty} '
+          'sourceStartAt=$sourceStartAt '
           'dataDocIdMismatch=${movePlan.hasDataDocIdMismatch} '
           'targetStartAt=${targetStartAt.toIso8601String()}',
         );
@@ -8645,12 +8800,16 @@ class _HomePageState extends State<HomePage>
 
       final sourceIsRetained = editPlan.sourceIsRetained;
 
-      final exactSourceDocIds = sourceData is Map<String, dynamic>
-          ? _exactScheduleSourceDocIds(sourceData)
-          : <String>{movePlan.sourceDocId};
-      final sourceIdsToDelete = !sourceIsRetained
-          ? exactSourceDocIds
-          : exactSourceDocIds.where((id) => id != movePlan.sourceDocId).toSet();
+      final exactSourceDocIds =
+          sourceData is Map<String, dynamic>
+              ? _exactScheduleSourceDocIds(sourceData)
+              : <String>{movePlan.sourceDocId};
+      final sourceIdsToDelete =
+          !sourceIsRetained
+              ? exactSourceDocIds
+              : exactSourceDocIds
+                  .where((id) => id != movePlan.sourceDocId)
+                  .toSet();
 
       if (sourceIdsToDelete.isNotEmpty) {
         for (final sourceId in sourceIdsToDelete) {
@@ -8710,12 +8869,14 @@ class _HomePageState extends State<HomePage>
         'memo': cleanMemo.isNotEmpty ? cleanMemo : FieldValue.delete(),
 
         // 비어 있으면 예전 회차정보 삭제
-        'remainingSessions': nextRemainingSessions.isNotEmpty
-            ? nextRemainingSessions
-            : FieldValue.delete(),
-        'totalSessions': nextTotalSessions.isNotEmpty
-            ? nextTotalSessions
-            : FieldValue.delete(),
+        'remainingSessions':
+            nextRemainingSessions.isNotEmpty
+                ? nextRemainingSessions
+                : FieldValue.delete(),
+        'totalSessions':
+            nextTotalSessions.isNotEmpty
+                ? nextTotalSessions
+                : FieldValue.delete(),
       };
 
       firestoreWrites.add(
@@ -8825,15 +8986,17 @@ class _HomePageState extends State<HomePage>
       }
 
       for (final memberId in affectedMemberIds) {
-        await _refreshMemberNextLesson(memberId);
+        unawaited(_refreshMemberNextLesson(memberId));
       }
 
       if (mounted) {
         _queueHomeWidgetSync();
       }
 
-      await _reconcilePersonalTierAfterServerWrite(
-        deleteDocIds.isNotEmpty ? 'scheduleDelete' : 'scheduleCreate',
+      unawaited(
+        _reconcilePersonalTierAfterServerWrite(
+          deleteDocIds.isNotEmpty ? 'scheduleDelete' : 'scheduleCreate',
+        ),
       );
 
       return true;
@@ -8922,9 +9085,10 @@ class _HomePageState extends State<HomePage>
 
     final resolvedMemberId = resolvedMember['memberId']?.trim() ?? '';
     final resolvedPhone = _normalizePhone(resolvedMember['phone'] ?? '');
-    final resolvedName = (resolvedMember['name']?.trim().isNotEmpty ?? false)
-        ? resolvedMember['name']!.trim()
-        : typedName;
+    final resolvedName =
+        (resolvedMember['name']?.trim().isNotEmpty ?? false)
+            ? resolvedMember['name']!.trim()
+            : typedName;
 
     Map<String, dynamic> countMap = _parseSessionCount(
       sessionCountController.text,
@@ -9040,7 +9204,7 @@ class _HomePageState extends State<HomePage>
         }
 
         if (resolvedMemberId.isNotEmpty) {
-          await _refreshMemberNextLesson(resolvedMemberId);
+          unawaited(_refreshMemberNextLesson(resolvedMemberId));
         }
       } catch (_) {
         return const HomeLessonSaveResult.failed(
@@ -9050,12 +9214,14 @@ class _HomePageState extends State<HomePage>
       }
     }
 
-    final orderedSelectedDays = _weekDaysAll
-        .where((candidate) => selectedDays.contains(candidate))
-        .toList();
-    final primaryTargetDay = orderedSelectedDays.isNotEmpty
-        ? orderedSelectedDays.first
-        : originalDay;
+    final orderedSelectedDays =
+        _weekDaysAll
+            .where((candidate) => selectedDays.contains(candidate))
+            .toList();
+    final primaryTargetDay =
+        orderedSelectedDays.isNotEmpty
+            ? orderedSelectedDays.first
+            : originalDay;
     final primaryTargetStartAt = _dateForCell(
       weekOffset,
       primaryTargetDay,
@@ -9097,22 +9263,26 @@ class _HomePageState extends State<HomePage>
     final bool hasPersistedSchedule = editorInput.hasPersistedSchedule;
     final editSessionId =
         'lesson-edit-${DateTime.now().microsecondsSinceEpoch}';
-    final initialActualDocId = existingSession == null
-        ? ''
-        : _actualScheduleDocumentId(existingSession!);
-    final initialDataDocId = existingSession == null
-        ? ''
-        : _dataScheduleDocumentId(existingSession!);
+    final initialActualDocId =
+        existingSession == null
+            ? ''
+            : _actualScheduleDocumentId(existingSession!);
+    final initialDataDocId =
+        existingSession == null
+            ? ''
+            : _dataScheduleDocumentId(existingSession!);
     final editSessionGuard = HomeScheduleEditSessionGuard(
       editSessionId: editSessionId,
       currentActualDocId: initialActualDocId,
       currentDataDocId: initialDataDocId,
-      currentStartAt: existingSession?['startAt'] is DateTime
-          ? existingSession!['startAt'] as DateTime
-          : null,
+      currentStartAt:
+          existingSession?['startAt'] is DateTime
+              ? existingSession!['startAt'] as DateTime
+              : null,
     );
 
-    final bool isConfirmedLesson = isEditMode &&
+    final bool isConfirmedLesson =
+        isEditMode &&
         existingSession != null &&
         _isScheduleLessonConfirmed(existingSession!);
 
@@ -9143,34 +9313,37 @@ class _HomePageState extends State<HomePage>
       }
     }
 
-    String selectedLessonTypeId = (() {
-      if (isEditMode && existingSession != null) {
-        final existingType = _resolveLessonTypeForSchedule(
-          existingSession!,
-        );
-        final byId = localLessonTypes.where((e) => e.id == existingType.id);
-        if (byId.isNotEmpty) return byId.first.id;
+    String selectedLessonTypeId =
+        (() {
+          if (isEditMode && existingSession != null) {
+            final existingType = _resolveLessonTypeForSchedule(
+              existingSession!,
+            );
+            final byId = localLessonTypes.where((e) => e.id == existingType.id);
+            if (byId.isNotEmpty) return byId.first.id;
 
-        final byName = localLessonTypes.where(
-          (e) => e.name == existingType.name,
-        );
-        if (byName.isNotEmpty) return byName.first.id;
-      }
+            final byName = localLessonTypes.where(
+              (e) => e.name == existingType.name,
+            );
+            if (byName.isNotEmpty) return byName.first.id;
+          }
 
-      if (_lastSelectedLessonTypeId.isNotEmpty &&
-          localLessonTypes.any((e) => e.id == _lastSelectedLessonTypeId)) {
-        return _lastSelectedLessonTypeId;
-      }
+          if (_lastSelectedLessonTypeId.isNotEmpty &&
+              localLessonTypes.any((e) => e.id == _lastSelectedLessonTypeId)) {
+            return _lastSelectedLessonTypeId;
+          }
 
-      return localLessonTypes.first.id;
-    })();
+          return localLessonTypes.first.id;
+        })();
 
-    final originalStartAt = existingSession?['startAt'] is DateTime
-        ? existingSession!['startAt'] as DateTime
-        : null;
-    final initialSelectedDay = originalStartAt == null
-        ? day
-        : _weekDaysAll[originalStartAt.weekday - 1];
+    final originalStartAt =
+        existingSession?['startAt'] is DateTime
+            ? existingSession!['startAt'] as DateTime
+            : null;
+    final initialSelectedDay =
+        originalStartAt == null
+            ? day
+            : _weekDaysAll[originalStartAt.weekday - 1];
     final selectionState = HomeScheduleEditSelectionState.single(
       currentDay: initialSelectedDay,
     );
@@ -9215,12 +9388,13 @@ class _HomePageState extends State<HomePage>
     String? editingLessonTypeId;
     String editingColorHex = localLessonTypes.first.colorHex;
     final lessonTypeNameController = TextEditingController();
-    final groupingCandidateCount = isEditMode && existingSession != null
-        ? _findLinkedRepeatGroupForSession(
-            weekOffset: weekOffset,
-            session: existingSession!,
-          ).length
-        : 0;
+    final groupingCandidateCount =
+        isEditMode && existingSession != null
+            ? _findLinkedRepeatGroupForSession(
+              weekOffset: weekOffset,
+              session: existingSession!,
+            ).length
+            : 0;
     String buildEditSessionLogFields({
       required String mutationId,
       required String caller,
@@ -9235,11 +9409,12 @@ class _HomePageState extends State<HomePage>
       final selectedDays = selectionState.selectedDays;
       final selectedDates = selectedDays
           .map(
-            (selectedDay) => _dateForCell(
-              weekOffset,
-              selectedDay,
-              editableTime,
-            ).toIso8601String(),
+            (selectedDay) =>
+                _dateForCell(
+                  weekOffset,
+                  selectedDay,
+                  editableTime,
+                ).toIso8601String(),
           )
           .join(',');
 
@@ -9247,10 +9422,10 @@ class _HomePageState extends State<HomePage>
           'caller=$caller userAction=$userAction '
           'stateBefore=${stateBefore.name} '
           'stateAfter=${editSessionGuard.state.name} '
-          'currentActualDocId=${editSessionGuard.currentActualDocId} '
-          'currentDataDocId=${editSessionGuard.currentDataDocId} '
-          'sourceDocId=${sourceDocId ?? editSessionGuard.currentActualDocId} '
-          'targetDocId=${targetDocId ?? ''} '
+          'currentActualDocIdPresent=${editSessionGuard.currentActualDocId.isNotEmpty} '
+          'currentDataDocIdPresent=${editSessionGuard.currentDataDocId.isNotEmpty} '
+          'sourceDocIdPresent=${(sourceDocId ?? editSessionGuard.currentActualDocId).isNotEmpty} '
+          'targetDocIdPresent=${(targetDocId ?? '').isNotEmpty} '
           'currentStartAt=${editSessionGuard.currentStartAt?.toIso8601String() ?? ''} '
           'targetStartAt=${targetStartAt?.toIso8601String() ?? ''} '
           'selectedDates=$selectedDates '
@@ -9295,11 +9470,12 @@ class _HomePageState extends State<HomePage>
     if (kDebugMode) {
       final initializedDates = selectionState.selectedDays
           .map(
-            (selectedDay) => _dateForCell(
-              weekOffset,
-              selectedDay,
-              editableTime,
-            ).toIso8601String(),
+            (selectedDay) =>
+                _dateForCell(
+                  weekOffset,
+                  selectedDay,
+                  editableTime,
+                ).toIso8601String(),
           )
           .join(',');
       debugPrint(
@@ -9487,7 +9663,8 @@ class _HomePageState extends State<HomePage>
           child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: Material(
-              color: Theme.of(
+              color:
+                  Theme.of(
                     sheetContext,
                   ).bottomSheetTheme.modalBackgroundColor ??
                   Theme.of(sheetContext).colorScheme.surface,
@@ -9509,23 +9686,24 @@ class _HomePageState extends State<HomePage>
                     existingSession,
                   );
 
-                  final quickActionSession = existingSession == null
-                      ? null
-                      : Map<String, dynamic>.from(existingSession!);
+                  final quickActionSession =
+                      existingSession == null
+                          ? null
+                          : Map<String, dynamic>.from(existingSession!);
 
                   final shouldRecommendLessonContractAction =
                       _shouldRecommendHomeLessonContractAction(
-                    session: quickActionSession,
-                    hasLinkedMember: hasLinkedMember,
-                    linkedMemberDeleted: linkedMemberDeleted,
-                  );
+                        session: quickActionSession,
+                        hasLinkedMember: hasLinkedMember,
+                        linkedMemberDeleted: linkedMemberDeleted,
+                      );
 
                   final shouldRecommendMembershipManageAction =
                       _shouldRecommendHomeMembershipManageAction(
-                    session: quickActionSession,
-                    hasLinkedMember: hasLinkedMember,
-                    linkedMemberDeleted: linkedMemberDeleted,
-                  );
+                        session: quickActionSession,
+                        hasLinkedMember: hasLinkedMember,
+                        linkedMemberDeleted: linkedMemberDeleted,
+                      );
 
                   void showMemberConnectionHint({
                     required String message,
@@ -9576,10 +9754,13 @@ class _HomePageState extends State<HomePage>
 
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => ClientListPage(
-                          personalOwnerUid:
-                              _isPersonalWorkspace ? _personalOwnerUid : null,
-                        ),
+                        builder:
+                            (_) => ClientListPage(
+                              personalOwnerUid:
+                                  _isPersonalWorkspace
+                                      ? _personalOwnerUid
+                                      : null,
+                            ),
                       ),
                     );
                   }
@@ -9643,11 +9824,12 @@ class _HomePageState extends State<HomePage>
                                 startTimeLabel: _formatLessonSheetTime(
                                   editableTime,
                                 ),
-                                endTimeLabel: editableEndTime.isEmpty
-                                    ? '미설정'
-                                    : _formatLessonSheetTime(
-                                        editableEndTime,
-                                      ),
+                                endTimeLabel:
+                                    editableEndTime.isEmpty
+                                        ? '미설정'
+                                        : _formatLessonSheetTime(
+                                          editableEndTime,
+                                        ),
                                 endTimeIsEmpty: editableEndTime.isEmpty,
                                 onClose: () => Navigator.of(sheetContext).pop(),
                                 onTimeTap: () async {
@@ -9661,9 +9843,9 @@ class _HomePageState extends State<HomePage>
 
                                   final picked =
                                       await _openLessonStartEndTimeDialog(
-                                    initialStartTime: editableTime,
-                                    initialEndTime: editableEndTime,
-                                  );
+                                        initialStartTime: editableTime,
+                                        initialEndTime: editableEndTime,
+                                      );
                                   if (picked == null) return;
 
                                   safeSetModalState(() {
@@ -9682,9 +9864,9 @@ class _HomePageState extends State<HomePage>
 
                                   final pickedEndTime =
                                       await _openLessonEndTimeOnlyDialog(
-                                    initialStartTime: editableTime,
-                                    initialEndTime: editableEndTime,
-                                  );
+                                        initialStartTime: editableTime,
+                                        initialEndTime: editableEndTime,
+                                      );
 
                                   if (pickedEndTime == null) return;
 
@@ -9718,15 +9900,16 @@ class _HomePageState extends State<HomePage>
                                                 selectedLessonTypeId = item.id;
                                               });
                                             },
-                                            onAddTap: () =>
-                                                openAddLessonTypeEditor(
-                                              setModalState,
-                                            ),
-                                            onChipLongPress: (item) =>
-                                                openEditLessonTypeEditor(
-                                              item,
-                                              setModalState,
-                                            ),
+                                            onAddTap:
+                                                () => openAddLessonTypeEditor(
+                                                  setModalState,
+                                                ),
+                                            onChipLongPress:
+                                                (item) =>
+                                                    openEditLessonTypeEditor(
+                                                      item,
+                                                      setModalState,
+                                                    ),
                                           ),
                                         ),
                                         Positioned(
@@ -9737,10 +9920,11 @@ class _HomePageState extends State<HomePage>
                                             child: Center(
                                               child:
                                                   HomeMemberConnectionHintBubble(
-                                                visible: showMemberHint,
-                                                message: memberHintMessage,
-                                                isLinked: memberHintIsLinked,
-                                              ),
+                                                    visible: showMemberHint,
+                                                    message: memberHintMessage,
+                                                    isLinked:
+                                                        memberHintIsLinked,
+                                                  ),
                                             ),
                                           ),
                                         ),
@@ -9753,11 +9937,12 @@ class _HomePageState extends State<HomePage>
                                         nameController:
                                             lessonTypeNameController,
                                         selectedColorHex: editingColorHex,
-                                        paletteColorHexes: kLessonTypePalette
-                                            .map(
-                                              (color) => _colorToHex(color),
-                                            )
-                                            .toList(),
+                                        paletteColorHexes:
+                                            kLessonTypePalette
+                                                .map(
+                                                  (color) => _colorToHex(color),
+                                                )
+                                                .toList(),
                                         onColorSelected: (hex) {
                                           setModalState(() {
                                             editingColorHex = hex;
@@ -9773,12 +9958,14 @@ class _HomePageState extends State<HomePage>
                                             lessonTypeNameController.clear();
                                           });
                                         },
-                                        onSubmit: () => submitLessonTypeEditor(
-                                          setModalState,
-                                        ),
-                                        onDelete: editingLessonTypeId == null
-                                            ? null
-                                            : () => deleteEditingLessonType(
+                                        onSubmit:
+                                            () => submitLessonTypeEditor(
+                                              setModalState,
+                                            ),
+                                        onDelete:
+                                            editingLessonTypeId == null
+                                                ? null
+                                                : () => deleteEditingLessonType(
                                                   setModalState,
                                                 ),
                                       ),
@@ -9791,8 +9978,7 @@ class _HomePageState extends State<HomePage>
                                             selectionState.selectedDays,
                                         activeColor: kPrimaryColor,
                                         onDayTapped: (tappedDay) {
-                                          final changed =
-                                              selectionState.toggleDay(
+                                          final changed = selectionState.toggleDay(
                                             tappedDay,
                                             caller:
                                                 'HomeLessonDaySelector.onDayTapped',
@@ -9804,8 +9990,9 @@ class _HomePageState extends State<HomePage>
                                             tag: 'MTF_SCHEDULE_EDIT_SESSION',
                                             mutationId:
                                                 '$editSessionId-selection',
-                                            caller: selectionState
-                                                .lastChangedCaller,
+                                            caller:
+                                                selectionState
+                                                    .lastChangedCaller,
                                             userAction:
                                                 selectionState.lastUserAction,
                                             stateBefore: editSessionGuard.state,
@@ -9819,30 +10006,32 @@ class _HomePageState extends State<HomePage>
                                         nameController: nameController,
                                         sessionCountController:
                                             sessionCountController,
-                                        hasLinkedMember: hasLinkedMember ||
+                                        hasLinkedMember:
+                                            hasLinkedMember ||
                                             isConfirmedLesson,
                                         onNameTap: showMemberInputHintOnce,
                                         showAutocompleteDropdown:
                                             shouldShowHomeMemberSearchSuggestions(
-                                                  searchKeyword: searchKeyword,
-                                                ) &&
-                                                !hasLinkedMember &&
-                                                !isConfirmedLesson,
+                                              searchKeyword: searchKeyword,
+                                            ) &&
+                                            !hasLinkedMember &&
+                                            !isConfirmedLesson,
                                         autocompleteDropdown:
                                             HomeMemberSearchSuggestionsOverlay(
-                                          searchKeyword: searchKeyword,
-                                          ownerUid: _isPersonalWorkspace
-                                              ? _personalOwnerUid
-                                              : null,
-                                          onPicked: (member) {
-                                            pickSuggestedMember(
-                                              member.name,
-                                              member.id,
-                                              member.phone,
-                                              member.sessionCountText,
-                                            );
-                                          },
-                                        ),
+                                              searchKeyword: searchKeyword,
+                                              ownerUid:
+                                                  _isPersonalWorkspace
+                                                      ? _personalOwnerUid
+                                                      : null,
+                                              onPicked: (member) {
+                                                pickSuggestedMember(
+                                                  member.name,
+                                                  member.id,
+                                                  member.phone,
+                                                  member.sessionCountText,
+                                                );
+                                              },
+                                            ),
                                         onNameChanged: (value) {
                                           safeSetModalState(() {
                                             selectedMemberId = null;
@@ -9854,13 +10043,13 @@ class _HomePageState extends State<HomePage>
                                               ?.unfocus();
 
                                           safeSetModalState(() {
-                                            nameController.value =
-                                                const TextEditingValue(
+                                            nameController
+                                                .value = const TextEditingValue(
                                               text: '',
                                               selection:
                                                   TextSelection.collapsed(
-                                                offset: 0,
-                                              ),
+                                                    offset: 0,
+                                                  ),
                                             );
                                             selectedMemberId = null;
                                             selectedMemberPhone = null;
@@ -9921,20 +10110,20 @@ class _HomePageState extends State<HomePage>
                                         isConfirmedLesson: isConfirmedLesson,
                                         isCustomerSignedConfirmedLesson:
                                             _isCustomerSignedConfirmedSchedule(
-                                          existingSession == null
-                                              ? null
-                                              : Map<String, dynamic>.from(
-                                                  existingSession!,
-                                                ),
-                                        ),
+                                              existingSession == null
+                                                  ? null
+                                                  : Map<String, dynamic>.from(
+                                                    existingSession!,
+                                                  ),
+                                            ),
                                         isContractLinkedConfirmedLesson:
                                             _isContractLinkedConfirmedSchedule(
-                                          existingSession == null
-                                              ? null
-                                              : Map<String, dynamic>.from(
-                                                  existingSession!,
-                                                ),
-                                        ),
+                                              existingSession == null
+                                                  ? null
+                                                  : Map<String, dynamic>.from(
+                                                    existingSession!,
+                                                  ),
+                                            ),
                                         onShowToast: (message) {
                                           _showActionToast(
                                             sheetContext,
@@ -10071,15 +10260,17 @@ class _HomePageState extends State<HomePage>
 
                                           final request =
                                               await _createMemberSignRequestFromSchedule(
-                                            memberId: selectedMemberId ?? '',
-                                            memberName:
-                                                nameController.text.trim(),
-                                            memberPhone: selectedMemberPhone,
-                                            scheduleDocId: scheduleDocId,
-                                            lessonType: lessonType,
-                                            startAt: startAt,
-                                            endAt: endAt,
-                                          );
+                                                memberId:
+                                                    selectedMemberId ?? '',
+                                                memberName:
+                                                    nameController.text.trim(),
+                                                memberPhone:
+                                                    selectedMemberPhone,
+                                                scheduleDocId: scheduleDocId,
+                                                lessonType: lessonType,
+                                                startAt: startAt,
+                                                endAt: endAt,
+                                              );
 
                                           if (!mounted || request == null)
                                             return;
@@ -10128,8 +10319,8 @@ class _HomePageState extends State<HomePage>
                                                 nameController.text.trim(),
                                             scheduleDocId:
                                                 existingSession?['docId']
-                                                        ?.toString() ??
-                                                    '',
+                                                    ?.toString() ??
+                                                '',
                                           );
                                         },
                                         onRegisterManualMember: () async {
@@ -10152,37 +10343,36 @@ class _HomePageState extends State<HomePage>
                                         },
                                         onOpenLessonContractFromUnregistered:
                                             () async {
-                                          final cleanName =
-                                              nameController.text.trim();
+                                              final cleanName =
+                                                  nameController.text.trim();
 
-                                          if (cleanName.isEmpty) {
-                                            showSheetToast(
-                                              setModalState,
-                                              '회원 이름을 먼저 입력해주세요.',
-                                            );
-                                            return;
-                                          }
+                                              if (cleanName.isEmpty) {
+                                                showSheetToast(
+                                                  setModalState,
+                                                  '회원 이름을 먼저 입력해주세요.',
+                                                );
+                                                return;
+                                              }
 
-                                          closeLessonEditorBeforeNavigate();
+                                              closeLessonEditorBeforeNavigate();
 
-                                          await Future.delayed(
-                                            const Duration(
-                                              milliseconds: 120,
-                                            ),
-                                          );
+                                              await Future.delayed(
+                                                const Duration(
+                                                  milliseconds: 120,
+                                                ),
+                                              );
 
-                                          if (!mounted) return;
+                                              if (!mounted) return;
 
-                                          await _openLessonContractRegistrationFromHomeLesson(
-                                            memberName: cleanName,
-                                            phone: selectedMemberPhone,
-                                            scheduleDocId:
-                                                existingSession?['docId']
-                                                    ?.toString(),
-                                          );
-                                        },
-                                        onOpenMembershipContractFromUnregistered:
-                                            () async {
+                                              await _openLessonContractRegistrationFromHomeLesson(
+                                                memberName: cleanName,
+                                                phone: selectedMemberPhone,
+                                                scheduleDocId:
+                                                    existingSession?['docId']
+                                                        ?.toString(),
+                                              );
+                                            },
+                                        onOpenMembershipContractFromUnregistered: () async {
                                           final cleanName =
                                               nameController.text.trim();
 
@@ -10208,11 +10398,10 @@ class _HomePageState extends State<HomePage>
                                             scheduleDocId:
                                                 existingSession?['docId']
                                                     ?.toString(),
-                                            lessonType: getSelectedLessonType()
-                                                    ?.name ??
+                                            lessonType:
+                                                getSelectedLessonType()?.name ??
                                                 (existingSession?['typeName'] ??
-                                                        existingSession?[
-                                                            'type'] ??
+                                                        existingSession?['type'] ??
                                                         'PT')
                                                     .toString(),
                                             sessionCountText:
@@ -10228,11 +10417,11 @@ class _HomePageState extends State<HomePage>
 
                                           final cancelled =
                                               await _openCancelConfirmedLessonSheet(
-                                            scheduleDocId:
-                                                existingSession?['docId']
+                                                scheduleDocId:
+                                                    existingSession?['docId']
                                                         ?.toString() ??
                                                     '',
-                                          );
+                                              );
 
                                           if (!mounted || !cancelled) return;
 
@@ -10246,9 +10435,10 @@ class _HomePageState extends State<HomePage>
                                     ],
                                     const SizedBox(height: 10),
                                     HomeRecentMembersSection(
-                                      ownerUid: _isPersonalWorkspace
-                                          ? _personalOwnerUid
-                                          : null,
+                                      ownerUid:
+                                          _isPersonalWorkspace
+                                              ? _personalOwnerUid
+                                              : null,
                                       onOpenAllMembersTap:
                                           openAllMemberSuggestions,
                                       onPicked: pickSuggestedMember,
@@ -10259,33 +10449,36 @@ class _HomePageState extends State<HomePage>
                                       isLocked: isConfirmedLesson,
                                       isCustomerSignedConfirmedLesson:
                                           _isCustomerSignedConfirmedSchedule(
-                                        existingSession == null
-                                            ? null
-                                            : Map<String, dynamic>.from(
-                                                existingSession!,
-                                              ),
-                                      ),
+                                            existingSession == null
+                                                ? null
+                                                : Map<String, dynamic>.from(
+                                                  existingSession!,
+                                                ),
+                                          ),
                                       isContractLinkedConfirmedLesson:
                                           _isContractLinkedConfirmedSchedule(
-                                        existingSession == null
-                                            ? null
-                                            : Map<String, dynamic>.from(
-                                                existingSession!,
-                                              ),
-                                      ),
+                                            existingSession == null
+                                                ? null
+                                                : Map<String, dynamic>.from(
+                                                  existingSession!,
+                                                ),
+                                          ),
                                       isBusy: activeMutation != null,
-                                      isDeleting: activeMutation ==
+                                      isDeleting:
+                                          activeMutation ==
                                           HomeScheduleEditMutationAction.delete,
-                                      onCancel: () =>
-                                          Navigator.of(sheetContext).pop(),
+                                      onCancel:
+                                          () =>
+                                              Navigator.of(sheetContext).pop(),
                                       onDelete: () async {
                                         final attempt = editSessionGuard.begin(
                                           HomeScheduleEditMutationAction.delete,
                                         );
                                         logEditSession(
-                                          tag: attempt.allowed
-                                              ? 'MTF_SCHEDULE_EDIT_SESSION'
-                                              : 'MTF_SCHEDULE_CALLBACK',
+                                          tag:
+                                              attempt.allowed
+                                                  ? 'MTF_SCHEDULE_EDIT_SESSION'
+                                                  : 'MTF_SCHEDULE_CALLBACK',
                                           mutationId: attempt.mutationId,
                                           caller: 'lessonEditor.onDelete',
                                           userAction: 'deleteTap',
@@ -10306,9 +10499,9 @@ class _HomePageState extends State<HomePage>
                                           const Duration(milliseconds: 10),
                                         );
 
-                                        final docId = editSessionGuard
-                                            .currentActualDocId
-                                            .trim();
+                                        final docId =
+                                            editSessionGuard.currentActualDocId
+                                                .trim();
 
                                         if (docId.isEmpty) {
                                           editSessionGuard.fail();
@@ -10324,20 +10517,26 @@ class _HomePageState extends State<HomePage>
 
                                         final deleted =
                                             await _deleteScheduleFromFirestore(
-                                          docId,
-                                          schedule: existingSession == null
-                                              ? null
-                                              : Map<String, dynamic>.from(
-                                                  existingSession!),
-                                          editSessionLogFields:
-                                              buildEditSessionLogFields(
-                                            mutationId: attempt.mutationId,
-                                            caller: 'lessonEditor.onDelete',
-                                            userAction: 'deleteTap',
-                                            stateBefore: attempt.stateBefore,
-                                            sourceDocId: docId,
-                                          ),
-                                        );
+                                              docId,
+                                              schedule:
+                                                  existingSession == null
+                                                      ? null
+                                                      : Map<
+                                                        String,
+                                                        dynamic
+                                                      >.from(existingSession!),
+                                              editSessionLogFields:
+                                                  buildEditSessionLogFields(
+                                                    mutationId:
+                                                        attempt.mutationId,
+                                                    caller:
+                                                        'lessonEditor.onDelete',
+                                                    userAction: 'deleteTap',
+                                                    stateBefore:
+                                                        attempt.stateBefore,
+                                                    sourceDocId: docId,
+                                                  ),
+                                            );
 
                                         if (!sheetAlive ||
                                             editSessionGuard.state !=
@@ -10350,9 +10549,10 @@ class _HomePageState extends State<HomePage>
                                             userAction: 'deleteResultIgnored',
                                             stateBefore: attempt.stateBefore,
                                             guardAllowed: false,
-                                            ignoredReason: !sheetAlive
-                                                ? 'sheetDisposed'
-                                                : 'state_${editSessionGuard.state.name}',
+                                            ignoredReason:
+                                                !sheetAlive
+                                                    ? 'sheetDisposed'
+                                                    : 'state_${editSessionGuard.state.name}',
                                           );
                                           safeSetModalState(() {
                                             activeMutation = null;
@@ -10429,50 +10629,52 @@ class _HomePageState extends State<HomePage>
                                           return;
                                         }
 
-                                        final saveSelection =
-                                            selectionState.prepareForSave(
-                                          currentTargetDay: initialSelectedDay,
-                                        );
+                                        final saveSelection = selectionState
+                                            .prepareForSave(
+                                              currentTargetDay:
+                                                  initialSelectedDay,
+                                            );
                                         final selectedTargetDocIds =
                                             saveSelection.selectedDays
                                                 .map(
                                                   (selectedDay) =>
                                                       _actualScheduleTargetDocumentId(
-                                                    _dateForCell(
-                                                      weekOffset,
-                                                      selectedDay,
-                                                      editableTime,
-                                                    ),
-                                                    selectedDay,
-                                                  ),
+                                                        _dateForCell(
+                                                          weekOffset,
+                                                          selectedDay,
+                                                          editableTime,
+                                                        ),
+                                                        selectedDay,
+                                                      ),
                                                 )
                                                 .toSet();
                                         final editPlan =
                                             HomeScheduleEditPlan.resolve(
-                                          sourceActualDocId: editSessionGuard
-                                              .currentActualDocId,
-                                          targetActualDocIds:
-                                              selectedTargetDocIds,
-                                        );
+                                              sourceActualDocId:
+                                                  editSessionGuard
+                                                      .currentActualDocId,
+                                              targetActualDocIds:
+                                                  selectedTargetDocIds,
+                                            );
                                         final sourceIsRetained =
                                             editPlan.sourceIsRetained;
                                         final saveBranch = editPlan.branch.name;
                                         if (kDebugMode) {
-                                          final selectedDates =
-                                              saveSelection.selectedDays
-                                                  .map(
-                                                    (selectedDay) =>
-                                                        _dateForCell(
+                                          final selectedDates = saveSelection
+                                              .selectedDays
+                                              .map(
+                                                (selectedDay) =>
+                                                    _dateForCell(
                                                       weekOffset,
                                                       selectedDay,
                                                       editableTime,
                                                     ).toIso8601String(),
-                                                  )
-                                                  .join(',');
+                                              )
+                                              .join(',');
                                           debugPrint(
                                             '[MTF_SCHEDULE_EDIT_PLAN] '
                                             'editSessionId=$editSessionId '
-                                            'sourceDocId=${editSessionGuard.currentActualDocId} '
+                                            'sourceDocIdPresent=${editSessionGuard.currentActualDocId.isNotEmpty} '
                                             'sourceDay=$initialSelectedDay '
                                             'selectedDates=$selectedDates '
                                             'selectedDays=${saveSelection.selectedDays.join(',')} '
@@ -10487,9 +10689,10 @@ class _HomePageState extends State<HomePage>
                                           HomeScheduleEditMutationAction.save,
                                         );
                                         logEditSession(
-                                          tag: attempt.allowed
-                                              ? 'MTF_SCHEDULE_EDIT_SESSION'
-                                              : 'MTF_SCHEDULE_CALLBACK',
+                                          tag:
+                                              attempt.allowed
+                                                  ? 'MTF_SCHEDULE_EDIT_SESSION'
+                                                  : 'MTF_SCHEDULE_CALLBACK',
                                           mutationId: attempt.mutationId,
                                           caller: 'lessonEditor.onSave',
                                           userAction: 'saveTap',
@@ -10531,9 +10734,10 @@ class _HomePageState extends State<HomePage>
                                               existingSession:
                                                   existingSession == null
                                                       ? null
-                                                      : Map<String,
-                                                          dynamic>.from(
-                                                          existingSession!),
+                                                      : Map<
+                                                        String,
+                                                        dynamic
+                                                      >.from(existingSession!),
                                               selectedMemberId:
                                                   selectedMemberId,
                                               selectedMemberPhone:
@@ -10575,9 +10779,10 @@ class _HomePageState extends State<HomePage>
                                             userAction: 'saveResultIgnored',
                                             stateBefore: attempt.stateBefore,
                                             guardAllowed: false,
-                                            ignoredReason: !sheetAlive
-                                                ? 'sheetDisposed'
-                                                : 'state_${editSessionGuard.state.name}',
+                                            ignoredReason:
+                                                !sheetAlive
+                                                    ? 'sheetDisposed'
+                                                    : 'state_${editSessionGuard.state.name}',
                                           );
                                           safeSetModalState(() {
                                             activeMutation = null;
@@ -10610,16 +10815,17 @@ class _HomePageState extends State<HomePage>
                                             editSessionGuard.currentActualDocId;
                                         final targetDocId =
                                             saveResult.targetDocId ??
-                                                sourceDocIdBeforeSave;
-                                        final targetStartAt = saveResult
-                                                .targetStartAt ??
+                                            sourceDocIdBeforeSave;
+                                        final targetStartAt =
+                                            saveResult.targetStartAt ??
                                             editSessionGuard.currentStartAt ??
                                             _dateForCell(
                                               weekOffset,
                                               day,
                                               editableTime,
                                             );
-                                        final moved = isEditMode &&
+                                        final moved =
+                                            isEditMode &&
                                             sourceDocIdBeforeSave.isNotEmpty &&
                                             sourceDocIdBeforeSave !=
                                                 targetDocId;
@@ -10642,9 +10848,10 @@ class _HomePageState extends State<HomePage>
                                           tag: 'MTF_SCHEDULE_MUTATION',
                                           mutationId: attempt.mutationId,
                                           caller: 'lessonEditor.onSave',
-                                          userAction: moved
-                                              ? 'moveCompleted'
-                                              : 'saveCompleted',
+                                          userAction:
+                                              moved
+                                                  ? 'moveCompleted'
+                                                  : 'saveCompleted',
                                           stateBefore: attempt.stateBefore,
                                           sourceDocId: sourceDocIdBeforeSave,
                                           targetDocId: targetDocId,
@@ -10653,12 +10860,14 @@ class _HomePageState extends State<HomePage>
 
                                         if (!mounted || !sheetAlive) return;
 
-                                        final orderedDays = _weekDaysAll
-                                            .where(
-                                              (d) => saveSelection.selectedDays
-                                                  .contains(d),
-                                            )
-                                            .toList();
+                                        final orderedDays =
+                                            _weekDaysAll
+                                                .where(
+                                                  (d) => saveSelection
+                                                      .selectedDays
+                                                      .contains(d),
+                                                )
+                                                .toList();
 
                                         final savedTypeLabel =
                                             saveResult.isLinkedMember
@@ -10667,11 +10876,10 @@ class _HomePageState extends State<HomePage>
 
                                         final bool shouldOfferCustomerCard =
                                             !isEditMode &&
-                                                !saveResult.isLinkedMember &&
-                                                typedName.trim().isNotEmpty &&
-                                                saveSelection
-                                                        .selectedDays.length ==
-                                                    1;
+                                            !saveResult.isLinkedMember &&
+                                            typedName.trim().isNotEmpty &&
+                                            saveSelection.selectedDays.length ==
+                                                1;
 
                                         String? savedScheduleDocId;
 
@@ -10685,9 +10893,9 @@ class _HomePageState extends State<HomePage>
 
                                           savedScheduleDocId =
                                               _scheduleDocIdFromDate(
-                                            savedStartAt,
-                                            savedDay,
-                                          );
+                                                savedStartAt,
+                                                savedDay,
+                                              );
                                         }
 
                                         sheetAlive = false;
@@ -10728,62 +10936,63 @@ class _HomePageState extends State<HomePage>
                           child: IgnorePointer(
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 180),
-                              child: sheetToastMessage == null
-                                  ? const SizedBox.shrink()
-                                  : Center(
-                                      key: ValueKey(sheetToastMessage),
-                                      child: Container(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 280,
-                                        ),
-                                        margin: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFF111827,
-                                          ).withValues(alpha: 0.94),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+                              child:
+                                  sheetToastMessage == null
+                                      ? const SizedBox.shrink()
+                                      : Center(
+                                        key: ValueKey(sheetToastMessage),
+                                        child: Container(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 280,
                                           ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.16,
+                                          margin: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(
+                                              0xFF111827,
+                                            ).withValues(alpha: 0.94),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.16,
+                                                ),
+                                                blurRadius: 12,
+                                                offset: const Offset(0, 4),
                                               ),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.info_outline_rounded,
-                                              size: 16,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Flexible(
-                                              child: Text(
-                                                sheetToastMessage!,
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w700,
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.info_outline_rounded,
+                                                size: 16,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: Text(
+                                                  sheetToastMessage!,
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
                             ),
                           ),
                         ),
@@ -10815,11 +11024,11 @@ class _HomePageState extends State<HomePage>
     editSessionGuard.dispose();
     selectionState.dispose();
 
-// 안정화 우선:
-// 레슨 등록 바텀시트는 닫힘 애니메이션, 키보드 hide, TextField 정리 타이밍이 겹치면
-// TextEditingController was used after being disposed 오류가 발생할 수 있습니다.
-// 지금은 빨간 화면 방지를 우선해서 dispose를 하지 않습니다.
-// 추후 이 바텀시트를 별도 StatefulWidget으로 분리한 뒤 State.dispose()에서 정리합니다.
+    // 안정화 우선:
+    // 레슨 등록 바텀시트는 닫힘 애니메이션, 키보드 hide, TextField 정리 타이밍이 겹치면
+    // TextEditingController was used after being disposed 오류가 발생할 수 있습니다.
+    // 지금은 빨간 화면 방지를 우선해서 dispose를 하지 않습니다.
+    // 추후 이 바텀시트를 별도 StatefulWidget으로 분리한 뒤 State.dispose()에서 정리합니다.
 
     if (!mounted || result == null) return;
 
@@ -10849,14 +11058,16 @@ class _HomePageState extends State<HomePage>
     final String savedScheduleDocId =
         (result.savedScheduleDocId ?? '').toString().trim();
 
-    final nextLessonTypes = rawLessonTypes
-        .whereType<Map>()
-        .map((e) => LessonTypeItem.fromMap(Map<String, dynamic>.from(e)))
-        .toList();
+    final nextLessonTypes =
+        rawLessonTypes
+            .whereType<Map>()
+            .map((e) => LessonTypeItem.fromMap(Map<String, dynamic>.from(e)))
+            .toList();
 
-    final nextSelectedLessonTypeId = result.selectedLessonTypeId.isNotEmpty
-        ? result.selectedLessonTypeId
-        : _lastSelectedLessonTypeId;
+    final nextSelectedLessonTypeId =
+        result.selectedLessonTypeId.isNotEmpty
+            ? result.selectedLessonTypeId
+            : _lastSelectedLessonTypeId;
 
     final safeSelectedId =
         nextLessonTypes.any((e) => e.id == nextSelectedLessonTypeId)
@@ -10926,11 +11137,12 @@ class _HomePageState extends State<HomePage>
       if (day.isEmpty || time.isEmpty) continue;
 
       final startAt = _dateForCell(weekOffset, day, time);
-      final endAt = endTimeRaw.isNotEmpty
-          ? _dateForCell(weekOffset, day, endTimeRaw)
-          : startAt.add(
-              const Duration(minutes: _defaultLessonDurationMinutes),
-            );
+      final endAt =
+          endTimeRaw.isNotEmpty
+              ? _dateForCell(weekOffset, day, endTimeRaw)
+              : startAt.add(
+                const Duration(minutes: _defaultLessonDurationMinutes),
+              );
 
       if (!endAt.isAfter(startAt)) continue;
 
@@ -11042,11 +11254,12 @@ class _HomePageState extends State<HomePage>
         return;
       }
 
-      final endAt = value['endAt'] is DateTime
-          ? value['endAt'] as DateTime
-          : startAt.add(
-              const Duration(minutes: _defaultLessonDurationMinutes),
-            );
+      final endAt =
+          value['endAt'] is DateTime
+              ? value['endAt'] as DateTime
+              : startAt.add(
+                const Duration(minutes: _defaultLessonDurationMinutes),
+              );
 
       final day = _weekDaysAll[startAt.weekday - 1];
       final time = _timeStringFromDateTime(startAt);
@@ -11166,9 +11379,11 @@ class _HomePageState extends State<HomePage>
 
     final pasteWrites = <HomeScheduleEditWrite>[];
 
-    for (var sourceIndex = 0;
-        sourceIndex < _copiedWeekSchedules.length;
-        sourceIndex++) {
+    for (
+      var sourceIndex = 0;
+      sourceIndex < _copiedWeekSchedules.length;
+      sourceIndex++
+    ) {
       if (!pasteableSourceIndexes.contains(sourceIndex)) continue;
       final item = _copiedWeekSchedules[sourceIndex];
       final day = (item['day'] ?? '').toString().trim();
@@ -11179,13 +11394,14 @@ class _HomePageState extends State<HomePage>
       if (day.isEmpty || time.isEmpty || name.isEmpty) continue;
 
       final startAt = _dateForCell(weekOffset, day, time);
-      final resolvedEndTime = endTime.isNotEmpty
-          ? endTime
-          : _timeStringFromDateTime(
-              startAt.add(
-                const Duration(minutes: _defaultLessonDurationMinutes),
-              ),
-            );
+      final resolvedEndTime =
+          endTime.isNotEmpty
+              ? endTime
+              : _timeStringFromDateTime(
+                startAt.add(
+                  const Duration(minutes: _defaultLessonDurationMinutes),
+                ),
+              );
 
       final rawMemberId = (item['memberId'] ?? '').toString().trim();
       final rawPhone = _normalizePhone((item['phone'] ?? '').toString());
@@ -11217,23 +11433,26 @@ class _HomePageState extends State<HomePage>
       final copiedTypeName = (item['type'] ?? 'PT').toString().trim();
       final copiedTypeColorHex = (item['typeColorHex'] ?? '').toString().trim();
 
-      final lessonType = copiedTypeId.isNotEmpty
-          ? (_findLessonTypeById(copiedTypeId, _lessonTypes) ??
-              LessonTypeItem(
-                id: copiedTypeId,
-                name: copiedTypeName.isEmpty ? 'PT' : copiedTypeName,
-                colorHex: copiedTypeColorHex.isNotEmpty
-                    ? copiedTypeColorHex
-                    : _lessonTypeColorHexByName(copiedTypeName),
-              ))
-          : (_findLessonTypeByName(copiedTypeName, _lessonTypes) ??
-              LessonTypeItem(
-                id: _generateLessonTypeId(),
-                name: copiedTypeName.isEmpty ? 'PT' : copiedTypeName,
-                colorHex: copiedTypeColorHex.isNotEmpty
-                    ? copiedTypeColorHex
-                    : _lessonTypeColorHexByName(copiedTypeName),
-              ));
+      final lessonType =
+          copiedTypeId.isNotEmpty
+              ? (_findLessonTypeById(copiedTypeId, _lessonTypes) ??
+                  LessonTypeItem(
+                    id: copiedTypeId,
+                    name: copiedTypeName.isEmpty ? 'PT' : copiedTypeName,
+                    colorHex:
+                        copiedTypeColorHex.isNotEmpty
+                            ? copiedTypeColorHex
+                            : _lessonTypeColorHexByName(copiedTypeName),
+                  ))
+              : (_findLessonTypeByName(copiedTypeName, _lessonTypes) ??
+                  LessonTypeItem(
+                    id: _generateLessonTypeId(),
+                    name: copiedTypeName.isEmpty ? 'PT' : copiedTypeName,
+                    colorHex:
+                        copiedTypeColorHex.isNotEmpty
+                            ? copiedTypeColorHex
+                            : _lessonTypeColorHexByName(copiedTypeName),
+                  ));
 
       final dt = _dateForCell(weekOffset, day, time);
       final endDt = _dateForCell(weekOffset, day, resolvedEndTime);
@@ -11273,14 +11492,27 @@ class _HomePageState extends State<HomePage>
     }
 
     if (pasteWrites.isNotEmpty) {
-      await HomeScheduleFirestoreService.commitScheduleWrites(
-        writes: pasteWrites,
-        ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-      );
+      try {
+        await HomeScheduleFirestoreService.commitScheduleCopyWrites(
+          writes: pasteWrites,
+          ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+        );
+      } on HomeScheduleCopyCommitException catch (error) {
+        if (!mounted) return;
+        if (error.committedWriteCount > 0) {
+          _showSnack(
+            '${error.committedWriteCount}개 일정은 저장됐어요. '
+            '나머지는 네트워크를 확인한 뒤 다시 붙여넣어 주세요.',
+          );
+        } else {
+          _showSnack('붙여넣기에 실패했어요. 네트워크를 확인한 뒤 다시 시도해 주세요.');
+        }
+        return;
+      }
     }
 
     for (final memberId in affectedMemberIds) {
-      await _refreshMemberNextLesson(memberId);
+      unawaited(_refreshMemberNextLesson(memberId));
     }
 
     if (mounted) {
@@ -11316,21 +11548,22 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    final allItems = weekSlice.entries
-        .where((entry) => entry.value is Map<String, dynamic>)
-        .map((entry) {
-          final data = Map<String, dynamic>.from(entry.value as Map);
-          return {
-            'weekKey': entry.key,
-            'data': data,
-            'docId': (data['docId'] ?? '').toString().trim(),
-            'docIds': _allScheduleDocumentIds(data).toList(),
-            'memberId': (data['memberId'] ?? '').toString().trim(),
-            'isConfirmed': _isScheduleLessonConfirmed(data),
-          };
-        })
-        .where((item) => (item['docId'] ?? '').toString().isNotEmpty)
-        .toList();
+    final allItems =
+        weekSlice.entries
+            .where((entry) => entry.value is Map<String, dynamic>)
+            .map((entry) {
+              final data = Map<String, dynamic>.from(entry.value as Map);
+              return {
+                'weekKey': entry.key,
+                'data': data,
+                'docId': (data['docId'] ?? '').toString().trim(),
+                'docIds': _allScheduleDocumentIds(data).toList(),
+                'memberId': (data['memberId'] ?? '').toString().trim(),
+                'isConfirmed': _isScheduleLessonConfirmed(data),
+              };
+            })
+            .where((item) => (item['docId'] ?? '').toString().isNotEmpty)
+            .toList();
 
     if (allItems.isEmpty) {
       _showSnack('삭제할 레슨일정이 없어요.');
@@ -11357,11 +11590,12 @@ class _HomePageState extends State<HomePage>
 
     final targetLabel = _weekTitleForOffset(weekOffset).replaceAll('\n', ' ');
 
-    final message = protectedCount > 0
-        ? '$targetLabel 의 미확정 레슨일정 $deleteCount개만 삭제합니다.\n'
-            '확정된 레슨 $protectedCount개는 보호되어 삭제하지 않아요.'
-        : '$targetLabel 의 레슨일정 $deleteCount개를 모두 삭제합니다.\n'
-            '삭제 후에는 되돌리기 어렵기 때문에 신중히 확인해주세요.';
+    final message =
+        protectedCount > 0
+            ? '$targetLabel 의 미확정 레슨일정 $deleteCount개만 삭제합니다.\n'
+                '확정된 레슨 $protectedCount개는 보호되어 삭제하지 않아요.'
+            : '$targetLabel 의 레슨일정 $deleteCount개를 모두 삭제합니다.\n'
+                '삭제 후에는 되돌리기 어렵기 때문에 신중히 확인해주세요.';
 
     final confirmed = await _showAifcConfirm(
       title: '레슨일정을 삭제할까요?',
@@ -11377,11 +11611,12 @@ class _HomePageState extends State<HomePage>
 
     if (!confirmed) return;
 
-    final deleteDocIds = deletableItems
-        .expand((item) => ((item['docIds'] as List?) ?? const []))
-        .map((id) => id.toString().trim())
-        .where((id) => id.isNotEmpty)
-        .toSet();
+    final deleteDocIds =
+        deletableItems
+            .expand((item) => ((item['docIds'] as List?) ?? const []))
+            .map((id) => id.toString().trim())
+            .where((id) => id.isNotEmpty)
+            .toSet();
 
     for (final docId in deleteDocIds) {
       _markScheduleDocAsRecentlyDeleted(docId);
@@ -11411,14 +11646,15 @@ class _HomePageState extends State<HomePage>
       _endScheduleMutation(deleteDocIds);
     }
 
-    final affectedMemberIds = deletableItems
-        .map((item) => (item['memberId'] ?? '').toString().trim())
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList();
+    final affectedMemberIds =
+        deletableItems
+            .map((item) => (item['memberId'] ?? '').toString().trim())
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
 
     for (final memberId in affectedMemberIds) {
-      await _refreshMemberNextLesson(memberId);
+      unawaited(_refreshMemberNextLesson(memberId));
     }
 
     final removeKeys = <String>[];
@@ -11435,7 +11671,7 @@ class _HomePageState extends State<HomePage>
 
     _patchScheduleData(removeKeys: removeKeys, syncWidget: true);
 
-    await _reconcilePersonalTierAfterServerWrite('scheduleDelete');
+    unawaited(_reconcilePersonalTierAfterServerWrite('scheduleDelete'));
 
     if (protectedCount > 0) {
       _showSnack(
@@ -11609,10 +11845,11 @@ class _HomePageState extends State<HomePage>
                 onMyPage: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => buildHomeMyPageDestination(
-                        personalOwnerUid:
-                            _isPersonalWorkspace ? _personalOwnerUid : null,
-                      ),
+                      builder:
+                          (_) => buildHomeMyPageDestination(
+                            personalOwnerUid:
+                                _isPersonalWorkspace ? _personalOwnerUid : null,
+                          ),
                     ),
                   );
                 },
@@ -11631,9 +11868,10 @@ class _HomePageState extends State<HomePage>
                       _currentAppTier == AppTier.grandPrix) {
                     unawaited(
                       _openCenterPlanGuideSheet(
-                        highlightTier: _currentAppTier == AppTier.grandPrix
-                            ? 'grandPrix'
-                            : 'master',
+                        highlightTier:
+                            _currentAppTier == AppTier.grandPrix
+                                ? 'grandPrix'
+                                : 'master',
                       ),
                     );
                     return;
@@ -11744,14 +11982,15 @@ class _HomePageState extends State<HomePage>
       return _headerMessageSelection!;
     }
 
-    final blockedQuestions = _headerMessageHistoryReady
-        ? _askedHeaderQuestionKeys
-        : <String>{
-            'mood_future',
-            'weather_umbrella',
-            'gap_long_question',
-            'gap_meal',
-          };
+    final blockedQuestions =
+        _headerMessageHistoryReady
+            ? _askedHeaderQuestionKeys
+            : <String>{
+              'mood_future',
+              'weather_umbrella',
+              'gap_long_question',
+              'gap_meal',
+            };
     final selection = HomeHeaderMessageEngine.select(
       now: currentTime,
       lessons: lessons,
@@ -11774,8 +12013,8 @@ class _HomePageState extends State<HomePage>
     }
     unawaited(
       _headerMessageHistory.remember(
-      messageKey: selection.fcKey,
-      questionKey: selection.questionKey,
+        messageKey: selection.fcKey,
+        questionKey: selection.questionKey,
       ),
     );
     return selection;
@@ -11828,10 +12067,11 @@ class _HomePageState extends State<HomePage>
   void _openCareNeededMembers() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientListPage(
-          initialFilter: ClientListInitialFilter.careNeeded,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ClientListPage(
+              initialFilter: ClientListInitialFilter.careNeeded,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
   }
@@ -11923,9 +12163,11 @@ class _HomePageState extends State<HomePage>
       case AifcUpgradeAction.goFillInfo:
         await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => buildHomeMyPageDestination(
-              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-            ),
+            builder:
+                (_) => buildHomeMyPageDestination(
+                  personalOwnerUid:
+                      _isPersonalWorkspace ? _personalOwnerUid : null,
+                ),
           ),
         );
         break;
@@ -11937,9 +12179,11 @@ class _HomePageState extends State<HomePage>
       case AifcUpgradeAction.goAddProduct:
         await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => buildHomeMyPageDestination(
-              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-            ),
+            builder:
+                (_) => buildHomeMyPageDestination(
+                  personalOwnerUid:
+                      _isPersonalWorkspace ? _personalOwnerUid : null,
+                ),
           ),
         );
         break;
@@ -11997,9 +12241,10 @@ class _HomePageState extends State<HomePage>
               _currentAppTier == AppTier.grandPrix) {
             unawaited(
               _openCenterPlanGuideSheet(
-                highlightTier: _currentAppTier == AppTier.grandPrix
-                    ? 'grandPrix'
-                    : 'master',
+                highlightTier:
+                    _currentAppTier == AppTier.grandPrix
+                        ? 'grandPrix'
+                        : 'master',
               ),
             );
             return;
@@ -12148,11 +12393,12 @@ class _HomePageState extends State<HomePage>
     }
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientCardPage(
-          memberId: memberId,
-          isEditMode: true,
-          personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
-        ),
+        builder:
+            (_) => ClientCardPage(
+              memberId: memberId,
+              isEditMode: true,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+            ),
       ),
     );
   }
@@ -12217,13 +12463,15 @@ class _HomeMembershipContractMember {
     String id,
     Map<String, dynamic> data,
   ) {
-    final sessions = data['sessions'] is Map
-        ? Map<String, dynamic>.from(data['sessions'] as Map)
-        : <String, dynamic>{};
+    final sessions =
+        data['sessions'] is Map
+            ? Map<String, dynamic>.from(data['sessions'] as Map)
+            : <String, dynamic>{};
 
-    final membership = data['membership'] is Map
-        ? Map<String, dynamic>.from(data['membership'] as Map)
-        : <String, dynamic>{};
+    final membership =
+        data['membership'] is Map
+            ? Map<String, dynamic>.from(data['membership'] as Map)
+            : <String, dynamic>{};
 
     final total = _intFromAny(
       sessions['total'] ?? data['totalSessions'] ?? data['sessionTotal'],
@@ -12246,7 +12494,8 @@ class _HomeMembershipContractMember {
       remainingSessions: remain,
       membershipStartAt: _dateFromAny(membership['startAt']),
       membershipEndAt: _dateFromAny(membership['endAt']),
-      membershipPaused: membership['status'] == 'paused' ||
+      membershipPaused:
+          membership['status'] == 'paused' ||
           data['membershipStatus'] == 'paused',
     );
   }

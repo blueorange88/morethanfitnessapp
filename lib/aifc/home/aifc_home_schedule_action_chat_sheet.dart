@@ -12,11 +12,7 @@ enum AifcHomeScheduleAction {
   repeatGrouping,
 }
 
-enum _ScheduleMenuPage {
-  main,
-  bulk,
-  time,
-}
+enum _ScheduleMenuPage { main, bulk, time }
 
 class AifcHomeScheduleActionChatSheet {
   const AifcHomeScheduleActionChatSheet._();
@@ -88,9 +84,8 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
   @override
   void initState() {
     super.initState();
-    _page = widget.openBulkFirst
-        ? _ScheduleMenuPage.bulk
-        : _ScheduleMenuPage.main;
+    _page =
+        widget.openBulkFirst ? _ScheduleMenuPage.bulk : _ScheduleMenuPage.main;
   }
 
   void _go(_ScheduleMenuPage page) {
@@ -123,9 +118,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
           ),
           decoration: const BoxDecoration(
             color: Color(0xFFF5F4FF),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(26),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
           ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -213,10 +206,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
         _Handle(),
         const SizedBox(height: 12),
         if (widget.openBulkFirst)
-          _PlainHeader(
-            title: '스케줄 일괄관리',
-            primaryColor: widget.primaryColor,
-          )
+          _PlainHeader(title: '스케줄 일괄관리', primaryColor: widget.primaryColor)
         else
           _BackHeader(
             title: '스케줄 일괄관리',
@@ -241,7 +231,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
               const SizedBox(height: 8),
               Text(
                 '스케줄표의 복사, 붙여넣기, 미확정 일정 전체삭제를 여기서 할 수 있어요.\n'
-                    '‘이번 주 스케줄’ 글씨를 길게 눌러도 바로 열 수 있어요.',
+                '‘이번 주 스케줄’ 글씨를 길게 눌러도 바로 열 수 있어요.',
                 style: TextStyle(
                   color: const Color(0xFF1E1B4B).withOpacity(0.62),
                   fontSize: 11.3,
@@ -270,14 +260,16 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
         _ActionTile(
           icon: Icons.content_paste_rounded,
           title: '스케줄 붙여넣기',
-          subtitle: widget.hasCopiedSchedules
-              ? '복사해둔 스케줄을 ${widget.targetLabel}에 붙여넣어요.'
-              : '먼저 복사한 스케줄이 필요해요.',
+          subtitle:
+              widget.hasCopiedSchedules
+                  ? '복사해둔 스케줄을 ${widget.targetLabel}에 붙여넣어요.'
+                  : '먼저 복사한 스케줄이 필요해요.',
           disabled: !widget.hasCopiedSchedules,
           primaryColor: widget.primaryColor,
-          onTap: widget.hasCopiedSchedules
-              ? () => _popAction(AifcHomeScheduleAction.pasteWeek)
-              : null,
+          onTap:
+              widget.hasCopiedSchedules
+                  ? () => _popAction(AifcHomeScheduleAction.pasteWeek)
+                  : null,
         ),
         _ActionTile(
           icon: Icons.delete_forever_outlined,
@@ -323,7 +315,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
               const SizedBox(height: 8),
               Text(
                 '스케줄표의 시작/끝 시간과 전체 시작 분을 정리할 수 있어요.\n'
-                    '위젯 미리보기 기준에도 함께 반영돼요.',
+                '위젯 미리보기 기준에도 함께 반영돼요.',
                 style: TextStyle(
                   color: const Color(0xFF1E1B4B).withOpacity(0.62),
                   fontSize: 11.3,
@@ -351,7 +343,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
         ),
         _ActionTile(
           icon: Icons.event_repeat_rounded,
-          title: '반복 레슨 모아보기 방식',
+          title: '동일 회원 요일 자동 체크',
           subtitle: '레슨 수정 시 여러 요일을 자동 체크하는 기준을 정해요.',
           primaryColor: widget.primaryColor,
           onTap: () => _popAction(AifcHomeScheduleAction.repeatGrouping),
@@ -383,10 +375,7 @@ class _Handle extends StatelessWidget {
 }
 
 class _PlainHeader extends StatelessWidget {
-  const _PlainHeader({
-    required this.title,
-    required this.primaryColor,
-  });
+  const _PlainHeader({required this.title, required this.primaryColor});
 
   final String title;
   final Color primaryColor;
@@ -448,9 +437,7 @@ class _BackHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFE5E7EB),
-              ),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
             child: Icon(
               Icons.chevron_left_rounded,
@@ -476,10 +463,7 @@ class _BackHeader extends StatelessWidget {
 }
 
 class _FcBubble extends StatelessWidget {
-  const _FcBubble({
-    required this.child,
-    required this.primaryColor,
-  });
+  const _FcBubble({required this.child, required this.primaryColor});
 
   final Widget child;
   final Color primaryColor;
@@ -506,9 +490,7 @@ class _FcBubble extends StatelessWidget {
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
               ),
-              border: Border.all(
-                color: const Color(0xFFE0DEFF),
-              ),
+              border: Border.all(color: const Color(0xFFE0DEFF)),
               boxShadow: [
                 BoxShadow(
                   color: primaryColor.withOpacity(0.06),
@@ -610,11 +592,12 @@ class _BaseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = danger
-        ? const Color(0xFFB91C1C)
-        : disabled
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF111827);
+    final titleColor =
+        danger
+            ? const Color(0xFFB91C1C)
+            : disabled
+            ? const Color(0xFF9CA3AF)
+            : const Color(0xFF111827);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -630,9 +613,8 @@ class _BaseTile extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(17),
               border: Border.all(
-                color: danger
-                    ? const Color(0xFFFECACA)
-                    : const Color(0xFFE5E7EB),
+                color:
+                    danger ? const Color(0xFFFECACA) : const Color(0xFFE5E7EB),
               ),
               boxShadow: [
                 BoxShadow(
@@ -651,11 +633,7 @@ class _BaseTile extends StatelessWidget {
                     color: primaryColor.withOpacity(0.09),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    icon,
-                    size: 18,
-                    color: primaryColor,
-                  ),
+                  child: Icon(icon, size: 18, color: primaryColor),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
@@ -674,9 +652,10 @@ class _BaseTile extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: disabled
-                              ? const Color(0xFF9CA3AF)
-                              : const Color(0xFF6B7280),
+                          color:
+                              disabled
+                                  ? const Color(0xFF9CA3AF)
+                                  : const Color(0xFF6B7280),
                           fontSize: 11.2,
                           fontWeight: FontWeight.w600,
                           height: 1.35,
@@ -701,10 +680,7 @@ class _BaseTile extends StatelessWidget {
 }
 
 class _CopiedInfo extends StatelessWidget {
-  const _CopiedInfo({
-    required this.primaryColor,
-    required this.text,
-  });
+  const _CopiedInfo({required this.primaryColor, required this.text});
 
   final Color primaryColor;
   final String text;
@@ -713,16 +689,11 @@ class _CopiedInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 9,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
       decoration: BoxDecoration(
         color: primaryColor.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: primaryColor.withOpacity(0.13),
-        ),
+        border: Border.all(color: primaryColor.withOpacity(0.13)),
       ),
       child: Text(
         text,
@@ -738,10 +709,7 @@ class _CopiedInfo extends StatelessWidget {
 }
 
 class _TipBox extends StatelessWidget {
-  const _TipBox({
-    required this.primaryColor,
-    required this.text,
-  });
+  const _TipBox({required this.primaryColor, required this.text});
 
   final Color primaryColor;
   final String text;
@@ -754,9 +722,7 @@ class _TipBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.72),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

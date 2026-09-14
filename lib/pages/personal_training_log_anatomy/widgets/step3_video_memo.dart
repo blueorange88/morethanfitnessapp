@@ -15,11 +15,16 @@ class Step3VideoMemo extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Icon(Icons.video_library_outlined,
-              size: 36, color: Color(0xFF9CA3AF)),
+          Icon(
+            Icons.video_library_outlined,
+            size: 36,
+            color: Color(0xFF9CA3AF),
+          ),
           SizedBox(height: 12),
-          Text('영상·음성 기능 준비 중',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+          Text(
+            '영상·음성 기능 준비 중',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+          ),
           SizedBox(height: 8),
           Text(
             '이번 단계에서는 영상 업로드와 음성 추출을 저장하지 않습니다. 기록 메모는 이전 단계에서 입력해주세요.',

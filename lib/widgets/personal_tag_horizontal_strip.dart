@@ -28,9 +28,7 @@ class PersonalTagManagementButton extends StatelessWidget {
           dimension: dimension,
           child: Material(
             color: tokens.cardSurface,
-            shape: CircleBorder(
-              side: BorderSide(color: tokens.cardBorder),
-            ),
+            shape: CircleBorder(side: BorderSide(color: tokens.cardBorder)),
             child: InkWell(
               key: const ValueKey('personal_tag_management_button'),
               onTap: onPressed,
@@ -71,19 +69,13 @@ class PersonalTagHorizontalStrip extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (fixedLeading != null) ...[
-            fixedLeading!,
-            SizedBox(width: gap),
-          ],
+          if (fixedLeading != null) ...[fixedLeading!, SizedBox(width: gap)],
           Expanded(
             child: SingleChildScrollView(
               key: scrollKey,
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: children,
-              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: children),
             ),
           ),
         ],

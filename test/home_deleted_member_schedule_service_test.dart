@@ -74,20 +74,18 @@ void main() {
   });
 
   test('Personal lookup is owner-scoped without document ID whereIn', () {
-    final source = File(
-      'lib/services/home_deleted_member_schedule_service.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/services/home_deleted_member_schedule_service.dart',
+        ).readAsStringSync();
 
     expect(source, contains("where('trainerId', isEqualTo: ownerUid)"));
-    expect(
-      source,
-      contains("where('workspaceType', isEqualTo: 'personal')"),
-    );
+    expect(source, contains("where('workspaceType', isEqualTo: 'personal')"));
     expect(source, isNot(contains('FieldPath.documentId')));
     expect(source, isNot(contains('SharedPreferences')));
     expect(
       source.indexOf('if (memberIds.isEmpty) return <String>{};'),
-      lessThan(source.indexOf('final snapshot = await _members')),
+      lessThan(source.indexOf('final snapshot =')),
     );
   });
 
@@ -109,9 +107,10 @@ void main() {
     expect(shouldPersistMemberNextLessonCache(null), isTrue);
     expect(shouldPersistMemberNextLessonCache(''), isTrue);
 
-    final source = File(
-      'lib/services/home_schedule_firestore_service.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/services/home_schedule_firestore_service.dart',
+        ).readAsStringSync();
     final guardIndex = source.indexOf(
       'if (!shouldPersistMemberNextLessonCache(ownerUid)) return;',
     );

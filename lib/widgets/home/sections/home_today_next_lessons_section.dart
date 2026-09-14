@@ -40,9 +40,7 @@ class HomeTodayNextLessonsSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colors.outline,
-                ),
+                border: Border.all(color: colors.outline),
               ),
               child: Row(
                 children: [
@@ -76,13 +74,15 @@ class HomeTodayNextLessonsSection extends StatelessWidget {
 
               final isOngoing = data['isOngoing'] == true;
 
-              final minutesToStart = data['minutesToStart'] is int
-                  ? data['minutesToStart'] as int
-                  : 9999;
+              final minutesToStart =
+                  data['minutesToStart'] is int
+                      ? data['minutesToStart'] as int
+                      : 9999;
 
-              final int visualSoftness = data['visualSoftness'] is int
-                  ? data['visualSoftness'] as int
-                  : 0;
+              final int visualSoftness =
+                  data['visualSoftness'] is int
+                      ? data['visualSoftness'] as int
+                      : 0;
 
               int emphasis = 0;
 

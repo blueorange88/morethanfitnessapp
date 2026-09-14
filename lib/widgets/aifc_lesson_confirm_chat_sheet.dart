@@ -8,7 +8,6 @@ import '../aifc/core/aifc_chat_bubble.dart';
 import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
 
-
 enum AifcLessonConfirmStatus {
   completed,
   noShowDeducted,
@@ -108,6 +107,7 @@ extension AifcLessonConfirmStatusX on AifcLessonConfirmStatus {
         return '$safeName님 레슨을 확정할게요.';
     }
   }
+
   String get confirmUserBubbleText {
     switch (this) {
       case AifcLessonConfirmStatus.noShowDeducted:
@@ -153,12 +153,7 @@ extension AifcLessonConfirmStatusX on AifcLessonConfirmStatus {
   }
 }
 
-enum _LessonConfirmMode {
-  initial,
-  choosingMethod,
-  methodSelected,
-}
-
+enum _LessonConfirmMode { initial, choosingMethod, methodSelected }
 
 class AifcLessonConfirmChatSheet extends StatefulWidget {
   const AifcLessonConfirmChatSheet({
@@ -191,14 +186,15 @@ class AifcLessonConfirmChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcLessonConfirmChatSheet(
-        memberName: memberName,
-        lessonType: lessonType,
-        totalSessions: totalSessions,
-        remainBefore: remainBefore,
-        contractSigned: contractSigned,
-        onConfirm: onConfirm,
-      ),
+      builder:
+          (_) => AifcLessonConfirmChatSheet(
+            memberName: memberName,
+            lessonType: lessonType,
+            totalSessions: totalSessions,
+            remainBefore: remainBefore,
+            contractSigned: contractSigned,
+            onConfirm: onConfirm,
+          ),
     );
   }
 
@@ -207,13 +203,10 @@ class AifcLessonConfirmChatSheet extends StatefulWidget {
       _AifcLessonConfirmChatSheetState();
 }
 
-class _AifcLessonConfirmChatSheetState
-    extends State<AifcLessonConfirmChatSheet>
+class _AifcLessonConfirmChatSheetState extends State<AifcLessonConfirmChatSheet>
     with TickerProviderStateMixin, AifcChatFlowMixin {
-
   _LessonConfirmMode _mode = _LessonConfirmMode.initial;
-  AifcLessonConfirmStatus _selectedStatus =
-      AifcLessonConfirmStatus.completed;
+  AifcLessonConfirmStatus _selectedStatus = AifcLessonConfirmStatus.completed;
 
   String get _safeMemberName {
     final value = widget.memberName.trim();
@@ -261,9 +254,10 @@ class _AifcLessonConfirmChatSheetState
   }
 
   int _remainAfterFor(AifcLessonConfirmStatus status) {
-    final next = status.shouldDeduct && widget.remainBefore > 0
-        ? widget.remainBefore - 1
-        : widget.remainBefore;
+    final next =
+        status.shouldDeduct && widget.remainBefore > 0
+            ? widget.remainBefore - 1
+            : widget.remainBefore;
 
     if (widget.totalSessions > 0) {
       return next.clamp(0, widget.totalSessions).toInt();
@@ -275,9 +269,10 @@ class _AifcLessonConfirmChatSheetState
   int _lessonNumberFor(AifcLessonConfirmStatus status) {
     if (widget.totalSessions <= 0) return 0;
 
-    final doneBefore = (widget.totalSessions - widget.remainBefore)
-        .clamp(0, widget.totalSessions)
-        .toInt();
+    final doneBefore =
+        (widget.totalSessions - widget.remainBefore)
+            .clamp(0, widget.totalSessions)
+            .toInt();
 
     if (status.shouldDeduct) {
       return (doneBefore + 1).clamp(1, widget.totalSessions).toInt();
@@ -299,9 +294,7 @@ class _AifcLessonConfirmChatSheetState
       userText: '레슨 확정방법 변경하고 싶어요',
       fcText: '레슨 확정 방법을 선택해주세요.',
       groupKey: _LessonConfirmMode.choosingMethod,
-      fcChild: _MethodSelectorCard(
-        onPickStatus: _handlePickStatus,
-      ),
+      fcChild: _MethodSelectorCard(onPickStatus: _handlePickStatus),
     );
   }
 
@@ -354,9 +347,7 @@ class _AifcLessonConfirmChatSheetState
       userText: '다른 방법 선택할게요',
       fcText: '좋아요. 다시 선택해주세요.',
       groupKey: _LessonConfirmMode.choosingMethod,
-      fcChild: _MethodSelectorCard(
-        onPickStatus: _handlePickStatus,
-      ),
+      fcChild: _MethodSelectorCard(onPickStatus: _handlePickStatus),
     );
   }
 
@@ -384,9 +375,7 @@ class _AifcLessonConfirmChatSheetState
   Future<void> _handleCancel() async {
     HapticFeedback.lightImpact();
 
-    await aifcHandleCancel(
-      isDirty: false,
-    );
+    await aifcHandleCancel(isDirty: false);
   }
 
   @override
@@ -405,7 +394,8 @@ class _AifcLessonConfirmChatSheetState
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -473,13 +463,15 @@ class _LessonConfirmCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool shouldDeduct = status.shouldDeduct;
 
-    final String remainText = shouldDeduct
-        ? '총 $totalSessions회 중 $remainBefore회 → $remainAfter회'
-        : '총 $totalSessions회 중 $remainBefore회 유지';
+    final String remainText =
+        shouldDeduct
+            ? '총 $totalSessions회 중 $remainBefore회 → $remainAfter회'
+            : '총 $totalSessions회 중 $remainBefore회 유지';
 
-    final String lessonRecordText = shouldDeduct && totalSessions > 0
-        ? '$lessonNumber/$totalSessions회차로 기록'
-        : '회차 소진 없이 기록';
+    final String lessonRecordText =
+        shouldDeduct && totalSessions > 0
+            ? '$lessonNumber/$totalSessions회차로 기록'
+            : '회차 소진 없이 기록';
 
     return Container(
       width: double.infinity,
@@ -560,9 +552,7 @@ class _InitialLessonActionCard extends StatelessWidget {
 }
 
 class _MethodSelectorCard extends StatelessWidget {
-  const _MethodSelectorCard({
-    required this.onPickStatus,
-  });
+  const _MethodSelectorCard({required this.onPickStatus});
 
   final void Function(AifcLessonConfirmStatus status) onPickStatus;
 
@@ -672,11 +662,7 @@ class _MethodOptionRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: color,
-              size: 17,
-            ),
+            Icon(Icons.chevron_right_rounded, color: color, size: 17),
           ],
         ),
       ),
@@ -709,10 +695,7 @@ class _BubbleActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AifcRadius.button),
-          border: Border.all(
-            color: borderColor,
-            width: 0.8,
-          ),
+          border: Border.all(color: borderColor, width: 0.8),
         ),
         alignment: Alignment.center,
         child: Text(
@@ -729,10 +712,7 @@ class _BubbleActionButton extends StatelessWidget {
 }
 
 class _CardRow extends StatelessWidget {
-  const _CardRow({
-    required this.label,
-    required this.value,
-  });
+  const _CardRow({required this.label, required this.value});
 
   final String label;
   final String value;

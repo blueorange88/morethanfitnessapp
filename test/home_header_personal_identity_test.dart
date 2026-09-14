@@ -32,8 +32,9 @@ void main() {
     );
   });
 
-  testWidgets('personal nickname 준비 전에는 강사님 placeholder를 표시하지 않는다',
-      (tester) async {
+  testWidgets('personal nickname 준비 전에는 강사님 placeholder를 표시하지 않는다', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     await _pumpHeader(
       tester,
@@ -50,11 +51,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       homeHeaderGreetingPreferenceKey(scope): '안녕하세요 강사님',
     });
-    await _pumpHeader(
-      tester,
-      scopeKey: scope,
-      profileDisplayName: '김트',
-    );
+    await _pumpHeader(tester, scopeKey: scope, profileDisplayName: '김트');
 
     expect(find.text('안녕하세요 강사님'), findsNothing);
     expect(find.textContaining('김트님'), findsOneWidget);
@@ -65,11 +62,7 @@ void main() {
     SharedPreferences.setMockInitialValues({
       homeHeaderGreetingPreferenceKey(scope): '오늘도 차분하게',
     });
-    await _pumpHeader(
-      tester,
-      scopeKey: scope,
-      profileDisplayName: '김트',
-    );
+    await _pumpHeader(tester, scopeKey: scope, profileDisplayName: '김트');
 
     expect(find.text('오늘도 차분하게'), findsOneWidget);
   });
@@ -85,10 +78,12 @@ void main() {
       isExpanded: true,
     );
 
-    final today =
-        tester.getSize(find.byKey(const Key('home_header_stat_today')));
-    final moreSense =
-        tester.getSize(find.byKey(const Key('home_header_stat_more_sense')));
+    final today = tester.getSize(
+      find.byKey(const Key('home_header_stat_today')),
+    );
+    final moreSense = tester.getSize(
+      find.byKey(const Key('home_header_stat_more_sense')),
+    );
     final week = tester.getSize(find.byKey(const Key('home_header_stat_week')));
 
     expect(today.width, closeTo(moreSense.width, 0.01));
@@ -101,19 +96,11 @@ void main() {
 
   test('personal MyPage 경로와 로컬 nudge key는 UID마다 분리된다', () {
     expect(myPageProfileDocumentPath(null), 'trainer_profile/me');
-    expect(
-      myPageProfileDocumentPath('uid-a'),
-      'trainer_profiles/uid-a',
-    );
-    expect(
-      myPageProfileDocumentPath('uid-b'),
-      'trainer_profiles/uid-b',
-    );
+    expect(myPageProfileDocumentPath('uid-a'), 'trainer_profiles/uid-a');
+    expect(myPageProfileDocumentPath('uid-b'), 'trainer_profiles/uid-b');
     expect(
       myPageNudgePreferenceKey('uid-a', projectId: 'project-prod'),
-      isNot(
-        myPageNudgePreferenceKey('uid-b', projectId: 'project-prod'),
-      ),
+      isNot(myPageNudgePreferenceKey('uid-b', projectId: 'project-prod')),
     );
     expect(
       myPageNudgePreferenceKey('uid-a', projectId: 'project-prod'),

@@ -68,12 +68,21 @@ void main() {
       final expectedVisible = expectedRemaining > 3 ? 3 : expectedRemaining;
       expect(layout.upcomingCount, count, reason: 'count=$count');
       expect(layout.topCardCount, expectedTop, reason: 'count=$count');
-      expect(layout.remainingSourceCount, expectedRemaining,
-          reason: 'count=$count');
-      expect(layout.visibleRemainingCount, expectedVisible,
-          reason: 'count=$count');
-      expect(layout.hiddenCount, expectedRemaining - expectedVisible,
-          reason: 'count=$count');
+      expect(
+        layout.remainingSourceCount,
+        expectedRemaining,
+        reason: 'count=$count',
+      );
+      expect(
+        layout.visibleRemainingCount,
+        expectedVisible,
+        reason: 'count=$count',
+      );
+      expect(
+        layout.hiddenCount,
+        expectedRemaining - expectedVisible,
+        reason: 'count=$count',
+      );
     }
   });
 
@@ -118,21 +127,22 @@ void main() {
       String owner = 'uid-a',
       String workspace = 'personal',
       DateTime? generatedAt,
-    }) =>
-        HomeWidgetTodayRollupMapper.buildView(
-          snapshot: HomeWidgetTodayRollupSnapshot(
-            ownerUid: owner,
-            workspaceType: workspace,
-            generatedAt: generatedAt ?? now,
-            items: [item(11)],
-          ),
-          currentOwnerUid: 'uid-a',
-          now: now,
-        );
+    }) => HomeWidgetTodayRollupMapper.buildView(
+      snapshot: HomeWidgetTodayRollupSnapshot(
+        ownerUid: owner,
+        workspaceType: workspace,
+        generatedAt: generatedAt ?? now,
+        items: [item(11)],
+      ),
+      currentOwnerUid: 'uid-a',
+      now: now,
+    );
     expect(build(owner: 'uid-b').totalCount, 0);
     expect(build(workspace: 'legacy').totalCount, 0);
-    expect(build(generatedAt: now.subtract(const Duration(days: 1))).totalCount,
-        0);
+    expect(
+      build(generatedAt: now.subtract(const Duration(days: 1))).totalCount,
+      0,
+    );
   });
 
   test('직렬화는 개인정보 제한 필드만 저장하고 긴 표시값을 손상하지 않는다', () {
@@ -140,13 +150,7 @@ void main() {
       HomeWidgetTodayRollupSnapshot(
         ownerUid: 'uid-a',
         generatedAt: now,
-        items: [
-          item(
-            11,
-            name: '아주 긴 회원 표시 이름 테스트',
-            type: '아주 긴 레슨 종류 테스트',
-          ),
-        ],
+        items: [item(11, name: '아주 긴 회원 표시 이름 테스트', type: '아주 긴 레슨 종류 테스트')],
       ),
     );
     final json = jsonDecode(encoded) as Map<String, dynamic>;
@@ -171,8 +175,12 @@ void main() {
       String status = 'scheduled',
       int dayOffset = 0,
     }) {
-      final start =
-          DateTime(2026, 7, 21 + dayOffset, 11).add(Duration(minutes: index));
+      final start = DateTime(
+        2026,
+        7,
+        21 + dayOffset,
+        11,
+      ).add(Duration(minutes: index));
       return HomeWidgetTodayRollupItem(
         startAt: start,
         endAt: start.add(const Duration(minutes: 50)),
@@ -203,7 +211,9 @@ void main() {
     expect(selected.todayCandidateCount, 10);
     expect(selected.items, hasLength(10));
     expect(
-        selected.items.where((entry) => entry.memberName.isEmpty), isNotEmpty);
+      selected.items.where((entry) => entry.memberName.isEmpty),
+      isNotEmpty,
+    );
   });
 
   test('한국 날짜 경계는 기기 timezone 대신 Asia/Seoul 기준을 사용한다', () {

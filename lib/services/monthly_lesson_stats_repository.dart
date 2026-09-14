@@ -53,8 +53,8 @@ class FirebaseMonthlyLessonStatsDataSource
   FirebaseMonthlyLessonStatsDataSource({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
@@ -68,14 +68,15 @@ class FirebaseMonthlyLessonStatsDataSource
     required DateTime start,
     required DateTime endExclusive,
   }) async {
-    final snapshot = await _firestore
-        .collection('training_logs')
-        .where('trainerId', isEqualTo: uid)
-        .where('workspaceType', isEqualTo: 'personal')
-        .where('startAt', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('startAt', isLessThan: Timestamp.fromDate(endExclusive))
-        .orderBy('startAt')
-        .get();
+    final snapshot =
+        await _firestore
+            .collection('training_logs')
+            .where('trainerId', isEqualTo: uid)
+            .where('workspaceType', isEqualTo: 'personal')
+            .where('startAt', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+            .where('startAt', isLessThan: Timestamp.fromDate(endExclusive))
+            .orderBy('startAt')
+            .get();
 
     return snapshot.docs
         .map(

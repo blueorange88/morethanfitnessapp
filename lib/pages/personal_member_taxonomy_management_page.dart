@@ -25,11 +25,12 @@ class PersonalMemberTaxonomyManagementPage extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
     final service = PersonalMemberTaxonomyService(uid: ownerUid);
-    final membersStream = FirebaseFirestore.instance
-        .collection('members')
-        .where('trainerId', isEqualTo: ownerUid)
-        .where('workspaceType', isEqualTo: 'personal')
-        .snapshots();
+    final membersStream =
+        FirebaseFirestore.instance
+            .collection('members')
+            .where('trainerId', isEqualTo: ownerUid)
+            .where('workspaceType', isEqualTo: 'personal')
+            .snapshots();
 
     return Scaffold(
       backgroundColor: tokens.memberListBackground,
@@ -52,9 +53,9 @@ class PersonalMemberTaxonomyManagementPage extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final items = [...taxonomySnapshot.data!]..sort((a, b) {
-                    final createdAt = a.createdAt.compareTo(b.createdAt);
-                    return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
-                  });
+                  final createdAt = a.createdAt.compareTo(b.createdAt);
+                  return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
+                });
 
                 return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: membersStream,
@@ -64,7 +65,8 @@ class PersonalMemberTaxonomyManagementPage extends StatelessWidget {
                         message: _taxonomyErrorMessage(memberSnapshot.error!),
                       );
                     }
-                    final members = memberSnapshot.data?.docs
+                    final members =
+                        memberSnapshot.data?.docs
                             .where((doc) => doc.data()['isDeleted'] != true)
                             .map((doc) => doc.data())
                             .toList(growable: false) ??
@@ -81,26 +83,29 @@ class PersonalMemberTaxonomyManagementPage extends StatelessWidget {
                         if (_isGroup)
                           StreamBuilder<PersonalMemberPreferences>(
                             stream:
-                                PersonalMemberPreferencesService(uid: ownerUid)
-                                    .watch(),
+                                PersonalMemberPreferencesService(
+                                  uid: ownerUid,
+                                ).watch(),
                             builder: (context, preferenceSnapshot) {
                               final label =
                                   preferenceSnapshot.data?.defaultGroupLabel ??
-                                      kPersonalDefaultGroupLabel;
+                                  kPersonalDefaultGroupLabel;
                               return _TaxonomyTile(
                                 icon: Icons.home_work_outlined,
                                 title: label,
                                 subtitle:
                                     '기본 그룹 · ${counts.defaultGroupCount}명',
-                                onRename: () => _showNameDialog(
-                                  context,
-                                  title: '기본 그룹 이름 변경',
-                                  initialValue: label,
-                                  onSave: (name) =>
-                                      PersonalMemberPreferencesService(
-                                    uid: ownerUid,
-                                  ).saveDefaultGroupLabel(name),
-                                ),
+                                onRename:
+                                    () => _showNameDialog(
+                                      context,
+                                      title: '기본 그룹 이름 변경',
+                                      initialValue: label,
+                                      onSave:
+                                          (name) =>
+                                              PersonalMemberPreferencesService(
+                                                uid: ownerUid,
+                                              ).saveDefaultGroupLabel(name),
+                                    ),
                               );
                             },
                           ),
@@ -109,27 +114,31 @@ class PersonalMemberTaxonomyManagementPage extends StatelessWidget {
                           (item) => Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _TaxonomyTile(
-                              icon: _isGroup
-                                  ? Icons.folder_open_rounded
-                                  : Icons.sell_outlined,
+                              icon:
+                                  _isGroup
+                                      ? Icons.folder_open_rounded
+                                      : Icons.sell_outlined,
                               title: item.name,
                               subtitle: '${counts.byId[item.id] ?? 0}명',
-                              onRename: () => _showNameDialog(
-                                context,
-                                title: _isGroup ? '그룹 이름 변경' : '태그 이름 변경',
-                                initialValue: item.name,
-                                onSave: (name) => service.rename(
-                                  kind: kind,
-                                  id: item.id,
-                                  name: name,
-                                ),
-                              ),
-                              onDelete: () => _confirmDelete(
-                                context,
-                                service: service,
-                                item: item,
-                                memberCount: counts.byId[item.id] ?? 0,
-                              ),
+                              onRename:
+                                  () => _showNameDialog(
+                                    context,
+                                    title: _isGroup ? '그룹 이름 변경' : '태그 이름 변경',
+                                    initialValue: item.name,
+                                    onSave:
+                                        (name) => service.rename(
+                                          kind: kind,
+                                          id: item.id,
+                                          name: name,
+                                        ),
+                                  ),
+                              onDelete:
+                                  () => _confirmDelete(
+                                    context,
+                                    service: service,
+                                    item: item,
+                                    memberCount: counts.byId[item.id] ?? 0,
+                                  ),
                             ),
                           ),
                         ),
@@ -143,21 +152,21 @@ class PersonalMemberTaxonomyManagementPage extends StatelessWidget {
                                     ? scheme.onPrimary
                                     : scheme.onSecondary,
                           ),
-                          onPressed: () => _showNameDialog(
-                            context,
-                            title: _isGroup ? '새 그룹 만들기' : '새 태그 만들기',
-                            initialValue: '',
-                            onSave: (name) => service.create(
-                              kind: kind,
-                              idempotencyKey:
-                                  'taxonomy_${kind.name}_${DateTime.now().microsecondsSinceEpoch}',
-                              name: name,
-                            ),
-                          ),
+                          onPressed:
+                              () => _showNameDialog(
+                                context,
+                                title: _isGroup ? '새 그룹 만들기' : '새 태그 만들기',
+                                initialValue: '',
+                                onSave:
+                                    (name) => service.create(
+                                      kind: kind,
+                                      idempotencyKey:
+                                          'taxonomy_${kind.name}_${DateTime.now().microsecondsSinceEpoch}',
+                                      name: name,
+                                    ),
+                              ),
                           icon: const Icon(Icons.add_rounded, size: 20),
-                          label: Text(
-                            _isGroup ? '새 그룹 만들기' : '새 태그 만들기',
-                          ),
+                          label: Text(_isGroup ? '새 그룹 만들기' : '새 태그 만들기'),
                         ),
                       ],
                     );
@@ -177,57 +186,58 @@ class PersonalMemberTaxonomyManagementPage extends StatelessWidget {
     required PersonalMemberTaxonomyItem item,
     required int memberCount,
   }) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(_isGroup ? '그룹을 삭제할까요?' : '태그를 삭제할까요?'),
-            content: Text(
-              _isGroup
-                  ? memberCount == 0
-                      ? '${item.name} 그룹을 삭제합니다.'
-                      : '이 그룹의 회원 $memberCount명이 기본 그룹으로 이동합니다.'
-                  : memberCount == 0
+          builder:
+              (dialogContext) => AlertDialog(
+                title: Text(_isGroup ? '그룹을 삭제할까요?' : '태그를 삭제할까요?'),
+                content: Text(
+                  _isGroup
+                      ? memberCount == 0
+                          ? '${item.name} 그룹을 삭제합니다.'
+                          : '이 그룹의 회원 $memberCount명이 기본 그룹으로 이동합니다.'
+                      : memberCount == 0
                       ? '${item.name} 태그를 삭제합니다.'
                       : '회원 $memberCount명에게서 ${item.name} 태그가 제거됩니다.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('취소'),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(dialogContext).colorScheme.error,
-                  foregroundColor: Theme.of(dialogContext).colorScheme.onError,
                 ),
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: Text(_isGroup ? '삭제하고 이동' : '태그 삭제'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('취소'),
+                  ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor:
+                          Theme.of(dialogContext).colorScheme.error,
+                      foregroundColor:
+                          Theme.of(dialogContext).colorScheme.onError,
+                    ),
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: Text(_isGroup ? '삭제하고 이동' : '태그 삭제'),
+                  ),
+                ],
               ),
-            ],
-          ),
         ) ??
         false;
     if (!confirmed || !context.mounted) return;
     try {
       await service.delete(kind: kind, id: item.id);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${item.name}이(가) 삭제됐어요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${item.name}이(가) 삭제됐어요.')));
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_taxonomyErrorMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_taxonomyErrorMessage(error))));
     }
   }
 }
 
 class _TaxonomyBrandedHeader extends StatelessWidget {
-  const _TaxonomyBrandedHeader({
-    required this.title,
-    required this.onBackTap,
-  });
+  const _TaxonomyBrandedHeader({required this.title, required this.onBackTap});
 
   final String title;
   final VoidCallback onBackTap;
@@ -259,9 +269,7 @@ class _TaxonomyBrandedHeader extends StatelessWidget {
                 child: Material(
                   color: foreground.withValues(alpha: 0.14),
                   shape: CircleBorder(
-                    side: BorderSide(
-                      color: foreground.withValues(alpha: 0.20),
-                    ),
+                    side: BorderSide(color: foreground.withValues(alpha: 0.20)),
                   ),
                   child: InkWell(
                     onTap: onBackTap,
@@ -328,11 +336,12 @@ PersonalTaxonomyUsageCounts personalTaxonomyUsageCounts({
       }
       continue;
     }
-    final ids = member['personalTagIds'] is Iterable
-        ? (member['personalTagIds'] as Iterable)
-            .map((value) => value.toString().trim())
-            .toSet()
-        : const <String>{};
+    final ids =
+        member['personalTagIds'] is Iterable
+            ? (member['personalTagIds'] as Iterable)
+                .map((value) => value.toString().trim())
+                .toSet()
+            : const <String>{};
     for (final id in ids.where(validIds.contains)) {
       counts[id] = (counts[id] ?? 0) + 1;
     }
@@ -356,65 +365,70 @@ Future<void> _showNameDialog(
   await showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (context, setDialogState) {
-        Future<void> save() async {
-          final name = normalizePersonalTaxonomyDisplayName(controller.text);
-          final validationError = validatePersonalTaxonomyName(name);
-          if (validationError != null) {
-            setDialogState(() => errorText = validationError);
-            focusNode.requestFocus();
-            return;
-          }
-          setDialogState(() {
-            isSaving = true;
-            errorText = null;
-          });
-          try {
-            await onSave(name);
-            if (dialogContext.mounted) Navigator.pop(dialogContext);
-          } catch (error) {
-            if (!dialogContext.mounted) return;
-            setDialogState(() {
-              isSaving = false;
-              errorText = _taxonomyErrorMessage(error);
-            });
-            focusNode.requestFocus();
-          }
-        }
+    builder:
+        (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> save() async {
+              final name = normalizePersonalTaxonomyDisplayName(
+                controller.text,
+              );
+              final validationError = validatePersonalTaxonomyName(name);
+              if (validationError != null) {
+                setDialogState(() => errorText = validationError);
+                focusNode.requestFocus();
+                return;
+              }
+              setDialogState(() {
+                isSaving = true;
+                errorText = null;
+              });
+              try {
+                await onSave(name);
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              } catch (error) {
+                if (!dialogContext.mounted) return;
+                setDialogState(() {
+                  isSaving = false;
+                  errorText = _taxonomyErrorMessage(error);
+                });
+                focusNode.requestFocus();
+              }
+            }
 
-        return AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            autofocus: true,
-            maxLength: kPersonalTaxonomyNameMaxLength,
-            enabled: !isSaving,
-            decoration: InputDecoration(
-              labelText: '이름',
-              errorText: errorText,
-            ),
-            onSubmitted: (_) => isSaving ? null : save(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: isSaving ? null : save,
-              child: isSaving
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('저장'),
-            ),
-          ],
-        );
-      },
-    ),
+            return AlertDialog(
+              title: Text(title),
+              content: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                autofocus: true,
+                maxLength: kPersonalTaxonomyNameMaxLength,
+                enabled: !isSaving,
+                decoration: InputDecoration(
+                  labelText: '이름',
+                  errorText: errorText,
+                ),
+                onSubmitted: (_) => isSaving ? null : save(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isSaving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: isSaving ? null : save,
+                  child:
+                      isSaving
+                          ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('저장'),
+                ),
+              ],
+            );
+          },
+        ),
   );
   controller.dispose();
   focusNode.dispose();

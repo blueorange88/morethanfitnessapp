@@ -230,54 +230,57 @@ class _PersonalTaxonomyFilterChip extends StatelessWidget {
     final isAll = entry.role == PersonalTaxonomyFilterRole.all;
     final isDormant = entry.role == PersonalTaxonomyFilterRole.statusDormant;
     final isExpired = entry.role == PersonalTaxonomyFilterRole.statusExpired;
-    final background = isSelected
-        ? isExpired
-            ? scheme.errorContainer
-            : isDormant
+    final background =
+        isSelected
+            ? isExpired
+                ? scheme.errorContainer
+                : isDormant
                 ? scheme.surfaceContainerHighest
                 : isAll
-                    ? scheme.primaryContainer
-                    : isTag
-                        ? scheme.secondaryContainer
-                        : Color.alphaBlend(
-                            scheme.secondary.withValues(alpha: 0.18),
-                            tokens.memberListCard,
-                          )
-        : isExpired
+                ? scheme.primaryContainer
+                : isTag
+                ? scheme.secondaryContainer
+                : Color.alphaBlend(
+                  scheme.secondary.withValues(alpha: 0.18),
+                  tokens.memberListCard,
+                )
+            : isExpired
             ? scheme.errorContainer.withValues(alpha: 0.42)
             : isDormant
-                ? scheme.surfaceContainerHighest.withValues(alpha: 0.72)
-                : isTag
-                    ? scheme.secondaryContainer.withValues(alpha: 0.62)
-                    : tokens.memberListCard;
-    final foreground = isSelected
-        ? isExpired
-            ? scheme.onErrorContainer
-            : isAll
+            ? scheme.surfaceContainerHighest.withValues(alpha: 0.72)
+            : isTag
+            ? scheme.secondaryContainer.withValues(alpha: 0.62)
+            : tokens.memberListCard;
+    final foreground =
+        isSelected
+            ? isExpired
+                ? scheme.onErrorContainer
+                : isAll
                 ? scheme.onPrimaryContainer
                 : isDormant
-                    ? scheme.onSurface
-                    : scheme.onSecondaryContainer
-        : isExpired
+                ? scheme.onSurface
+                : scheme.onSecondaryContainer
+            : isExpired
             ? scheme.onErrorContainer
             : isTag
-                ? scheme.onSecondaryContainer
-                : scheme.onSurfaceVariant;
-    final border = isSelected
-        ? isExpired
-            ? scheme.error
-            : isDormant
+            ? scheme.onSecondaryContainer
+            : scheme.onSurfaceVariant;
+    final border =
+        isSelected
+            ? isExpired
+                ? scheme.error
+                : isDormant
                 ? scheme.outline
                 : isAll
-                    ? scheme.primary
-                    : scheme.secondary
-        : isExpired
+                ? scheme.primary
+                : scheme.secondary
+            : isExpired
             ? scheme.error.withValues(alpha: 0.42)
             : isDormant
-                ? scheme.outlineVariant
-                : isTag
-                    ? scheme.secondary.withValues(alpha: 0.34)
-                    : tokens.memberListCardBorder;
+            ? scheme.outlineVariant
+            : isTag
+            ? scheme.secondary.withValues(alpha: 0.34)
+            : tokens.memberListCardBorder;
     final chip = Opacity(
       opacity: entry.isExample ? 0.58 : 1,
       child: Material(
@@ -306,9 +309,10 @@ class _PersonalTaxonomyFilterChip extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 11.5,
-                      fontWeight: entry.isExample
-                          ? FontWeight.w700
-                          : isSelected
+                      fontWeight:
+                          entry.isExample
+                              ? FontWeight.w700
+                              : isSelected
                               ? FontWeight.w900
                               : FontWeight.w800,
                       color: foreground,

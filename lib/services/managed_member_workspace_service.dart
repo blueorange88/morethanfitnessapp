@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
@@ -100,6 +102,8 @@ abstract interface class ManagedMemberWorkspaceGateway {
     String? gymName,
     String? centerLocation,
     String? intro,
+    String? businessCardPhotoUrl,
+    String? businessCardPhotoAlign,
   });
 
   Future<Map<String, dynamic>> pauseMembership({
@@ -193,6 +197,10 @@ class FirebaseManagedMemberWorkspaceGateway
         'note': note,
       },
     );
+    unawaited(_reconcilePersonalTierBestEffort());
+  }
+
+  Future<void> _reconcilePersonalTierBestEffort() async {
     try {
       await reconcilePersonalTier();
     } catch (_) {
@@ -260,6 +268,8 @@ class FirebaseManagedMemberWorkspaceGateway
     String? gymName,
     String? centerLocation,
     String? intro,
+    String? businessCardPhotoUrl,
+    String? businessCardPhotoAlign,
   }) async {
     final parameters = <String, dynamic>{
       'displayName': displayName,
@@ -289,6 +299,12 @@ class FirebaseManagedMemberWorkspaceGateway
       parameters['centerLocation'] = centerLocation;
     }
     if (intro != null) parameters['intro'] = intro;
+    if (businessCardPhotoUrl != null) {
+      parameters['businessCardPhotoUrl'] = businessCardPhotoUrl;
+    }
+    if (businessCardPhotoAlign != null) {
+      parameters['businessCardPhotoAlign'] = businessCardPhotoAlign;
+    }
     await MtfFirebaseFunctions.call(
       'updatePersonalTrainerProfile',
       functions: _functions,
@@ -330,7 +346,7 @@ String managedMemberErrorMessage(Object error) {
   if (error is FirebaseFunctionsException) {
     final message = error.message ?? '';
     if (message.contains('amateur_required')) {
-      return '고객카드 등록은 Amateur부터 사용할 수 있어요.\n'
+      return '회원카드 등록은 Amateur부터 사용할 수 있어요.\n'
           '레슨 일정 10개와 선생님 정보 입력을 완료하면 열려요.';
     }
     if (error.code == 'resource-exhausted' ||
@@ -405,9 +421,6 @@ String managedMemberMembershipPauseErrorMessage(Object error) {
     }
     if (message.contains('membership_expired')) {
       return '남은 회원권 기간이 없어 정지할 수 없어요.';
-    }
-    if (message.contains('pause_days_over_remaining')) {
-      return '정지기간이 남은 회원권 기간보다 많아요.';
     }
     if (message.contains('pause_days_over_contract_limit')) {
       return '회원권계약서 기준 정지 가능일보다 많아요.';

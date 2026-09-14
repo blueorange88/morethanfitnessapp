@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'more-than-fitness-f6adb.firebasestorage.app',
     measurementId: 'G-B5MF0JLXBL',
   );
-
 }

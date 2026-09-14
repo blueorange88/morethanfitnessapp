@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 class ShadcnSheet {
   static Future<T?> show<T>(
-      BuildContext context, {
-        required Widget child,
-        bool dragClose = true,
-      }) {
+    BuildContext context, {
+    required Widget child,
+    bool dragClose = true,
+  }) {
     final cs = Theme.of(context).colorScheme;
 
     return showModalBottomSheet<T>(

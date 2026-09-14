@@ -1046,17 +1046,32 @@ class _FakeAccountGateway
 }
 
 class _FakeGoogleGateway implements AppGoogleIdentityGateway {
-  _FakeGoogleGateway({this.result, this.error});
+  _FakeGoogleGateway({
+    this.result,
+    this.error,
+    this.switchResult,
+    this.switchError,
+  });
 
   final AppAccountUser? result;
   final Object? error;
+  final AppAccountUser? switchResult;
+  final Object? switchError;
   int calls = 0;
+  int switchCalls = 0;
 
   @override
   Future<AppAccountUser?> linkWithGoogleCredential() async {
     calls++;
     if (error case final value?) throw value;
     return result;
+  }
+
+  @override
+  Future<AppAccountUser?> signInWithGoogleCredential() async {
+    switchCalls++;
+    if (switchError case final value?) throw value;
+    return switchResult;
   }
 }
 

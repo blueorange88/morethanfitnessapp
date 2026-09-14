@@ -54,18 +54,19 @@ class AifcConfirmChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcConfirmChatSheet(
-        title: title,
-        message: message,
-        nickname: nickname,
-        cancelText: cancelText,
-        confirmText: confirmText,
-        userCancelText: userCancelText,
-        userConfirmText: userConfirmText,
-        cancelReplyText: cancelReplyText,
-        confirmReplyText: confirmReplyText,
-        danger: danger,
-      ),
+      builder:
+          (_) => AifcConfirmChatSheet(
+            title: title,
+            message: message,
+            nickname: nickname,
+            cancelText: cancelText,
+            confirmText: confirmText,
+            userCancelText: userCancelText,
+            userConfirmText: userConfirmText,
+            cancelReplyText: cancelReplyText,
+            confirmReplyText: confirmReplyText,
+            danger: danger,
+          ),
     );
 
     return result == true;
@@ -117,9 +118,10 @@ class _AifcConfirmChatSheetState extends State<AifcConfirmChatSheet>
               Expanded(
                 child: _ConfirmActionButton(
                   label: widget.confirmText,
-                  role: widget.danger
-                      ? _ConfirmActionRole.danger
-                      : _ConfirmActionRole.confirm,
+                  role:
+                      widget.danger
+                          ? _ConfirmActionRole.danger
+                          : _ConfirmActionRole.confirm,
                   onTap: _handleConfirmChoice,
                 ),
               ),
@@ -187,7 +189,8 @@ class _AifcConfirmChatSheetState extends State<AifcConfirmChatSheet>
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -279,10 +282,7 @@ class _ConfirmMessageBlock extends StatelessWidget {
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: accentColor.withOpacity(0.08),
             borderRadius: BorderRadius.circular(AifcRadius.button),
@@ -320,11 +320,7 @@ class _ConfirmMessageBlock extends StatelessWidget {
   }
 }
 
-enum _ConfirmActionRole {
-  cancel,
-  confirm,
-  danger,
-}
+enum _ConfirmActionRole { cancel, confirm, danger }
 
 class _ConfirmActionButton extends StatelessWidget {
   const _ConfirmActionButton({
@@ -342,14 +338,16 @@ class _ConfirmActionButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isDanger = role == _ConfirmActionRole.danger;
     final isConfirm = role == _ConfirmActionRole.confirm;
-    final backgroundColor = isDanger
-        ? AifcColors.noShowDeducted
-        : isConfirm
+    final backgroundColor =
+        isDanger
+            ? AifcColors.noShowDeducted
+            : isConfirm
             ? colorScheme.secondary
             : colorScheme.surfaceContainerHighest;
-    final foregroundColor = isDanger
-        ? Colors.white
-        : isConfirm
+    final foregroundColor =
+        isDanger
+            ? Colors.white
+            : isConfirm
             ? colorScheme.onSecondary
             : colorScheme.onSurface;
     final borderColor =

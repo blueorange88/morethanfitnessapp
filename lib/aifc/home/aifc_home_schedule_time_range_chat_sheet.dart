@@ -86,11 +86,15 @@ class _TimeRangeSheetBodyState extends State<_TimeRangeSheetBody> {
     }
 
     _startController = FixedExtentScrollController(
-      initialItem: _startHours.indexOf(_startHour).clamp(0, _startHours.length - 1),
+      initialItem: _startHours
+          .indexOf(_startHour)
+          .clamp(0, _startHours.length - 1),
     );
 
     _lastController = FixedExtentScrollController(
-      initialItem: _lastHours.indexOf(_lastHour).clamp(0, _lastHours.length - 1),
+      initialItem: _lastHours
+          .indexOf(_lastHour)
+          .clamp(0, _lastHours.length - 1),
     );
   }
 
@@ -213,9 +217,7 @@ class _TimeRangeSheetBodyState extends State<_TimeRangeSheetBody> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: const Color(0xFFE5E7EB),
-                    ),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
                     boxShadow: [
                       BoxShadow(
                         color: widget.primaryColor.withOpacity(0.07),
@@ -292,9 +294,7 @@ class _TimeRangeSheetBodyState extends State<_TimeRangeSheetBody> {
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF6B7280),
-                          side: const BorderSide(
-                            color: Color(0xFFE5E7EB),
-                          ),
+                          side: const BorderSide(color: Color(0xFFE5E7EB)),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -498,16 +498,15 @@ class _MiniHourWheel extends StatelessWidget {
                           duration: const Duration(milliseconds: 120),
                           curve: Curves.easeOut,
                           style: TextStyle(
-                            color: isSelected
-                                ? primaryColor
-                                : const Color(0xFF64748B),
+                            color:
+                                isSelected
+                                    ? primaryColor
+                                    : const Color(0xFF64748B),
                             fontSize: fontSize,
                             fontWeight: fontWeight,
                             letterSpacing: isSelected ? 0.7 : 0,
                           ),
-                          child: Text(
-                            hour.toString().padLeft(2, '0'),
-                          ),
+                          child: Text(hour.toString().padLeft(2, '0')),
                         ),
                       ),
                     );
@@ -523,10 +522,7 @@ class _MiniHourWheel extends StatelessWidget {
 }
 
 class _FcBubble extends StatelessWidget {
-  const _FcBubble({
-    required this.child,
-    required this.primaryColor,
-  });
+  const _FcBubble({required this.child, required this.primaryColor});
 
   final Widget child;
   final Color primaryColor;
@@ -553,9 +549,7 @@ class _FcBubble extends StatelessWidget {
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
               ),
-              border: Border.all(
-                color: const Color(0xFFE0DEFF),
-              ),
+              border: Border.all(color: const Color(0xFFE0DEFF)),
               boxShadow: [
                 BoxShadow(
                   color: primaryColor.withOpacity(0.06),

@@ -72,9 +72,9 @@ class HomeWidgetBlockMapper {
       final dayIndex = allWeekDays.indexOf(day);
       if (dayIndex < 0) continue;
 
-      final monday = _mondayOfWeek(currentTime).add(
-        Duration(days: weekOffset * 7),
-      );
+      final monday = _mondayOfWeek(
+        currentTime,
+      ).add(Duration(days: weekOffset * 7));
 
       final baseDate = monday.add(Duration(days: dayIndex));
 
@@ -97,15 +97,15 @@ class HomeWidgetBlockMapper {
       final totalMinutes = tableEnd.difference(tableStart).inMinutes;
       if (totalMinutes <= 0) continue;
 
-      final dayItems = items.where((item) => item.day == day).toList()
-        ..sort((a, b) => a.startAt.compareTo(b.startAt));
+      final dayItems =
+          items.where((item) => item.day == day).toList()
+            ..sort((a, b) => a.startAt.compareTo(b.startAt));
 
       for (final item in dayItems) {
         final clippedStart =
-        item.startAt.isBefore(tableStart) ? tableStart : item.startAt;
+            item.startAt.isBefore(tableStart) ? tableStart : item.startAt;
 
-        final clippedEnd =
-        item.endAt.isAfter(tableEnd) ? tableEnd : item.endAt;
+        final clippedEnd = item.endAt.isAfter(tableEnd) ? tableEnd : item.endAt;
 
         if (!clippedEnd.isAfter(clippedStart)) continue;
 
@@ -131,18 +131,19 @@ class HomeWidgetBlockMapper {
   }
 
   static DateTime _mondayOfWeek(DateTime base) {
-    return DateTime(base.year, base.month, base.day).subtract(
-      Duration(days: base.weekday - 1),
-    );
+    return DateTime(
+      base.year,
+      base.month,
+      base.day,
+    ).subtract(Duration(days: base.weekday - 1));
   }
 
   static String _displayName(String raw) {
     final name = raw.trim();
     if (name.isEmpty) return 'ㆍ';
 
-    final normalized = name.endsWith('님')
-        ? name.substring(0, name.length - 1).trim()
-        : name;
+    final normalized =
+        name.endsWith('님') ? name.substring(0, name.length - 1).trim() : name;
 
     final safe = normalized.isEmpty ? name : normalized;
     final chars = safe.runes.toList();

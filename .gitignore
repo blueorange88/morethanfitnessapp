@@ -53,6 +53,7 @@ app.*.map.json
 /logs/
 /.codex/
 /.codex_appdata/
+/.tool_appdata/
 
 # Local build packages
 *.apk

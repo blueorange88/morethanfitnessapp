@@ -98,9 +98,10 @@ void main() {
 
   test('주소 callback은 canonical 주소 controller와 저장 payload에 연결된다', () {
     final page = File('lib/pages/client_card_page.dart').readAsStringSync();
-    final service = File(
-      'lib/services/personal_member_card_save_service.dart',
-    ).readAsStringSync();
+    final service =
+        File(
+          'lib/services/personal_member_card_save_service.dart',
+        ).readAsStringSync();
     final callbackStart = page.indexOf('Future<void> _openPostcodeSearch()');
     final callbackEnd = page.indexOf('Future<int?> _askDays', callbackStart);
     final callback = page.substring(callbackStart, callbackEnd);
@@ -195,9 +196,10 @@ void main() {
   });
 
   test('동의 snapshot 오류는 비동기 미처리 오류로 다시 던지지 않는다', () {
-    final source = File(
-      'lib/services/personal_member_consent_service.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/services/personal_member_consent_service.dart',
+        ).readAsStringSync();
 
     expect(source, contains('onError: (Object error)'));
     expect(source, contains("StateError('member_consent_snapshot_failed')"));
@@ -231,9 +233,10 @@ void main() {
     final home = File('lib/pages/home_page.dart').readAsStringSync();
     final log =
         File('lib/pages/personal_training_log_page.dart').readAsStringSync();
-    final quickSign = File(
-      'lib/pages/personal_training_log_quick_sign_page.dart',
-    ).readAsStringSync();
+    final quickSign =
+        File(
+          'lib/pages/personal_training_log_quick_sign_page.dart',
+        ).readAsStringSync();
 
     for (final entryPoint in <String>[
       'home_schedule_training_log',

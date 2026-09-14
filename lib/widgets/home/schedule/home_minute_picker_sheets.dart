@@ -9,8 +9,7 @@ class HomeAllRowsMinuteSheet {
     required Color primaryColor,
   }) {
     final validMinutes = [0, 10, 20, 30, 40, 50];
-    int tempMinute =
-    validMinutes.contains(currentMinute) ? currentMinute : 0;
+    int tempMinute = validMinutes.contains(currentMinute) ? currentMinute : 0;
 
     return showModalBottomSheet<int>(
       context: context,
@@ -90,58 +89,68 @@ class HomeAllRowsMinuteSheet {
                             alignment: WrapAlignment.center,
                             spacing: 7,
                             runSpacing: 7,
-                            children: validMinutes.map((minute) {
-                              final selected = tempMinute == minute;
+                            children:
+                                validMinutes.map((minute) {
+                                  final selected = tempMinute == minute;
 
-                              return GestureDetector(
-                                onTap: () {
-                                  localSetState(() {
-                                    tempMinute = minute;
-                                  });
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 140),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 13,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? primaryColor
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: selected
-                                          ? primaryColor
-                                          : const Color(0xFFE5E7EB),
-                                      width: selected ? 1.1 : 0.9,
-                                    ),
-                                    boxShadow: selected
-                                        ? [
-                                      BoxShadow(
-                                        color:
-                                        primaryColor.withOpacity(0.22),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
+                                  return GestureDetector(
+                                    onTap: () {
+                                      localSetState(() {
+                                        tempMinute = minute;
+                                      });
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 140,
                                       ),
-                                    ]
-                                        : null,
-                                  ),
-                                  child: Text(
-                                    '${minute.toString().padLeft(2, '0')}분',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: selected
-                                          ? FontWeight.w800
-                                          : FontWeight.w600,
-                                      color: selected
-                                          ? Colors.white
-                                          : const Color(0xFF6B7280),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 13,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            selected
+                                                ? primaryColor
+                                                : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color:
+                                              selected
+                                                  ? primaryColor
+                                                  : const Color(0xFFE5E7EB),
+                                          width: selected ? 1.1 : 0.9,
+                                        ),
+                                        boxShadow:
+                                            selected
+                                                ? [
+                                                  BoxShadow(
+                                                    color: primaryColor
+                                                        .withOpacity(0.22),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 3),
+                                                  ),
+                                                ]
+                                                : null,
+                                      ),
+                                      child: Text(
+                                        '${minute.toString().padLeft(2, '0')}분',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight:
+                                              selected
+                                                  ? FontWeight.w800
+                                                  : FontWeight.w600,
+                                          color:
+                                              selected
+                                                  ? Colors.white
+                                                  : const Color(0xFF6B7280),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                                  );
+                                }).toList(),
                           ),
                         ),
                         const SizedBox(height: 15),
@@ -150,10 +159,7 @@ class HomeAllRowsMinuteSheet {
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF4F46E5),
-                                  Color(0xFF9333EA),
-                                ],
+                                colors: [Color(0xFF4F46E5), Color(0xFF9333EA)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -171,8 +177,9 @@ class HomeAllRowsMinuteSheet {
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
                                 foregroundColor: Colors.white,
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 11),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 11,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -226,8 +233,7 @@ class HomeRowMinuteSheet {
     required Color primaryColor,
   }) {
     final validMinutes = [0, 10, 20, 30, 40, 50];
-    int tempMinute =
-    validMinutes.contains(currentMinute) ? currentMinute : 0;
+    int tempMinute = validMinutes.contains(currentMinute) ? currentMinute : 0;
 
     return showModalBottomSheet<int>(
       context: context,
@@ -262,32 +268,30 @@ class HomeRowMinuteSheet {
                   const SizedBox(height: 8),
                   const Text(
                     '이 시간 줄만 분을 바꿉니다.\n이미 등록된 레슨일정도 같이 옮겨집니다.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: validMinutes.map((minute) {
-                      final selected = tempMinute == minute;
+                    children:
+                        validMinutes.map((minute) {
+                          final selected = tempMinute == minute;
 
-                      return ChoiceChip(
-                        label: Text(
-                          '${minute.toString().padLeft(2, '0')}분',
-                        ),
-                        selected: selected,
-                        selectedColor: primaryColor.withOpacity(0.12),
-                        checkmarkColor: primaryColor,
-                        onSelected: (_) {
-                          localSetState(() {
-                            tempMinute = minute;
-                          });
-                        },
-                      );
-                    }).toList(),
+                          return ChoiceChip(
+                            label: Text(
+                              '${minute.toString().padLeft(2, '0')}분',
+                            ),
+                            selected: selected,
+                            selectedColor: primaryColor.withOpacity(0.12),
+                            checkmarkColor: primaryColor,
+                            onSelected: (_) {
+                              localSetState(() {
+                                tempMinute = minute;
+                              });
+                            },
+                          );
+                        }).toList(),
                   ),
                   const SizedBox(height: 16),
                   SizedBox(

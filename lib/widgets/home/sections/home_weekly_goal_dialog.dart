@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class HomeWeeklyGoalDialog extends StatefulWidget {
-  const HomeWeeklyGoalDialog({
-    super.key,
-    required this.initialValue,
-  });
+  const HomeWeeklyGoalDialog({super.key, required this.initialValue});
 
   final String initialValue;
 
@@ -47,10 +44,7 @@ class _HomeWeeklyGoalDialogState extends State<HomeWeeklyGoalDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('취소'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('저장'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('저장')),
       ],
     );
   }

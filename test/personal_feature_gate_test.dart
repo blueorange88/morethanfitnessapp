@@ -2,19 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/services/app_tier_access_service.dart';
 
 AppTierAccessSnapshot access(int rank) => AppTierAccessSnapshot(
-      tierRank: rank,
-      earnedTierRank: rank,
-      supportTierRank: 0,
-      organizationTierRank: 0,
-      storedTierRank: rank,
-      isSponsor: false,
-      profileCompleted: false,
-      kakaoLinked: false,
-      activeMemberCount: 0,
-      kakaoCardLinkedMemberCount: 0,
-      contractSignedMemberCount: 0,
-      branchCount: 0,
-    );
+  tierRank: rank,
+  earnedTierRank: rank,
+  supportTierRank: 0,
+  organizationTierRank: 0,
+  storedTierRank: rank,
+  isSponsor: false,
+  profileCompleted: false,
+  kakaoLinked: false,
+  activeMemberCount: 0,
+  kakaoCardLinkedMemberCount: 0,
+  contractSignedMemberCount: 0,
+  branchCount: 0,
+);
 
 void main() {
   test('MORE 스마트 알람은 Semi-Pro 이상만 허용한다', () {

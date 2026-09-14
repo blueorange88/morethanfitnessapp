@@ -20,9 +20,9 @@ class PersonalMemberConsentService {
     required String uid,
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
-  })  : uid = uid.trim(),
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? MtfFirebaseFunctions.instance;
+  }) : uid = uid.trim(),
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? MtfFirebaseFunctions.instance;
 
   final String uid;
   final FirebaseFirestore _firestore;
@@ -40,29 +40,31 @@ class PersonalMemberConsentService {
     final snapshotObserved = Completer<void>();
     Object? snapshotError;
     late final StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>
-        subscription;
-    subscription = memberRef.snapshots(includeMetadataChanges: true).listen(
-      (snapshot) {
-        final data = snapshot.data();
-        if (!snapshot.exists ||
-            data == null ||
-            snapshot.metadata.isFromCache ||
-            data['trainerId'] != uid ||
-            data['workspaceType'] != 'personal') {
-          return;
-        }
-        if ((data['trainingLogConsentAgreed'] == true) == agreed &&
-            !snapshotObserved.isCompleted) {
-          snapshotObserved.complete();
-        }
-      },
-      onError: (Object error) {
-        snapshotError = error;
-        if (!snapshotObserved.isCompleted) {
-          snapshotObserved.complete();
-        }
-      },
-    );
+    subscription;
+    subscription = memberRef
+        .snapshots(includeMetadataChanges: true)
+        .listen(
+          (snapshot) {
+            final data = snapshot.data();
+            if (!snapshot.exists ||
+                data == null ||
+                snapshot.metadata.isFromCache ||
+                data['trainerId'] != uid ||
+                data['workspaceType'] != 'personal') {
+              return;
+            }
+            if ((data['trainingLogConsentAgreed'] == true) == agreed &&
+                !snapshotObserved.isCompleted) {
+              snapshotObserved.complete();
+            }
+          },
+          onError: (Object error) {
+            snapshotError = error;
+            if (!snapshotObserved.isCompleted) {
+              snapshotObserved.complete();
+            }
+          },
+        );
     try {
       await MtfFirebaseFunctions.call(
         'updateManagedMemberConsent',

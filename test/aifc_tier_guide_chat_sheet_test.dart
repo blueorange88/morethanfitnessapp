@@ -41,15 +41,16 @@ void main() {
     await tester.tap(find.text('Amateur').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('고객카드와 회원관리'), findsOneWidget);
+    expect(find.text('회원카드와 회원관리'), findsOneWidget);
     expect(find.textContaining('등급 볼게요'), findsNothing);
-    expect(find.textContaining('Amateur는 고객카드'), findsOneWidget);
+    expect(find.textContaining('Amateur는 회원카드'), findsOneWidget);
   });
 
   for (final width in <double>[320, 360, 412, 480]) {
     for (final scale in <double>[1, 1.3, 1.8]) {
-      testWidgets('$width dp / textScale $scale에서 overflow가 없다',
-          (tester) async {
+      testWidgets('$width dp / textScale $scale에서 overflow가 없다', (
+        tester,
+      ) async {
         await tester.pumpWidget(_subject(width: width, scale: scale));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);

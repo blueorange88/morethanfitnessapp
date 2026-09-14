@@ -1,7 +1,4 @@
-enum HomeQuickRegAction {
-  fastSave,
-  goDetail,
-}
+enum HomeQuickRegAction { fastSave, goDetail }
 
 class HomeQuickRegResult {
   final HomeQuickRegAction action;

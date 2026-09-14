@@ -46,8 +46,7 @@ class AifcBadgeChatSheet extends StatefulWidget {
     required Future<void> Function(String title, AchievementBadgeCode code)
     onAddBadge,
     required Future<void> Function(AchievementBadge badge) onDeleteBadge,
-    required Future<void> Function(AchievementBadge badge)
-    onSetRepresentative,
+    required Future<void> Function(AchievementBadge badge) onSetRepresentative,
     required Future<void> Function(AchievementBadge badge)
     onClearRepresentative,
   }) {
@@ -55,15 +54,16 @@ class AifcBadgeChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcBadgeChatSheet(
-        memberName: memberName,
-        badges: badges,
-        nickname: nickname,
-        onAddBadge: onAddBadge,
-        onDeleteBadge: onDeleteBadge,
-        onSetRepresentative: onSetRepresentative,
-        onClearRepresentative: onClearRepresentative,
-      ),
+      builder:
+          (_) => AifcBadgeChatSheet(
+            memberName: memberName,
+            badges: badges,
+            nickname: nickname,
+            onAddBadge: onAddBadge,
+            onDeleteBadge: onDeleteBadge,
+            onSetRepresentative: onSetRepresentative,
+            onClearRepresentative: onClearRepresentative,
+          ),
     );
   }
 
@@ -108,9 +108,7 @@ class _AifcBadgeChatSheetState extends State<AifcBadgeChatSheet>
     ]);
   }
 
-  Future<void> _closeSheetAfterReply({
-    int delayMs = 650,
-  }) async {
+  Future<void> _closeSheetAfterReply({int delayMs = 650}) async {
     await Future.delayed(Duration(milliseconds: delayMs));
 
     if (!mounted) return;
@@ -216,7 +214,8 @@ class _AifcBadgeChatSheetState extends State<AifcBadgeChatSheet>
       action: () async {
         await widget.onClearRepresentative(badge);
       },
-      successText: '${_badgeTitle(badge)} 대표 설정을 해제했어요.\n필요하면 다른 메달을 대표로 다시 설정할 수 있어요.',
+      successText:
+          '${_badgeTitle(badge)} 대표 설정을 해제했어요.\n필요하면 다른 메달을 대표로 다시 설정할 수 있어요.',
       errorText: '대표 메달 해제에 실패했어요.\n다시 시도해주세요.',
       closeAfterReply: true,
     );
@@ -282,16 +281,11 @@ class _AifcBadgeChatSheetState extends State<AifcBadgeChatSheet>
       userText: '메달을 추가할게요',
       fcText: _badgeGiftQuestionText(),
       groupKey: _groupAdd,
-      fcChild: _BadgeAddBlock(
-        onPick: _handleAddBadge,
-      ),
+      fcChild: _BadgeAddBlock(onPick: _handleAddBadge),
     );
   }
 
-  Future<void> _handleAddBadge(
-      String title,
-      AchievementBadgeCode code,
-      ) async {
+  Future<void> _handleAddBadge(String title, AchievementBadgeCode code) async {
     if (aifcIsBusy) return;
 
     final cleanTitle = title.trim();
@@ -374,7 +368,8 @@ class _AifcBadgeChatSheetState extends State<AifcBadgeChatSheet>
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -475,9 +470,10 @@ class _BadgeListBlock extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
                   decoration: BoxDecoration(
-                    color: isRep
-                        ? AifcColors.primary.withOpacity(0.06)
-                        : AifcColors.cardSoftBg,
+                    color:
+                        isRep
+                            ? AifcColors.primary.withOpacity(0.06)
+                            : AifcColors.cardSoftBg,
                     borderRadius: BorderRadius.circular(AifcRadius.button),
                     border: Border.all(color: AifcColors.cardBorder),
                   ),
@@ -583,11 +579,7 @@ class _BadgeDetailBlock extends StatelessWidget {
         children: [
           Row(
             children: [
-              AchievementIcChip(
-                code: badge.code,
-                width: 56,
-                height: 42,
-              ),
+              AchievementIcChip(code: badge.code, width: 56, height: 42),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -641,9 +633,7 @@ class _BadgeDetailBlock extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AifcColors.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(AifcRadius.button),
-                border: Border.all(
-                  color: AifcColors.primary.withOpacity(0.16),
-                ),
+                border: Border.all(color: AifcColors.primary.withOpacity(0.16)),
               ),
               child: const Text(
                 '현재 대표 메달',
@@ -684,9 +674,10 @@ class _BadgeDetailActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainLabel = isRepresentative ? '대표 메달 해제' : '대표 메달로 설정';
-    final mainIcon = isRepresentative
-        ? Icons.remove_circle_outline_rounded
-        : Icons.workspace_premium_outlined;
+    final mainIcon =
+        isRepresentative
+            ? Icons.remove_circle_outline_rounded
+            : Icons.workspace_premium_outlined;
 
     final mainButton = _AifcBadgeActionButton(
       label: mainLabel,
@@ -713,24 +704,15 @@ class _BadgeDetailActionRow extends StatelessWidget {
         if (isNarrow) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              mainButton,
-              const SizedBox(height: 8),
-              deleteButton,
-            ],
+            children: [mainButton, const SizedBox(height: 8), deleteButton],
           );
         }
 
         return Row(
           children: [
-            Expanded(
-              child: mainButton,
-            ),
+            Expanded(child: mainButton),
             const SizedBox(width: 8),
-            SizedBox(
-              width: 92,
-              child: deleteButton,
-            ),
+            SizedBox(width: 92, child: deleteButton),
           ],
         );
       },
@@ -774,11 +756,7 @@ class _AifcBadgeActionButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.max,
             children: [
-              Icon(
-                icon,
-                size: 17,
-                color: foregroundColor,
-              ),
+              Icon(icon, size: 17, color: foregroundColor),
               const SizedBox(width: 6),
               Flexible(
                 child: FittedBox(
@@ -884,9 +862,7 @@ class _BadgeDeleteConfirmBlock extends StatelessWidget {
 }
 
 class _BadgeAddBlock extends StatefulWidget {
-  const _BadgeAddBlock({
-    required this.onPick,
-  });
+  const _BadgeAddBlock({required this.onPick});
 
   final void Function(String title, AchievementBadgeCode code) onPick;
 
@@ -898,34 +874,13 @@ class _BadgeAddBlockState extends State<_BadgeAddBlock> {
   final TextEditingController _controller = TextEditingController();
 
   static const _presetOptions = [
-    _PresetBadgeOption(
-      title: '우수 출석',
-      code: AchievementBadgeCode.attendance,
-    ),
-    _PresetBadgeOption(
-      title: '운동 습관 형성',
-      code: AchievementBadgeCode.manual,
-    ),
-    _PresetBadgeOption(
-      title: '체중 감량 성공',
-      code: AchievementBadgeCode.manual,
-    ),
-    _PresetBadgeOption(
-      title: '근력 향상',
-      code: AchievementBadgeCode.manual,
-    ),
-    _PresetBadgeOption(
-      title: '컨디션 회복',
-      code: AchievementBadgeCode.manual,
-    ),
-    _PresetBadgeOption(
-      title: '부상 복귀',
-      code: AchievementBadgeCode.manual,
-    ),
-    _PresetBadgeOption(
-      title: '트레이너 추천',
-      code: AchievementBadgeCode.manual,
-    ),
+    _PresetBadgeOption(title: '우수 출석', code: AchievementBadgeCode.attendance),
+    _PresetBadgeOption(title: '운동 습관 형성', code: AchievementBadgeCode.manual),
+    _PresetBadgeOption(title: '체중 감량 성공', code: AchievementBadgeCode.manual),
+    _PresetBadgeOption(title: '근력 향상', code: AchievementBadgeCode.manual),
+    _PresetBadgeOption(title: '컨디션 회복', code: AchievementBadgeCode.manual),
+    _PresetBadgeOption(title: '부상 복귀', code: AchievementBadgeCode.manual),
+    _PresetBadgeOption(title: '트레이너 추천', code: AchievementBadgeCode.manual),
   ];
 
   @override
@@ -970,8 +925,7 @@ class _BadgeAddBlockState extends State<_BadgeAddBlock> {
                     ),
                     decoration: BoxDecoration(
                       color: AifcColors.primary.withOpacity(0.08),
-                      borderRadius:
-                      BorderRadius.circular(AifcRadius.button),
+                      borderRadius: BorderRadius.circular(AifcRadius.button),
                       border: Border.all(
                         color: AifcColors.primary.withOpacity(0.16),
                       ),
@@ -1043,10 +997,7 @@ class _BadgeAddBlockState extends State<_BadgeAddBlock> {
 }
 
 class _PresetBadgeOption {
-  const _PresetBadgeOption({
-    required this.title,
-    required this.code,
-  });
+  const _PresetBadgeOption({required this.title, required this.code});
 
   final String title;
   final AchievementBadgeCode code;
@@ -1076,10 +1027,7 @@ class _RepresentativeBadgeChip extends StatelessWidget {
 }
 
 class _TypeChip extends StatelessWidget {
-  const _TypeChip({
-    required this.text,
-    required this.color,
-  });
+  const _TypeChip({required this.text, required this.color});
 
   final String text;
   final Color color;
@@ -1091,9 +1039,7 @@ class _TypeChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: color.withOpacity(0.16),
-        ),
+        border: Border.all(color: color.withOpacity(0.16)),
       ),
       child: Text(
         text,

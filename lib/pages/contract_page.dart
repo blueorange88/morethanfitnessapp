@@ -33,30 +33,13 @@ const Color kContractBorderColor = Color(0xFFE5E7EB);
 const double kContractPageHorizontalPadding = 16;
 const double kContractMaxContentWidth = 480;
 
-enum ContractSourceMode {
-  basicTemplate,
-  customWrite,
-  uploadPdf,
-}
+enum ContractSourceMode { basicTemplate, customWrite, uploadPdf }
 
-enum PaymentMethod {
-  cash,
-  card,
-  transfer,
-}
+enum PaymentMethod { cash, card, transfer }
 
-enum ContractDeliveryMethod {
-  email,
-  sms,
-  kakao,
-  print,
-  storeOnly,
-}
+enum ContractDeliveryMethod { email, sms, kakao, print, storeOnly }
 
-enum ContractStage {
-  requiredInfo,
-  detailConfirm,
-}
+enum ContractStage { requiredInfo, detailConfirm }
 
 enum ContractStatus {
   draft,
@@ -258,8 +241,9 @@ class _ContractPageState extends State<ContractPage>
   final TextEditingController _memberPhoneController = TextEditingController();
   final TextEditingController _memberEmailController = TextEditingController();
 
-  final TextEditingController _centerNameController =
-      TextEditingController(text: 'MORE THAN FITNESS');
+  final TextEditingController _centerNameController = TextEditingController(
+    text: 'MORE THAN FITNESS',
+  );
 
   late final TextEditingController _trainerNameController;
 
@@ -267,14 +251,18 @@ class _ContractPageState extends State<ContractPage>
   static const int _maxStoredPdfCount = 5;
   final List<String> _storedPdfNames = <String>[];
 
-  final TextEditingController _productNameController =
-      TextEditingController(text: 'PT레슨 10회');
-  final TextEditingController _unitPriceController =
-      TextEditingController(text: '100,000');
-  final TextEditingController _sessionCountController =
-      TextEditingController(text: '10');
-  final TextEditingController _priceController =
-      TextEditingController(text: '1,100,000');
+  final TextEditingController _productNameController = TextEditingController(
+    text: 'PT레슨 10회',
+  );
+  final TextEditingController _unitPriceController = TextEditingController(
+    text: '100,000',
+  );
+  final TextEditingController _sessionCountController = TextEditingController(
+    text: '10',
+  );
+  final TextEditingController _priceController = TextEditingController(
+    text: '1,100,000',
+  );
   final TextEditingController _contractDateController = TextEditingController();
   final TextEditingController _paymentDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
@@ -283,9 +271,7 @@ class _ContractPageState extends State<ContractPage>
 
   // 작성 방식별 추가
   final TextEditingController _customMainClauseController =
-      TextEditingController(
-    text: '회원은 환불·중도해지·예약·지연·홀드·양도 기준을 확인하고 이에 동의합니다.',
-  );
+      TextEditingController(text: '회원은 환불·중도해지·예약·지연·홀드·양도 기준을 확인하고 이에 동의합니다.');
   final TextEditingController _customExtraClauseController =
       TextEditingController();
   String? _uploadedPdfName;
@@ -303,24 +289,29 @@ class _ContractPageState extends State<ContractPage>
   late bool _useTransferClause;
 
   // 계약 조건 필드
-  final TextEditingController _sessionMinutesController =
-      TextEditingController(text: '50');
+  final TextEditingController _sessionMinutesController = TextEditingController(
+    text: '50',
+  );
 
-  final TextEditingController _cancelHoursController =
-      TextEditingController(text: '24');
+  final TextEditingController _cancelHoursController = TextEditingController(
+    text: '24',
+  );
   final TextEditingController _lessonDelayMinutesController =
       TextEditingController(text: '30');
 
-  final TextEditingController _holdCountController =
-      TextEditingController(text: '2');
-  final TextEditingController _holdDaysController =
-      TextEditingController(text: '30');
+  final TextEditingController _holdCountController = TextEditingController(
+    text: '2',
+  );
+  final TextEditingController _holdDaysController = TextEditingController(
+    text: '30',
+  );
   final TextEditingController _suspensionRuleController = TextEditingController(
     text: '기관에서 인정하는 사항에 따라 이용정지 운영의 예외를 둘 수 있습니다.',
   );
 
-  final TextEditingController _penaltyPercentController =
-      TextEditingController(text: '10');
+  final TextEditingController _penaltyPercentController = TextEditingController(
+    text: '10',
+  );
   bool _noRefundProduct = false;
 
   bool _transferAllowed = false;
@@ -379,7 +370,8 @@ class _ContractPageState extends State<ContractPage>
       return '휴대폰 번호는 숫자 10~11자리로 입력해주세요.';
     }
 
-    final isMobilePrefix = phone.startsWith('010') ||
+    final isMobilePrefix =
+        phone.startsWith('010') ||
         phone.startsWith('011') ||
         phone.startsWith('016') ||
         phone.startsWith('017') ||
@@ -403,7 +395,8 @@ class _ContractPageState extends State<ContractPage>
   int _ageFromBirthDate(DateTime birthDate, DateTime now) {
     var age = now.year - birthDate.year;
 
-    final hasBirthdayPassedThisYear = now.month > birthDate.month ||
+    final hasBirthdayPassedThisYear =
+        now.month > birthDate.month ||
         (now.month == birthDate.month && now.day >= birthDate.day);
 
     if (!hasBirthdayPassedThisYear) {
@@ -513,11 +506,12 @@ class _ContractPageState extends State<ContractPage>
 
     try {
       for (final value in queryValues) {
-        final byPhone = await FirebaseFirestore.instance
-            .collection('members')
-            .where('phone', isEqualTo: value)
-            .limit(8)
-            .get();
+        final byPhone =
+            await FirebaseFirestore.instance
+                .collection('members')
+                .where('phone', isEqualTo: value)
+                .limit(8)
+                .get();
 
         for (final doc in byPhone.docs) {
           if (_isActiveDuplicateMemberDoc(doc)) {
@@ -525,11 +519,12 @@ class _ContractPageState extends State<ContractPage>
           }
         }
 
-        final byPhoneDisplay = await FirebaseFirestore.instance
-            .collection('members')
-            .where('phoneDisplay', isEqualTo: value)
-            .limit(8)
-            .get();
+        final byPhoneDisplay =
+            await FirebaseFirestore.instance
+                .collection('members')
+                .where('phoneDisplay', isEqualTo: value)
+                .limit(8)
+                .get();
 
         for (final doc in byPhoneDisplay.docs) {
           if (_isActiveDuplicateMemberDoc(doc)) {
@@ -547,15 +542,17 @@ class _ContractPageState extends State<ContractPage>
         return true;
       }
 
-      final names = duplicateDocs.values
-          .map((doc) => (doc.data()['name'] ?? '').toString().trim())
-          .where((name) => name.isNotEmpty)
-          .take(2)
-          .toList();
+      final names =
+          duplicateDocs.values
+              .map((doc) => (doc.data()['name'] ?? '').toString().trim())
+              .where((name) => name.isNotEmpty)
+              .take(2)
+              .toList();
 
-      final message = names.isEmpty
-          ? '같은 휴대폰 번호로 등록된 회원이 이미 있어요.'
-          : '같은 휴대폰 번호 회원이 이미 있어요: ${names.join(', ')}';
+      final message =
+          names.isEmpty
+              ? '같은 휴대폰 번호로 등록된 회원이 이미 있어요.'
+              : '같은 휴대폰 번호 회원이 이미 있어요: ${names.join(', ')}';
 
       if (mounted) {
         setState(() {
@@ -578,11 +575,14 @@ class _ContractPageState extends State<ContractPage>
   }
 
   String get _contractPdfFileName {
-    final no =
-        (_contractNo ?? 'draft').replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-    final member = _memberNameController.text.trim().isEmpty
-        ? 'member'
-        : _memberNameController.text.trim().replaceAll(RegExp(r'\s+'), '_');
+    final no = (_contractNo ?? 'draft').replaceAll(
+      RegExp(r'[^a-zA-Z0-9_-]'),
+      '_',
+    );
+    final member =
+        _memberNameController.text.trim().isEmpty
+            ? 'member'
+            : _memberNameController.text.trim().replaceAll(RegExp(r'\s+'), '_');
 
     return 'MTF_contract_${no}_$member.pdf';
   }
@@ -620,10 +620,11 @@ class _ContractPageState extends State<ContractPage>
 
   Future<void> _loadTrainerNameFromProfileForContract() async {
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('trainer_profile')
-          .doc('me')
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('trainer_profile')
+              .doc('me')
+              .get();
 
       if (!mounted) return;
 
@@ -1114,9 +1115,10 @@ class _ContractPageState extends State<ContractPage>
       'unlimitedEndDate': _isUnlimitedEndDate,
       'basicSignature': {
         'memberSigned': _memberSigned,
-        'memberSignedAt': _memberSignedAt == null
-            ? null
-            : Timestamp.fromDate(_memberSignedAt!),
+        'memberSignedAt':
+            _memberSignedAt == null
+                ? null
+                : Timestamp.fromDate(_memberSignedAt!),
         'memberPoints': _signaturePointsToJson(_memberSignaturePoints),
         'staffSigned': _staffSigned,
         'staffSignedAt':
@@ -1176,9 +1178,10 @@ class _ContractPageState extends State<ContractPage>
       _contractId ??= firestore.collection('contracts').doc().id;
       _contractNo ??= await _generateContractNo();
 
-      final nextStatus = _memberSigned && _staffSigned
-          ? ContractStatus.signed
-          : ContractStatus.step1Saved;
+      final nextStatus =
+          _memberSigned && _staffSigned
+              ? ContractStatus.signed
+              : ContractStatus.step1Saved;
 
       final step1Payload = {
         ..._step1ContractPayload,
@@ -1190,42 +1193,35 @@ class _ContractPageState extends State<ContractPage>
       final memberRef = firestore.collection('members').doc(_internalMemberId);
 
       await firestore.runTransaction((transaction) async {
-        transaction.set(
-          contractRef,
-          {
-            ...step1Payload,
-            'createdAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        transaction.set(contractRef, {
+          ...step1Payload,
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
 
-        transaction.set(
-          memberRef,
-          {
-            'id': _internalMemberId,
-            'name': _memberNameController.text.trim(),
-            'phone': _normalizedMemberPhone,
-            'phoneDisplay': _memberPhoneController.text.trim(),
-            'email': _memberEmailController.text.trim(),
-            'birth': _memberBirthController.text.trim(),
+        transaction.set(memberRef, {
+          'id': _internalMemberId,
+          'name': _memberNameController.text.trim(),
+          'phone': _normalizedMemberPhone,
+          'phoneDisplay': _memberPhoneController.text.trim(),
+          'email': _memberEmailController.text.trim(),
+          'birth': _memberBirthController.text.trim(),
+          'contractId': _contractId,
+          'contractNo': _contractNo,
+          'contractSigned': _memberSigned && _staffSigned,
+          'contractSignedAt':
+              (_memberSigned && _staffSigned)
+                  ? FieldValue.serverTimestamp()
+                  : null,
+          'lastContractSummary': {
             'contractId': _contractId,
             'contractNo': _contractNo,
-            'contractSigned': _memberSigned && _staffSigned,
-            'contractSignedAt': (_memberSigned && _staffSigned)
-                ? FieldValue.serverTimestamp()
-                : null,
-            'lastContractSummary': {
-              'contractId': _contractId,
-              'contractNo': _contractNo,
-              'productName': _productNameController.text.trim(),
-              'totalPrice': _priceValue,
-              'paymentMethodLabel': _paymentMethodLabel,
-              'contractDate': _contractDateController.text.trim(),
-            },
-            'updatedAt': FieldValue.serverTimestamp(),
+            'productName': _productNameController.text.trim(),
+            'totalPrice': _priceValue,
+            'paymentMethodLabel': _paymentMethodLabel,
+            'contractDate': _contractDateController.text.trim(),
           },
-          SetOptions(merge: true),
-        );
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       });
 
       if (!mounted) return true;
@@ -1258,10 +1254,11 @@ class _ContractPageState extends State<ContractPage>
 
   Future<void> _loadExistingContract(String contractId) async {
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('contracts')
-          .doc(contractId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('contracts')
+              .doc(contractId)
+              .get();
 
       final data = snap.data();
       if (data == null) {
@@ -1275,9 +1272,10 @@ class _ContractPageState extends State<ContractPage>
 
       setState(() {
         _contractId = contractId;
-        _contractNo = (data['contractNo'] ?? '').toString().trim().isEmpty
-            ? null
-            : (data['contractNo'] ?? '').toString().trim();
+        _contractNo =
+            (data['contractNo'] ?? '').toString().trim().isEmpty
+                ? null
+                : (data['contractNo'] ?? '').toString().trim();
 
         _internalMemberId = (data['memberId'] ?? widget.memberId).toString();
 
@@ -1336,9 +1334,10 @@ class _ContractPageState extends State<ContractPage>
           _documentType = documentType;
         }
 
-        final clauses = data['clauses'] is Map
-            ? Map<String, dynamic>.from(data['clauses'] as Map)
-            : <String, dynamic>{};
+        final clauses =
+            data['clauses'] is Map
+                ? Map<String, dynamic>.from(data['clauses'] as Map)
+                : <String, dynamic>{};
 
         _useLessonClause = clauses['useLessonClause'] != false;
         _useReservationClause = clauses['useReservationClause'] != false;
@@ -1346,14 +1345,17 @@ class _ContractPageState extends State<ContractPage>
         _usePenaltyClause = clauses['usePenaltyClause'] != false;
         _useTransferClause = clauses['useTransferClause'] == true;
 
-        final basicSignature = data['basicSignature'] is Map
-            ? Map<String, dynamic>.from(data['basicSignature'] as Map)
-            : <String, dynamic>{};
+        final basicSignature =
+            data['basicSignature'] is Map
+                ? Map<String, dynamic>.from(data['basicSignature'] as Map)
+                : <String, dynamic>{};
 
-        _memberSignaturePoints =
-            _signaturePointsFromJson(basicSignature['memberPoints']);
-        _staffSignaturePoints =
-            _signaturePointsFromJson(basicSignature['staffPoints']);
+        _memberSignaturePoints = _signaturePointsFromJson(
+          basicSignature['memberPoints'],
+        );
+        _staffSignaturePoints = _signaturePointsFromJson(
+          basicSignature['staffPoints'],
+        );
 
         final memberSignedAtRaw = basicSignature['memberSignedAt'];
         final staffSignedAtRaw = basicSignature['staffSignedAt'];
@@ -1364,29 +1366,35 @@ class _ContractPageState extends State<ContractPage>
         _staffSignedAt =
             staffSignedAtRaw is Timestamp ? staffSignedAtRaw.toDate() : null;
 
-        final finalSignature = data['finalSignature'] is Map
-            ? Map<String, dynamic>.from(data['finalSignature'] as Map)
-            : <String, dynamic>{};
+        final finalSignature =
+            data['finalSignature'] is Map
+                ? Map<String, dynamic>.from(data['finalSignature'] as Map)
+                : <String, dynamic>{};
 
-        _memberFinalSignaturePoints =
-            _signaturePointsFromJson(finalSignature['memberPoints']);
-        _staffFinalSignaturePoints =
-            _signaturePointsFromJson(finalSignature['staffPoints']);
+        _memberFinalSignaturePoints = _signaturePointsFromJson(
+          finalSignature['memberPoints'],
+        );
+        _staffFinalSignaturePoints = _signaturePointsFromJson(
+          finalSignature['staffPoints'],
+        );
 
         final memberFinalSignedAtRaw = finalSignature['memberSignedAt'];
         final staffFinalSignedAtRaw = finalSignature['staffSignedAt'];
 
-        _memberFinalSignedAt = memberFinalSignedAtRaw is Timestamp
-            ? memberFinalSignedAtRaw.toDate()
-            : null;
+        _memberFinalSignedAt =
+            memberFinalSignedAtRaw is Timestamp
+                ? memberFinalSignedAtRaw.toDate()
+                : null;
 
-        _staffFinalSignedAt = staffFinalSignedAtRaw is Timestamp
-            ? staffFinalSignedAtRaw.toDate()
-            : null;
+        _staffFinalSignedAt =
+            staffFinalSignedAtRaw is Timestamp
+                ? staffFinalSignedAtRaw.toDate()
+                : null;
 
-        final agreements = data['agreements'] is Map
-            ? Map<String, dynamic>.from(data['agreements'] as Map)
-            : <String, dynamic>{};
+        final agreements =
+            data['agreements'] is Map
+                ? Map<String, dynamic>.from(data['agreements'] as Map)
+                : <String, dynamic>{};
 
         _agreeLessonClause = agreements['agreeLessonClause'] == true;
         _agreeReservationClause = agreements['agreeReservationClause'] == true;
@@ -1397,9 +1405,10 @@ class _ContractPageState extends State<ContractPage>
         _agreeImportantNotice = agreements['agreeImportantNotice'] == true;
         _agreeSameContentSave = agreements['agreeSameContentSave'] == true;
 
-        final healthInfo = data['healthInfo'] is Map
-            ? Map<String, dynamic>.from(data['healthInfo'] as Map)
-            : <String, dynamic>{};
+        final healthInfo =
+            data['healthInfo'] is Map
+                ? Map<String, dynamic>.from(data['healthInfo'] as Map)
+                : <String, dynamic>{};
 
         _healthPain = healthInfo['healthPain'] == true;
         _healthSurgery = healthInfo['healthSurgery'] == true;
@@ -1411,29 +1420,33 @@ class _ContractPageState extends State<ContractPage>
         _selectedPainAreas
           ..clear()
           ..addAll(
-            ((healthInfo['painAreas'] as List?) ?? const [])
-                .map((e) => e.toString()),
+            ((healthInfo['painAreas'] as List?) ?? const []).map(
+              (e) => e.toString(),
+            ),
           );
 
         _selectedSurgeryTypes
           ..clear()
           ..addAll(
-            ((healthInfo['surgeryTypes'] as List?) ?? const [])
-                .map((e) => e.toString()),
+            ((healthInfo['surgeryTypes'] as List?) ?? const []).map(
+              (e) => e.toString(),
+            ),
           );
 
         _selectedAccidentTypes
           ..clear()
           ..addAll(
-            ((healthInfo['accidentTypes'] as List?) ?? const [])
-                .map((e) => e.toString()),
+            ((healthInfo['accidentTypes'] as List?) ?? const []).map(
+              (e) => e.toString(),
+            ),
           );
 
         _healthDetailController.text = (healthInfo['detail'] ?? '').toString();
 
-        final delivery = data['delivery'] is Map
-            ? Map<String, dynamic>.from(data['delivery'] as Map)
-            : <String, dynamic>{};
+        final delivery =
+            data['delivery'] is Map
+                ? Map<String, dynamic>.from(data['delivery'] as Map)
+                : <String, dynamic>{};
 
         final deliveryMethodRaw = (delivery['method'] ?? '').toString();
 
@@ -1452,14 +1465,16 @@ class _ContractPageState extends State<ContractPage>
           },
         );
 
-        _draftSaved = status == 'draft' ||
+        _draftSaved =
+            status == 'draft' ||
             status == 'step1Saved' ||
             status == 'completed' ||
             status == 'signed';
 
-        _currentStage = status == 'draft' || status == 'step1Saved'
-            ? ContractStage.requiredInfo
-            : ContractStage.detailConfirm;
+        _currentStage =
+            status == 'draft' || status == 'step1Saved'
+                ? ContractStage.requiredInfo
+                : ContractStage.detailConfirm;
       });
 
       _isApplyingProgrammaticChange = false;
@@ -1510,9 +1525,7 @@ class _ContractPageState extends State<ContractPage>
       isScrollControlled: true,
       backgroundColor: Colors.white,
       showDragHandle: true,
-      builder: (_) => _LessonProductPickerSheet(
-        products: products,
-      ),
+      builder: (_) => _LessonProductPickerSheet(products: products),
     );
 
     if (!mounted) return;
@@ -1529,29 +1542,26 @@ class _ContractPageState extends State<ContractPage>
         .collection('contractCounters')
         .doc(yearMonth);
 
-    final nextSeq = await FirebaseFirestore.instance.runTransaction<int>(
-      (transaction) async {
-        final snapshot = await transaction.get(counterRef);
+    final nextSeq = await FirebaseFirestore.instance.runTransaction<int>((
+      transaction,
+    ) async {
+      final snapshot = await transaction.get(counterRef);
 
-        final current = snapshot.exists
-            ? ((snapshot.data()?['lastSeq'] as num?)?.toInt() ?? 0)
-            : 0;
+      final current =
+          snapshot.exists
+              ? ((snapshot.data()?['lastSeq'] as num?)?.toInt() ?? 0)
+              : 0;
 
-        final next = current + 1;
+      final next = current + 1;
 
-        transaction.set(
-          counterRef,
-          {
-            'lastSeq': next,
-            'yearMonth': yearMonth,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+      transaction.set(counterRef, {
+        'lastSeq': next,
+        'yearMonth': yearMonth,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-        return next;
-      },
-    );
+      return next;
+    });
 
     final seqText = nextSeq.toString().padLeft(3, '0');
     return 'MTF-$yearMonth-$seqText';
@@ -1586,7 +1596,7 @@ class _ContractPageState extends State<ContractPage>
 
   final TextEditingController _healthDetailController = TextEditingController();
 
-// 최종 확인
+  // 최종 확인
   bool _agreeSameContentSave = false;
   bool _agreeImportantNotice = false;
   ContractDeliveryMethod _deliveryMethod = ContractDeliveryMethod.email;
@@ -1618,7 +1628,7 @@ class _ContractPageState extends State<ContractPage>
 
   bool get _isSignedCompleted => _memberSigned && _staffSigned;
 
-// 기본 서명만으로는 잠그지 않고, 최종 서명 완료 후 잠급니다.
+  // 기본 서명만으로는 잠그지 않고, 최종 서명 완료 후 잠급니다.
   bool get _isFormLocked => _isFinalSignedCompleted;
 
   bool get _memberFinalSigned =>
@@ -1641,9 +1651,10 @@ class _ContractPageState extends State<ContractPage>
 
     _currentStage = widget.initialStage;
 
-    _internalMemberId = widget.memberId.trim().isNotEmpty
-        ? widget.memberId
-        : _generateInternalMemberId();
+    _internalMemberId =
+        widget.memberId.trim().isNotEmpty
+            ? widget.memberId
+            : _generateInternalMemberId();
 
     _sourceMode = _ContractUiMemory.lastSourceMode;
     _documentType = _ContractUiMemory.lastDocumentType;
@@ -1692,14 +1703,8 @@ class _ContractPageState extends State<ContractPage>
       unawaited(_loadExistingContract(widget.contractId!.trim()));
     }
 
-    _livePulseAnimation = Tween<double>(
-      begin: 0.35,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _livePulseController,
-        curve: Curves.easeInOut,
-      ),
+    _livePulseAnimation = Tween<double>(begin: 0.35, end: 1.0).animate(
+      CurvedAnimation(parent: _livePulseController, curve: Curves.easeInOut),
     );
 
     final controllers = <TextEditingController>[
@@ -1808,9 +1813,8 @@ class _ContractPageState extends State<ContractPage>
         context: context,
         access: null,
         feature: AppTierFeatureKey.contract,
-        loadAccess: () => AppTierAccessService.loadPersonalTrainerAccess(
-          uid: uid,
-        ),
+        loadAccess:
+            () => AppTierAccessService.loadPersonalTrainerAccess(uid: uid),
         entryPoint: 'contract_page_direct_create',
       );
       if (!mounted) return;
@@ -1875,7 +1879,8 @@ class _ContractPageState extends State<ContractPage>
 
   @override
   Widget build(BuildContext context) {
-    final requiresGate = (widget.personalOwnerUid ?? '').trim().isNotEmpty &&
+    final requiresGate =
+        (widget.personalOwnerUid ?? '').trim().isNotEmpty &&
         (widget.contractId ?? '').trim().isEmpty;
     if (requiresGate && !_creationGateResolved) {
       return Scaffold(
@@ -1906,9 +1911,7 @@ class _ContractPageState extends State<ContractPage>
                   child: Column(
                     children: [
                       _buildHeader(),
-                      Expanded(
-                        child: _buildEditView(),
-                      ),
+                      Expanded(child: _buildEditView()),
                     ],
                   ),
                 ),
@@ -2004,9 +2007,10 @@ class _ContractPageState extends State<ContractPage>
                     ),
                     MtfMoreMenuItem(
                       value: _ContractMoreAction.tempSave,
-                      icon: _draftSaved
-                          ? Icons.bookmark_added_rounded
-                          : Icons.bookmark_border_rounded,
+                      icon:
+                          _draftSaved
+                              ? Icons.bookmark_added_rounded
+                              : Icons.bookmark_border_rounded,
                       label: _draftSaved ? '임시저장됨' : '임시저장',
                       subLabel: _draftSaved ? '최근 저장 상태' : '작성 중 문서 저장',
                       isSelected: _draftSaved,
@@ -2020,7 +2024,7 @@ class _ContractPageState extends State<ContractPage>
                     const MtfMoreMenuItem(
                       value: _ContractMoreAction.sendCustomer,
                       icon: Icons.send_rounded,
-                      label: '고객 전송',
+                      label: '회원 전송',
                       subLabel: '회원에게 보내기',
                     ),
                     const MtfMoreMenuItem(
@@ -2207,7 +2211,8 @@ class _ContractPageState extends State<ContractPage>
               selected: _currentStage == ContractStage.detailConfirm,
               enabled: true,
               muted: !_canOpenDetailConfirm,
-              done: _isContractConditionsComplete &&
+              done:
+                  _isContractConditionsComplete &&
                   _isHealthSectionComplete &&
                   _isFinalConfirmComplete &&
                   _isFinalSignedCompleted,
@@ -2235,15 +2240,10 @@ class _ContractPageState extends State<ContractPage>
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isStep1
-              ? const [
-                  Color(0xFFEEF2FF),
-                  Color(0xFFF5F3FF),
-                ]
-              : const [
-                  Color(0xFFF0FDF4),
-                  Color(0xFFECFEFF),
-                ],
+          colors:
+              isStep1
+                  ? const [Color(0xFFEEF2FF), Color(0xFFF5F3FF)]
+                  : const [Color(0xFFF0FDF4), Color(0xFFECFEFF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -2258,9 +2258,10 @@ class _ContractPageState extends State<ContractPage>
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: isStep1
-                  ? const Color(0xFF4F46E5).withOpacity(0.10)
-                  : const Color(0xFF059669).withOpacity(0.10),
+              color:
+                  isStep1
+                      ? const Color(0xFF4F46E5).withOpacity(0.10)
+                      : const Color(0xFF059669).withOpacity(0.10),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -2396,15 +2397,9 @@ class _ContractPageState extends State<ContractPage>
         const SizedBox(height: 14),
         _buildContractHistorySection(),
         const SizedBox(height: 14),
-        KeyedSubtree(
-          key: _healthSectionKey,
-          child: _buildHealthSection(),
-        ),
+        KeyedSubtree(key: _healthSectionKey, child: _buildHealthSection()),
         const SizedBox(height: 14),
-        KeyedSubtree(
-          key: _finalSectionKey,
-          child: _buildFinalConfirmSection(),
-        ),
+        KeyedSubtree(key: _finalSectionKey, child: _buildFinalConfirmSection()),
         const SizedBox(height: 14),
         _buildFinalSignatureSection(),
         const SizedBox(height: 18),
@@ -2480,17 +2475,18 @@ class _ContractPageState extends State<ContractPage>
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: _isSavingContract
-                        ? null
-                        : () async {
-                            final saved = await _saveStep1Contract();
+                    onPressed:
+                        _isSavingContract
+                            ? null
+                            : () async {
+                              final saved = await _saveStep1Contract();
 
-                            if (!mounted || !saved) return;
+                              if (!mounted || !saved) return;
 
-                            setState(() {
-                              _currentStage = ContractStage.detailConfirm;
-                            });
-                          },
+                              setState(() {
+                                _currentStage = ContractStage.detailConfirm;
+                              });
+                            },
                     style: FilledButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.secondary,
                       foregroundColor:
@@ -2517,7 +2513,8 @@ class _ContractPageState extends State<ContractPage>
   }
 
   Widget _buildStep2BottomActions() {
-    final bool ready = _isContractConditionsComplete &&
+    final bool ready =
+        _isContractConditionsComplete &&
         _isHealthSectionComplete &&
         _isFinalConfirmComplete &&
         _isFinalSignedCompleted;
@@ -2589,20 +2586,21 @@ class _ContractPageState extends State<ContractPage>
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: _isSavingContract
-                        ? null
-                        : () async {
-                            if (!_canOpenDetailConfirm) {
-                              setState(() {
-                                _showRequiredErrors = true;
-                                _currentStage = ContractStage.requiredInfo;
-                              });
-                              _showSnack('필수 작성을 먼저 완료해주세요.');
-                              return;
-                            }
+                    onPressed:
+                        _isSavingContract
+                            ? null
+                            : () async {
+                              if (!_canOpenDetailConfirm) {
+                                setState(() {
+                                  _showRequiredErrors = true;
+                                  _currentStage = ContractStage.requiredInfo;
+                                });
+                                _showSnack('필수 작성을 먼저 완료해주세요.');
+                                return;
+                              }
 
-                            await _saveStep2Contract();
-                          },
+                              await _saveStep2Contract();
+                            },
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF059669),
                       foregroundColor: Colors.white,
@@ -2612,9 +2610,7 @@ class _ContractPageState extends State<ContractPage>
                       ),
                     ),
                     icon: const Icon(Icons.check_circle_outline),
-                    label: Text(
-                      _isSavingContract ? '저장 중...' : '상세 확인 완료',
-                    ),
+                    label: Text(_isSavingContract ? '저장 중...' : '상세 확인 완료'),
                   ),
                 ),
               ],
@@ -2683,73 +2679,72 @@ class _ContractPageState extends State<ContractPage>
 
       final contractRef = firestore.collection('contracts').doc(_contractId);
 
-      await contractRef.set(
-        {
-          ..._step1ContractPayload,
-          'clauses': {
-            'items': _contractHistoryItems,
-            'useLessonClause': _useLessonClause,
-            'useReservationClause': _useReservationClause,
-            'useHoldClause': _useHoldClause,
-            'usePenaltyClause': _usePenaltyClause,
-            'useTransferClause': _useTransferClause,
-          },
-          'agreements': {
-            'agreeLessonClause': _agreeLessonClause,
-            'agreeReservationClause': _agreeReservationClause,
-            'agreeHoldClause': _agreeHoldClause,
-            'agreePenaltyClause': _agreePenaltyClause,
-            'agreeTransferClause': _agreeTransferClause,
-            'agreeHealthNotice': _agreeHealthNotice,
-            'agreeImportantNotice': _agreeImportantNotice,
-            'agreeSameContentSave': _agreeSameContentSave,
-          },
-          'delivery': {
-            'method': _deliveryMethod.name,
-            'methodLabel': _deliveryMethodLabel,
-            'target': _deliveryTarget,
-            'status': 'requested',
-            'requestedAt': FieldValue.serverTimestamp(),
-            'sentAt': null,
-          },
-          'finalSignature': {
-            'memberSigned': _memberFinalSigned,
-            'memberSignedAt': _memberFinalSignedAt == null
-                ? null
-                : Timestamp.fromDate(_memberFinalSignedAt!),
-            'memberPoints': _signaturePointsToJson(_memberFinalSignaturePoints),
-            'staffSigned': _staffFinalSigned,
-            'staffSignedAt': _staffFinalSignedAt == null
-                ? null
-                : Timestamp.fromDate(_staffFinalSignedAt!),
-            'staffPoints': _signaturePointsToJson(_staffFinalSignaturePoints),
-            'meaning': 'full_contract_terms_confirmation',
-            'description': '계약조건, 환불/중도해지, 예약/노쇼, 건강고지, 최종확인 동의',
-          },
-          'finalSigned': _isFinalSignedCompleted,
-          'finalSignedAt':
-              _isFinalSignedCompleted ? FieldValue.serverTimestamp() : null,
-          'healthInfo': {
-            'healthPain': _healthPain,
-            'healthSurgery': _healthSurgery,
-            'healthAccident': _healthAccident,
-            'healthPregnancy': _healthPregnancy,
-            'healthRehab': _healthRehab,
-            'healthNone': _healthNone,
-            'painAreas': _selectedPainAreas.toList(),
-            'surgeryTypes': _selectedSurgeryTypes.toList(),
-            'accidentTypes': _selectedAccidentTypes.toList(),
-            'detail': _healthDetailController.text.trim(),
-            'summary': _healthSummary,
-          },
-          'stage': 'completed',
-          'status': 'completed',
-          'step2CompletedAt': FieldValue.serverTimestamp(),
-          'completedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
+      await contractRef.set({
+        ..._step1ContractPayload,
+        'clauses': {
+          'items': _contractHistoryItems,
+          'useLessonClause': _useLessonClause,
+          'useReservationClause': _useReservationClause,
+          'useHoldClause': _useHoldClause,
+          'usePenaltyClause': _usePenaltyClause,
+          'useTransferClause': _useTransferClause,
         },
-        SetOptions(merge: true),
-      );
+        'agreements': {
+          'agreeLessonClause': _agreeLessonClause,
+          'agreeReservationClause': _agreeReservationClause,
+          'agreeHoldClause': _agreeHoldClause,
+          'agreePenaltyClause': _agreePenaltyClause,
+          'agreeTransferClause': _agreeTransferClause,
+          'agreeHealthNotice': _agreeHealthNotice,
+          'agreeImportantNotice': _agreeImportantNotice,
+          'agreeSameContentSave': _agreeSameContentSave,
+        },
+        'delivery': {
+          'method': _deliveryMethod.name,
+          'methodLabel': _deliveryMethodLabel,
+          'target': _deliveryTarget,
+          'status': 'requested',
+          'requestedAt': FieldValue.serverTimestamp(),
+          'sentAt': null,
+        },
+        'finalSignature': {
+          'memberSigned': _memberFinalSigned,
+          'memberSignedAt':
+              _memberFinalSignedAt == null
+                  ? null
+                  : Timestamp.fromDate(_memberFinalSignedAt!),
+          'memberPoints': _signaturePointsToJson(_memberFinalSignaturePoints),
+          'staffSigned': _staffFinalSigned,
+          'staffSignedAt':
+              _staffFinalSignedAt == null
+                  ? null
+                  : Timestamp.fromDate(_staffFinalSignedAt!),
+          'staffPoints': _signaturePointsToJson(_staffFinalSignaturePoints),
+          'meaning': 'full_contract_terms_confirmation',
+          'description': '계약조건, 환불/중도해지, 예약/노쇼, 건강고지, 최종확인 동의',
+        },
+        'finalSigned': _isFinalSignedCompleted,
+        'finalSignedAt':
+            _isFinalSignedCompleted ? FieldValue.serverTimestamp() : null,
+        'healthInfo': {
+          'healthPain': _healthPain,
+          'healthSurgery': _healthSurgery,
+          'healthAccident': _healthAccident,
+          'healthPregnancy': _healthPregnancy,
+          'healthRehab': _healthRehab,
+          'healthNone': _healthNone,
+          'painAreas': _selectedPainAreas.toList(),
+          'surgeryTypes': _selectedSurgeryTypes.toList(),
+          'accidentTypes': _selectedAccidentTypes.toList(),
+          'detail': _healthDetailController.text.trim(),
+          'summary': _healthSummary,
+        },
+        'stage': 'completed',
+        'status': 'completed',
+        'step2CompletedAt': FieldValue.serverTimestamp(),
+        'completedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -2827,24 +2822,24 @@ class _ContractPageState extends State<ContractPage>
             controller: _memberBirthController,
             keyboardType: TextInputType.number,
             enabled: !_isFormLocked,
-            inputFormatters: const [
-              _BirthDateInputFormatter(),
-            ],
+            inputFormatters: const [_BirthDateInputFormatter()],
             decoration: InputDecoration(
               labelText: '회원 생년월일',
               hintText: '예: 1980-01-01',
-              errorText: (_shouldShowMemberBirthError ||
-                      _shouldShowMemberBirthFormatError)
-                  ? _memberBirthErrorText
-                  : null,
+              errorText:
+                  (_shouldShowMemberBirthError ||
+                          _shouldShowMemberBirthFormatError)
+                      ? _memberBirthErrorText
+                      : null,
               suffixIcon: IconButton(
                 icon: const Icon(Icons.calendar_today_outlined, size: 18),
                 onPressed: _isFormLocked ? null : _pickBirthDate,
               ),
               filled: true,
-              fillColor: !_isFormLocked
-                  ? const Color(0xFFF9FAFB)
-                  : const Color(0xFFF3F4F6),
+              fillColor:
+                  !_isFormLocked
+                      ? const Color(0xFFF9FAFB)
+                      : const Color(0xFFF3F4F6),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -2852,23 +2847,26 @@ class _ContractPageState extends State<ContractPage>
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: (_shouldShowMemberBirthError ||
-                          _shouldShowMemberBirthFormatError)
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFE5E7EB),
-                  width: (_shouldShowMemberBirthError ||
-                          _shouldShowMemberBirthFormatError)
-                      ? 1.4
-                      : 1,
+                  color:
+                      (_shouldShowMemberBirthError ||
+                              _shouldShowMemberBirthFormatError)
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFFE5E7EB),
+                  width:
+                      (_shouldShowMemberBirthError ||
+                              _shouldShowMemberBirthFormatError)
+                          ? 1.4
+                          : 1,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: (_shouldShowMemberBirthError ||
-                          _shouldShowMemberBirthFormatError)
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFF4F46E5),
+                  color:
+                      (_shouldShowMemberBirthError ||
+                              _shouldShowMemberBirthFormatError)
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF4F46E5),
                   width: 1.5,
                 ),
               ),
@@ -2881,13 +2879,12 @@ class _ContractPageState extends State<ContractPage>
             hint: '010-1234-5678',
             keyboardType: TextInputType.phone,
             enabled: !_isFormLocked,
-            showError: _shouldShowMemberPhoneError ||
+            showError:
+                _shouldShowMemberPhoneError ||
                 _shouldShowMemberPhoneFormatError ||
                 _memberPhoneDuplicateMessage != null,
             errorText: _memberPhoneErrorText,
-            inputFormatters: const [
-              _PhoneInputFormatter(),
-            ],
+            inputFormatters: const [_PhoneInputFormatter()],
           ),
           const SizedBox(height: 12),
           _buildTextField(
@@ -2896,11 +2893,13 @@ class _ContractPageState extends State<ContractPage>
             hint: 'example@email.com',
             keyboardType: TextInputType.emailAddress,
             enabled: !_isFormLocked,
-            showError: _shouldShowMemberEmailError ||
+            showError:
+                _shouldShowMemberEmailError ||
                 _shouldShowMemberEmailFormatError,
-            errorText: _memberEmailMissing
-                ? '계약서 발송용 이메일을 입력해주세요.'
-                : '이메일 형식을 확인해주세요.',
+            errorText:
+                _memberEmailMissing
+                    ? '계약서 발송용 이메일을 입력해주세요.'
+                    : '이메일 형식을 확인해주세요.',
           ),
           const SizedBox(height: 12),
           _buildTextField(
@@ -2944,13 +2943,14 @@ class _ContractPageState extends State<ContractPage>
               ),
               Switch.adaptive(
                 value: _usePaymentSection,
-                onChanged: _isFormLocked
-                    ? null
-                    : (v) {
-                        setState(() {
-                          _usePaymentSection = v;
-                        });
-                      },
+                onChanged:
+                    _isFormLocked
+                        ? null
+                        : (v) {
+                          setState(() {
+                            _usePaymentSection = v;
+                          });
+                        },
               ),
             ],
           ),
@@ -2958,174 +2958,179 @@ class _ContractPageState extends State<ContractPage>
             duration: const Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
-            child: _usePaymentSection
-                ? Column(
-                    key: const ValueKey('payment_section_open'),
-                    children: [
-                      _buildLessonProductLoadButton(),
-                      const SizedBox(height: 10),
-                      _buildLessonProductAutocompleteField(),
-                      const SizedBox(height: 10),
-                      _buildSelectedProductSummaryCard(),
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _buildTextField(
-                              controller: _unitPriceController,
-                              label: '회당 결제금액',
-                              hint: '77000',
-                              keyboardType: TextInputType.number,
-                              enabled: !_isFormLocked,
-                              prefixText: '₩ ',
-                              showError: _shouldShowUnitPriceError,
-                              errorText: '회당 금액을 입력해주세요.',
-                              inputFormatters: const [
-                                _ThousandsInputFormatter(),
-                              ],
+            child:
+                _usePaymentSection
+                    ? Column(
+                      key: const ValueKey('payment_section_open'),
+                      children: [
+                        _buildLessonProductLoadButton(),
+                        const SizedBox(height: 10),
+                        _buildLessonProductAutocompleteField(),
+                        const SizedBox(height: 10),
+                        _buildSelectedProductSummaryCard(),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildTextField(
+                                controller: _unitPriceController,
+                                label: '회당 결제금액',
+                                hint: '77000',
+                                keyboardType: TextInputType.number,
+                                enabled: !_isFormLocked,
+                                prefixText: '₩ ',
+                                showError: _shouldShowUnitPriceError,
+                                errorText: '회당 금액을 입력해주세요.',
+                                inputFormatters: const [
+                                  _ThousandsInputFormatter(),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF9FAFB),
-                              borderRadius: BorderRadius.circular(14),
-                              border:
-                                  Border.all(color: const Color(0xFFE5E7EB)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Checkbox(
-                                  value: _vatIncluded,
-                                  onChanged: _isFormLocked
-                                      ? null
-                                      : (v) {
-                                          final next = v ?? false;
-                                          if (_vatIncluded == next) return;
-
-                                          setState(() {
-                                            _vatIncluded = next;
-                                            _ContractUiMemory.vatIncluded =
-                                                _vatIncluded;
-                                          });
-
-                                          _handleSignatureSensitiveChanged();
-                                        },
-                                  visualDensity: VisualDensity.compact,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
+                            const SizedBox(width: 10),
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFB),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: const Color(0xFFE5E7EB),
                                 ),
-                                const Text(
-                                  'VAT',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF374151),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Checkbox(
+                                    value: _vatIncluded,
+                                    onChanged:
+                                        _isFormLocked
+                                            ? null
+                                            : (v) {
+                                              final next = v ?? false;
+                                              if (_vatIncluded == next) return;
+
+                                              setState(() {
+                                                _vatIncluded = next;
+                                                _ContractUiMemory.vatIncluded =
+                                                    _vatIncluded;
+                                              });
+
+                                              _handleSignatureSensitiveChanged();
+                                            },
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
-                                ),
-                              ],
+                                  const Text(
+                                    'VAT',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF374151),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildTextField(
-                        controller: _sessionCountController,
-                        label: '상품 횟수',
-                        hint: '10',
-                        keyboardType: TextInputType.number,
-                        enabled: !_isFormLocked,
-                        suffixText: '회',
-                        showError: _shouldShowSessionCountError,
-                        errorText: '상품 횟수를 입력해주세요.',
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPriceFormulaCard(),
-                      const SizedBox(height: 12),
-                      _buildTextField(
-                        controller: _priceController,
-                        label: '실결제금액',
-                        hint: '770,000',
-                        keyboardType: TextInputType.number,
-                        enabled: !_isFormLocked,
-                        prefixText: '₩ ',
-                        helperText: _paymentDifferenceShortLabel.isEmpty
-                            ? null
-                            : _paymentDifferenceShortLabel,
-                        showError: _shouldShowPriceError,
-                        errorText: '실결제금액을 입력해주세요.',
-                        inputFormatters: const [
-                          _ThousandsInputFormatter(),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      _buildVatCard(),
-                      const SizedBox(height: 12),
-                      _buildPaymentMethodSelector(),
-                      const SizedBox(height: 12),
-                      _buildDateField(
-                        controller: _paymentDateController,
-                        label: '결제일',
-                        enabled: !_isFormLocked,
-                        showError: _shouldShowPaymentDateError,
-                        errorText: '결제일을 선택해주세요.',
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDateField(
-                              controller: _contractDateController,
-                              label: '계약일',
-                              enabled: !_isFormLocked,
-                              showError: _shouldShowContractDateError,
-                              errorText: '계약일을 선택해주세요.',
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField(
+                          controller: _sessionCountController,
+                          label: '상품 횟수',
+                          hint: '10',
+                          keyboardType: TextInputType.number,
+                          enabled: !_isFormLocked,
+                          suffixText: '회',
+                          showError: _shouldShowSessionCountError,
+                          errorText: '상품 횟수를 입력해주세요.',
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPriceFormulaCard(),
+                        const SizedBox(height: 12),
+                        _buildTextField(
+                          controller: _priceController,
+                          label: '실결제금액',
+                          hint: '770,000',
+                          keyboardType: TextInputType.number,
+                          enabled: !_isFormLocked,
+                          prefixText: '₩ ',
+                          helperText:
+                              _paymentDifferenceShortLabel.isEmpty
+                                  ? null
+                                  : _paymentDifferenceShortLabel,
+                          showError: _shouldShowPriceError,
+                          errorText: '실결제금액을 입력해주세요.',
+                          inputFormatters: const [_ThousandsInputFormatter()],
+                        ),
+                        const SizedBox(height: 8),
+                        _buildVatCard(),
+                        const SizedBox(height: 12),
+                        _buildPaymentMethodSelector(),
+                        const SizedBox(height: 12),
+                        _buildDateField(
+                          controller: _paymentDateController,
+                          label: '결제일',
+                          enabled: !_isFormLocked,
+                          showError: _shouldShowPaymentDateError,
+                          errorText: '결제일을 선택해주세요.',
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildDateField(
+                                controller: _contractDateController,
+                                label: '계약일',
+                                enabled: !_isFormLocked,
+                                showError: _shouldShowContractDateError,
+                                errorText: '계약일을 선택해주세요.',
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildDateField(
-                              controller: _endDateController,
-                              label: '종료일',
-                              enabled: !_isFormLocked && !_isUnlimitedEndDate,
-                              showError: _shouldShowEndDateError,
-                              errorText: '종료일을 선택해주세요.',
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildDateField(
+                                controller: _endDateController,
+                                label: '종료일',
+                                enabled: !_isFormLocked && !_isUnlimitedEndDate,
+                                showError: _shouldShowEndDateError,
+                                errorText: '종료일을 선택해주세요.',
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      CheckboxListTile(
-                        value: _isUnlimitedEndDate,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) {
-                                final next = v ?? false;
-                                if (_isUnlimitedEndDate == next) return;
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        CheckboxListTile(
+                          value: _isUnlimitedEndDate,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) {
+                                    final next = v ?? false;
+                                    if (_isUnlimitedEndDate == next) return;
 
-                                setState(() {
-                                  _isUnlimitedEndDate = next;
-                                  _ContractUiMemory.unlimitedEndDate =
-                                      _isUnlimitedEndDate;
-                                });
+                                    setState(() {
+                                      _isUnlimitedEndDate = next;
+                                      _ContractUiMemory.unlimitedEndDate =
+                                          _isUnlimitedEndDate;
+                                    });
 
-                                _handleSignatureSensitiveChanged();
-                              },
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('종료일 설정 안함'),
-                      ),
-                    ],
-                  )
-                : _buildMutedInfo(
-                    '이번 계약서에서는 결제정보를 입력하지 않습니다.',
-                    key: const ValueKey('payment_section_closed'),
-                  ),
+                                    _handleSignatureSensitiveChanged();
+                                  },
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('종료일 설정 안함'),
+                        ),
+                      ],
+                    )
+                    : _buildMutedInfo(
+                      '이번 계약서에서는 결제정보를 입력하지 않습니다.',
+                      key: const ValueKey('payment_section_closed'),
+                    ),
           ),
         ],
       ),
@@ -3152,17 +3157,18 @@ class _ContractPageState extends State<ContractPage>
                 label: '현금',
                 icon: Icons.payments_outlined,
                 selected: _paymentMethod == PaymentMethod.cash,
-                onTap: _isFormLocked
-                    ? null
-                    : () {
-                        if (_paymentMethod == PaymentMethod.cash) return;
+                onTap:
+                    _isFormLocked
+                        ? null
+                        : () {
+                          if (_paymentMethod == PaymentMethod.cash) return;
 
-                        setState(() {
-                          _paymentMethod = PaymentMethod.cash;
-                        });
+                          setState(() {
+                            _paymentMethod = PaymentMethod.cash;
+                          });
 
-                        _handleSignatureSensitiveChanged();
-                      },
+                          _handleSignatureSensitiveChanged();
+                        },
               ),
             ),
             const SizedBox(width: 8),
@@ -3171,17 +3177,18 @@ class _ContractPageState extends State<ContractPage>
                 label: '카드',
                 icon: Icons.credit_card_rounded,
                 selected: _paymentMethod == PaymentMethod.card,
-                onTap: _isFormLocked
-                    ? null
-                    : () {
-                        if (_paymentMethod == PaymentMethod.card) return;
+                onTap:
+                    _isFormLocked
+                        ? null
+                        : () {
+                          if (_paymentMethod == PaymentMethod.card) return;
 
-                        setState(() {
-                          _paymentMethod = PaymentMethod.card;
-                        });
+                          setState(() {
+                            _paymentMethod = PaymentMethod.card;
+                          });
 
-                        _handleSignatureSensitiveChanged();
-                      },
+                          _handleSignatureSensitiveChanged();
+                        },
               ),
             ),
             const SizedBox(width: 8),
@@ -3190,17 +3197,18 @@ class _ContractPageState extends State<ContractPage>
                 label: '계좌이체',
                 icon: Icons.account_balance_outlined,
                 selected: _paymentMethod == PaymentMethod.transfer,
-                onTap: _isFormLocked
-                    ? null
-                    : () {
-                        if (_paymentMethod == PaymentMethod.transfer) return;
+                onTap:
+                    _isFormLocked
+                        ? null
+                        : () {
+                          if (_paymentMethod == PaymentMethod.transfer) return;
 
-                        setState(() {
-                          _paymentMethod = PaymentMethod.transfer;
-                        });
+                          setState(() {
+                            _paymentMethod = PaymentMethod.transfer;
+                          });
 
-                        _handleSignatureSensitiveChanged();
-                      },
+                          _handleSignatureSensitiveChanged();
+                        },
               ),
             ),
           ],
@@ -3219,9 +3227,7 @@ class _ContractPageState extends State<ContractPage>
         icon: const Icon(Icons.sell_outlined, size: 18),
         label: const Text(
           '등록된 레슨 상품 불러오기',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF4F46E5),
@@ -3255,31 +3261,39 @@ class _ContractPageState extends State<ContractPage>
           return _products.take(8);
         }
 
-        return _products.where((product) {
-          final searchable = [
-            product.categoryName,
-            product.name,
-            product.lessonType,
-            '${product.sessionCount}',
-            '${product.unitPrice}',
-            '${product.totalPrice}',
-            _formatMoney(product.unitPrice),
-            _formatMoney(product.totalPrice),
-          ].join(' ').toLowerCase();
+        return _products
+            .where((product) {
+              final searchable =
+                  [
+                    product.categoryName,
+                    product.name,
+                    product.lessonType,
+                    '${product.sessionCount}',
+                    '${product.unitPrice}',
+                    '${product.totalPrice}',
+                    _formatMoney(product.unitPrice),
+                    _formatMoney(product.totalPrice),
+                  ].join(' ').toLowerCase();
 
-          return searchable.contains(query);
-        }).take(8);
+              return searchable.contains(query);
+            })
+            .take(8);
       },
       onSelected: (product) {
         _applyProduct(product);
         _productNameFocusNode.unfocus();
       },
-      fieldViewBuilder:
-          (context, textEditingController, focusNode, onFieldSubmitted) {
+      fieldViewBuilder: (
+        context,
+        textEditingController,
+        focusNode,
+        onFieldSubmitted,
+      ) {
         final showProductError = _shouldShowProductNameError;
-        final borderColor = showProductError
-            ? const Color(0xFFEF4444)
-            : const Color(0xFFE5E7EB);
+        final borderColor =
+            showProductError
+                ? const Color(0xFFEF4444)
+                : const Color(0xFFE5E7EB);
         return TextField(
           controller: textEditingController,
           focusNode: focusNode,
@@ -3290,19 +3304,22 @@ class _ContractPageState extends State<ContractPage>
             });
           },
           decoration: InputDecoration(
-              labelText: '상품명',
-              hintText: _isLoadingProducts
-                  ? '상품을 불러오는 중입니다'
-                  : _products.isEmpty
-                      ? '마이페이지에서 수업 상품을 먼저 추가해주세요'
-                      : '예: PT레슨 10회',
-              filled: true,
-              fillColor: !_isFormLocked
-                  ? const Color(0xFFF9FAFB)
-                  : const Color(0xFFF3F4F6),
-              errorText: showProductError ? '수업 상품을 선택하거나 입력해주세요.' : null,
-              prefixIcon: _isLoadingProducts
-                  ? const Padding(
+            labelText: '상품명',
+            hintText:
+                _isLoadingProducts
+                    ? '상품을 불러오는 중입니다'
+                    : _products.isEmpty
+                    ? '마이페이지에서 수업 상품을 먼저 추가해주세요'
+                    : '예: PT레슨 10회',
+            filled: true,
+            fillColor:
+                !_isFormLocked
+                    ? const Color(0xFFF9FAFB)
+                    : const Color(0xFFF3F4F6),
+            errorText: showProductError ? '수업 상품을 선택하거나 입력해주세요.' : null,
+            prefixIcon:
+                _isLoadingProducts
+                    ? const Padding(
                       padding: EdgeInsets.all(14),
                       child: SizedBox(
                         width: 16,
@@ -3310,40 +3327,43 @@ class _ContractPageState extends State<ContractPage>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : const Icon(Icons.search_rounded, size: 20),
-              suffixIcon: IconButton(
-                tooltip: '상품 새로고침',
-                onPressed: _isFormLocked ? null : _loadProducts,
-                icon: const Icon(Icons.refresh_rounded, size: 20),
+                    : const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: IconButton(
+              tooltip: '상품 새로고침',
+              onPressed: _isFormLocked ? null : _loadProducts,
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: borderColor,
+                width: showProductError ? 1.4 : 1,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color:
+                    showProductError
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF4F46E5),
+                width: 1.5,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: borderColor,
-                  width: showProductError ? 1.4 : 1,
-                ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color:
+                    showProductError
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFFD1D5DB),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: showProductError
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFF4F46E5),
-                  width: 1.5,
-                ),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: showProductError
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFD1D5DB),
-                ),
-              )),
+            ),
+          ),
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
@@ -3428,9 +3448,7 @@ class _ContractPageState extends State<ContractPage>
       decoration: BoxDecoration(
         color: const Color(0xFFEEF2FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFC7D2FE),
-        ),
+        border: Border.all(color: const Color(0xFFC7D2FE)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3499,13 +3517,14 @@ class _ContractPageState extends State<ContractPage>
           ),
           IconButton(
             tooltip: '선택 해제',
-            onPressed: _isFormLocked
-                ? null
-                : () {
-                    setState(() {
-                      _selectedProduct = null;
-                    });
-                  },
+            onPressed:
+                _isFormLocked
+                    ? null
+                    : () {
+                      setState(() {
+                        _selectedProduct = null;
+                      });
+                    },
             icon: const Icon(
               Icons.close_rounded,
               color: Color(0xFF6B7280),
@@ -3518,17 +3537,20 @@ class _ContractPageState extends State<ContractPage>
   }
 
   Widget _buildPriceFormulaCard() {
-    final differenceColor = _priceValue < _calculatedTotalPrice
-        ? const Color(0xFF166534)
-        : const Color(0xFF9A3412);
+    final differenceColor =
+        _priceValue < _calculatedTotalPrice
+            ? const Color(0xFF166534)
+            : const Color(0xFF9A3412);
 
-    final differenceBg = _priceValue < _calculatedTotalPrice
-        ? const Color(0xFFECFDF5)
-        : const Color(0xFFFFF7ED);
+    final differenceBg =
+        _priceValue < _calculatedTotalPrice
+            ? const Color(0xFFECFDF5)
+            : const Color(0xFFFFF7ED);
 
-    final differenceBorder = _priceValue < _calculatedTotalPrice
-        ? const Color(0xFFBBF7D0)
-        : const Color(0xFFFED7AA);
+    final differenceBorder =
+        _priceValue < _calculatedTotalPrice
+            ? const Color(0xFFBBF7D0)
+            : const Color(0xFFFED7AA);
 
     return Container(
       width: double.infinity,
@@ -3554,8 +3576,10 @@ class _ContractPageState extends State<ContractPage>
               ),
               if (_paymentDifferenceShortLabel.isNotEmpty)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: differenceBg,
                     borderRadius: BorderRadius.circular(999),
@@ -3597,23 +3621,25 @@ class _ContractPageState extends State<ContractPage>
                 ),
               ),
               OutlinedButton(
-                onPressed: _isFormLocked
-                    ? null
-                    : () {
-                        if (_priceValue == _calculatedTotalPrice) {
-                          return;
-                        }
+                onPressed:
+                    _isFormLocked
+                        ? null
+                        : () {
+                          if (_priceValue == _calculatedTotalPrice) {
+                            return;
+                          }
 
-                        _isApplyingProgrammaticChange = true;
+                          _isApplyingProgrammaticChange = true;
 
-                        setState(() {
-                          _priceController.text =
-                              _formatMoney(_calculatedTotalPrice);
-                        });
+                          setState(() {
+                            _priceController.text = _formatMoney(
+                              _calculatedTotalPrice,
+                            );
+                          });
 
-                        _isApplyingProgrammaticChange = false;
-                        _handleSignatureSensitiveChanged();
-                      },
+                          _isApplyingProgrammaticChange = false;
+                          _handleSignatureSensitiveChanged();
+                        },
                 child: const Text('금액 적용'),
               ),
             ],
@@ -3653,9 +3679,10 @@ class _ContractPageState extends State<ContractPage>
       title:
           _sourceMode == ContractSourceMode.uploadPdf ? '추가 확인 조항' : '계약 조건 확인',
       icon: Icons.rule_folder_outlined,
-      subtitle: _sourceMode == ContractSourceMode.uploadPdf
-          ? '업로드한 PDF를 기본 문서로 사용하고, 아래 항목은 앱 안에서 추가로 확인할 조항입니다.'
-          : isHybridWrite
+      subtitle:
+          _sourceMode == ContractSourceMode.uploadPdf
+              ? '업로드한 PDF를 기본 문서로 사용하고, 아래 항목은 앱 안에서 추가로 확인할 조항입니다.'
+              : isHybridWrite
               ? '기본 문구를 불러와 수정하거나, 빈칸에서 직접 작성할 수 있습니다.'
               : '입력한 값이 아래 문장으로 바로 보이고, 그 문장이 그대로 문서에 들어갑니다.',
       child: Column(
@@ -3673,13 +3700,14 @@ class _ContractPageState extends State<ContractPage>
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _isFormLocked
-                        ? null
-                        : () {
-                            setState(() {
-                              _fillHybridClausesFromTemplate(force: true);
-                            });
-                          },
+                    onPressed:
+                        _isFormLocked
+                            ? null
+                            : () {
+                              setState(() {
+                                _fillHybridClausesFromTemplate(force: true);
+                              });
+                            },
                     icon: const Icon(Icons.restart_alt_rounded),
                     label: const Text('기본문구 전체 불러오기'),
                   ),
@@ -3687,13 +3715,14 @@ class _ContractPageState extends State<ContractPage>
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _isFormLocked
-                        ? null
-                        : () {
-                            setState(() {
-                              _clearHybridClauses();
-                            });
-                          },
+                    onPressed:
+                        _isFormLocked
+                            ? null
+                            : () {
+                              setState(() {
+                                _clearHybridClauses();
+                              });
+                            },
                     icon: const Icon(Icons.edit_note_rounded),
                     label: const Text('전체 빈칸으로 시작'),
                   ),
@@ -3726,66 +3755,70 @@ class _ContractPageState extends State<ContractPage>
               });
               _handleDetailSignatureSensitiveChanged();
             },
-            child: isHybridWrite
-                ? Column(
-                    children: [
-                      _buildHybridClauseEditor(
-                        controller: _hybridLessonClauseController,
-                        label: '수업횟수 / 시간 문구',
-                        generatedText: _lessonClauseText,
-                      ),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeLessonClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) {
-                                setState(() {
-                                  _agreeLessonClause = v ?? false;
-                                });
-                                _handleDetailSignatureSensitiveChanged();
-                              },
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          const Text('본 상품은 총'),
-                          _inlineNumberField(
-                            _sessionCountController,
-                            suffix: '회',
-                            enabled: !_isFormLocked,
-                          ),
-                          const Text('이며, 1회 수업 시간은'),
-                          _inlineNumberField(
-                            _sessionMinutesController,
-                            suffix: '분',
-                            enabled: !_isFormLocked,
-                          ),
-                          const Text('입니다.'),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPreviewSentence(_lessonClauseText),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeLessonClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) =>
-                                setState(() => _agreeLessonClause = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  ),
+            child:
+                isHybridWrite
+                    ? Column(
+                      children: [
+                        _buildHybridClauseEditor(
+                          controller: _hybridLessonClauseController,
+                          label: '수업횟수 / 시간 문구',
+                          generatedText: _lessonClauseText,
+                        ),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeLessonClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) {
+                                    setState(() {
+                                      _agreeLessonClause = v ?? false;
+                                    });
+                                    _handleDetailSignatureSensitiveChanged();
+                                  },
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    )
+                    : Column(
+                      children: [
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text('본 상품은 총'),
+                            _inlineNumberField(
+                              _sessionCountController,
+                              suffix: '회',
+                              enabled: !_isFormLocked,
+                            ),
+                            const Text('이며, 1회 수업 시간은'),
+                            _inlineNumberField(
+                              _sessionMinutesController,
+                              suffix: '분',
+                              enabled: !_isFormLocked,
+                            ),
+                            const Text('입니다.'),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPreviewSentence(_lessonClauseText),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeLessonClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreeLessonClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    ),
           ),
           const SizedBox(height: 12),
           _buildClauseToggleCard(
@@ -3802,67 +3835,70 @@ class _ContractPageState extends State<ContractPage>
               });
               _handleDetailSignatureSensitiveChanged();
             },
-            child: isHybridWrite
-                ? Column(
-                    children: [
-                      _buildHybridClauseEditor(
-                        controller: _hybridReservationClauseController,
-                        label: '예약 기준 / 레슨 지연 문구',
-                        generatedText: _reservationClauseText,
-                      ),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeReservationClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) => setState(
-                                  () => _agreeReservationClause = v ?? false,
-                                ),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      _buildTextField(
-                        controller: _cancelHoursController,
-                        label: '예약 변경/취소 기준 (시간)',
-                        hint: '24',
-                        keyboardType: TextInputType.number,
-                        enabled: !_isFormLocked,
-                        onTap: () => _showReservationTip(force: false),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildTextField(
-                        controller: _lessonDelayMinutesController,
-                        label: '레슨 진행이 어려울 수 있는 기준 (분)',
-                        hint: '30',
-                        keyboardType: TextInputType.number,
-                        enabled: !_isFormLocked,
-                        onTap: () => _showReservationTip(force: false),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPreviewSentence(_reservationClauseText),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeReservationClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) => setState(
-                                  () => _agreeReservationClause = v ?? false,
-                                ),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  ),
+            child:
+                isHybridWrite
+                    ? Column(
+                      children: [
+                        _buildHybridClauseEditor(
+                          controller: _hybridReservationClauseController,
+                          label: '예약 기준 / 레슨 지연 문구',
+                          generatedText: _reservationClauseText,
+                        ),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeReservationClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreeReservationClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    )
+                    : Column(
+                      children: [
+                        _buildTextField(
+                          controller: _cancelHoursController,
+                          label: '예약 변경/취소 기준 (시간)',
+                          hint: '24',
+                          keyboardType: TextInputType.number,
+                          enabled: !_isFormLocked,
+                          onTap: () => _showReservationTip(force: false),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField(
+                          controller: _lessonDelayMinutesController,
+                          label: '레슨 진행이 어려울 수 있는 기준 (분)',
+                          hint: '30',
+                          keyboardType: TextInputType.number,
+                          enabled: !_isFormLocked,
+                          onTap: () => _showReservationTip(force: false),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPreviewSentence(_reservationClauseText),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeReservationClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreeReservationClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    ),
           ),
           const SizedBox(height: 12),
           _buildClauseToggleCard(
@@ -3878,70 +3914,75 @@ class _ContractPageState extends State<ContractPage>
               });
               _handleDetailSignatureSensitiveChanged();
             },
-            child: isHybridWrite
-                ? Column(
-                    children: [
-                      _buildHybridClauseEditor(
-                        controller: _hybridHoldClauseController,
-                        label: '홀드 / 이용정지 문구',
-                        generatedText: _holdClauseText,
-                      ),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeHoldClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) =>
-                                setState(() => _agreeHoldClause = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          const Text('홀드(일시정지)는'),
-                          _inlineNumberField(
-                            _holdCountController,
-                            suffix: '회',
-                            enabled: !_isFormLocked,
-                          ),
-                          const Text('총'),
-                          _inlineNumberField(
-                            _holdDaysController,
-                            suffix: '일',
-                            enabled: !_isFormLocked,
-                          ),
-                          const Text('가능합니다.'),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildTextField(
-                        controller: _suspensionRuleController,
-                        label: '이용정지 / 운영 예외 문구',
-                        hint: '기관에서 인정하는 사항에 따라 이용정지 운영의 예외를 둘 수 있습니다.',
-                        maxLines: 2,
-                        enabled: !_isFormLocked,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildPreviewSentence(_holdClauseText),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeHoldClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) =>
-                                setState(() => _agreeHoldClause = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  ),
+            child:
+                isHybridWrite
+                    ? Column(
+                      children: [
+                        _buildHybridClauseEditor(
+                          controller: _hybridHoldClauseController,
+                          label: '홀드 / 이용정지 문구',
+                          generatedText: _holdClauseText,
+                        ),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeHoldClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreeHoldClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    )
+                    : Column(
+                      children: [
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text('홀드(일시정지)는'),
+                            _inlineNumberField(
+                              _holdCountController,
+                              suffix: '회',
+                              enabled: !_isFormLocked,
+                            ),
+                            const Text('총'),
+                            _inlineNumberField(
+                              _holdDaysController,
+                              suffix: '일',
+                              enabled: !_isFormLocked,
+                            ),
+                            const Text('가능합니다.'),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField(
+                          controller: _suspensionRuleController,
+                          label: '이용정지 / 운영 예외 문구',
+                          hint: '기관에서 인정하는 사항에 따라 이용정지 운영의 예외를 둘 수 있습니다.',
+                          maxLines: 2,
+                          enabled: !_isFormLocked,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildPreviewSentence(_holdClauseText),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeHoldClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreeHoldClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    ),
           ),
           const SizedBox(height: 12),
           _buildClauseToggleCard(
@@ -3958,63 +3999,70 @@ class _ContractPageState extends State<ContractPage>
               });
               _handleDetailSignatureSensitiveChanged();
             },
-            child: isHybridWrite
-                ? Column(
-                    children: [
-                      _buildHybridClauseEditor(
-                        controller: _hybridPenaltyClauseController,
-                        label: '중도해지 시 위약금 및 정책 문구',
-                        generatedText: _penaltyClauseText,
-                      ),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreePenaltyClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) => setState(
-                                () => _agreePenaltyClause = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      CheckboxListTile(
-                        value: _noRefundProduct,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) =>
-                                setState(() => _noRefundProduct = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('환불불가 상품입니다'),
-                      ),
-                      if (!_noRefundProduct)
-                        _buildTextField(
-                          controller: _penaltyPercentController,
-                          label: '위약금 비율 (%)',
-                          hint: '10',
-                          keyboardType: TextInputType.number,
-                          enabled: !_isFormLocked,
-                          onTap: () => _showPenaltyTip(force: false),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
+            child:
+                isHybridWrite
+                    ? Column(
+                      children: [
+                        _buildHybridClauseEditor(
+                          controller: _hybridPenaltyClauseController,
+                          label: '중도해지 시 위약금 및 정책 문구',
+                          generatedText: _penaltyClauseText,
                         ),
-                      const SizedBox(height: 12),
-                      _buildPreviewSentence(_penaltyClauseText),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreePenaltyClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) => setState(
-                                () => _agreePenaltyClause = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreePenaltyClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreePenaltyClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    )
+                    : Column(
+                      children: [
+                        CheckboxListTile(
+                          value: _noRefundProduct,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _noRefundProduct = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('환불불가 상품입니다'),
+                        ),
+                        if (!_noRefundProduct)
+                          _buildTextField(
+                            controller: _penaltyPercentController,
+                            label: '위약금 비율 (%)',
+                            hint: '10',
+                            keyboardType: TextInputType.number,
+                            enabled: !_isFormLocked,
+                            onTap: () => _showPenaltyTip(force: false),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                          ),
+                        const SizedBox(height: 12),
+                        _buildPreviewSentence(_penaltyClauseText),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreePenaltyClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreePenaltyClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    ),
           ),
           const SizedBox(height: 12),
           _buildClauseToggleCard(
@@ -4030,58 +4078,64 @@ class _ContractPageState extends State<ContractPage>
               });
               _handleDetailSignatureSensitiveChanged();
             },
-            child: isHybridWrite
-                ? Column(
-                    children: [
-                      _buildHybridClauseEditor(
-                        controller: _hybridTransferClauseController,
-                        label: '양도 기준 또는 불가 여부 문구',
-                        generatedText: _transferClauseText,
-                      ),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeTransferClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) => setState(
-                                () => _agreeTransferClause = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      SwitchListTile.adaptive(
-                        value: _transferAllowed,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) => setState(() => _transferAllowed = v),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('양도 가능'),
-                      ),
-                      if (_transferAllowed)
-                        _buildTextField(
-                          controller: _transferRuleController,
-                          label: '양도 기준',
-                          hint: '센터 승인 및 명의 확인 후 양도 가능합니다.',
-                          maxLines: 2,
-                          enabled: !_isFormLocked,
+            child:
+                isHybridWrite
+                    ? Column(
+                      children: [
+                        _buildHybridClauseEditor(
+                          controller: _hybridTransferClauseController,
+                          label: '양도 기준 또는 불가 여부 문구',
+                          generatedText: _transferClauseText,
                         ),
-                      const SizedBox(height: 12),
-                      _buildPreviewSentence(_transferClauseText),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _agreeTransferClause,
-                        onChanged: _isFormLocked
-                            ? null
-                            : (v) => setState(
-                                () => _agreeTransferClause = v ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('동의합니다'),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeTransferClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreeTransferClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    )
+                    : Column(
+                      children: [
+                        SwitchListTile.adaptive(
+                          value: _transferAllowed,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(() => _transferAllowed = v),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('양도 가능'),
+                        ),
+                        if (_transferAllowed)
+                          _buildTextField(
+                            controller: _transferRuleController,
+                            label: '양도 기준',
+                            hint: '센터 승인 및 명의 확인 후 양도 가능합니다.',
+                            maxLines: 2,
+                            enabled: !_isFormLocked,
+                          ),
+                        const SizedBox(height: 12),
+                        _buildPreviewSentence(_transferClauseText),
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          value: _agreeTransferClause,
+                          onChanged:
+                              _isFormLocked
+                                  ? null
+                                  : (v) => setState(
+                                    () => _agreeTransferClause = v ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('동의합니다'),
+                        ),
+                      ],
+                    ),
           ),
           if (_sourceMode == ContractSourceMode.customWrite) ...[
             const SizedBox(height: 14),
@@ -4130,17 +4184,18 @@ class _ContractPageState extends State<ContractPage>
                         ),
                       ),
                       FilledButton.tonalIcon(
-                        onPressed: _isFormLocked ||
-                                _storedPdfNames.length >= _maxStoredPdfCount
-                            ? null
-                            : () {
-                                setState(() {
-                                  _storedPdfNames.add(
-                                    'contract_${_storedPdfNames.length + 1}.pdf',
-                                  );
-                                });
-                                _showSnack('PDF 보관 더미가 추가되었습니다.');
-                              },
+                        onPressed:
+                            _isFormLocked ||
+                                    _storedPdfNames.length >= _maxStoredPdfCount
+                                ? null
+                                : () {
+                                  setState(() {
+                                    _storedPdfNames.add(
+                                      'contract_${_storedPdfNames.length + 1}.pdf',
+                                    );
+                                  });
+                                  _showSnack('PDF 보관 더미가 추가되었습니다.');
+                                },
                         icon: const Icon(Icons.add_rounded),
                         label: const Text('추가'),
                       ),
@@ -4151,47 +4206,58 @@ class _ContractPageState extends State<ContractPage>
                     _buildMutedInfo('보관된 PDF가 없습니다.')
                   else
                     Column(
-                      children: _storedPdfNames.asMap().entries.map((entry) {
-                        return Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.picture_as_pdf_outlined,
-                                  size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  entry.value,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF111827),
-                                  ),
+                      children:
+                          _storedPdfNames.asMap().entries.map((entry) {
+                            return Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFE5E7EB),
                                 ),
                               ),
-                              IconButton(
-                                onPressed: _isFormLocked
-                                    ? null
-                                    : () {
-                                        setState(() {
-                                          _storedPdfNames.removeAt(entry.key);
-                                        });
-                                      },
-                                icon: const Icon(Icons.close_rounded, size: 18),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.picture_as_pdf_outlined,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      entry.value,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF111827),
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed:
+                                        _isFormLocked
+                                            ? null
+                                            : () {
+                                              setState(() {
+                                                _storedPdfNames.removeAt(
+                                                  entry.key,
+                                                );
+                                              });
+                                            },
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          }).toList(),
                     ),
                   if (_storedPdfNames.length >= _maxStoredPdfCount)
                     const Padding(
@@ -4220,49 +4286,56 @@ class _ContractPageState extends State<ContractPage>
     final items = _contractHistoryItems;
 
     return _buildSectionCard(
-      title: _sourceMode == ContractSourceMode.uploadPdf
-          ? '추가 확인 조항 이력'
-          : '계약문장 이력',
+      title:
+          _sourceMode == ContractSourceMode.uploadPdf
+              ? '추가 확인 조항 이력'
+              : '계약문장 이력',
       icon: Icons.history_outlined,
-      subtitle: _sourceMode == ContractSourceMode.uploadPdf
-          ? '업로드 문서 외에 앱 화면에 실제로 저장될 추가 문장 리스트입니다.'
-          : '현재 문서에 실제로 들어갈 문장 리스트입니다.',
-      child: items.isEmpty
-          ? _buildMutedInfo(
-              _sourceMode == ContractSourceMode.uploadPdf
-                  ? '추가 확인 조항이 없습니다.'
-                  : '선택된 계약 조건이 없습니다.',
-            )
-          : Column(
-              children: items.map((item) {
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.subdirectory_arrow_right, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          item,
-                          style: const TextStyle(
-                            height: 1.45,
-                            color: Color(0xFF111827),
-                          ),
+      subtitle:
+          _sourceMode == ContractSourceMode.uploadPdf
+              ? '업로드 문서 외에 앱 화면에 실제로 저장될 추가 문장 리스트입니다.'
+              : '현재 문서에 실제로 들어갈 문장 리스트입니다.',
+      child:
+          items.isEmpty
+              ? _buildMutedInfo(
+                _sourceMode == ContractSourceMode.uploadPdf
+                    ? '추가 확인 조항이 없습니다.'
+                    : '선택된 계약 조건이 없습니다.',
+              )
+              : Column(
+                children:
+                    items.map((item) {
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.subdirectory_arrow_right,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item,
+                                style: const TextStyle(
+                                  height: 1.45,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+              ),
     );
   }
 
@@ -4277,19 +4350,20 @@ class _ContractPageState extends State<ContractPage>
         children: [
           CheckboxListTile(
             value: _healthPain,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _healthPain = v ?? false;
-                      if (_healthPain) {
-                        _healthNone = false;
-                      } else {
-                        _selectedPainAreas.clear();
-                      }
-                      _syncHealthDetailController();
-                    });
-                  },
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _healthPain = v ?? false;
+                        if (_healthPain) {
+                          _healthNone = false;
+                        } else {
+                          _selectedPainAreas.clear();
+                        }
+                        _syncHealthDetailController();
+                      });
+                    },
             contentPadding: EdgeInsets.zero,
             title: const Text('통증 / 불편 부위가 있습니다'),
           ),
@@ -4299,10 +4373,11 @@ class _ContractPageState extends State<ContractPage>
               title: '통증 부위 선택',
               options: _painAreaOptions,
               selectedValues: _selectedPainAreas,
-              onTap: (value) => _toggleHealthChip(
-                target: _selectedPainAreas,
-                value: value,
-              ),
+              onTap:
+                  (value) => _toggleHealthChip(
+                    target: _selectedPainAreas,
+                    value: value,
+                  ),
             ),
             if (_selectedPainAreas.isEmpty)
               Padding(
@@ -4323,19 +4398,20 @@ class _ContractPageState extends State<ContractPage>
           ],
           CheckboxListTile(
             value: _healthSurgery,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _healthSurgery = v ?? false;
-                      if (_healthSurgery) {
-                        _healthNone = false;
-                      } else {
-                        _selectedSurgeryTypes.clear();
-                      }
-                      _syncHealthDetailController();
-                    });
-                  },
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _healthSurgery = v ?? false;
+                        if (_healthSurgery) {
+                          _healthNone = false;
+                        } else {
+                          _selectedSurgeryTypes.clear();
+                        }
+                        _syncHealthDetailController();
+                      });
+                    },
             contentPadding: EdgeInsets.zero,
             title: const Text('최근 수술 이력이 있습니다'),
           ),
@@ -4345,10 +4421,11 @@ class _ContractPageState extends State<ContractPage>
               title: '수술 유형 선택',
               options: _surgeryTypeOptions,
               selectedValues: _selectedSurgeryTypes,
-              onTap: (value) => _toggleHealthChip(
-                target: _selectedSurgeryTypes,
-                value: value,
-              ),
+              onTap:
+                  (value) => _toggleHealthChip(
+                    target: _selectedSurgeryTypes,
+                    value: value,
+                  ),
             ),
             if (_selectedSurgeryTypes.isEmpty)
               Padding(
@@ -4369,19 +4446,20 @@ class _ContractPageState extends State<ContractPage>
           ],
           CheckboxListTile(
             value: _healthAccident,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _healthAccident = v ?? false;
-                      if (_healthAccident) {
-                        _healthNone = false;
-                      } else {
-                        _selectedAccidentTypes.clear();
-                      }
-                      _syncHealthDetailController();
-                    });
-                  },
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _healthAccident = v ?? false;
+                        if (_healthAccident) {
+                          _healthNone = false;
+                        } else {
+                          _selectedAccidentTypes.clear();
+                        }
+                        _syncHealthDetailController();
+                      });
+                    },
             contentPadding: EdgeInsets.zero,
             title: const Text('최근 사고 이력이 있습니다'),
           ),
@@ -4391,10 +4469,11 @@ class _ContractPageState extends State<ContractPage>
               title: '사고 유형 선택',
               options: _accidentTypeOptions,
               selectedValues: _selectedAccidentTypes,
-              onTap: (value) => _toggleHealthChip(
-                target: _selectedAccidentTypes,
-                value: value,
-              ),
+              onTap:
+                  (value) => _toggleHealthChip(
+                    target: _selectedAccidentTypes,
+                    value: value,
+                  ),
             ),
             if (_selectedAccidentTypes.isEmpty)
               Padding(
@@ -4415,57 +4494,60 @@ class _ContractPageState extends State<ContractPage>
           ],
           CheckboxListTile(
             value: _healthPregnancy,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _healthPregnancy = v ?? false;
-                      if (_healthPregnancy) {
-                        _healthNone = false;
-                      }
-                      _syncHealthDetailController();
-                    });
-                  },
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _healthPregnancy = v ?? false;
+                        if (_healthPregnancy) {
+                          _healthNone = false;
+                        }
+                        _syncHealthDetailController();
+                      });
+                    },
             contentPadding: EdgeInsets.zero,
             title: const Text('임신/출산 관련 사항이 있습니다'),
           ),
           CheckboxListTile(
             value: _healthRehab,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _healthRehab = v ?? false;
-                      if (_healthRehab) {
-                        _healthNone = false;
-                      }
-                      _syncHealthDetailController();
-                    });
-                  },
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _healthRehab = v ?? false;
+                        if (_healthRehab) {
+                          _healthNone = false;
+                        }
+                        _syncHealthDetailController();
+                      });
+                    },
             contentPadding: EdgeInsets.zero,
             title: const Text('재활 중입니다'),
           ),
           CheckboxListTile(
             value: _healthNone,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _healthNone = v ?? false;
-                      if (_healthNone) {
-                        _healthPain = false;
-                        _healthSurgery = false;
-                        _healthAccident = false;
-                        _healthPregnancy = false;
-                        _healthRehab = false;
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _healthNone = v ?? false;
+                        if (_healthNone) {
+                          _healthPain = false;
+                          _healthSurgery = false;
+                          _healthAccident = false;
+                          _healthPregnancy = false;
+                          _healthRehab = false;
 
-                        _selectedPainAreas.clear();
-                        _selectedSurgeryTypes.clear();
-                        _selectedAccidentTypes.clear();
-                      }
-                      _syncHealthDetailController();
-                    });
-                  },
+                          _selectedPainAreas.clear();
+                          _selectedSurgeryTypes.clear();
+                          _selectedAccidentTypes.clear();
+                        }
+                        _syncHealthDetailController();
+                      });
+                    },
             contentPadding: EdgeInsets.zero,
             title: const Text('해당 없음'),
           ),
@@ -4492,9 +4574,10 @@ class _ContractPageState extends State<ContractPage>
           const SizedBox(height: 8),
           CheckboxListTile(
             value: _agreeHealthNotice,
-            onChanged: _isFormLocked
-                ? null
-                : (v) => setState(() => _agreeHealthNotice = v ?? false),
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) => setState(() => _agreeHealthNotice = v ?? false),
             contentPadding: EdgeInsets.zero,
             title: const Text('건강안내박스를 숙지하였습니다'),
           ),
@@ -4529,75 +4612,81 @@ class _ContractPageState extends State<ContractPage>
               label: '이메일',
               icon: Icons.email_outlined,
               selected: _deliveryMethod == ContractDeliveryMethod.email,
-              onTap: _isFormLocked
-                  ? null
-                  : () {
-                      if (_deliveryMethod == ContractDeliveryMethod.email)
-                        return;
-                      setState(() {
-                        _deliveryMethod = ContractDeliveryMethod.email;
-                      });
-                      _handleDetailSignatureSensitiveChanged();
-                    },
+              onTap:
+                  _isFormLocked
+                      ? null
+                      : () {
+                        if (_deliveryMethod == ContractDeliveryMethod.email)
+                          return;
+                        setState(() {
+                          _deliveryMethod = ContractDeliveryMethod.email;
+                        });
+                        _handleDetailSignatureSensitiveChanged();
+                      },
             ),
             _DeliveryMethodChip(
               label: '문자 링크',
               icon: Icons.sms_outlined,
               selected: _deliveryMethod == ContractDeliveryMethod.sms,
-              onTap: _isFormLocked
-                  ? null
-                  : () {
-                      if (_deliveryMethod == ContractDeliveryMethod.sms) return;
-                      setState(() {
-                        _deliveryMethod = ContractDeliveryMethod.sms;
-                      });
-                      _handleDetailSignatureSensitiveChanged();
-                    },
+              onTap:
+                  _isFormLocked
+                      ? null
+                      : () {
+                        if (_deliveryMethod == ContractDeliveryMethod.sms)
+                          return;
+                        setState(() {
+                          _deliveryMethod = ContractDeliveryMethod.sms;
+                        });
+                        _handleDetailSignatureSensitiveChanged();
+                      },
             ),
             _DeliveryMethodChip(
               label: '카카오톡',
               icon: Icons.chat_bubble_outline_rounded,
               selected: _deliveryMethod == ContractDeliveryMethod.kakao,
-              onTap: _isFormLocked
-                  ? null
-                  : () {
-                      if (_deliveryMethod == ContractDeliveryMethod.kakao)
-                        return;
-                      setState(() {
-                        _deliveryMethod = ContractDeliveryMethod.kakao;
-                      });
-                      _handleDetailSignatureSensitiveChanged();
-                    },
+              onTap:
+                  _isFormLocked
+                      ? null
+                      : () {
+                        if (_deliveryMethod == ContractDeliveryMethod.kakao)
+                          return;
+                        setState(() {
+                          _deliveryMethod = ContractDeliveryMethod.kakao;
+                        });
+                        _handleDetailSignatureSensitiveChanged();
+                      },
             ),
             _DeliveryMethodChip(
               label: '인쇄본',
               icon: Icons.print_outlined,
               selected: _deliveryMethod == ContractDeliveryMethod.print,
-              onTap: _isFormLocked
-                  ? null
-                  : () {
-                      if (_deliveryMethod == ContractDeliveryMethod.print)
-                        return;
-                      setState(() {
-                        _deliveryMethod = ContractDeliveryMethod.print;
-                      });
-                      _handleDetailSignatureSensitiveChanged();
-                    },
+              onTap:
+                  _isFormLocked
+                      ? null
+                      : () {
+                        if (_deliveryMethod == ContractDeliveryMethod.print)
+                          return;
+                        setState(() {
+                          _deliveryMethod = ContractDeliveryMethod.print;
+                        });
+                        _handleDetailSignatureSensitiveChanged();
+                      },
             ),
             _DeliveryMethodChip(
               label: '센터 보관만',
               icon: Icons.inventory_2_outlined,
               selected: _deliveryMethod == ContractDeliveryMethod.storeOnly,
-              onTap: _isFormLocked
-                  ? null
-                  : () {
-                      if (_deliveryMethod == ContractDeliveryMethod.storeOnly)
-                        return;
-                      setState(() {
-                        _deliveryMethod = ContractDeliveryMethod.storeOnly;
-                      });
-                      _handleDetailSignatureSensitiveChanged();
-                    },
+              onTap:
+                  _isFormLocked
+                      ? null
+                      : () {
+                        if (_deliveryMethod == ContractDeliveryMethod.storeOnly)
+                          return;
+                        setState(() {
+                          _deliveryMethod = ContractDeliveryMethod.storeOnly;
+                        });
+                        _handleDetailSignatureSensitiveChanged();
+                      },
             ),
           ],
         ),
@@ -4638,10 +4727,7 @@ class _ContractPageState extends State<ContractPage>
             padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFEEF2FF),
-                  Color(0xFFF5F3FF),
-                ],
+                colors: [Color(0xFFEEF2FF), Color(0xFFF5F3FF)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -4701,15 +4787,13 @@ class _ContractPageState extends State<ContractPage>
           const SizedBox(height: 14),
           _buildSignatureBox(
             title: '회원 기본 확인 서명',
-            name: _memberNameController.text.trim().isEmpty
-                ? '회원명 미입력'
-                : _memberNameController.text.trim(),
+            name:
+                _memberNameController.text.trim().isEmpty
+                    ? '회원명 미입력'
+                    : _memberNameController.text.trim(),
             points: _memberSignaturePoints,
             signedAt: _memberSignedAt,
-            onTapSign: () => _openSignaturePad(
-              isMember: true,
-              isFinal: false,
-            ),
+            onTapSign: () => _openSignaturePad(isMember: true, isFinal: false),
             onClear: () {
               if (_isFormLocked) {
                 _showSnack('최종 서명 완료 후 수정은 새 버전 작성으로 진행해주세요.');
@@ -4725,15 +4809,13 @@ class _ContractPageState extends State<ContractPage>
           const SizedBox(height: 14),
           _buildSignatureBox(
             title: '강사 기본 확인 서명',
-            name: _trainerNameController.text.trim().isEmpty
-                ? '강사 미입력'
-                : _trainerNameController.text.trim(),
+            name:
+                _trainerNameController.text.trim().isEmpty
+                    ? '강사 미입력'
+                    : _trainerNameController.text.trim(),
             points: _staffSignaturePoints,
             signedAt: _staffSignedAt,
-            onTapSign: () => _openSignaturePad(
-              isMember: false,
-              isFinal: false,
-            ),
+            onTapSign: () => _openSignaturePad(isMember: false, isFinal: false),
             onClear: () {
               if (_isFormLocked) {
                 _showSnack('최종 서명 완료 후 수정은 새 버전 작성으로 진행해주세요.');
@@ -4769,31 +4851,31 @@ class _ContractPageState extends State<ContractPage>
           const SizedBox(height: 12),
           CheckboxListTile(
             value: _agreeImportantNotice,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _agreeImportantNotice = v ?? false;
-                    });
-                    _handleDetailSignatureSensitiveChanged();
-                  },
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _agreeImportantNotice = v ?? false;
+                      });
+                      _handleDetailSignatureSensitiveChanged();
+                    },
             contentPadding: EdgeInsets.zero,
             title: const Text('현재 화면의 계약내용을 모두 확인했습니다'),
           ),
           CheckboxListTile(
             value: _agreeSameContentSave,
-            onChanged: _isFormLocked
-                ? null
-                : (v) {
-                    setState(() {
-                      _agreeSameContentSave = v ?? false;
-                    });
-                    _handleDetailSignatureSensitiveChanged();
-                  },
+            onChanged:
+                _isFormLocked
+                    ? null
+                    : (v) {
+                      setState(() {
+                        _agreeSameContentSave = v ?? false;
+                      });
+                      _handleDetailSignatureSensitiveChanged();
+                    },
             contentPadding: EdgeInsets.zero,
-            title: const Text(
-              '아래 서명과 동시에 현재 내용이 안전하게 저장·전송될 수 있음에 동의합니다',
-            ),
+            title: const Text('아래 서명과 동시에 현재 내용이 안전하게 저장·전송될 수 있음에 동의합니다'),
           ),
           const SizedBox(height: 12),
           _buildDeliveryMethodSelector(),
@@ -4833,10 +4915,7 @@ class _ContractPageState extends State<ContractPage>
             padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFECFDF5),
-                  Color(0xFFECFEFF),
-                ],
+                colors: [Color(0xFFECFDF5), Color(0xFFECFEFF)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -4896,15 +4975,13 @@ class _ContractPageState extends State<ContractPage>
           const SizedBox(height: 14),
           _buildSignatureBox(
             title: '회원 최종 동의 서명',
-            name: _memberNameController.text.trim().isEmpty
-                ? '회원명 미입력'
-                : _memberNameController.text.trim(),
+            name:
+                _memberNameController.text.trim().isEmpty
+                    ? '회원명 미입력'
+                    : _memberNameController.text.trim(),
             points: _memberFinalSignaturePoints,
             signedAt: _memberFinalSignedAt,
-            onTapSign: () => _openSignaturePad(
-              isMember: true,
-              isFinal: true,
-            ),
+            onTapSign: () => _openSignaturePad(isMember: true, isFinal: true),
             onClear: () {
               if (_isFormLocked) {
                 _showSnack('최종 서명 완료 후 수정은 새 버전 작성으로 진행해주세요.');
@@ -4920,15 +4997,13 @@ class _ContractPageState extends State<ContractPage>
           const SizedBox(height: 14),
           _buildSignatureBox(
             title: '강사 최종 확인 서명',
-            name: _trainerNameController.text.trim().isEmpty
-                ? '강사 미입력'
-                : _trainerNameController.text.trim(),
+            name:
+                _trainerNameController.text.trim().isEmpty
+                    ? '강사 미입력'
+                    : _trainerNameController.text.trim(),
             points: _staffFinalSignaturePoints,
             signedAt: _staffFinalSignedAt,
-            onTapSign: () => _openSignaturePad(
-              isMember: false,
-              isFinal: true,
-            ),
+            onTapSign: () => _openSignaturePad(isMember: false, isFinal: true),
             onClear: () {
               if (_isFormLocked) {
                 _showSnack('최종 서명 완료 후 수정은 새 버전 작성으로 진행해주세요.');
@@ -4962,10 +5037,7 @@ class _ContractPageState extends State<ContractPage>
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.description_outlined,
-                color: Color(0xFF111827),
-              ),
+              const Icon(Icons.description_outlined, color: Color(0xFF111827)),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -4978,8 +5050,10 @@ class _ContractPageState extends State<ContractPage>
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(999),
@@ -5008,10 +5082,7 @@ class _ContractPageState extends State<ContractPage>
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(
-                  color: const Color(0xFF9CA3AF),
-                  width: 1.2,
-                ),
+                border: Border.all(color: const Color(0xFF9CA3AF), width: 1.2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -5031,9 +5102,10 @@ class _ContractPageState extends State<ContractPage>
                   const SizedBox(height: 12),
                   _buildFormalPreviewRuleBox(
                     title: '계약조건',
-                    items: _contractHistoryItems.isEmpty
-                        ? const ['선택된 계약 조건이 없습니다.']
-                        : _contractHistoryItems,
+                    items:
+                        _contractHistoryItems.isEmpty
+                            ? const ['선택된 계약 조건이 없습니다.']
+                            : _contractHistoryItems,
                   ),
                   const SizedBox(height: 12),
                   _buildFormalPreviewRuleBox(
@@ -5098,10 +5170,7 @@ class _ContractPageState extends State<ContractPage>
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
-            border: Border.all(
-              color: const Color(0xFFCBD5E1),
-              width: 0.8,
-            ),
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 0.8),
           ),
           child: Row(
             children: [
@@ -5150,10 +5219,7 @@ class _ContractPageState extends State<ContractPage>
       children: [
         _buildFormalPreviewMiniTitle('계약 당사자'),
         Table(
-          border: TableBorder.all(
-            color: const Color(0xFF9CA3AF),
-            width: 0.8,
-          ),
+          border: TableBorder.all(color: const Color(0xFF9CA3AF), width: 0.8),
           columnWidths: const {
             0: FixedColumnWidth(72),
             1: FlexColumnWidth(),
@@ -5191,10 +5257,7 @@ class _ContractPageState extends State<ContractPage>
       children: [
         _buildFormalPreviewMiniTitle('상품 및 결제 정보'),
         Table(
-          border: TableBorder.all(
-            color: const Color(0xFF9CA3AF),
-            width: 0.8,
-          ),
+          border: TableBorder.all(color: const Color(0xFF9CA3AF), width: 0.8),
           columnWidths: const {
             0: FixedColumnWidth(72),
             1: FlexColumnWidth(),
@@ -5258,10 +5321,7 @@ class _ContractPageState extends State<ContractPage>
 
   Widget _buildFormalPreviewInfoTable() {
     return Table(
-      border: TableBorder.all(
-        color: const Color(0xFF9CA3AF),
-        width: 0.8,
-      ),
+      border: TableBorder.all(color: const Color(0xFF9CA3AF), width: 0.8),
       columnWidths: const {
         0: FixedColumnWidth(72),
         1: FlexColumnWidth(),
@@ -5395,10 +5455,7 @@ class _ContractPageState extends State<ContractPage>
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: const Color(0xFF9CA3AF),
-          width: 0.8,
-        ),
+        border: Border.all(color: const Color(0xFF9CA3AF), width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5526,12 +5583,13 @@ class _ContractPageState extends State<ContractPage>
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFF9CA3AF), width: 0.8),
           ),
-          child: hasSignature
-              ? CustomPaint(
-                  painter: _FittedSignaturePainter(points),
-                  child: const SizedBox.expand(),
-                )
-              : const SizedBox.shrink(),
+          child:
+              hasSignature
+                  ? CustomPaint(
+                    painter: _FittedSignaturePainter(points),
+                    child: const SizedBox.expand(),
+                  )
+                  : const SizedBox.shrink(),
         ),
         const SizedBox(height: 6),
         Text(
@@ -5557,10 +5615,7 @@ class _ContractPageState extends State<ContractPage>
     );
   }
 
-  Widget _buildDocumentSection({
-    required String title,
-    required String body,
-  }) {
+  Widget _buildDocumentSection({required String title, required String body}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -5630,11 +5685,7 @@ class _ContractPageState extends State<ContractPage>
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: const Color(0xFF111827),
-                ),
+                child: Icon(icon, size: 20, color: const Color(0xFF111827)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -5841,19 +5892,17 @@ class _ContractPageState extends State<ContractPage>
         keyboardType: TextInputType.number,
         enabled: enabled,
         textAlign: TextAlign.center,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-        ],
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         decoration: InputDecoration(
           isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 10,
+          ),
           suffixText: suffix,
           filled: true,
           fillColor: enabled ? Colors.white : const Color(0xFFF3F4F6),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -5907,10 +5956,7 @@ class _ContractPageState extends State<ContractPage>
         children: [
           Text(
             title,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: textColor,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w800, color: textColor),
           ),
           const SizedBox(height: 6),
           Text(
@@ -5948,11 +5994,7 @@ class _ContractPageState extends State<ContractPage>
   Widget _buildDividerLabel(String text) {
     return Row(
       children: [
-        Container(
-          width: 16,
-          height: 1,
-          color: const Color(0xFFD1D5DB),
-        ),
+        Container(width: 16, height: 1, color: const Color(0xFFD1D5DB)),
         const SizedBox(width: 8),
         Text(
           text,
@@ -5962,20 +6004,12 @@ class _ContractPageState extends State<ContractPage>
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: const Color(0xFFD1D5DB),
-          ),
-        ),
+        Expanded(child: Container(height: 1, color: const Color(0xFFD1D5DB))),
       ],
     );
   }
 
-  Widget _buildStatusChip({
-    required String label,
-    required bool done,
-  }) {
+  Widget _buildStatusChip({required String label, required bool done}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -6040,15 +6074,14 @@ class _ContractPageState extends State<ContractPage>
             duration: const Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
-            child: checked
-                ? Padding(
-                    key: ValueKey('clause_open_$title'),
-                    padding: const EdgeInsets.only(top: 8),
-                    child: child,
-                  )
-                : const SizedBox.shrink(
-                    key: ValueKey('clause_closed'),
-                  ),
+            child:
+                checked
+                    ? Padding(
+                      key: ValueKey('clause_open_$title'),
+                      padding: const EdgeInsets.only(top: 8),
+                      child: child,
+                    )
+                    : const SizedBox.shrink(key: ValueKey('clause_closed')),
           ),
         ],
       ),
@@ -6075,23 +6108,25 @@ class _ContractPageState extends State<ContractPage>
               ),
             ),
             TextButton(
-              onPressed: _isFormLocked
-                  ? null
-                  : () {
-                      setState(() {
-                        controller.text = generatedText;
-                      });
-                    },
+              onPressed:
+                  _isFormLocked
+                      ? null
+                      : () {
+                        setState(() {
+                          controller.text = generatedText;
+                        });
+                      },
               child: const Text('기본문구'),
             ),
             TextButton(
-              onPressed: _isFormLocked
-                  ? null
-                  : () {
-                      setState(() {
-                        controller.clear();
-                      });
-                    },
+              onPressed:
+                  _isFormLocked
+                      ? null
+                      : () {
+                        setState(() {
+                          controller.clear();
+                        });
+                      },
               child: const Text('빈칸'),
             ),
           ],
@@ -6141,29 +6176,32 @@ class _ContractPageState extends State<ContractPage>
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: options.map((item) {
-              final selected = selectedValues.contains(item);
+            children:
+                options.map((item) {
+                  final selected = selectedValues.contains(item);
 
-              return FilterChip(
-                label: Text(item),
-                selected: selected,
-                onSelected: (_) => onTap(item),
-                showCheckmark: false,
-                selectedColor: const Color(0xFFDBEAFE),
-                backgroundColor: const Color(0xFFF9FAFB),
-                labelStyle: TextStyle(
-                  color: selected
-                      ? const Color(0xFF1D4ED8)
-                      : const Color(0xFF374151),
-                  fontWeight: FontWeight.w700,
-                ),
-                side: BorderSide(
-                  color: selected
-                      ? const Color(0xFF93C5FD)
-                      : const Color(0xFFE5E7EB),
-                ),
-              );
-            }).toList(),
+                  return FilterChip(
+                    label: Text(item),
+                    selected: selected,
+                    onSelected: (_) => onTap(item),
+                    showCheckmark: false,
+                    selectedColor: const Color(0xFFDBEAFE),
+                    backgroundColor: const Color(0xFFF9FAFB),
+                    labelStyle: TextStyle(
+                      color:
+                          selected
+                              ? const Color(0xFF1D4ED8)
+                              : const Color(0xFF374151),
+                      fontWeight: FontWeight.w700,
+                    ),
+                    side: BorderSide(
+                      color:
+                          selected
+                              ? const Color(0xFF93C5FD)
+                              : const Color(0xFFE5E7EB),
+                    ),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -6214,9 +6252,10 @@ class _ContractPageState extends State<ContractPage>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: hasSignature
-                    ? const Color(0xFF4F46E5).withOpacity(0.45)
-                    : const Color(0xFFD1D5DB),
+                color:
+                    hasSignature
+                        ? const Color(0xFF4F46E5).withOpacity(0.45)
+                        : const Color(0xFFD1D5DB),
                 width: hasSignature ? 1.3 : 1,
               ),
               color:
@@ -6225,53 +6264,52 @@ class _ContractPageState extends State<ContractPage>
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: hasSignature
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: RepaintBoundary(
-                            child: CustomPaint(
-                              painter: _FittedSignaturePainter(points!),
-                              child: const SizedBox.expand(),
+                  child:
+                      hasSignature
+                          ? ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: RepaintBoundary(
+                              child: CustomPaint(
+                                painter: _FittedSignaturePainter(points!),
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                          )
+                          : Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: const Color(
+                                      0xFF111827,
+                                    ).withOpacity(0.18),
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  '이름을 따라 직접 서명해주세요',
+                                  style: TextStyle(
+                                    color: Color(0xFF9CA3AF),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        )
-                      : Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                displayName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color:
-                                      const Color(0xFF111827).withOpacity(0.18),
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.8,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                '이름을 따라 직접 서명해주세요',
-                                style: TextStyle(
-                                  color: Color(0xFF9CA3AF),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                 ),
                 Positioned(
                   left: 14,
                   right: 14,
                   bottom: 22,
-                  child: Container(
-                    height: 1,
-                    color: const Color(0xFFD1D5DB),
-                  ),
+                  child: Container(height: 1, color: const Color(0xFFD1D5DB)),
                 ),
                 Positioned(
                   left: 14,
@@ -6281,9 +6319,10 @@ class _ContractPageState extends State<ContractPage>
                     style: TextStyle(
                       fontSize: 10.8,
                       fontWeight: FontWeight.w800,
-                      color: hasSignature
-                          ? const Color(0xFF4F46E5)
-                          : const Color(0xFF9CA3AF),
+                      color:
+                          hasSignature
+                              ? const Color(0xFF4F46E5)
+                              : const Color(0xFF9CA3AF),
                     ),
                   ),
                 ),
@@ -6645,9 +6684,10 @@ class _ContractPageState extends State<ContractPage>
   }
 
   String get _paymentDifferenceDetailText {
-    final productLabel = _productNameController.text.trim().isEmpty
-        ? '상품'
-        : _productNameController.text.trim();
+    final productLabel =
+        _productNameController.text.trim().isEmpty
+            ? '상품'
+            : _productNameController.text.trim();
 
     if (_discountPercent != null) {
       return '$productLabel 금액보다 ${_formatMoney(_paymentDifferenceAmount)}원 낮습니다. 할인 ${_formatPercent(_discountPercent!)}이 반영되었습니다.';
@@ -6672,17 +6712,15 @@ class _ContractPageState extends State<ContractPage>
       for (final item in category.items) {
         if (item.name.trim().isEmpty) continue;
         options.add(
-          _LessonTemplateOption(
-            categoryName: categoryName,
-            item: item,
-          ),
+          _LessonTemplateOption(categoryName: categoryName, item: item),
         );
       }
     }
 
     options.sort((a, b) {
-      final categoryCompare =
-          a.categoryName.toLowerCase().compareTo(b.categoryName.toLowerCase());
+      final categoryCompare = a.categoryName.toLowerCase().compareTo(
+        b.categoryName.toLowerCase(),
+      );
       if (categoryCompare != 0) return categoryCompare;
       return a.item.name.toLowerCase().compareTo(b.item.name.toLowerCase());
     });
@@ -6889,7 +6927,8 @@ class _ContractPageState extends State<ContractPage>
     final sections = <_DocSection>[
       _DocSection(
         title: '1. 문서 정보',
-        body: '계약번호: ${_contractNo ?? '저장 전'}\n'
+        body:
+            '계약번호: ${_contractNo ?? '저장 전'}\n'
             '문서 종류: $_documentType\n'
             '계약 버전: v$_version\n'
             '작성 방식: $_sourceModeLabel\n'
@@ -6897,7 +6936,8 @@ class _ContractPageState extends State<ContractPage>
       ),
       _DocSection(
         title: '2. 기본 정보',
-        body: '회원명: ${_valueOrDash(_memberNameController.text)}\n'
+        body:
+            '회원명: ${_valueOrDash(_memberNameController.text)}\n'
             '회원 생년월일: ${_valueOrDash(_memberBirthController.text)}\n'
             '회원 연락처: ${_valueOrDash(_memberPhoneController.text)}\n'
             '회원 이메일: ${_valueOrDash(_memberEmailController.text)}\n'
@@ -6906,18 +6946,19 @@ class _ContractPageState extends State<ContractPage>
       ),
       _DocSection(
         title: '3. 개인레슨 결제정보',
-        body: !_usePaymentSection
-            ? '결제정보 미기재'
-            : '레슨명: ${_valueOrDash(_productNameController.text)}\n'
-                '회당 결제금액: ${_formatMoney(_unitPriceValue)}원\n'
-                '레슨 횟수: ${_sessionCountValue}회\n'
-                '계산 금액: ${_formatMoney(_calculatedTotalPrice)}원 ($_vatLabel)\n'
-                '실결제금액: ${_formatMoney(_priceValue)}원'
-                '${_paymentDifferenceDocumentLine.isNotEmpty ? '\n$_paymentDifferenceDocumentLine' : ''}\n'
-                '결제방법: $_paymentMethodLabel\n'
-                '결제일: ${_valueOrDash(_paymentDateController.text)}\n'
-                '계약일: ${_valueOrDash(_contractDateController.text)}\n'
-                '종료일: ${_isUnlimitedEndDate ? '설정 안함' : _valueOrDash(_endDateController.text)}',
+        body:
+            !_usePaymentSection
+                ? '결제정보 미기재'
+                : '레슨명: ${_valueOrDash(_productNameController.text)}\n'
+                    '회당 결제금액: ${_formatMoney(_unitPriceValue)}원\n'
+                    '레슨 횟수: ${_sessionCountValue}회\n'
+                    '계산 금액: ${_formatMoney(_calculatedTotalPrice)}원 ($_vatLabel)\n'
+                    '실결제금액: ${_formatMoney(_priceValue)}원'
+                    '${_paymentDifferenceDocumentLine.isNotEmpty ? '\n$_paymentDifferenceDocumentLine' : ''}\n'
+                    '결제방법: $_paymentMethodLabel\n'
+                    '결제일: ${_valueOrDash(_paymentDateController.text)}\n'
+                    '계약일: ${_valueOrDash(_contractDateController.text)}\n'
+                    '종료일: ${_isUnlimitedEndDate ? '설정 안함' : _valueOrDash(_endDateController.text)}',
       ),
     ];
 
@@ -6925,27 +6966,30 @@ class _ContractPageState extends State<ContractPage>
       sections.add(
         _DocSection(
           title: '4. 업로드 문서 정보',
-          body: _storedPdfNames.isEmpty
-              ? '보관된 PDF가 없습니다.'
-              : _storedPdfNames
-                  .asMap()
-                  .entries
-                  .map((e) => '${e.key + 1}. ${e.value}')
-                  .join('\n'),
+          body:
+              _storedPdfNames.isEmpty
+                  ? '보관된 PDF가 없습니다.'
+                  : _storedPdfNames
+                      .asMap()
+                      .entries
+                      .map((e) => '${e.key + 1}. ${e.value}')
+                      .join('\n'),
         ),
       );
       sections.add(
         _DocSection(
           title: '5. 추가 확인 조항',
-          body: _contractHistoryItems.isEmpty
-              ? '추가 확인 조항이 없습니다.'
-              : _contractHistoryItems.map((e) => '- $e').join('\n'),
+          body:
+              _contractHistoryItems.isEmpty
+                  ? '추가 확인 조항이 없습니다.'
+                  : _contractHistoryItems.map((e) => '- $e').join('\n'),
         ),
       );
       sections.add(
         _DocSection(
           title: '6. 건강상태알림',
-          body: '건강 상태: $_healthSummary'
+          body:
+              '건강 상태: $_healthSummary'
               '${_healthDetailController.text.trim().isNotEmpty ? '\n상세 고지: ${_healthDetailController.text.trim()}' : ''}\n'
               '건강상태알림 숙지: ${_agreeHealthNotice ? '완료' : '미완료'}',
         ),
@@ -6953,11 +6997,12 @@ class _ContractPageState extends State<ContractPage>
       sections.add(
         _DocSection(
           title: '7. 최종 확인',
-          body: '계약내용 확인: ${_agreeImportantNotice ? '완료' : '미완료'}\n'
+          body:
+              '계약내용 확인: ${_agreeImportantNotice ? '완료' : '미완료'}\n'
               '저장·전송 동의: ${_agreeSameContentSave ? '완료' : '미완료'}\n'
               '계약서 사본 수령 방식: $_deliveryMethodLabel\n'
               '수령 대상: $_deliveryTarget\n'
-              '현재 화면에서 고객이 확인한 문구와 동일한 내용으로 저장·전송됩니다.',
+              '현재 화면에서 회원이 확인한 문구와 동일한 내용으로 저장·전송됩니다.',
         ),
       );
       sections.add(
@@ -6974,15 +7019,17 @@ class _ContractPageState extends State<ContractPage>
     sections.add(
       _DocSection(
         title: '4. 계약 조건',
-        body: _contractHistoryItems.isEmpty
-            ? '선택된 계약 조건이 없습니다.'
-            : _contractHistoryItems.map((e) => '- $e').join('\n'),
+        body:
+            _contractHistoryItems.isEmpty
+                ? '선택된 계약 조건이 없습니다.'
+                : _contractHistoryItems.map((e) => '- $e').join('\n'),
       ),
     );
     sections.add(
       _DocSection(
         title: '5. 건강상태알림',
-        body: '건강 상태: $_healthSummary'
+        body:
+            '건강 상태: $_healthSummary'
             '${_healthDetailController.text.trim().isNotEmpty ? '\n상세 고지: ${_healthDetailController.text.trim()}' : ''}\n'
             '건강상태알림 숙지: ${_agreeHealthNotice ? '완료' : '미완료'}',
       ),
@@ -6990,17 +7037,19 @@ class _ContractPageState extends State<ContractPage>
     sections.add(
       _DocSection(
         title: '6. 최종 확인 및 수령 방식',
-        body: '계약내용 확인: ${_agreeImportantNotice ? '완료' : '미완료'}\n'
+        body:
+            '계약내용 확인: ${_agreeImportantNotice ? '완료' : '미완료'}\n'
             '저장·전송 동의: ${_agreeSameContentSave ? '완료' : '미완료'}\n'
             '계약서 사본 수령 방식: $_deliveryMethodLabel\n'
             '수령 대상: $_deliveryTarget\n'
-            '현재 화면에서 고객이 확인한 문구와 동일한 내용으로 저장·전송됩니다.',
+            '현재 화면에서 회원이 확인한 문구와 동일한 내용으로 저장·전송됩니다.',
       ),
     );
     sections.add(
       _DocSection(
         title: '7. 기본 내용 확인 서명',
-        body: '서명 의미: 회원정보, 상품명, 이용횟수, 결제금액, 결제방법, 결제일 및 계약기간 확인\n'
+        body:
+            '서명 의미: 회원정보, 상품명, 이용횟수, 결제금액, 결제방법, 결제일 및 계약기간 확인\n'
             '회원 기본 확인 서명: ${_memberSigned ? '완료${_memberSignedAt != null ? ' (${_formatDateTime(_memberSignedAt!)})' : ''}' : '미완료'}\n'
             '강사 기본 확인 서명: ${_staffSigned ? '완료${_staffSignedAt != null ? ' (${_formatDateTime(_staffSignedAt!)})' : ''}' : '미완료'}',
       ),
@@ -7008,7 +7057,8 @@ class _ContractPageState extends State<ContractPage>
     sections.add(
       _DocSection(
         title: '8. 최종 동의 서명',
-        body: '서명 의미: 계약조건, 환불/중도해지 기준, 예약/노쇼 기준, 건강고지 및 최종 계약내용 동의\n'
+        body:
+            '서명 의미: 계약조건, 환불/중도해지 기준, 예약/노쇼 기준, 건강고지 및 최종 계약내용 동의\n'
             '회원 최종 동의 서명: ${_memberFinalSigned ? '완료${_memberFinalSignedAt != null ? ' (${_formatDateTime(_memberFinalSignedAt!)})' : ''}' : '미완료'}\n'
             '강사 최종 확인 서명: ${_staffFinalSigned ? '완료${_staffFinalSignedAt != null ? ' (${_formatDateTime(_staffFinalSignedAt!)})' : ''}' : '미완료'}',
       ),
@@ -7149,16 +7199,13 @@ class _ContractPageState extends State<ContractPage>
 
       _contractStatus = ContractStatus.draft;
 
-      await firestore.collection('contracts').doc(_contractId).set(
-        {
-          ..._step1ContractPayload,
-          'stage': ContractStatus.draft.name,
-          'status': ContractStatus.draft.name,
-          'draftSavedAt': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await firestore.collection('contracts').doc(_contractId).set({
+        ..._step1ContractPayload,
+        'stage': ContractStatus.draft.name,
+        'status': ContractStatus.draft.name,
+        'draftSavedAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -7189,7 +7236,8 @@ class _ContractPageState extends State<ContractPage>
       context: context,
       nickname: _normalizeContractNickname(_trainerNameController.text),
       title: '문서종류를 선택하시겠습니까?',
-      message: '계약서 제목과 문서 기준에 반영될 문서종류를 선택합니다.\n'
+      message:
+          '계약서 제목과 문서 기준에 반영될 문서종류를 선택합니다.\n'
           '선택한 문서종류는 계약서 미리보기와 저장 문서에 반영됩니다.',
       selectedValue: _documentType,
       items: const [
@@ -7246,7 +7294,8 @@ class _ContractPageState extends State<ContractPage>
       context: context,
       nickname: _normalizeContractNickname(_trainerNameController.text),
       title: '계약서 작성방식을 선택하시겠습니까?',
-      message: '작성방식은 계약서 문구와 보관 방식에 영향을 줍니다.\n'
+      message:
+          '작성방식은 계약서 문구와 보관 방식에 영향을 줍니다.\n'
           '현재 계약서 운영 방식에 맞는 항목을 선택해주세요.',
       selectedValue: _sourceMode,
       items: const [
@@ -7299,9 +7348,7 @@ class _ContractPageState extends State<ContractPage>
     final selected = _sourceMode == mode;
 
     return ListTile(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       leading: Icon(
         selected ? Icons.check_circle_rounded : Icons.tune_rounded,
         color: selected ? const Color(0xFF7C3AED) : const Color(0xFF64748B),
@@ -7317,9 +7364,10 @@ class _ContractPageState extends State<ContractPage>
   }
 
   Future<void> _showLessonPriceManager() async {
-    final tempCategories = _ContractUiMemory.lessonTemplateCategories
-        .map((e) => e.clone())
-        .toList();
+    final tempCategories =
+        _ContractUiMemory.lessonTemplateCategories
+            .map((e) => e.clone())
+            .toList();
 
     if (tempCategories.isEmpty) {
       tempCategories.add(
@@ -7392,8 +7440,9 @@ class _ContractPageState extends State<ContractPage>
                             ...tempCategories.asMap().entries.map((entry) {
                               final categoryIndex = entry.key;
                               final category = entry.value;
-                              final isExpanded =
-                                  expandedCategoryIds.contains(category.id);
+                              final isExpanded = expandedCategoryIds.contains(
+                                category.id,
+                              );
 
                               return Container(
                                 width: double.infinity,
@@ -7412,17 +7461,23 @@ class _ContractPageState extends State<ContractPage>
                                       onTap: () {
                                         setSheetState(() {
                                           if (isExpanded) {
-                                            expandedCategoryIds
-                                                .remove(category.id);
+                                            expandedCategoryIds.remove(
+                                              category.id,
+                                            );
                                           } else {
-                                            expandedCategoryIds
-                                                .add(category.id);
+                                            expandedCategoryIds.add(
+                                              category.id,
+                                            );
                                           }
                                         });
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.fromLTRB(
-                                            14, 14, 14, 14),
+                                          14,
+                                          14,
+                                          14,
+                                          14,
+                                        ),
                                         child: Row(
                                           children: [
                                             Expanded(
@@ -7440,16 +7495,17 @@ class _ContractPageState extends State<ContractPage>
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 5,
-                                              ),
+                                                    horizontal: 8,
+                                                    vertical: 5,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
                                                 borderRadius:
                                                     BorderRadius.circular(999),
                                                 border: Border.all(
-                                                  color:
-                                                      const Color(0xFFE5E7EB),
+                                                  color: const Color(
+                                                    0xFFE5E7EB,
+                                                  ),
                                                 ),
                                               ),
                                               child: Text(
@@ -7466,10 +7522,12 @@ class _ContractPageState extends State<ContractPage>
                                               IconButton(
                                                 onPressed: () {
                                                   setSheetState(() {
-                                                    expandedCategoryIds
-                                                        .remove(category.id);
+                                                    expandedCategoryIds.remove(
+                                                      category.id,
+                                                    );
                                                     tempCategories.removeAt(
-                                                        categoryIndex);
+                                                      categoryIndex,
+                                                    );
                                                   });
                                                 },
                                                 icon: const Icon(
@@ -7490,472 +7548,487 @@ class _ContractPageState extends State<ContractPage>
                                       ),
                                     ),
                                     AnimatedSwitcher(
-                                      duration:
-                                          const Duration(milliseconds: 220),
+                                      duration: const Duration(
+                                        milliseconds: 220,
+                                      ),
                                       switchInCurve: Curves.easeOutCubic,
                                       switchOutCurve: Curves.easeInCubic,
-                                      child: isExpanded
-                                          ? Padding(
-                                              key: ValueKey(
-                                                  'category_open_${category.id}'),
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                      14, 0, 14, 14),
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    key: ValueKey(
-                                                        'category_name_${category.id}'),
-                                                    initialValue: category.name,
-                                                    onChanged: (value) {
-                                                      tempCategories[
-                                                              categoryIndex] =
-                                                          tempCategories[
-                                                                  categoryIndex]
-                                                              .copyWith(
-                                                        name: value,
-                                                      );
-                                                    },
-                                                    decoration: InputDecoration(
-                                                      labelText: '카테고리명',
-                                                      hintText:
-                                                          '예: PT 레슨 / 재활 레슨 / 필라테스 / 요가',
-                                                      filled: true,
-                                                      fillColor: Colors.white,
-                                                      border:
-                                                          OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(14),
+                                      child:
+                                          isExpanded
+                                              ? Padding(
+                                                key: ValueKey(
+                                                  'category_open_${category.id}',
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                      14,
+                                                      0,
+                                                      14,
+                                                      14,
+                                                    ),
+                                                child: Column(
+                                                  children: [
+                                                    TextFormField(
+                                                      key: ValueKey(
+                                                        'category_name_${category.id}',
                                                       ),
-                                                      enabledBorder:
-                                                          OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(14),
-                                                        borderSide:
-                                                            const BorderSide(
-                                                          color:
-                                                              Color(0xFFE5E7EB),
+                                                      initialValue:
+                                                          category.name,
+                                                      onChanged: (value) {
+                                                        tempCategories[categoryIndex] =
+                                                            tempCategories[categoryIndex]
+                                                                .copyWith(
+                                                                  name: value,
+                                                                );
+                                                      },
+                                                      decoration: InputDecoration(
+                                                        labelText: '카테고리명',
+                                                        hintText:
+                                                            '예: PT 레슨 / 재활 레슨 / 필라테스 / 요가',
+                                                        filled: true,
+                                                        fillColor: Colors.white,
+                                                        border: OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                14,
+                                                              ),
                                                         ),
+                                                        enabledBorder:
+                                                            OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    14,
+                                                                  ),
+                                                              borderSide:
+                                                                  const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFE5E7EB,
+                                                                    ),
+                                                                  ),
+                                                            ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  ...category.items
-                                                      .asMap()
-                                                      .entries
-                                                      .map((itemEntry) {
-                                                    final itemIndex =
-                                                        itemEntry.key;
-                                                    final item =
-                                                        itemEntry.value;
+                                                    const SizedBox(height: 12),
+                                                    ...category.items.asMap().entries.map((
+                                                      itemEntry,
+                                                    ) {
+                                                      final itemIndex =
+                                                          itemEntry.key;
+                                                      final item =
+                                                          itemEntry.value;
 
-                                                    return Container(
-                                                      width: double.infinity,
-                                                      margin:
-                                                          const EdgeInsets.only(
-                                                              bottom: 10),
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              12),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.white,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(16),
-                                                        border: Border.all(
-                                                          color: const Color(
-                                                              0xFFE5E7EB),
-                                                        ),
-                                                      ),
-                                                      child: Column(
-                                                        children: [
-                                                          Row(
-                                                            children: [
-                                                              const Expanded(
-                                                                child: Text(
-                                                                  '레슨 항목',
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w800,
-                                                                    color: Color(
-                                                                        0xFF111827),
-                                                                  ),
-                                                                ),
+                                                      return Container(
+                                                        width: double.infinity,
+                                                        margin:
+                                                            const EdgeInsets.only(
+                                                              bottom: 10,
+                                                            ),
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              12,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                16,
                                                               ),
-                                                              if (category.items
-                                                                      .length >
-                                                                  1)
-                                                                IconButton(
-                                                                  onPressed:
-                                                                      () {
-                                                                    setSheetState(
-                                                                        () {
-                                                                      final nextItems = [
-                                                                        ...category
-                                                                            .items
-                                                                      ]..removeAt(
-                                                                          itemIndex);
-
-                                                                      tempCategories[
-                                                                          categoryIndex] = tempCategories[
-                                                                              categoryIndex]
-                                                                          .copyWith(
-                                                                        items:
-                                                                            nextItems,
-                                                                      );
-                                                                    });
-                                                                  },
-                                                                  icon:
-                                                                      const Icon(
-                                                                    Icons
-                                                                        .remove_circle_outline_rounded,
-                                                                  ),
-                                                                  tooltip:
-                                                                      '레슨 항목 삭제',
-                                                                ),
-                                                            ],
-                                                          ),
-                                                          TextFormField(
-                                                            key: ValueKey(
-                                                                'item_name_${item.id}'),
-                                                            initialValue:
-                                                                item.name,
-                                                            onChanged: (value) {
-                                                              final nextItems =
-                                                                  [
-                                                                ...tempCategories[
-                                                                        categoryIndex]
-                                                                    .items
-                                                              ];
-                                                              nextItems[
-                                                                      itemIndex] =
-                                                                  nextItems[
-                                                                          itemIndex]
-                                                                      .copyWith(
-                                                                name: value,
-                                                              );
-                                                              tempCategories[
-                                                                      categoryIndex] =
-                                                                  tempCategories[
-                                                                          categoryIndex]
-                                                                      .copyWith(
-                                                                items:
-                                                                    nextItems,
-                                                              );
-                                                            },
-                                                            decoration:
-                                                                InputDecoration(
-                                                              labelText: '상품명',
-                                                              hintText:
-                                                                  '예: 개인PT 10회 레슨',
-                                                              filled: true,
-                                                              fillColor:
-                                                                  const Color(
-                                                                      0xFFF9FAFB),
-                                                              border:
-                                                                  OutlineInputBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            14),
-                                                              ),
-                                                              enabledBorder:
-                                                                  OutlineInputBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            14),
-                                                                borderSide:
-                                                                    const BorderSide(
-                                                                  color: Color(
-                                                                      0xFFE5E7EB),
-                                                                ),
-                                                              ),
+                                                          border: Border.all(
+                                                            color: const Color(
+                                                              0xFFE5E7EB,
                                                             ),
                                                           ),
-                                                          const SizedBox(
-                                                              height: 10),
-                                                          Row(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              SizedBox(
-                                                                width: 76,
-                                                                child:
-                                                                    TextFormField(
-                                                                  key: ValueKey(
-                                                                      'item_count_${item.id}'),
-                                                                  initialValue: item
-                                                                      .sessionCount
-                                                                      .toString(),
-                                                                  keyboardType:
-                                                                      TextInputType
-                                                                          .number,
-                                                                  inputFormatters: [
-                                                                    FilteringTextInputFormatter
-                                                                        .digitsOnly,
-                                                                  ],
-                                                                  onChanged:
-                                                                      (value) {
-                                                                    final nextItems =
-                                                                        [
-                                                                      ...tempCategories[
-                                                                              categoryIndex]
-                                                                          .items
-                                                                    ];
-                                                                    nextItems[
-                                                                        itemIndex] = nextItems[
-                                                                            itemIndex]
-                                                                        .copyWith(
-                                                                      sessionCount:
-                                                                          _parseInt(
-                                                                              value),
-                                                                    );
-                                                                    tempCategories[
-                                                                        categoryIndex] = tempCategories[
-                                                                            categoryIndex]
-                                                                        .copyWith(
-                                                                            items:
-                                                                                nextItems);
-                                                                  },
-                                                                  decoration:
-                                                                      InputDecoration(
-                                                                    labelText:
-                                                                        '횟수',
-                                                                    suffixText:
-                                                                        '회',
-                                                                    filled:
-                                                                        true,
-                                                                    fillColor:
-                                                                        const Color(
-                                                                            0xFFF9FAFB),
-                                                                    border:
-                                                                        OutlineInputBorder(
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              14),
-                                                                    ),
-                                                                    enabledBorder:
-                                                                        OutlineInputBorder(
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              14),
-                                                                      borderSide:
-                                                                          const BorderSide(
-                                                                              color: Color(0xFFE5E7EB)),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  width: 8),
-                                                              Expanded(
-                                                                child:
-                                                                    TextFormField(
-                                                                  key: ValueKey(
-                                                                      'item_total_${item.id}'),
-                                                                  initialValue: item
-                                                                      .totalPrice
-                                                                      .toString(),
-                                                                  keyboardType:
-                                                                      TextInputType
-                                                                          .number,
-                                                                  inputFormatters: [
-                                                                    FilteringTextInputFormatter
-                                                                        .digitsOnly,
-                                                                  ],
-                                                                  onChanged:
-                                                                      (value) {
-                                                                    final nextItems =
-                                                                        [
-                                                                      ...tempCategories[
-                                                                              categoryIndex]
-                                                                          .items
-                                                                    ];
-                                                                    nextItems[
-                                                                        itemIndex] = nextItems[
-                                                                            itemIndex]
-                                                                        .copyWith(
-                                                                      totalPrice:
-                                                                          _parseInt(
-                                                                              value),
-                                                                    );
-                                                                    tempCategories[
-                                                                        categoryIndex] = tempCategories[
-                                                                            categoryIndex]
-                                                                        .copyWith(
-                                                                            items:
-                                                                                nextItems);
-                                                                  },
-                                                                  decoration:
-                                                                      InputDecoration(
-                                                                    labelText:
-                                                                        '실결제금액',
-                                                                    prefixText:
-                                                                        '₩ ',
-                                                                    suffixText:
-                                                                        '원',
-                                                                    filled:
-                                                                        true,
-                                                                    fillColor:
-                                                                        const Color(
-                                                                            0xFFF9FAFB),
-                                                                    border:
-                                                                        OutlineInputBorder(
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              14),
-                                                                    ),
-                                                                    enabledBorder:
-                                                                        OutlineInputBorder(
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                              14),
-                                                                      borderSide:
-                                                                          const BorderSide(
-                                                                              color: Color(0xFFE5E7EB)),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  width: 8),
-                                                              Container(
-                                                                height: 56,
-                                                                padding: const EdgeInsets
-                                                                    .symmetric(
-                                                                    horizontal:
-                                                                        8),
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  color: const Color(
-                                                                      0xFFF9FAFB),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              14),
-                                                                  border: Border.all(
-                                                                      color: const Color(
-                                                                          0xFFE5E7EB)),
-                                                                ),
-                                                                child: Row(
-                                                                  mainAxisSize:
-                                                                      MainAxisSize
-                                                                          .min,
-                                                                  children: [
-                                                                    Checkbox(
-                                                                      value: item
-                                                                          .vatIncluded,
-                                                                      visualDensity:
-                                                                          VisualDensity
-                                                                              .compact,
-                                                                      materialTapTargetSize:
-                                                                          MaterialTapTargetSize
-                                                                              .shrinkWrap,
-                                                                      onChanged:
-                                                                          (value) async {
-                                                                        await _toggleTemplateVatIncluded(
-                                                                          nextValue:
-                                                                              value ?? false,
-                                                                          tempCategories:
-                                                                              tempCategories,
-                                                                          categoryIndex:
-                                                                              categoryIndex,
-                                                                          itemIndex:
-                                                                              itemIndex,
-                                                                          setSheetState:
-                                                                              setSheetState,
-                                                                        );
-                                                                      },
-                                                                    ),
-                                                                    const Text(
-                                                                      'VAT 포함',
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontSize:
-                                                                            12.5,
-                                                                        fontWeight:
-                                                                            FontWeight.w700,
-                                                                        color: Color(
-                                                                            0xFF374151),
+                                                        ),
+                                                        child: Column(
+                                                          children: [
+                                                            Row(
+                                                              children: [
+                                                                const Expanded(
+                                                                  child: Text(
+                                                                    '레슨 항목',
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w800,
+                                                                      color: Color(
+                                                                        0xFF111827,
                                                                       ),
                                                                     ),
-                                                                  ],
+                                                                  ),
+                                                                ),
+                                                                if (category
+                                                                        .items
+                                                                        .length >
+                                                                    1)
+                                                                  IconButton(
+                                                                    onPressed: () {
+                                                                      setSheetState(() {
+                                                                        final nextItems = [
+                                                                          ...category
+                                                                              .items,
+                                                                        ]..removeAt(
+                                                                          itemIndex,
+                                                                        );
+
+                                                                        tempCategories[categoryIndex] = tempCategories[categoryIndex].copyWith(
+                                                                          items:
+                                                                              nextItems,
+                                                                        );
+                                                                      });
+                                                                    },
+                                                                    icon: const Icon(
+                                                                      Icons
+                                                                          .remove_circle_outline_rounded,
+                                                                    ),
+                                                                    tooltip:
+                                                                        '레슨 항목 삭제',
+                                                                  ),
+                                                              ],
+                                                            ),
+                                                            TextFormField(
+                                                              key: ValueKey(
+                                                                'item_name_${item.id}',
+                                                              ),
+                                                              initialValue:
+                                                                  item.name,
+                                                              onChanged: (
+                                                                value,
+                                                              ) {
+                                                                final nextItems = [
+                                                                  ...tempCategories[categoryIndex]
+                                                                      .items,
+                                                                ];
+                                                                nextItems[itemIndex] =
+                                                                    nextItems[itemIndex]
+                                                                        .copyWith(
+                                                                          name:
+                                                                              value,
+                                                                        );
+                                                                tempCategories[categoryIndex] =
+                                                                    tempCategories[categoryIndex]
+                                                                        .copyWith(
+                                                                          items:
+                                                                              nextItems,
+                                                                        );
+                                                              },
+                                                              decoration: InputDecoration(
+                                                                labelText:
+                                                                    '상품명',
+                                                                hintText:
+                                                                    '예: 개인PT 10회 레슨',
+                                                                filled: true,
+                                                                fillColor:
+                                                                    const Color(
+                                                                      0xFFF9FAFB,
+                                                                    ),
+                                                                border: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        14,
+                                                                      ),
+                                                                ),
+                                                                enabledBorder: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        14,
+                                                                      ),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFE5E7EB,
+                                                                    ),
+                                                                  ),
                                                                 ),
                                                               ),
-                                                            ],
-                                                          ),
-                                                          const SizedBox(
-                                                              height: 10),
-                                                          Align(
-                                                            alignment: Alignment
-                                                                .centerLeft,
-                                                            child: Text(
-                                                              item.sessionCount >
-                                                                      0
-                                                                  ? '회당 결제금액 자동 계산: ${_formatMoney(((item.vatIncluded ? (item.totalPrice / 1.1).round() : item.totalPrice) / item.sessionCount).round())}원'
-                                                                  : '횟수를 입력하면 회당 결제금액이 자동 계산됩니다.',
-                                                              style:
-                                                                  const TextStyle(
-                                                                fontSize: 12.2,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Color(
-                                                                    0xFF64748B),
+                                                            ),
+                                                            const SizedBox(
+                                                              height: 10,
+                                                            ),
+                                                            Row(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                SizedBox(
+                                                                  width: 76,
+                                                                  child: TextFormField(
+                                                                    key: ValueKey(
+                                                                      'item_count_${item.id}',
+                                                                    ),
+                                                                    initialValue:
+                                                                        item.sessionCount
+                                                                            .toString(),
+                                                                    keyboardType:
+                                                                        TextInputType
+                                                                            .number,
+                                                                    inputFormatters: [
+                                                                      FilteringTextInputFormatter
+                                                                          .digitsOnly,
+                                                                    ],
+                                                                    onChanged: (
+                                                                      value,
+                                                                    ) {
+                                                                      final nextItems = [
+                                                                        ...tempCategories[categoryIndex]
+                                                                            .items,
+                                                                      ];
+                                                                      nextItems[itemIndex] = nextItems[itemIndex].copyWith(
+                                                                        sessionCount:
+                                                                            _parseInt(
+                                                                              value,
+                                                                            ),
+                                                                      );
+                                                                      tempCategories[categoryIndex] =
+                                                                          tempCategories[categoryIndex].copyWith(
+                                                                            items:
+                                                                                nextItems,
+                                                                          );
+                                                                    },
+                                                                    decoration: InputDecoration(
+                                                                      labelText:
+                                                                          '횟수',
+                                                                      suffixText:
+                                                                          '회',
+                                                                      filled:
+                                                                          true,
+                                                                      fillColor:
+                                                                          const Color(
+                                                                            0xFFF9FAFB,
+                                                                          ),
+                                                                      border: OutlineInputBorder(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              14,
+                                                                            ),
+                                                                      ),
+                                                                      enabledBorder: OutlineInputBorder(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              14,
+                                                                            ),
+                                                                        borderSide: const BorderSide(
+                                                                          color: Color(
+                                                                            0xFFE5E7EB,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 8,
+                                                                ),
+                                                                Expanded(
+                                                                  child: TextFormField(
+                                                                    key: ValueKey(
+                                                                      'item_total_${item.id}',
+                                                                    ),
+                                                                    initialValue:
+                                                                        item.totalPrice
+                                                                            .toString(),
+                                                                    keyboardType:
+                                                                        TextInputType
+                                                                            .number,
+                                                                    inputFormatters: [
+                                                                      FilteringTextInputFormatter
+                                                                          .digitsOnly,
+                                                                    ],
+                                                                    onChanged: (
+                                                                      value,
+                                                                    ) {
+                                                                      final nextItems = [
+                                                                        ...tempCategories[categoryIndex]
+                                                                            .items,
+                                                                      ];
+                                                                      nextItems[itemIndex] = nextItems[itemIndex].copyWith(
+                                                                        totalPrice:
+                                                                            _parseInt(
+                                                                              value,
+                                                                            ),
+                                                                      );
+                                                                      tempCategories[categoryIndex] =
+                                                                          tempCategories[categoryIndex].copyWith(
+                                                                            items:
+                                                                                nextItems,
+                                                                          );
+                                                                    },
+                                                                    decoration: InputDecoration(
+                                                                      labelText:
+                                                                          '실결제금액',
+                                                                      prefixText:
+                                                                          '₩ ',
+                                                                      suffixText:
+                                                                          '원',
+                                                                      filled:
+                                                                          true,
+                                                                      fillColor:
+                                                                          const Color(
+                                                                            0xFFF9FAFB,
+                                                                          ),
+                                                                      border: OutlineInputBorder(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              14,
+                                                                            ),
+                                                                      ),
+                                                                      enabledBorder: OutlineInputBorder(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              14,
+                                                                            ),
+                                                                        borderSide: const BorderSide(
+                                                                          color: Color(
+                                                                            0xFFE5E7EB,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 8,
+                                                                ),
+                                                                Container(
+                                                                  height: 56,
+                                                                  padding:
+                                                                      const EdgeInsets.symmetric(
+                                                                        horizontal:
+                                                                            8,
+                                                                      ),
+                                                                  decoration: BoxDecoration(
+                                                                    color: const Color(
+                                                                      0xFFF9FAFB,
+                                                                    ),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          14,
+                                                                        ),
+                                                                    border: Border.all(
+                                                                      color: const Color(
+                                                                        0xFFE5E7EB,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                  child: Row(
+                                                                    mainAxisSize:
+                                                                        MainAxisSize
+                                                                            .min,
+                                                                    children: [
+                                                                      Checkbox(
+                                                                        value:
+                                                                            item.vatIncluded,
+                                                                        visualDensity:
+                                                                            VisualDensity.compact,
+                                                                        materialTapTargetSize:
+                                                                            MaterialTapTargetSize.shrinkWrap,
+                                                                        onChanged: (
+                                                                          value,
+                                                                        ) async {
+                                                                          await _toggleTemplateVatIncluded(
+                                                                            nextValue:
+                                                                                value ??
+                                                                                false,
+                                                                            tempCategories:
+                                                                                tempCategories,
+                                                                            categoryIndex:
+                                                                                categoryIndex,
+                                                                            itemIndex:
+                                                                                itemIndex,
+                                                                            setSheetState:
+                                                                                setSheetState,
+                                                                          );
+                                                                        },
+                                                                      ),
+                                                                      const Text(
+                                                                        'VAT 포함',
+                                                                        style: TextStyle(
+                                                                          fontSize:
+                                                                              12.5,
+                                                                          fontWeight:
+                                                                              FontWeight.w700,
+                                                                          color: Color(
+                                                                            0xFF374151,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(
+                                                              height: 10,
+                                                            ),
+                                                            Align(
+                                                              alignment:
+                                                                  Alignment
+                                                                      .centerLeft,
+                                                              child: Text(
+                                                                item.sessionCount >
+                                                                        0
+                                                                    ? '회당 결제금액 자동 계산: ${_formatMoney(((item.vatIncluded ? (item.totalPrice / 1.1).round() : item.totalPrice) / item.sessionCount).round())}원'
+                                                                    : '횟수를 입력하면 회당 결제금액이 자동 계산됩니다.',
+                                                                style: const TextStyle(
+                                                                  fontSize:
+                                                                      12.2,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Color(
+                                                                    0xFF64748B,
+                                                                  ),
+                                                                ),
                                                               ),
                                                             ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    );
-                                                  }),
-                                                  Align(
-                                                    alignment:
-                                                        Alignment.centerLeft,
-                                                    child: OutlinedButton.icon(
-                                                      onPressed: () {
-                                                        setSheetState(() {
-                                                          final nextItems = [
-                                                            ...tempCategories[
-                                                                    categoryIndex]
-                                                                .items,
-                                                            _LessonTemplateItem(
-                                                              id: _newTemplateId(
-                                                                  'item'),
-                                                              name: '새 레슨',
-                                                              sessionCount: 10,
-                                                              totalPrice: 0,
-                                                              vatIncluded: true,
-                                                            ),
-                                                          ];
+                                                          ],
+                                                        ),
+                                                      );
+                                                    }),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: OutlinedButton.icon(
+                                                        onPressed: () {
+                                                          setSheetState(() {
+                                                            final nextItems = [
+                                                              ...tempCategories[categoryIndex]
+                                                                  .items,
+                                                              _LessonTemplateItem(
+                                                                id: _newTemplateId(
+                                                                  'item',
+                                                                ),
+                                                                name: '새 레슨',
+                                                                sessionCount:
+                                                                    10,
+                                                                totalPrice: 0,
+                                                                vatIncluded:
+                                                                    true,
+                                                              ),
+                                                            ];
 
-                                                          tempCategories[
-                                                                  categoryIndex] =
-                                                              tempCategories[
-                                                                      categoryIndex]
-                                                                  .copyWith(
-                                                            items: nextItems,
-                                                          );
-                                                        });
-                                                      },
-                                                      icon: const Icon(
-                                                          Icons.add_rounded),
-                                                      label: const Text(
-                                                          '레슨 항목 추가'),
+                                                            tempCategories[categoryIndex] =
+                                                                tempCategories[categoryIndex]
+                                                                    .copyWith(
+                                                                      items:
+                                                                          nextItems,
+                                                                    );
+                                                          });
+                                                        },
+                                                        icon: const Icon(
+                                                          Icons.add_rounded,
+                                                        ),
+                                                        label: const Text(
+                                                          '레슨 항목 추가',
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
+                                              )
+                                              : const SizedBox.shrink(
+                                                key: ValueKey(
+                                                  'category_closed',
+                                                ),
                                               ),
-                                            )
-                                          : const SizedBox.shrink(
-                                              key: ValueKey('category_closed'),
-                                            ),
                                     ),
                                   ],
                                 ),
@@ -8003,31 +8076,36 @@ class _ContractPageState extends State<ContractPage>
                           Expanded(
                             child: FilledButton(
                               onPressed: () {
-                                final cleaned = tempCategories
-                                    .map(
-                                      (category) => category.copyWith(
-                                        name: category.name.trim(),
-                                        items: category.items
-                                            .where(
-                                              (item) =>
-                                                  item.name.trim().isNotEmpty &&
-                                                  item.sessionCount > 0 &&
-                                                  item.totalPrice > 0,
-                                            )
-                                            .map(
-                                              (item) => item.copyWith(
-                                                name: item.name.trim(),
-                                              ),
-                                            )
-                                            .toList(),
-                                      ),
-                                    )
-                                    .where(
-                                      (category) =>
-                                          category.name.trim().isNotEmpty &&
-                                          category.items.isNotEmpty,
-                                    )
-                                    .toList();
+                                final cleaned =
+                                    tempCategories
+                                        .map(
+                                          (category) => category.copyWith(
+                                            name: category.name.trim(),
+                                            items:
+                                                category.items
+                                                    .where(
+                                                      (item) =>
+                                                          item.name
+                                                              .trim()
+                                                              .isNotEmpty &&
+                                                          item.sessionCount >
+                                                              0 &&
+                                                          item.totalPrice > 0,
+                                                    )
+                                                    .map(
+                                                      (item) => item.copyWith(
+                                                        name: item.name.trim(),
+                                                      ),
+                                                    )
+                                                    .toList(),
+                                          ),
+                                        )
+                                        .where(
+                                          (category) =>
+                                              category.name.trim().isNotEmpty &&
+                                              category.items.isNotEmpty,
+                                        )
+                                        .toList();
 
                                 if (cleaned.isEmpty) {
                                   _showSnack(
@@ -8061,7 +8139,8 @@ class _ContractPageState extends State<ContractPage>
   }
 
   void _applyLessonTemplate(_LessonTemplateItem item) {
-    final hadSignature = _memberSigned ||
+    final hadSignature =
+        _memberSigned ||
         _staffSigned ||
         _memberFinalSigned ||
         _staffFinalSigned;
@@ -8100,11 +8179,12 @@ class _ContractPageState extends State<ContractPage>
   }
 
   String? _inferDocumentTypeFromProduct(ProductModel product) {
-    final text = [
-      product.categoryName,
-      product.name,
-      product.lessonType,
-    ].join(' ').toLowerCase();
+    final text =
+        [
+          product.categoryName,
+          product.name,
+          product.lessonType,
+        ].join(' ').toLowerCase();
 
     if (text.contains('필라테스') ||
         text.contains('바렐') ||
@@ -8181,7 +8261,8 @@ class _ContractPageState extends State<ContractPage>
   }
 
   void _applyProduct(ProductModel product) {
-    final hadSignature = _memberSigned ||
+    final hadSignature =
+        _memberSigned ||
         _staffSigned ||
         _memberFinalSigned ||
         _staffFinalSigned;
@@ -8224,9 +8305,7 @@ class _ContractPageState extends State<ContractPage>
 
     _lastSignatureSensitiveSnapshot = _signatureSensitiveSnapshot;
 
-    _showSnack(
-      '${product.name} 상품을 불러왔어요. 문서종류와 금액을 확인해주세요.',
-    );
+    _showSnack('${product.name} 상품을 불러왔어요. 문서종류와 금액을 확인해주세요.');
   }
 
   Future<bool> _showVatApplyDialog() {
@@ -8234,7 +8313,8 @@ class _ContractPageState extends State<ContractPage>
       context: context,
       nickname: _normalizeContractNickname(_trainerNameController.text),
       title: 'VAT 포함 금액을 적용하시겠습니까?',
-      message: '현재 입력한 금액에 부가세 10%를 반영하여 실결제금액을 다시 계산합니다.\n'
+      message:
+          '현재 입력한 금액에 부가세 10%를 반영하여 실결제금액을 다시 계산합니다.\n'
           '계약서의 결제금액에 영향을 줄 수 있으므로 적용 전 내용을 확인해주세요.',
       cancelText: '취소',
       confirmText: '적용',
@@ -8328,23 +8408,23 @@ class _ContractPageState extends State<ContractPage>
   }
 
   Future<Uint8List> _buildContractPdfBytes() async {
-    final fontData =
-        await rootBundle.load('assets/fonts/NotoSansKR-VariableFont_wght.ttf');
+    final fontData = await rootBundle.load(
+      'assets/fonts/NotoSansKR-VariableFont_wght.ttf',
+    );
 
     final regularFont = pw.Font.ttf(fontData);
     final boldFont = pw.Font.ttf(fontData);
     final memberBasicSign = await _signatureToPngBytes(_memberSignaturePoints);
     final staffBasicSign = await _signatureToPngBytes(_staffSignaturePoints);
-    final memberFinalSign =
-        await _signatureToPngBytes(_memberFinalSignaturePoints);
-    final staffFinalSign =
-        await _signatureToPngBytes(_staffFinalSignaturePoints);
+    final memberFinalSign = await _signatureToPngBytes(
+      _memberFinalSignaturePoints,
+    );
+    final staffFinalSign = await _signatureToPngBytes(
+      _staffFinalSignaturePoints,
+    );
 
     final doc = pw.Document(
-      theme: pw.ThemeData.withFont(
-        base: regularFont,
-        bold: boldFont,
-      ),
+      theme: pw.ThemeData.withFont(base: regularFont, bold: boldFont),
     );
 
     pw.TextStyle normal({
@@ -8352,11 +8432,7 @@ class _ContractPageState extends State<ContractPage>
       PdfColor color = PdfColors.grey800,
       pw.FontWeight weight = pw.FontWeight.normal,
     }) {
-      return pw.TextStyle(
-        fontSize: size,
-        color: color,
-        fontWeight: weight,
-      );
+      return pw.TextStyle(fontSize: size, color: color, fontWeight: weight);
     }
 
     pw.Widget title(String text) {
@@ -8375,26 +8451,24 @@ class _ContractPageState extends State<ContractPage>
 
     pw.Widget infoTable(List<List<String>> rows) {
       return pw.Table(
-        border: pw.TableBorder.all(
-          color: PdfColors.grey500,
-          width: 0.6,
-        ),
+        border: pw.TableBorder.all(color: PdfColors.grey500, width: 0.6),
         columnWidths: {
           0: const pw.FixedColumnWidth(58),
           1: const pw.FlexColumnWidth(),
           2: const pw.FixedColumnWidth(58),
           3: const pw.FlexColumnWidth(),
         },
-        children: rows.map((row) {
-          return pw.TableRow(
-            children: [
-              _pdfCell(row[0], label: true),
-              _pdfCell(row[1]),
-              _pdfCell(row[2], label: true),
-              _pdfCell(row[3]),
-            ],
-          );
-        }).toList(),
+        children:
+            rows.map((row) {
+              return pw.TableRow(
+                children: [
+                  _pdfCell(row[0], label: true),
+                  _pdfCell(row[1]),
+                  _pdfCell(row[2], label: true),
+                  _pdfCell(row[3]),
+                ],
+              );
+            }).toList(),
       );
     }
 
@@ -8409,8 +8483,10 @@ class _ContractPageState extends State<ContractPage>
           children: [
             pw.Container(
               width: double.infinity,
-              padding:
-                  const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
               color: PdfColors.grey200,
               child: pw.Text(
                 sectionTitle,
@@ -8450,10 +8526,7 @@ class _ContractPageState extends State<ContractPage>
       return pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(
-            label,
-            style: normal(size: 9.5, weight: pw.FontWeight.bold),
-          ),
+          pw.Text(label, style: normal(size: 9.5, weight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
           pw.Container(
             height: 54,
@@ -8462,13 +8535,16 @@ class _ContractPageState extends State<ContractPage>
               border: pw.Border.all(color: PdfColors.grey500, width: 0.6),
             ),
             alignment: pw.Alignment.center,
-            child: imageBytes == null
-                ? pw.Text('미서명',
-                    style: normal(size: 9, color: PdfColors.grey500))
-                : pw.Image(
-                    pw.MemoryImage(imageBytes),
-                    fit: pw.BoxFit.contain,
-                  ),
+            child:
+                imageBytes == null
+                    ? pw.Text(
+                      '미서명',
+                      style: normal(size: 9, color: PdfColors.grey500),
+                    )
+                    : pw.Image(
+                      pw.MemoryImage(imageBytes),
+                      fit: pw.BoxFit.contain,
+                    ),
           ),
           pw.SizedBox(height: 4),
           pw.Text(
@@ -8572,8 +8648,10 @@ class _ContractPageState extends State<ContractPage>
             pw.SizedBox(height: 10),
             pw.Container(
               width: double.infinity,
-              padding:
-                  const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
               color: PdfColors.grey100,
               child: pw.Row(
                 children: [
@@ -8673,25 +8751,19 @@ class _ContractPageState extends State<ContractPage>
                   : _contractHistoryItems,
             ),
             pw.SizedBox(height: 10),
-            ruleBox(
-              '건강고지',
-              [
-                '건강 상태: $_healthSummary',
-                if (_healthDetailController.text.trim().isNotEmpty)
-                  '상세 고지: ${_healthDetailController.text.trim()}',
-                '건강안내 숙지: ${_agreeHealthNotice ? '완료' : '미완료'}',
-              ],
-            ),
+            ruleBox('건강고지', [
+              '건강 상태: $_healthSummary',
+              if (_healthDetailController.text.trim().isNotEmpty)
+                '상세 고지: ${_healthDetailController.text.trim()}',
+              '건강안내 숙지: ${_agreeHealthNotice ? '완료' : '미완료'}',
+            ]),
             pw.SizedBox(height: 10),
-            ruleBox(
-              '최종 확인 및 수령 방식',
-              [
-                '계약내용 확인: ${_agreeImportantNotice ? '완료' : '미완료'}',
-                '저장·전송 동의: ${_agreeSameContentSave ? '완료' : '미완료'}',
-                '계약서 사본 수령 방식: $_deliveryMethodLabel',
-                '수령 대상: $_deliveryTarget',
-              ],
-            ),
+            ruleBox('최종 확인 및 수령 방식', [
+              '계약내용 확인: ${_agreeImportantNotice ? '완료' : '미완료'}',
+              '저장·전송 동의: ${_agreeSameContentSave ? '완료' : '미완료'}',
+              '계약서 사본 수령 방식: $_deliveryMethodLabel',
+              '수령 대상: $_deliveryTarget',
+            ]),
             pw.SizedBox(height: 12),
             signatureGroup(
               groupTitle: '기본 내용 확인 서명',
@@ -8723,10 +8795,7 @@ class _ContractPageState extends State<ContractPage>
     return doc.save();
   }
 
-  pw.Widget _pdfCell(
-    String text, {
-    bool label = false,
-  }) {
+  pw.Widget _pdfCell(String text, {bool label = false}) {
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       color: label ? PdfColors.grey200 : PdfColors.white,
@@ -8751,25 +8820,22 @@ class _ContractPageState extends State<ContractPage>
       await FirebaseFirestore.instance
           .collection('contracts')
           .doc(_contractId)
-          .set(
-        {
-          'pdf': {
-            'generated': _pdfSaved,
-            'generatedAt': FieldValue.serverTimestamp(),
-            'fileName': _contractPdfFileName,
-          },
-          'delivery': {
-            'method': _deliveryMethod.name,
-            'methodLabel': _deliveryMethodLabel,
-            'target': _deliveryTarget,
-            'status': status,
-            'lastAction': action,
+          .set({
+            'pdf': {
+              'generated': _pdfSaved,
+              'generatedAt': FieldValue.serverTimestamp(),
+              'fileName': _contractPdfFileName,
+            },
+            'delivery': {
+              'method': _deliveryMethod.name,
+              'methodLabel': _deliveryMethodLabel,
+              'target': _deliveryTarget,
+              'status': status,
+              'lastAction': action,
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
             'updatedAt': FieldValue.serverTimestamp(),
-          },
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+          }, SetOptions(merge: true));
     } catch (e) {
       if (!mounted) return;
       _showSnack('PDF/수령 상태 기록에 실패했어요: $e');
@@ -8795,10 +8861,7 @@ class _ContractPageState extends State<ContractPage>
         action: 'share_pdf_opened',
       );
 
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: _contractPdfFileName,
-      );
+      await Printing.sharePdf(bytes: bytes, filename: _contractPdfFileName);
     } catch (e) {
       if (!mounted) return;
       _showSnack('PDF 생성에 실패했어요: $e');
@@ -8808,7 +8871,7 @@ class _ContractPageState extends State<ContractPage>
   Future<void> _trySendCustomer() async {
     if (!_isContractFullyReady) {
       await _scrollToFirstIncompleteSection();
-      await _showBlockedExportDialog('고객 전송');
+      await _showBlockedExportDialog('회원 전송');
       return;
     }
 
@@ -8850,10 +8913,7 @@ class _ContractPageState extends State<ContractPage>
         return;
       }
 
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: _contractPdfFileName,
-      );
+      await Printing.sharePdf(bytes: bytes, filename: _contractPdfFileName);
 
       setState(() {
         _pdfSaved = true;
@@ -8877,7 +8937,8 @@ class _ContractPageState extends State<ContractPage>
       context: context,
       nickname: _normalizeContractNickname(_trainerNameController.text),
       title: '강사 전송 기능 안내',
-      message: '강사 전송 기능은 현재 준비 중입니다.\n'
+      message:
+          '강사 전송 기능은 현재 준비 중입니다.\n'
           '현재 버전에서는 계약서를 저장하거나 공유 기능을 통해 별도로 전달해주세요.',
       confirmText: '확인',
       userConfirmText: '확인했습니다',
@@ -8894,7 +8955,8 @@ class _ContractPageState extends State<ContractPage>
       context: context,
       nickname: _normalizeContractNickname(_trainerNameController.text),
       title: '$actionLabel 진행 불가',
-      message: '계약서에 필요한 항목이 아직 완료되지 않아 현재 단계에서는 진행할 수 없습니다.\n'
+      message:
+          '계약서에 필요한 항목이 아직 완료되지 않아 현재 단계에서는 진행할 수 없습니다.\n'
           '아래 항목을 먼저 확인해주세요.',
       items: items,
       confirmText: '확인',
@@ -8979,11 +9041,7 @@ class _ContractPageState extends State<ContractPage>
                             color: Colors.white.withOpacity(0.10),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
-                            icon,
-                            color: Colors.white,
-                            size: 18,
-                          ),
+                          child: Icon(icon, color: Colors.white, size: 18),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -9082,7 +9140,8 @@ class _ContractPageState extends State<ContractPage>
     String message = '계약 내용이 변경되어 기존 서명이 초기화되었습니다. 다시 서명해주세요.',
     bool showNotice = true,
   }) {
-    final hasAnySignature = _memberSigned ||
+    final hasAnySignature =
+        _memberSigned ||
         _staffSigned ||
         _memberFinalSigned ||
         _staffFinalSigned;
@@ -9159,7 +9218,8 @@ class _ContractPageState extends State<ContractPage>
       context: context,
       nickname: _normalizeContractNickname(_trainerNameController.text),
       title: '$signerLabel 서명을 확인하시겠습니까?',
-      message: '이번 서명이 이전 서명과 다소 다르게 감지되었습니다.\n'
+      message:
+          '이번 서명이 이전 서명과 다소 다르게 감지되었습니다.\n'
           '동일한 $signerLabel의 서명이 맞는지 확인 후 진행해주세요.\n\n'
           '서명 유사도: $similarityPercent%',
       cancelText: '다시 서명',
@@ -9246,14 +9306,17 @@ class _ContractPageState extends State<ContractPage>
 
     final result = await showDialog<List<Offset?>>(
       context: context,
-      builder: (_) => _SignatureDialog(
-        title: isFinal
-            ? (isMember ? '회원 최종 동의 서명' : '강사 최종 확인 서명')
-            : (isMember ? '회원 기본 내용 확인 서명' : '강사 기본 내용 확인 서명'),
-        guideName: isMember
-            ? _memberNameController.text.trim()
-            : _trainerNameController.text.trim(),
-      ),
+      builder:
+          (_) => _SignatureDialog(
+            title:
+                isFinal
+                    ? (isMember ? '회원 최종 동의 서명' : '강사 최종 확인 서명')
+                    : (isMember ? '회원 기본 내용 확인 서명' : '강사 기본 내용 확인 서명'),
+            guideName:
+                isMember
+                    ? _memberNameController.text.trim()
+                    : _trainerNameController.text.trim(),
+          ),
     );
 
     if (result != null && result.any((e) => e != null)) {
@@ -9264,14 +9327,12 @@ class _ContractPageState extends State<ContractPage>
         final previousSignature =
             isMember ? _memberSignaturePoints : _staffSignaturePoints;
 
-        final hasPreviousSignature = previousSignature != null &&
+        final hasPreviousSignature =
+            previousSignature != null &&
             previousSignature.any((e) => e != null);
 
         if (hasPreviousSignature) {
-          final similarity = _signatureSimilarity(
-            previousSignature,
-            result,
-          );
+          final similarity = _signatureSimilarity(previousSignature, result);
 
           if (similarity < _signatureSimilarityWarningThreshold) {
             final confirmed = await _confirmDifferentSignature(
@@ -9323,10 +9384,7 @@ class _ContractPageState extends State<ContractPage>
     }
   }
 
-  double _signatureSimilarity(
-    List<Offset?>? a,
-    List<Offset?>? b,
-  ) {
+  double _signatureSimilarity(List<Offset?>? a, List<Offset?>? b) {
     final pa = a?.whereType<Offset>().toList() ?? [];
     final pb = b?.whereType<Offset>().toList() ?? [];
 
@@ -9351,12 +9409,15 @@ class _ContractPageState extends State<ContractPage>
     final ra = boundsOf(pa);
     final rb = boundsOf(pb);
 
-    final widthDiff = (ra.width - rb.width).abs() /
+    final widthDiff =
+        (ra.width - rb.width).abs() /
         ((ra.width + rb.width) / 2).clamp(1, 9999);
-    final heightDiff = (ra.height - rb.height).abs() /
+    final heightDiff =
+        (ra.height - rb.height).abs() /
         ((ra.height + rb.height) / 2).clamp(1, 9999);
 
-    final countDiff = (pa.length - pb.length).abs() /
+    final countDiff =
+        (pa.length - pb.length).abs() /
         ((pa.length + pb.length) / 2).clamp(1, 9999);
 
     final diff = (widthDiff + heightDiff + countDiff) / 3;
@@ -9398,10 +9459,11 @@ class _ContractPageState extends State<ContractPage>
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = Colors.black
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round;
 
     for (int i = 0; i < points!.length - 1; i++) {
       final current = points[i];
@@ -9426,15 +9488,10 @@ class _ContractPageState extends State<ContractPage>
 
     return points.map((point) {
       if (point == null) {
-        return <String, dynamic>{
-          'break': true,
-        };
+        return <String, dynamic>{'break': true};
       }
 
-      return <String, dynamic>{
-        'x': point.dx,
-        'y': point.dy,
-      };
+      return <String, dynamic>{'x': point.dx, 'y': point.dy};
     }).toList();
   }
 
@@ -9467,10 +9524,7 @@ class _ContractPageState extends State<ContractPage>
     return result;
   }
 
-  void _toggleHealthChip({
-    required Set<String> target,
-    required String value,
-  }) {
+  void _toggleHealthChip({required Set<String> target, required String value}) {
     setState(() {
       if (target.contains(value)) {
         target.remove(value);
@@ -9610,9 +9664,7 @@ class _ContractPageState extends State<ContractPage>
   void _closeContractPage() {
     if (!mounted) return;
 
-    Navigator.of(context).pop(
-      _shouldReturnSavedToCaller ? true : null,
-    );
+    Navigator.of(context).pop(_shouldReturnSavedToCaller ? true : null);
   }
 
   Future<bool> _handleContractWillPop() async {
@@ -9625,10 +9677,8 @@ class _ContractPageState extends State<ContractPage>
   String _generateInternalMemberId() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final random = Random();
-    final tail = List.generate(
-      8,
-      (_) => chars[random.nextInt(chars.length)],
-    ).join();
+    final tail =
+        List.generate(8, (_) => chars[random.nextInt(chars.length)]).join();
     return 'mem_$tail';
   }
 
@@ -9781,11 +9831,13 @@ class _ContractPageState extends State<ContractPage>
         totalSessions > 0 ? _contractLessonTypeForMemberCard() : '미입력';
 
     final birthText = _memberBirthController.text.trim();
-    final contractDateText =
-        _contractDateTextOrEmpty(_contractDateController.text);
-    final endDateText = _isUnlimitedEndDate
-        ? ''
-        : _contractDateTextOrEmpty(_endDateController.text);
+    final contractDateText = _contractDateTextOrEmpty(
+      _contractDateController.text,
+    );
+    final endDateText =
+        _isUnlimitedEndDate
+            ? ''
+            : _contractDateTextOrEmpty(_endDateController.text);
 
     final birthAt = _contractDateTextToTimestamp(birthText);
     final contractStartAt = _contractDateTextToTimestamp(contractDateText);
@@ -9914,33 +9966,25 @@ class _ContractPageState extends State<ContractPage>
     final memberRef = firestore.collection('members').doc(_internalMemberId);
 
     await firestore.runTransaction((transaction) async {
-      transaction.set(
-        contractRef,
-        {
-          'clientCardAutoRegister': {
-            'status': 'skipped',
-            'memberId': _internalMemberId,
-            'skippedAt': FieldValue.serverTimestamp(),
-          },
-          'updatedAt': FieldValue.serverTimestamp(),
+      transaction.set(contractRef, {
+        'clientCardAutoRegister': {
+          'status': 'skipped',
+          'memberId': _internalMemberId,
+          'skippedAt': FieldValue.serverTimestamp(),
         },
-        SetOptions(merge: true),
-      );
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-      transaction.set(
-        memberRef,
-        {
-          'clientCardAutoRegister': {
-            'status': 'skipped',
-            'source': 'contract',
-            'contractId': _contractId,
-            'contractNo': _contractNo,
-            'skippedAt': FieldValue.serverTimestamp(),
-          },
-          'updatedAt': FieldValue.serverTimestamp(),
+      transaction.set(memberRef, {
+        'clientCardAutoRegister': {
+          'status': 'skipped',
+          'source': 'contract',
+          'contractId': _contractId,
+          'contractNo': _contractNo,
+          'skippedAt': FieldValue.serverTimestamp(),
         },
-        SetOptions(merge: true),
-      );
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     });
   }
 
@@ -9961,26 +10005,18 @@ class _ContractPageState extends State<ContractPage>
 
       final payload = _buildClientCardAutoRegisterPayload(existingMemberData);
 
-      transaction.set(
-        memberRef,
-        payload,
-        SetOptions(merge: true),
-      );
+      transaction.set(memberRef, payload, SetOptions(merge: true));
 
-      transaction.set(
-        contractRef,
-        {
+      transaction.set(contractRef, {
+        'memberId': _internalMemberId,
+        'clientCardAutoRegister': {
+          'status': 'registered',
           'memberId': _internalMemberId,
-          'clientCardAutoRegister': {
-            'status': 'registered',
-            'memberId': _internalMemberId,
-            'mode': mergedExistingMember ? 'merged' : 'created',
-            'registeredAt': FieldValue.serverTimestamp(),
-          },
-          'updatedAt': FieldValue.serverTimestamp(),
+          'mode': mergedExistingMember ? 'merged' : 'created',
+          'registeredAt': FieldValue.serverTimestamp(),
         },
-        SetOptions(merge: true),
-      );
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     });
 
     if (!mounted) return;
@@ -10009,11 +10045,12 @@ class _ContractPageState extends State<ContractPage>
       if (!mounted) return;
 
       final contractData = contractSnap.data() ?? <String, dynamic>{};
-      final autoRegister = contractData['clientCardAutoRegister'] is Map
-          ? Map<String, dynamic>.from(
-              contractData['clientCardAutoRegister'] as Map,
-            )
-          : <String, dynamic>{};
+      final autoRegister =
+          contractData['clientCardAutoRegister'] is Map
+              ? Map<String, dynamic>.from(
+                contractData['clientCardAutoRegister'] as Map,
+              )
+              : <String, dynamic>{};
 
       final status = (autoRegister['status'] ?? '').toString().trim();
 
@@ -10021,15 +10058,17 @@ class _ContractPageState extends State<ContractPage>
         return;
       }
 
-      final memberName = _memberNameController.text.trim().isEmpty
-          ? '회원'
-          : _memberNameController.text.trim();
+      final memberName =
+          _memberNameController.text.trim().isEmpty
+              ? '회원'
+              : _memberNameController.text.trim();
 
       final confirmed = await AifcConfirmChatSheet.show(
         context: context,
         nickname: _normalizeContractNickname(_trainerNameController.text),
         title: '${aifcPersonLabel(memberName)} 회원카드도 등록해 놓을까요?',
-        message: '계약서에 입력한 내용을 바탕으로 제가 회원카드를 미리 만들어둘게요.\n\n'
+        message:
+            '계약서에 입력한 내용을 바탕으로 제가 회원카드를 미리 만들어둘게요.\n\n'
             '반영 내용\n'
             '· 회원명 / 연락처 / 생년월일 / 이메일\n'
             '· 레슨명 / 총 횟수 / 잔여 횟수\n'
@@ -10080,9 +10119,7 @@ class _ContractPageState extends State<ContractPage>
 
     if (date == null) return null;
 
-    return Timestamp.fromDate(
-      DateTime(date.year, date.month, date.day),
-    );
+    return Timestamp.fromDate(DateTime(date.year, date.month, date.day));
   }
 
   String _contractDateTextOrEmpty(String value) {
@@ -10175,21 +10212,24 @@ class _StageTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color bgColor = selected
-        ? const Color(0xFF4F46E5)
-        : muted
+    final Color bgColor =
+        selected
+            ? const Color(0xFF4F46E5)
+            : muted
             ? const Color(0xFFF3F4F6)
             : const Color(0xFFF8FAFC);
 
-    final Color titleColor = selected
-        ? Colors.white
-        : muted
+    final Color titleColor =
+        selected
+            ? Colors.white
+            : muted
             ? const Color(0xFF9CA3AF)
             : const Color(0xFF111827);
 
-    final Color subtitleColor = selected
-        ? Colors.white.withOpacity(0.78)
-        : muted
+    final Color subtitleColor =
+        selected
+            ? Colors.white.withOpacity(0.78)
+            : muted
             ? const Color(0xFF9CA3AF)
             : const Color(0xFF6B7280);
 
@@ -10208,15 +10248,16 @@ class _StageTabButton extends StatelessWidget {
               color:
                   selected ? const Color(0xFF4F46E5) : const Color(0xFFE5E7EB),
             ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF4F46E5).withOpacity(0.20),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
+            boxShadow:
+                selected
+                    ? [
+                      BoxShadow(
+                        color: const Color(0xFF4F46E5).withOpacity(0.20),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                    : null,
           ),
           child: Row(
             children: [
@@ -10224,12 +10265,13 @@ class _StageTabButton extends StatelessWidget {
                 done
                     ? Icons.check_circle_rounded
                     : selected
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
                 size: 18,
-                color: selected
-                    ? Colors.white
-                    : done
+                color:
+                    selected
+                        ? Colors.white
+                        : done
                         ? const Color(0xFF059669)
                         : const Color(0xFF9CA3AF),
               ),
@@ -10281,10 +10323,7 @@ class _DocSection {
   final String title;
   final String body;
 
-  _DocSection({
-    required this.title,
-    required this.body,
-  });
+  _DocSection({required this.title, required this.body});
 }
 
 class _LessonTemplateCategory {
@@ -10365,10 +10404,7 @@ class _LessonTemplateOption {
   final String categoryName;
   final _LessonTemplateItem item;
 
-  const _LessonTemplateOption({
-    required this.categoryName,
-    required this.item,
-  });
+  const _LessonTemplateOption({required this.categoryName, required this.item});
 }
 
 class _HeaderActionButton extends StatelessWidget {
@@ -10395,15 +10431,9 @@ class _HeaderActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.14),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.16),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.16)),
           ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 18,
-          ),
+          child: Icon(icon, color: Colors.white, size: 18),
         ),
       ),
     );
@@ -10411,10 +10441,7 @@ class _HeaderActionButton extends StatelessWidget {
 }
 
 class _HeaderSummaryChip extends StatelessWidget {
-  const _HeaderSummaryChip({
-    required this.icon,
-    required this.text,
-  });
+  const _HeaderSummaryChip({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -10451,10 +10478,7 @@ class _SignatureDialog extends StatefulWidget {
   final String title;
   final String guideName;
 
-  const _SignatureDialog({
-    required this.title,
-    required this.guideName,
-  });
+  const _SignatureDialog({required this.title, required this.guideName});
 
   @override
   State<_SignatureDialog> createState() => _SignatureDialogState();
@@ -10530,8 +10554,9 @@ class _SignatureDialogState extends State<_SignatureDialog> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: const Color(0xFF111827)
-                                            .withOpacity(0.12),
+                                        color: const Color(
+                                          0xFF111827,
+                                        ).withOpacity(0.12),
                                         fontSize: 42,
                                         fontWeight: FontWeight.w900,
                                         letterSpacing: -0.8,
@@ -10580,12 +10605,10 @@ class _SignatureDialogState extends State<_SignatureDialog> {
             final hasSignature = points.any((e) => e != null);
 
             return FilledButton(
-              onPressed: hasSignature
-                  ? () => Navigator.pop(
-                        context,
-                        List<Offset?>.from(points),
-                      )
-                  : null,
+              onPressed:
+                  hasSignature
+                      ? () => Navigator.pop(context, List<Offset?>.from(points))
+                      : null,
               child: const Text('확인'),
             );
           },
@@ -10602,10 +10625,11 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = Colors.black
+          ..strokeWidth = 2.2
+          ..strokeCap = StrokeCap.round;
 
     for (int i = 0; i < points.length - 1; i++) {
       final current = points[i];
@@ -10656,10 +10680,11 @@ class _FittedSignaturePainter extends CustomPainter {
     final dx = (size.width - contentWidth * scale) / 2 - minX * scale;
     final dy = (size.height - contentHeight * scale) / 2 - minY * scale;
 
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = Colors.black
+          ..strokeWidth = 2.2
+          ..strokeCap = StrokeCap.round;
 
     for (int i = 0; i < points.length - 1; i++) {
       final current = points[i];
@@ -10715,11 +10740,7 @@ class _PaymentMethodChip extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(
-                icon,
-                size: 19,
-                color: textColor,
-              ),
+              Icon(icon, size: 19, color: textColor),
               const SizedBox(height: 5),
               Text(
                 label,
@@ -10799,11 +10820,7 @@ class _HeaderCircleIconButton extends StatelessWidget {
             color: Colors.white.withOpacity(0.20),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 18,
-          ),
+          child: Icon(icon, color: Colors.white, size: 18),
         ),
       ),
     );
@@ -10872,9 +10889,7 @@ class _BirthDateInputFormatter extends TextInputFormatter {
 }
 
 class _LessonProductPickerSheet extends StatelessWidget {
-  const _LessonProductPickerSheet({
-    required this.products,
-  });
+  const _LessonProductPickerSheet({required this.products});
 
   final List<ProductModel> products;
 
@@ -10899,9 +10914,10 @@ class _LessonProductPickerSheet extends StatelessWidget {
     final grouped = <String, List<ProductModel>>{};
 
     for (final product in products) {
-      final category = product.categoryName.trim().isEmpty
-          ? '기타 레슨'
-          : product.categoryName.trim();
+      final category =
+          product.categoryName.trim().isEmpty
+              ? '기타 레슨'
+              : product.categoryName.trim();
 
       grouped.putIfAbsent(category, () => <ProductModel>[]);
       grouped[category]!.add(product);
@@ -10918,11 +10934,7 @@ class _LessonProductPickerSheet extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(
-                    Icons.sell_outlined,
-                    color: Color(0xFF4F46E5),
-                    size: 24,
-                  ),
+                  Icon(Icons.sell_outlined, color: Color(0xFF4F46E5), size: 24),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -10946,9 +10958,7 @@ class _LessonProductPickerSheet extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFFE5E7EB),
-                    ),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -10982,8 +10992,9 @@ class _LessonProductPickerSheet extends StatelessWidget {
                                   width: 38,
                                   height: 38,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF4F46E5)
-                                        .withOpacity(0.09),
+                                    color: const Color(
+                                      0xFF4F46E5,
+                                    ).withOpacity(0.09),
                                     borderRadius: BorderRadius.circular(13),
                                   ),
                                   child: const Icon(

@@ -249,6 +249,8 @@ class _FakeMemberGateway implements ManagedMemberWorkspaceGateway {
     String? gymName,
     String? centerLocation,
     String? intro,
+    String? businessCardPhotoUrl,
+    String? businessCardPhotoAlign,
   }) async {}
 
   @override

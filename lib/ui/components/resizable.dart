@@ -4,10 +4,7 @@ class ShadcnRadioItem<T> {
   final T value;
   final String label;
 
-  ShadcnRadioItem({
-    required this.value,
-    required this.label,
-  });
+  ShadcnRadioItem({required this.value, required this.label});
 }
 
 class ShadcnRadioGroup<T> extends StatelessWidget {

@@ -24,8 +24,8 @@ class LessonConfirmCancelService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   static Future<LessonConfirmCancelResult> cancelByScheduleDocId(
-      String scheduleDocId,
-      ) async {
+    String scheduleDocId,
+  ) async {
     final cleanScheduleDocId = scheduleDocId.trim();
 
     if (cleanScheduleDocId.isEmpty) {
@@ -49,12 +49,22 @@ class LessonConfirmCancelService {
         throw Exception('schedule_not_found');
       }
 
-      final isConfirmed = scheduleData['lessonConfirmed'] == true ||
+      final isConfirmed =
+          scheduleData['lessonConfirmed'] == true ||
           scheduleData['lessonConfirmedAt'] != null ||
-          (scheduleData['lessonConfirmStatus'] ?? '').toString().trim().isNotEmpty ||
+          (scheduleData['lessonConfirmStatus'] ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty ||
           (scheduleData['trainingLogId'] ?? '').toString().trim().isNotEmpty ||
-          (scheduleData['quickTrainingLogId'] ?? '').toString().trim().isNotEmpty ||
-          (scheduleData['lastTrainingLogId'] ?? '').toString().trim().isNotEmpty;
+          (scheduleData['quickTrainingLogId'] ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty ||
+          (scheduleData['lastTrainingLogId'] ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty;
 
       if (!isConfirmed) {
         throw Exception('schedule_not_confirmed');
@@ -63,13 +73,14 @@ class LessonConfirmCancelService {
       final memberId = (scheduleData['memberId'] ?? '').toString().trim();
       cancelledMemberId = memberId.isNotEmpty ? memberId : null;
 
-      final status = (scheduleData['lessonConfirmStatus'] ?? '').toString().trim();
+      final status =
+          (scheduleData['lessonConfirmStatus'] ?? '').toString().trim();
 
       final trainingLogId = [
-        scheduleData['trainingLogId'],
-        scheduleData['quickTrainingLogId'],
-        scheduleData['lastTrainingLogId'],
-      ]
+            scheduleData['trainingLogId'],
+            scheduleData['quickTrainingLogId'],
+            scheduleData['lastTrainingLogId'],
+          ]
           .map((e) => (e ?? '').toString().trim())
           .firstWhere((e) => e.isNotEmpty, orElse: () => '');
 
@@ -85,9 +96,8 @@ class LessonConfirmCancelService {
         logData = logSnap.data() ?? <String, dynamic>{};
       }
 
-      final memberRef = memberId.isEmpty
-          ? null
-          : _db.collection('members').doc(memberId);
+      final memberRef =
+          memberId.isEmpty ? null : _db.collection('members').doc(memberId);
 
       Map<String, dynamic> memberData = <String, dynamic>{};
 
@@ -96,17 +106,20 @@ class LessonConfirmCancelService {
         memberData = memberSnap.data() ?? <String, dynamic>{};
       }
 
-      final sessions = memberData['sessions'] is Map
-          ? Map<String, dynamic>.from(memberData['sessions'] as Map)
-          : <String, dynamic>{};
+      final sessions =
+          memberData['sessions'] is Map
+              ? Map<String, dynamic>.from(memberData['sessions'] as Map)
+              : <String, dynamic>{};
 
-      final rawCurrentRemain = memberData['remainSessions'] ??
+      final rawCurrentRemain =
+          memberData['remainSessions'] ??
           memberData['remainingSessions'] ??
           sessions['remain'] ??
           memberData['remainingPt'] ??
           memberData['ptRemaining'];
 
-      final rawCurrentTotal = memberData['totalSessions'] ??
+      final rawCurrentTotal =
+          memberData['totalSessions'] ??
           sessions['total'] ??
           memberData['sessionTotal'];
 
@@ -117,23 +130,25 @@ class LessonConfirmCancelService {
       final currentDone = _intFromAny(rawCurrentDone);
 
       final logDeductionApplied = logData['deductionApplied'] == true;
-      final scheduleSnapshotBefore =
-      _intFromAny(scheduleData['sessionSnapshotRemainBefore']);
-      final scheduleSnapshotAfter =
-      _intFromAny(scheduleData['sessionSnapshotRemainAfter']);
+      final scheduleSnapshotBefore = _intFromAny(
+        scheduleData['sessionSnapshotRemainBefore'],
+      );
+      final scheduleSnapshotAfter = _intFromAny(
+        scheduleData['sessionSnapshotRemainAfter'],
+      );
 
       final looksDeductedBySnapshot =
           scheduleSnapshotBefore > scheduleSnapshotAfter;
 
-      final shouldRestoreOne =
-          logDeductionApplied || looksDeductedBySnapshot;
+      final shouldRestoreOne = logDeductionApplied || looksDeductedBySnapshot;
 
       final restoredRemain =
-      shouldRestoreOne ? currentRemain + 1 : currentRemain;
+          shouldRestoreOne ? currentRemain + 1 : currentRemain;
 
-      final restoredDone = shouldRestoreOne
-          ? (currentDone > 0 ? currentDone - 1 : 0)
-          : currentDone;
+      final restoredDone =
+          shouldRestoreOne
+              ? (currentDone > 0 ? currentDone - 1 : 0)
+              : currentDone;
 
       if (memberRef != null) {
         restoredTotalForLocal = currentTotal;
@@ -148,10 +163,12 @@ class LessonConfirmCancelService {
         };
 
         if (trainingLogId.isNotEmpty) {
-          memberUpdate['confirmedTrainingLogIds'] =
-              FieldValue.arrayRemove([trainingLogId]);
-          memberUpdate['deductedTrainingLogIds'] =
-              FieldValue.arrayRemove([trainingLogId]);
+          memberUpdate['confirmedTrainingLogIds'] = FieldValue.arrayRemove([
+            trainingLogId,
+          ]);
+          memberUpdate['deductedTrainingLogIds'] = FieldValue.arrayRemove([
+            trainingLogId,
+          ]);
         }
 
         if (shouldRestoreOne) {
@@ -166,77 +183,70 @@ class LessonConfirmCancelService {
           });
         }
 
-        final lessonStats = memberData['lessonStats'] is Map
-            ? Map<String, dynamic>.from(memberData['lessonStats'] as Map)
-            : <String, dynamic>{};
+        final lessonStats =
+            memberData['lessonStats'] is Map
+                ? Map<String, dynamic>.from(memberData['lessonStats'] as Map)
+                : <String, dynamic>{};
 
         if (status == 'no_show_deducted') {
           final current = _intFromAny(sessions['noShowDeductedCount']);
-          final statsCurrent =
-          _intFromAny(lessonStats['noShowDeductedCount']);
+          final statsCurrent = _intFromAny(lessonStats['noShowDeductedCount']);
 
           memberUpdate['sessions.noShowDeductedCount'] =
-          current > 0 ? current - 1 : 0;
+              current > 0 ? current - 1 : 0;
           memberUpdate['lessonStats.noShowDeductedCount'] =
-          statsCurrent > 0 ? statsCurrent - 1 : 0;
+              statsCurrent > 0 ? statsCurrent - 1 : 0;
         } else if (status == 'no_show_not_deducted') {
           final current = _intFromAny(sessions['noShowUndeductedCount']);
-          final statsCurrent =
-          _intFromAny(lessonStats['noShowUndeductedCount']);
+          final statsCurrent = _intFromAny(
+            lessonStats['noShowUndeductedCount'],
+          );
 
           memberUpdate['sessions.noShowUndeductedCount'] =
-          current > 0 ? current - 1 : 0;
+              current > 0 ? current - 1 : 0;
           memberUpdate['lessonStats.noShowUndeductedCount'] =
-          statsCurrent > 0 ? statsCurrent - 1 : 0;
+              statsCurrent > 0 ? statsCurrent - 1 : 0;
         } else if (status == 'service') {
           final current = _intFromAny(sessions['serviceSessionCount']);
-          final statsCurrent =
-          _intFromAny(lessonStats['serviceSessionCount']);
+          final statsCurrent = _intFromAny(lessonStats['serviceSessionCount']);
 
           memberUpdate['sessions.serviceSessionCount'] =
-          current > 0 ? current - 1 : 0;
+              current > 0 ? current - 1 : 0;
           memberUpdate['lessonStats.serviceSessionCount'] =
-          statsCurrent > 0 ? statsCurrent - 1 : 0;
+              statsCurrent > 0 ? statsCurrent - 1 : 0;
         } else if (status == 'completed') {
           final statsCurrent = _intFromAny(lessonStats['completedCount']);
 
           memberUpdate['lessonStats.completedCount'] =
-          statsCurrent > 0 ? statsCurrent - 1 : 0;
+              statsCurrent > 0 ? statsCurrent - 1 : 0;
         }
 
-        final confirmedStatsCurrent =
-        _intFromAny(lessonStats['confirmedCount']);
+        final confirmedStatsCurrent = _intFromAny(
+          lessonStats['confirmedCount'],
+        );
 
         memberUpdate['lessonStats.confirmedCount'] =
-        confirmedStatsCurrent > 0 ? confirmedStatsCurrent - 1 : 0;
+            confirmedStatsCurrent > 0 ? confirmedStatsCurrent - 1 : 0;
         memberUpdate['lessonStats.lastConfirmStatus'] = 'confirm_cancelled';
         memberUpdate['lessonStats.lastCancelledAt'] =
             FieldValue.serverTimestamp();
 
-        tx.set(
-          memberRef,
-          memberUpdate,
-          SetOptions(merge: true),
-        );
+        tx.set(memberRef, memberUpdate, SetOptions(merge: true));
       }
 
       if (logRef != null) {
-        tx.set(
-          logRef,
-          {
-            'voided': true,
-            'voidedAt': FieldValue.serverTimestamp(),
-            'voidReason': 'trainer_cancel_confirm',
-            'voidSource': 'home_schedule',
-            'locked': false,
-            'lessonConfirmed': false,
-            'deductionApplied': false,
-            'confirmCancelled': true,
-            'confirmCancelledAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        tx.set(logRef, {
+          'voided': true,
+          'voidedAt': FieldValue.serverTimestamp(),
+          'voidReason': 'trainer_cancel_confirm',
+          'voidSource': 'home_schedule',
+          'locked': false,
+          'lessonConfirmed': false,
+          'deductionApplied': false,
+          'confirmCancelled': true,
+          'confirmCancelledAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       if (memberRef != null && trainingLogId.isNotEmpty) {
@@ -244,20 +254,16 @@ class LessonConfirmCancelService {
             .collection('lesson_ledger')
             .doc('${trainingLogId}_reverse');
 
-        tx.set(
-          reverseLedgerRef,
-          {
-            'type': 'reverse',
-            'source': 'confirm_cancel',
-            'scheduleId': cleanScheduleDocId,
-            'logId': trainingLogId,
-            'status': status,
-            'restoredSessions': shouldRestoreOne ? 1 : 0,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        tx.set(reverseLedgerRef, {
+          'type': 'reverse',
+          'source': 'confirm_cancel',
+          'scheduleId': cleanScheduleDocId,
+          'logId': trainingLogId,
+          'status': status,
+          'restoredSessions': shouldRestoreOne ? 1 : 0,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       final scheduleCancelUpdate = <String, dynamic>{
@@ -292,11 +298,7 @@ class LessonConfirmCancelService {
         scheduleCancelUpdate['remainSessions'] = restoredRemain.toString();
       }
 
-      tx.set(
-        scheduleRef,
-        scheduleCancelUpdate,
-        SetOptions(merge: true),
-      );
+      tx.set(scheduleRef, scheduleCancelUpdate, SetOptions(merge: true));
     });
 
     return LessonConfirmCancelResult(

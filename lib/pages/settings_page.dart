@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mtf_app/pages/notification_settings_page.dart';
@@ -7,10 +9,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/home_repeat_lesson_grouping_mode.dart';
 import '../models/app_theme_mode.dart';
-import '../services/app_account_service.dart';
+import '../models/personal_tier_progress.dart';
+import '../services/app_account_service.dart' hide AppTier;
+import '../services/app_tier_access_service.dart';
 import '../services/mtf_home_widget_service.dart';
+import '../utils/personal_tier_parser.dart';
+import 'lesson_type_management_page.dart';
 import 'password_change_page.dart';
+import '../widgets/aifc_tier_guide_chat_sheet.dart';
 import '../widgets/home/schedule/home_repeat_lesson_grouping_sheet.dart';
+import '../widgets/premium_banner_widget.dart';
 
 import '../providers/theme_provider.dart';
 import '../theme.dart';
@@ -34,10 +42,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   HomeRepeatLessonGroupingMode _repeatLessonGroupingMode =
       HomeRepeatLessonGroupingMode.none;
 
+  PremiumBannerData? _premiumBannerData;
+  String _currentTierName = 'Beginner';
+  String _nextTierName = 'Amateur';
+  int _memberCountForTier = 0;
+  int _lessonCountForTier = 0;
+  bool _hasProductForTier = false;
+  bool _trainerInfoDoneForTier = false;
+
   @override
   void initState() {
     super.initState();
     unawaited(_loadRepeatLessonGroupingMode());
+    unawaited(_loadPremiumBannerStatus());
   }
 
   @override
@@ -63,11 +80,138 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _openWidgetSettingsPage() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const WidgetSettingsPage(),
-      ),
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const WidgetSettingsPage()));
+  }
+
+  Future<void> _loadPremiumBannerStatus() async {
+    try {
+      final personalOwnerUid = (widget.personalOwnerUid ?? '').trim();
+      if (personalOwnerUid.isNotEmpty) {
+        final snapshot = await FirebaseFirestore.instance
+            .doc('trainer_profiles/$personalOwnerUid')
+            .get(const GetOptions(source: Source.server));
+        final profile = snapshot.data() ?? const <String, dynamic>{};
+        final tier = parsePersonalTierLabel(profile['tier']) ?? 'Beginner';
+        final progress = PersonalTierProgress.fromProfile(profile);
+        final memberCount =
+            ((profile['validMemberCount'] ??
+                        profile['lifetimeQualifiedMemberCount'] ??
+                        0)
+                    as num)
+                .toInt();
+        if (!mounted) return;
+        setState(() {
+          _currentTierName = tier;
+          _nextTierName = _resolveNextTierName(tier);
+          _memberCountForTier = memberCount;
+          _lessonCountForTier = progress.scheduleCount;
+          _trainerInfoDoneForTier = progress.teacherInfoCompleted;
+          _premiumBannerData = PremiumBannerData(
+            currentTier: _resolveAppTier(tier),
+            isSponsor: false,
+            scheduleCount: progress.scheduleCount,
+            memberCount: memberCount,
+            trainerInfoDone: progress.teacherInfoCompleted,
+            accountLinked: profile['accountLinked'] == true,
+          );
+        });
+        return;
+      }
+
+      final tierAccess = await AppTierAccessService.loadTrainerAccess();
+      if (!mounted) return;
+      setState(() {
+        _currentTierName = tierAccess.tierLabel;
+        _nextTierName = _resolveNextTierName(tierAccess.tierLabel);
+        _memberCountForTier = tierAccess.activeMemberCount;
+        _hasProductForTier = false;
+        _trainerInfoDoneForTier = tierAccess.profileCompleted;
+        _premiumBannerData = PremiumBannerData(
+          currentTier: _resolveAppTier(tierAccess.tierLabel),
+          isSponsor: tierAccess.isSponsor,
+          memberCount: tierAccess.activeMemberCount,
+          trainerInfoDone: tierAccess.profileCompleted,
+          accountLinked: tierAccess.kakaoLinked,
+        );
+      });
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[MTF_SETTINGS_PREMIUM_BANNER] load failed: $error');
+      }
+      // 배너는 부가 정보라 실패해도 설정 화면 진입은 막지 않는다.
+    }
+  }
+
+  String _resolveNextTierName(String tier) {
+    switch (tier) {
+      case 'Beginner':
+        return 'Amateur';
+      case 'Amateur':
+        return 'Semi-Pro';
+      case 'Semi-Pro':
+        return 'Pro';
+      case 'Pro':
+        return 'Master';
+      case 'Master':
+        return 'Grand Prix';
+      default:
+        return 'Grand Prix';
+    }
+  }
+
+  AppTier _resolveAppTier(String tier) {
+    switch (tier) {
+      case 'Beginner':
+        return AppTier.beginner;
+      case 'Amateur':
+        return AppTier.amateur;
+      case 'Semi-Pro':
+        return AppTier.semiPro;
+      case 'Pro':
+        return AppTier.pro;
+      case 'Master':
+        return AppTier.master;
+      case 'Grand Prix':
+        return AppTier.grandPrix;
+      default:
+        return AppTier.beginner;
+    }
+  }
+
+  Future<void> _openTierGuideSheet() async {
+    final action = await AifcTierGuideChatSheet.show(
+      context: context,
+      trainerName: '',
+      currentTierName: _currentTierName,
+      nextTierName: _nextTierName,
+      memberCount: _memberCountForTier,
+      lessonCount: _lessonCountForTier,
+      hasProduct: _hasProductForTier,
+      trainerInfoDone: _trainerInfoDoneForTier,
     );
+
+    if (!mounted || action == null || action == AifcTierGuideAction.later) {
+      return;
+    }
+
+    switch (action) {
+      case AifcTierGuideAction.sponsor:
+        _showActionToast('후원 결제 화면은 준비중이에요. 곧 더 간편하게 연결할게요.');
+        break;
+      case AifcTierGuideAction.goFillInfo:
+        _showActionToast('AI FC 안내 정보를 채워주세요.');
+        break;
+      case AifcTierGuideAction.goAddMember:
+        _showActionToast('회원카드는 홈 또는 회원리스트에서 추가할 수 있어요.');
+        break;
+      case AifcTierGuideAction.goAddProduct:
+        _showActionToast('레슨 상품 관리에서 상품을 추가해주세요.');
+        break;
+      case AifcTierGuideAction.later:
+        break;
+    }
   }
 
   Future<void> _loadRepeatLessonGroupingMode() async {
@@ -104,7 +248,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _notificationSettingsChanged = true;
     });
 
-    _showActionToast('반복 레슨 묶기 방식을 ${picked.shortLabel}으로 변경했어요.');
+    _showActionToast('동일 회원 요일 자동 체크를 ${picked.shortLabel}으로 변경했어요.');
   }
 
   void _handleBackTap() {
@@ -115,20 +259,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (_signingOut) return;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('로그아웃할까요?'),
-        content: const Text('로그아웃하면 실제 회원 화면을 닫고 Guest 시작 화면으로 이동합니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('취소'),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('로그아웃할까요?'),
+            content: const Text('로그아웃하면 실제 회원 화면을 닫고 Guest 시작 화면으로 이동합니다.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('로그아웃'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('로그아웃'),
-          ),
-        ],
-      ),
     );
     if (confirmed != true || !mounted) return;
 
@@ -139,10 +284,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       }
       await AppAccountService.instance.signOut();
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
-        '/',
-        (route) => false,
-      );
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pushNamedAndRemoveUntil('/', (route) => false);
     } catch (error) {
       if (!mounted) return;
       setState(() => _signingOut = false);
@@ -168,9 +313,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               width: width,
               child: Column(
                 children: [
-                  _SettingsHeader(
-                    onBackTap: _handleBackTap,
-                  ),
+                  _SettingsHeader(onBackTap: _handleBackTap),
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -206,72 +349,103 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           const SizedBox(height: 14),
 
                           // ── 운영 설정 ──────────────────────────────
-                          _SettingsMenuTile(
-                            icon: Icons.category_outlined,
-                            title: '수업 유형 관리',
-                            subtitle: 'PT수업, 필라테스, 그룹수업 등 수업 타입 설정',
-                            onTap: () => _showPreparingToast('수업 유형 관리'),
-                          ),
-                          const _SettingsDivider(),
-                          _SettingsMenuTile(
-                            icon: Icons.event_repeat_rounded,
-                            title: '반복 레슨 묶기 방식',
-                            subtitle: '레슨 수정 시 여러 요일을 자동 체크하는 기준',
-                            trailingText: _repeatLessonGroupingMode.shortLabel,
-                            onTap: _openRepeatLessonGroupingSheet,
-                          ),
-                          const _SettingsDivider(),
-                          _SettingsMenuTile(
-                            icon: Icons.notifications_outlined,
-                            title: '알림 설정',
-                            subtitle: '레슨 시작 전 알림 시간을 설정해요',
-                            onTap: () async {
-                              final changed =
-                                  await Navigator.of(context).push<bool>(
-                                MaterialPageRoute(
-                                  builder: (_) => NotificationSettingsPage(
-                                    personalOwnerUid: widget.personalOwnerUid,
-                                  ),
-                                ),
-                              );
+                          _SettingsSectionCard(
+                            title: '운영 설정',
+                            subtitle: '수업 타입, 레슨 반복 방식, 알림을 관리합니다',
+                            icon: Icons.tune_rounded,
+                            children: [
+                              _SettingsMenuTile(
+                                icon: Icons.category_outlined,
+                                title: '수업 유형 관리',
+                                subtitle: 'PT수업, 필라테스, 그룹수업 등 수업 타입 설정',
+                                onTap: () {
+                                  final ownerUid =
+                                      (widget.personalOwnerUid ?? '').trim();
+                                  if (ownerUid.isEmpty) {
+                                    _showPreparingToast('수업 유형 관리');
+                                    return;
+                                  }
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => LessonTypeManagementPage(
+                                            personalOwnerUid: ownerUid,
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const _SettingsDivider(),
+                              _SettingsMenuTile(
+                                icon: Icons.event_repeat_rounded,
+                                title: '동일 회원 요일 자동 체크',
+                                subtitle: '레슨 수정 시 여러 요일을 자동 체크하는 기준',
+                                trailingText:
+                                    _repeatLessonGroupingMode.shortLabel,
+                                onTap: _openRepeatLessonGroupingSheet,
+                              ),
+                              const _SettingsDivider(),
+                              _SettingsMenuTile(
+                                icon: Icons.notifications_outlined,
+                                title: '알림 설정',
+                                subtitle: '레슨 시작 전 알림 시간을 설정해요',
+                                onTap: () async {
+                                  final changed = await Navigator.of(
+                                    context,
+                                  ).push<bool>(
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => NotificationSettingsPage(
+                                            personalOwnerUid:
+                                                widget.personalOwnerUid,
+                                          ),
+                                    ),
+                                  );
 
-                              if (!mounted) return;
+                                  if (!mounted) return;
 
-                              if (changed == true) {
-                                setState(() {
-                                  _notificationSettingsChanged = true;
-                                });
+                                  if (changed == true) {
+                                    setState(() {
+                                      _notificationSettingsChanged = true;
+                                    });
 
-                                _showActionToast('알림 설정을 저장했어요.');
-                              }
-                            },
+                                    _showActionToast('알림 설정을 저장했어요.');
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 14),
 
                           // ── 프리미엄 배너 ──────────────────────────
-                          _SettingsPremiumBanner(
-                            onTap: () => _showPreparingToast('프리미엄 업그레이드'),
-                          ),
-                          const SizedBox(height: 14),
+                          if (_premiumBannerData != null) ...[
+                            PremiumBannerWidget(
+                              data: _premiumBannerData!,
+                              onTap: _openTierGuideSheet,
+                            ),
+                            const SizedBox(height: 14),
+                          ],
 
                           if (!account.isGuest) ...[
                             _SettingsSectionCard(
                               title: '계정',
-                              subtitle: account.user?.email.isNotEmpty == true
-                                  ? account.user!.email
-                                  : 'Firebase 계정 연결됨',
+                              subtitle:
+                                  account.user?.email.isNotEmpty == true
+                                      ? account.user!.email
+                                      : 'Firebase 계정 연결됨',
                               icon: Icons.account_circle_outlined,
                               children: [
                                 _SettingsMenuTile(
                                   icon: Icons.password_rounded,
                                   title: '비밀번호 변경',
                                   subtitle: '현재 비밀번호를 확인하고 안전하게 변경합니다',
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const PasswordChangePage(),
-                                    ),
-                                  ),
+                                  onTap:
+                                      () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => const PasswordChangePage(),
+                                        ),
+                                      ),
                                 ),
                                 const _SettingsDivider(),
                                 _SettingsMenuTile(
@@ -310,8 +484,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 title: '버전 정보',
                                 subtitle: '모어댄 · MORE THAN',
                                 trailingText: 'v1.0.0',
-                                onTap: () =>
-                                    _showActionToast('현재 버전은 v1.0.0 입니다.'),
+                                onTap:
+                                    () =>
+                                        _showActionToast('현재 버전은 v1.0.0 입니다.'),
                               ),
                             ],
                           ),
@@ -353,110 +528,47 @@ class _SettingsHeader extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 18),
+      padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 16),
       decoration: BoxDecoration(
         gradient: context.mtfHeaderGradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 44,
-            child: Row(
-              children: [
-                InkWell(
-                  onTap: onBackTap,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    width: 42,
-                    height: 42,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.14),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.20),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
+      child: SizedBox(
+        height: 44,
+        child: Row(
+          children: [
+            InkWell(
+              onTap: onBackTap,
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.14),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.20)),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    '설정',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.16),
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.16),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.settings_rounded,
-                    color: Colors.white,
-                    size: 25,
-                  ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                '설정',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.2,
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '앱 설정',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '화면, 위젯, 수업 유형, 알림, 앱 정보를 한 곳에서 관리해요.',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -631,10 +743,7 @@ class _SettingsMenuTile extends StatelessWidget {
                 ),
               )
             else
-              Icon(
-                Icons.chevron_right_rounded,
-                color: colors.onSurfaceVariant,
-              ),
+              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
           ],
         ),
       ),
@@ -726,9 +835,10 @@ class _SettingsThemeSelector extends StatelessWidget {
                     selected == options[index].mode
                         ? Icons.radio_button_checked_rounded
                         : Icons.radio_button_off_rounded,
-                    color: selected == options[index].mode
-                        ? colors.secondary
-                        : colors.onSurfaceVariant,
+                    color:
+                        selected == options[index].mode
+                            ? colors.secondary
+                            : colors.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -783,91 +893,5 @@ class _SettingsDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(height: 1);
-  }
-}
-
-// ── 프리미엄 배너 ─────────────────────────────────────────────────────────────
-
-class _SettingsPremiumBanner extends StatelessWidget {
-  const _SettingsPremiumBanner({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          gradient: const LinearGradient(
-            colors: [
-              AppColors.deepNavy,
-              Color(0xFF163A54),
-              Color(0xFF6D5A1F),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: colors.secondary.withValues(alpha: 0.18),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.workspace_premium_rounded,
-                color: Color(0xFFFBBF24),
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '프리미엄 기능',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'AI 인사이트, 인사이트, 계약 관리 기능을 준비중이에요.',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white),
-          ],
-        ),
-      ),
-    );
   }
 }

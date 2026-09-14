@@ -22,7 +22,7 @@ extension HomeRepeatLessonGroupingModeLabel on HomeRepeatLessonGroupingMode {
   String get title {
     switch (this) {
       case HomeRepeatLessonGroupingMode.none:
-        return '묶지 않음';
+        return '자동 체크 안 함';
       case HomeRepeatLessonGroupingMode.sameMemberSameTime:
         return '같은 회원 + 같은 시간대';
       case HomeRepeatLessonGroupingMode.sameMemberAnyTime:
@@ -44,7 +44,7 @@ extension HomeRepeatLessonGroupingModeLabel on HomeRepeatLessonGroupingMode {
   String get shortLabel {
     switch (this) {
       case HomeRepeatLessonGroupingMode.none:
-        return '묶지 않음';
+        return '자동 체크 안 함';
       case HomeRepeatLessonGroupingMode.sameMemberSameTime:
         return '같은 시간대';
       case HomeRepeatLessonGroupingMode.sameMemberAnyTime:
@@ -54,8 +54,8 @@ extension HomeRepeatLessonGroupingModeLabel on HomeRepeatLessonGroupingMode {
 }
 
 HomeRepeatLessonGroupingMode homeRepeatLessonGroupingModeFromString(
-    String? value,
-    ) {
+  String? value,
+) {
   switch ((value ?? '').trim()) {
     case 'sameMemberSameTime':
       return HomeRepeatLessonGroupingMode.sameMemberSameTime;

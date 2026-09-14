@@ -24,10 +24,7 @@ class HomePasteConflictSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF8F7FF),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFE0DEFF),
-          width: 0.5,
-        ),
+        border: Border.all(color: const Color(0xFFE0DEFF), width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,16 +38,14 @@ class HomePasteConflictSummaryCard extends StatelessWidget {
           _HomePasteSummaryRow(
             label: '확정 보호',
             value: '$confirmedCount개',
-            valueColor: confirmedCount > 0
-                ? const Color(0xFFDC2626)
-                : const Color(0xFF9CA3AF),
+            valueColor:
+                confirmedCount > 0
+                    ? const Color(0xFFDC2626)
+                    : const Color(0xFF9CA3AF),
           ),
           if (examples.isNotEmpty) ...[
             const SizedBox(height: 9),
-            Container(
-              height: 0.5,
-              color: const Color(0xFFE0DEFF),
-            ),
+            Container(height: 0.5, color: const Color(0xFFE0DEFF)),
             const SizedBox(height: 8),
             ...examples.map((conflict) {
               final day = (conflict['day'] ?? '').toString();
@@ -66,9 +61,10 @@ class HomePasteConflictSummaryCard extends StatelessWidget {
                 child: Text(
                   '${isConfirmed ? "🔒 " : "• "}$day $timeLabel ${name.isNotEmpty ? "($name)" : ""}',
                   style: TextStyle(
-                    color: isConfirmed
-                        ? const Color(0xFFDC2626)
-                        : const Color(0xFF475569),
+                    color:
+                        isConfirmed
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF475569),
                     fontSize: 11.5,
                     fontWeight: isConfirmed ? FontWeight.w800 : FontWeight.w600,
                     height: 1.35,

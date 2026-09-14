@@ -40,7 +40,10 @@ class _ShadcnSkeletonState extends State<ShadcnSkeleton>
           decoration: BoxDecoration(
             borderRadius: widget.radius ?? BorderRadius.circular(8),
             color:
-            Colors.grey[(300 + (_ctrl.value * 100).toInt()).clamp(300, 400)],
+                Colors.grey[(300 + (_ctrl.value * 100).toInt()).clamp(
+                  300,
+                  400,
+                )],
           ),
         );
       },

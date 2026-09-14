@@ -55,11 +55,7 @@ class AiFcGuideCard extends StatelessWidget {
                   color: const Color(0xFFEEF2FF),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  icon,
-                  color: primary,
-                  size: 20,
-                ),
+                child: Icon(icon, color: primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -107,9 +103,7 @@ class AiFcGuideCard extends StatelessWidget {
                       ),
                       child: Text(
                         secondaryText!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
                   ),
@@ -128,9 +122,7 @@ class AiFcGuideCard extends StatelessWidget {
                       ),
                       child: Text(
                         primaryText!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),
                   ),

@@ -5,10 +5,7 @@ import 'package:flutter/material.dart';
 import 'aifc_theme.dart';
 
 class AifcTypingDots extends StatefulWidget {
-  const AifcTypingDots({
-    super.key,
-    this.color = AifcColors.primary,
-  });
+  const AifcTypingDots({super.key, this.color = AifcColors.primary});
 
   final Color color;
 
@@ -72,11 +69,7 @@ class _AifcTypingDotsState extends State<AifcTypingDots>
       height: 10,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _dot(0),
-          _dot(1),
-          _dot(2),
-        ],
+        children: [_dot(0), _dot(1), _dot(2)],
       ),
     );
   }

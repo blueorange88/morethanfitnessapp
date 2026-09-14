@@ -4,8 +4,9 @@ import 'package:flutter/services.dart';
 class HomeWidgetNavigationService {
   HomeWidgetNavigationService._();
 
-  static const MethodChannel _channel =
-      MethodChannel('com.example.mtf_app/widget_navigation');
+  static const MethodChannel _channel = MethodChannel(
+    'com.example.mtf_app/widget_navigation',
+  );
 
   static Future<void> start(
     Future<void> Function(String action) onAction,
@@ -29,13 +30,15 @@ class HomeWidgetNavigationService {
     Future<void> Function(String action) onAction,
   ) async {
     final response = await _channel.invokeMethod<Object?>('consume');
-    final action = response is Map
-        ? response['action']?.toString().trim() ?? ''
-        : response?.toString().trim() ?? '';
+    final action =
+        response is Map
+            ? response['action']?.toString().trim() ?? ''
+            : response?.toString().trim() ?? '';
     final coldStart = response is Map && response['coldStart'] == true;
-    final source = response is Map
-        ? response['source']?.toString().trim() ?? 'initialIntent'
-        : 'initialIntent';
+    final source =
+        response is Map
+            ? response['source']?.toString().trim() ?? 'initialIntent'
+            : 'initialIntent';
     if (action.isNotEmpty) {
       await _dispatch(
         action,

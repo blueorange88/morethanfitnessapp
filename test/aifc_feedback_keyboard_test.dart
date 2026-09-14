@@ -17,15 +17,17 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: lightTheme(),
-        builder: (context, child) => ValueListenableBuilder<double>(
-          valueListenable: keyboardInset,
-          builder: (context, inset, _) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              viewInsets: EdgeInsets.only(bottom: inset),
+        builder:
+            (context, child) => ValueListenableBuilder<double>(
+              valueListenable: keyboardInset,
+              builder:
+                  (context, inset, _) => MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(viewInsets: EdgeInsets.only(bottom: inset)),
+                    child: child!,
+                  ),
             ),
-            child: child!,
-          ),
-        ),
         home: Builder(
           builder: (context) {
             hostContext = context;
@@ -59,12 +61,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: darkTheme(),
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            viewInsets: const EdgeInsets.only(bottom: 280),
-          ),
-          child: child!,
-        ),
+        builder:
+            (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(viewInsets: const EdgeInsets.only(bottom: 280)),
+              child: child!,
+            ),
         home: Builder(
           builder: (context) {
             hostContext = context;

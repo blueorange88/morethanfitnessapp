@@ -25,11 +25,12 @@ class AifcSmartNotificationChatSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AifcSmartNotificationChatBody(
-        trainerName: trainerName,
-        canUseSmartAlarm: canUseSmartAlarm,
-        canUseContractBasisAlarm: canUseContractBasisAlarm,
-      ),
+      builder:
+          (_) => _AifcSmartNotificationChatBody(
+            trainerName: trainerName,
+            canUseSmartAlarm: canUseSmartAlarm,
+            canUseContractBasisAlarm: canUseContractBasisAlarm,
+          ),
     );
   }
 }
@@ -245,9 +246,7 @@ class _AifcSmartNotificationChatBodyState
           ),
           decoration: const BoxDecoration(
             color: _kSmartBg,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             children: [
@@ -261,294 +260,304 @@ class _AifcSmartNotificationChatBodyState
                 ),
               ),
               Expanded(
-                child: _loading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: _kSmartPrimary,
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _FcBubble(
-                              text:
-                                  '$_safeTrainerName, MORE 스마트 알림을 같이 맞춰볼게요.\n아래 항목을 편하게 선택해주세요.',
-                            ),
-                            const SizedBox(height: 12),
-                            if (!widget.canUseSmartAlarm)
-                              _LockedGuideCard()
-                            else ...[
-                              _UserQuestionCard(
-                                title: '1. 스마트 알림을 사용할까요?',
-                                subtitle: _enabled
-                                    ? '연속 레슨은 생략하고 필요한 알림만 예약합니다.'
-                                    : '모든 레슨에 기본 알림 시간이 적용됩니다.',
-                                children: [
-                                  _OptionButton(
-                                    selected: _enabled,
-                                    label: '켜기',
-                                    icon: Icons.auto_awesome_rounded,
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      setState(() {
-                                        _enabled = true;
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _OptionButton(
-                                    selected: !_enabled,
-                                    label: '끄기',
-                                    icon: Icons.notifications_outlined,
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      setState(() {
-                                        _enabled = false;
-                                      });
-                                    },
-                                  ),
-                                ],
+                child:
+                    _loading
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: _kSmartPrimary,
+                          ),
+                        )
+                        : SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _FcBubble(
+                                text:
+                                    '$_safeTrainerName, MORE 스마트 알림을 같이 맞춰볼게요.\n아래 항목을 편하게 선택해주세요.',
                               ),
                               const SizedBox(height: 12),
-                              _UserQuestionCard(
-                                title: '2. 어느정도 빈시간부터 알려드릴까요?',
-                                subtitle: '이 기준 이상 비어 있으면 다음 레슨 전에 알려드려요.',
-                                enabled: _enabled,
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [60, 90, 120, 180].map((value) {
-                                    final selected = _gapMinutes == value;
+                              if (!widget.canUseSmartAlarm)
+                                _LockedGuideCard()
+                              else ...[
+                                _UserQuestionCard(
+                                  title: '1. 스마트 알림을 사용할까요?',
+                                  subtitle:
+                                      _enabled
+                                          ? '연속 레슨은 생략하고 필요한 알림만 예약합니다.'
+                                          : '모든 레슨에 기본 알림 시간이 적용됩니다.',
+                                  children: [
+                                    _OptionButton(
+                                      selected: _enabled,
+                                      label: '켜기',
+                                      icon: Icons.auto_awesome_rounded,
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        setState(() {
+                                          _enabled = true;
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _OptionButton(
+                                      selected: !_enabled,
+                                      label: '끄기',
+                                      icon: Icons.notifications_outlined,
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        setState(() {
+                                          _enabled = false;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _UserQuestionCard(
+                                  title: '2. 어느정도 빈시간부터 알려드릴까요?',
+                                  subtitle: '이 기준 이상 비어 있으면 다음 레슨 전에 알려드려요.',
+                                  enabled: _enabled,
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children:
+                                        [60, 90, 120, 180].map((value) {
+                                          final selected = _gapMinutes == value;
 
-                                    return _ChoicePill(
-                                      label: _gapLabel(value),
-                                      selected: selected,
-                                      enabled: _enabled,
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        setState(() {
-                                          _gapMinutes = value;
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _UserQuestionCard(
-                                title: '3. 알림 방식은 어떻게 할까요?',
-                                subtitle: '무음, 진동, 소리 방식을 선택할 수 있어요.',
-                                child: Column(
-                                  children: LessonNotificationAlertStyle.values
-                                      .map((style) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: _WideChoiceTile(
-                                        selected: _alertStyle == style,
-                                        title: style.label,
-                                        subtitle: style.description,
-                                        onTap: () {
-                                          HapticFeedback.lightImpact();
-                                          setState(() {
-                                            _alertStyle = style;
-                                          });
-                                        },
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              if (widget.canUseContractBasisAlarm) ...[
-                                _UserQuestionCard(
-                                  title: '4. 레슨일지의 중요한 메모도 볼까요?',
-                                  subtitle:
-                                      '통증, 부상, 상담, 재등록 같은 레슨일지 메모가 있으면 연속된 레슨이라도 알려드려요.',
-                                  enabled: _enabled,
-                                  children: [
-                                    _OptionButton(
-                                      selected: _priorityMemoEnabled,
-                                      label: '알려줘요',
-                                      icon: Icons.priority_high_rounded,
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        setState(() {
-                                          _priorityMemoEnabled = true;
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _OptionButton(
-                                      selected: !_priorityMemoEnabled,
-                                      label: '괜찮아요',
-                                      icon: Icons.notes_rounded,
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        setState(() {
-                                          _priorityMemoEnabled = false;
-                                        });
-                                      },
-                                    ),
-                                  ],
+                                          return _ChoicePill(
+                                            label: _gapLabel(value),
+                                            selected: selected,
+                                            enabled: _enabled,
+                                            onTap: () {
+                                              HapticFeedback.lightImpact();
+                                              setState(() {
+                                                _gapMinutes = value;
+                                              });
+                                            },
+                                          );
+                                        }).toList(),
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
                                 _UserQuestionCard(
-                                  title: '5. 첫 레슨이나 신규회원도 알려드릴까요?',
-                                  subtitle:
-                                      '계약서 또는 레슨일지 기준으로 첫 레슨/신규회원으로 보이면 연속 레슨이어도 알려드려요.',
-                                  enabled: _enabled,
-                                  children: [
-                                    _OptionButton(
-                                      selected: _firstLessonEnabled,
-                                      label: '알려줘요',
-                                      icon: Icons.person_add_alt_1_rounded,
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        setState(() {
-                                          _firstLessonEnabled = true;
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _OptionButton(
-                                      selected: !_firstLessonEnabled,
-                                      label: '괜찮아요',
-                                      icon: Icons.person_outline_rounded,
-                                      onTap: () {
-                                        HapticFeedback.lightImpact();
-                                        setState(() {
-                                          _firstLessonEnabled = false;
-                                        });
-                                      },
-                                    ),
-                                  ],
+                                  title: '3. 알림 방식은 어떻게 할까요?',
+                                  subtitle: '무음, 진동, 소리 방식을 선택할 수 있어요.',
+                                  child: Column(
+                                    children:
+                                        LessonNotificationAlertStyle.values.map(
+                                          (style) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              child: _WideChoiceTile(
+                                                selected: _alertStyle == style,
+                                                title: style.label,
+                                                subtitle: style.description,
+                                                onTap: () {
+                                                  HapticFeedback.lightImpact();
+                                                  setState(() {
+                                                    _alertStyle = style;
+                                                  });
+                                                },
+                                              ),
+                                            );
+                                          },
+                                        ).toList(),
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
-                              ] else ...[
-                                const _SemiProSmartFeatureNotice(),
-                                const SizedBox(height: 12),
-                              ],
-                              _UserQuestionCard(
-                                title: widget.canUseContractBasisAlarm
-                                    ? '6. 휴대폰 모드는 어떻게 따를까요?'
-                                    : '4. 휴대폰 모드는 어떻게 따를까요?',
-                                subtitle: '방해금지/무음 설정에 따라 제한될 수 있어요.',
-                                child: Column(
-                                  children: LessonNotificationDeviceMode.values
-                                      .map((mode) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: _WideChoiceTile(
-                                        selected: _deviceMode == mode,
-                                        title: mode.label,
-                                        subtitle: mode.description,
+                                if (widget.canUseContractBasisAlarm) ...[
+                                  _UserQuestionCard(
+                                    title: '4. 레슨일지의 중요한 메모도 볼까요?',
+                                    subtitle:
+                                        '통증, 부상, 상담, 재등록 같은 레슨일지 메모가 있으면 연속된 레슨이라도 알려드려요.',
+                                    enabled: _enabled,
+                                    children: [
+                                      _OptionButton(
+                                        selected: _priorityMemoEnabled,
+                                        label: '알려줘요',
+                                        icon: Icons.priority_high_rounded,
                                         onTap: () {
                                           HapticFeedback.lightImpact();
                                           setState(() {
-                                            _deviceMode = mode;
+                                            _priorityMemoEnabled = true;
                                           });
                                         },
                                       ),
-                                    );
-                                  }).toList(),
+                                      const SizedBox(width: 8),
+                                      _OptionButton(
+                                        selected: !_priorityMemoEnabled,
+                                        label: '괜찮아요',
+                                        icon: Icons.notes_rounded,
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          setState(() {
+                                            _priorityMemoEnabled = false;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _UserQuestionCard(
+                                    title: '5. 첫 레슨이나 신규회원도 알려드릴까요?',
+                                    subtitle:
+                                        '계약서 또는 레슨일지 기준으로 첫 레슨/신규회원으로 보이면 연속 레슨이어도 알려드려요.',
+                                    enabled: _enabled,
+                                    children: [
+                                      _OptionButton(
+                                        selected: _firstLessonEnabled,
+                                        label: '알려줘요',
+                                        icon: Icons.person_add_alt_1_rounded,
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          setState(() {
+                                            _firstLessonEnabled = true;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _OptionButton(
+                                        selected: !_firstLessonEnabled,
+                                        label: '괜찮아요',
+                                        icon: Icons.person_outline_rounded,
+                                        onTap: () {
+                                          HapticFeedback.lightImpact();
+                                          setState(() {
+                                            _firstLessonEnabled = false;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                ] else ...[
+                                  const _SemiProSmartFeatureNotice(),
+                                  const SizedBox(height: 12),
+                                ],
+                                _UserQuestionCard(
+                                  title:
+                                      widget.canUseContractBasisAlarm
+                                          ? '6. 휴대폰 모드는 어떻게 따를까요?'
+                                          : '4. 휴대폰 모드는 어떻게 따를까요?',
+                                  subtitle: '방해금지/무음 설정에 따라 제한될 수 있어요.',
+                                  child: Column(
+                                    children:
+                                        LessonNotificationDeviceMode.values.map(
+                                          (mode) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              child: _WideChoiceTile(
+                                                selected: _deviceMode == mode,
+                                                title: mode.label,
+                                                subtitle: mode.description,
+                                                onTap: () {
+                                                  HapticFeedback.lightImpact();
+                                                  setState(() {
+                                                    _deviceMode = mode;
+                                                  });
+                                                },
+                                              ),
+                                            );
+                                          },
+                                        ).toList(),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              if (_showSaveUserBubble) ...[
-                                AifcChatBubble(
-                                  side: AifcBubbleSide.user,
-                                  text: '설정 저장할게요',
-                                ),
-                                const SizedBox(height: 10),
-                              ],
-                              if (_showSaveTyping) ...[
-                                const AifcTypingBubble(),
-                                const SizedBox(height: 10),
-                              ],
-                              if (_showSaveReply) ...[
-                                _FcBubble(
-                                  text: _saveReplyText,
-                                ),
+                                const SizedBox(height: 12),
+                                if (_showSaveUserBubble) ...[
+                                  AifcChatBubble(
+                                    side: AifcBubbleSide.user,
+                                    text: '설정 저장할게요',
+                                  ),
+                                  const SizedBox(height: 10),
+                                ],
+                                if (_showSaveTyping) ...[
+                                  const AifcTypingBubble(),
+                                  const SizedBox(height: 10),
+                                ],
+                                if (_showSaveReply) ...[
+                                  _FcBubble(text: _saveReplyText),
+                                ],
                               ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: widget.canUseSmartAlarm
-                    ? Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _saving
-                                  ? null
-                                  : () {
-                                      Navigator.of(context).pop(false);
-                                    },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF6B7280),
-                                side: const BorderSide(
-                                  color: Color(0xFFE5E7EB),
+                child:
+                    widget.canUseSmartAlarm
+                        ? Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed:
+                                    _saving
+                                        ? null
+                                        : () {
+                                          Navigator.of(context).pop(false);
+                                        },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF6B7280),
+                                  side: const BorderSide(
+                                    color: Color(0xFFE5E7EB),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 13),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                              ),
-                              child: const Text(
-                                '나중에',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: _saving ? null : _save,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: _kSmartPrimary,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 13),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                              ),
-                              child: Text(
-                                _saving ? '저장 중...' : '설정 저장',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
+                                child: const Text(
+                                  '나중에',
+                                  style: TextStyle(fontWeight: FontWeight.w800),
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: _saving ? null : _save,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _kSmartPrimary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                                child: Text(
+                                  _saving ? '저장 중...' : '설정 저장',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                        : FilledButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _kSmartPrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
-                        ],
-                      )
-                    : FilledButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _kSmartPrimary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                          child: const Text(
+                            '확인',
+                            style: TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
-                        child: const Text(
-                          '확인',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
               ),
             ],
           ),
@@ -559,9 +568,7 @@ class _AifcSmartNotificationChatBodyState
 }
 
 class _FcBubble extends StatelessWidget {
-  const _FcBubble({
-    required this.text,
-  });
+  const _FcBubble({required this.text});
 
   final String text;
 
@@ -587,9 +594,7 @@ class _FcBubble extends StatelessWidget {
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
               ),
-              border: Border.all(
-                color: _kSmartBorder,
-              ),
+              border: Border.all(color: _kSmartBorder),
             ),
             child: Text(
               text,
@@ -618,9 +623,7 @@ class _SemiProSmartFeatureNotice extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF5F3FF),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFDDD6FE),
-        ),
+        border: Border.all(color: const Color(0xFFDDD6FE)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -696,9 +699,7 @@ class _UserQuestionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.86),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: _kSmartBorder,
-          ),
+          border: Border.all(color: _kSmartBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -723,9 +724,7 @@ class _UserQuestionCard extends StatelessWidget {
             ),
             const SizedBox(height: 11),
             if (children != null)
-              Row(
-                children: children!,
-              )
+              Row(children: children!)
             else if (child != null)
               child!,
           ],
@@ -758,9 +757,10 @@ class _OptionButton extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected
-                ? _kSmartPrimary.withOpacity(0.11)
-                : const Color(0xFFF8F7FF),
+            color:
+                selected
+                    ? _kSmartPrimary.withOpacity(0.11)
+                    : const Color(0xFFF8F7FF),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected ? _kSmartPrimary : _kSmartBorder,
@@ -812,9 +812,7 @@ class _ChoicePill extends StatelessWidget {
       showCheckmark: false,
       selectedColor: const Color(0xFFEEF2FF),
       backgroundColor: const Color(0xFFF8F7FF),
-      side: BorderSide(
-        color: selected ? _kSmartPrimary : _kSmartBorder,
-      ),
+      side: BorderSide(color: selected ? _kSmartPrimary : _kSmartBorder),
       labelStyle: TextStyle(
         color: selected ? _kSmartPrimary : _kSmartMuted,
         fontWeight: FontWeight.w900,
@@ -846,13 +844,12 @@ class _WideChoiceTile extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
         decoration: BoxDecoration(
-          color: selected
-              ? _kSmartPrimary.withOpacity(0.10)
-              : const Color(0xFFF8F7FF),
+          color:
+              selected
+                  ? _kSmartPrimary.withOpacity(0.10)
+                  : const Color(0xFFF8F7FF),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? _kSmartPrimary : _kSmartBorder,
-          ),
+          border: Border.all(color: selected ? _kSmartPrimary : _kSmartBorder),
         ),
         child: Row(
           children: [
@@ -905,9 +902,7 @@ class _LockedGuideCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _kSmartBorder,
-        ),
+        border: Border.all(color: _kSmartBorder),
       ),
       child: Column(
         children: const [

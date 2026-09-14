@@ -33,22 +33,10 @@ class HomeRecentClientsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = [
-      {
-        'bg': const Color(0xFFEEF2FF),
-        'text': const Color(0xFF4338CA),
-      },
-      {
-        'bg': const Color(0xFFF3E8FF),
-        'text': const Color(0xFF6B21A8),
-      },
-      {
-        'bg': const Color(0xFFFFE4E6),
-        'text': const Color(0xFFBE123C),
-      },
-      {
-        'bg': const Color(0xFFE0F2FE),
-        'text': const Color(0xFF0369A1),
-      },
+      {'bg': const Color(0xFFEEF2FF), 'text': const Color(0xFF4338CA)},
+      {'bg': const Color(0xFFF3E8FF), 'text': const Color(0xFF6B21A8)},
+      {'bg': const Color(0xFFFFE4E6), 'text': const Color(0xFFBE123C)},
+      {'bg': const Color(0xFFE0F2FE), 'text': const Color(0xFF0369A1)},
     ];
 
     return Padding(
@@ -71,10 +59,7 @@ class HomeRecentClientsSection extends StatelessWidget {
                 onPressed: onOpenAllTap,
                 child: Text(
                   '전체보기',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: primaryColor,
-                  ),
+                  style: TextStyle(fontSize: 12, color: primaryColor),
                 ),
               ),
             ],
@@ -89,16 +74,11 @@ class HomeRecentClientsSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.grey.shade200,
-                    ),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: const Text(
                     '최근 회원을 불러오지 못했습니다.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                 );
               }
@@ -116,39 +96,42 @@ class HomeRecentClientsSection extends StatelessWidget {
                 );
               }
 
-              final candidates = snapshot.data!.docs.where((doc) {
-                final data = doc.data();
+              final candidates =
+                  snapshot.data!.docs.where((doc) {
+                      final data = doc.data();
 
-                if (!HomeMemberLookupService.matchesPersonalOwner(
-                  data,
-                  ownerUid,
-                )) {
-                  return false;
-                }
+                      if (!HomeMemberLookupService.matchesPersonalOwner(
+                        data,
+                        ownerUid,
+                      )) {
+                        return false;
+                      }
 
-                if (data['isDeleted'] == true) return false;
+                      if (data['isDeleted'] == true) return false;
 
-                if ((data['deleteStatus'] ?? '').toString() ==
-                    'pending_delete') {
-                  return false;
-                }
+                      if ((data['deleteStatus'] ?? '').toString() ==
+                          'pending_delete') {
+                        return false;
+                      }
 
-                final name = (data['name'] ?? '').toString().trim();
-                final phone = (data['phone'] ?? '').toString().trim();
+                      final name = (data['name'] ?? '').toString().trim();
+                      final phone = (data['phone'] ?? '').toString().trim();
 
-                return name.isNotEmpty || phone.isNotEmpty;
-              }).toList()
-                ..sort((a, b) {
-                  final aCreatedAt = a.data()['createdAt'];
-                  final bCreatedAt = b.data()['createdAt'];
-                  final aMillis = aCreatedAt is Timestamp
-                      ? aCreatedAt.millisecondsSinceEpoch
-                      : -1;
-                  final bMillis = bCreatedAt is Timestamp
-                      ? bCreatedAt.millisecondsSinceEpoch
-                      : -1;
-                  return bMillis.compareTo(aMillis);
-                });
+                      return name.isNotEmpty || phone.isNotEmpty;
+                    }).toList()
+                    ..sort((a, b) {
+                      final aCreatedAt = a.data()['createdAt'];
+                      final bCreatedAt = b.data()['createdAt'];
+                      final aMillis =
+                          aCreatedAt is Timestamp
+                              ? aCreatedAt.millisecondsSinceEpoch
+                              : -1;
+                      final bMillis =
+                          bCreatedAt is Timestamp
+                              ? bCreatedAt.millisecondsSinceEpoch
+                              : -1;
+                      return bMillis.compareTo(aMillis);
+                    });
               final docs = candidates.take(4).toList();
 
               if (kDebugMode) {
@@ -173,7 +156,7 @@ class HomeRecentClientsSection extends StatelessWidget {
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            '오! 아직 등록한 회원이 없어요.\n고객카드 등록 도와드릴까요?',
+                            '오! 아직 등록한 회원이 없어요.\n회원카드 등록 도와드릴까요?',
                             style: TextStyle(
                               fontSize: 12.5,
                               height: 1.45,

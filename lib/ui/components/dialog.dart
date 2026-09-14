@@ -14,25 +14,20 @@ class ShadcnDialog {
       barrierLabel: "Dialog",
       transitionDuration: const Duration(milliseconds: 180),
       barrierColor: Colors.black.withOpacity(0.4),
-      pageBuilder: (_, __, ___) => Align(
-        alignment: Alignment.center,
-        child: Material(
-          color: cs.surface,
-          elevation: 6,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: child,
+      pageBuilder:
+          (_, __, ___) => Align(
+            alignment: Alignment.center,
+            child: Material(
+              color: cs.surface,
+              elevation: 6,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(padding: const EdgeInsets.all(20), child: child),
+            ),
           ),
-        ),
-      ),
       transitionBuilder: (_, anim, __, child) {
         return Transform.scale(
           scale: 0.95 + (anim.value * 0.05),
-          child: Opacity(
-            opacity: anim.value,
-            child: child,
-          ),
+          child: Opacity(opacity: anim.value, child: child),
         );
       },
     );

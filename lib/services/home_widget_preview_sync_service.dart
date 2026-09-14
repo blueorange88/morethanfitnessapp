@@ -105,18 +105,20 @@ class HomeWidgetPreviewSyncService {
 
     if (payload.personalOwnerUid.trim().isNotEmpty) {
       final generatedAt = DateTime.now();
-      final sourceItems = payload.lessons.map((lesson) {
-        return HomeWidgetTodayRollupItem(
-          startAt: lesson.startAt,
-          endAt: lesson.endAt,
-          memberName: lesson.memberName,
-          lessonType: lesson.lessonType,
-          ownerUid: lesson.ownerUid,
-          workspaceType: lesson.workspaceType,
-          remainingSessions: lesson.remainingSessions,
-          status: lesson.status,
-        );
-      }).toList(growable: false);
+      final sourceItems = payload.lessons
+          .map((lesson) {
+            return HomeWidgetTodayRollupItem(
+              startAt: lesson.startAt,
+              endAt: lesson.endAt,
+              memberName: lesson.memberName,
+              lessonType: lesson.lessonType,
+              ownerUid: lesson.ownerUid,
+              workspaceType: lesson.workspaceType,
+              remainingSessions: lesson.remainingSessions,
+              status: lesson.status,
+            );
+          })
+          .toList(growable: false);
       final selection = HomeWidgetTodayRollupMapper.selectTodayPayload(
         sourceItems: sourceItems,
         currentOwnerUid: payload.personalOwnerUid,
@@ -166,14 +168,15 @@ class HomeWidgetPreviewSyncService {
       currentMarkerRatio1: payload.currentMarkerRatio1,
     );
 
-    final widgetEvents = payload.lessons.map((lesson) {
-      return WidgetLessonEvent(
-        startAt: lesson.startAt,
-        memberName: lesson.memberName,
-        lessonType: lesson.lessonType,
-        memo: lesson.memo,
-      );
-    }).toList();
+    final widgetEvents =
+        payload.lessons.map((lesson) {
+          return WidgetLessonEvent(
+            startAt: lesson.startAt,
+            memberName: lesson.memberName,
+            lessonType: lesson.lessonType,
+            memo: lesson.memo,
+          );
+        }).toList();
 
     await syncNextLessonWidgetFromEvents(widgetEvents);
   }

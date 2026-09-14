@@ -11,10 +11,7 @@ import 'aifc_confirm_chat_sheet.dart';
 import 'personal_tag_horizontal_strip.dart';
 
 class AifcPersonalTagManagementChatSheet extends StatefulWidget {
-  const AifcPersonalTagManagementChatSheet({
-    super.key,
-    required this.ownerUid,
-  });
+  const AifcPersonalTagManagementChatSheet({super.key, required this.ownerUid});
 
   final String ownerUid;
 
@@ -26,9 +23,7 @@ class AifcPersonalTagManagementChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcPersonalTagManagementChatSheet(
-        ownerUid: ownerUid,
-      ),
+      builder: (_) => AifcPersonalTagManagementChatSheet(ownerUid: ownerUid),
     );
     return changed == true;
   }
@@ -110,9 +105,10 @@ class _AifcPersonalTagManagementChatSheetState
     final confirmed = await AifcConfirmChatSheet.show(
       context: context,
       title: '태그를 삭제할까요?',
-      message: memberCount == 0
-          ? '${item.name} 태그를 삭제합니다.'
-          : '회원 $memberCount명에게서 ${item.name} 태그가 제거됩니다.',
+      message:
+          memberCount == 0
+              ? '${item.name} 태그를 삭제합니다.'
+              : '회원 $memberCount명에게서 ${item.name} 태그가 제거됩니다.',
       cancelText: '취소',
       confirmText: '태그 삭제',
       userConfirmText: '${item.name} 태그를 삭제할게요',
@@ -123,28 +119,25 @@ class _AifcPersonalTagManagementChatSheetState
 
     setState(() => _isBusy = true);
     try {
-      await _service.delete(
-        kind: PersonalMemberTaxonomyKind.tag,
-        id: item.id,
-      );
+      await _service.delete(kind: PersonalMemberTaxonomyKind.tag, id: item.id);
       if (!mounted) return;
       setState(() {
         _selectedTagId = null;
         _changed = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${item.name} 태그를 삭제했어요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${item.name} 태그를 삭제했어요.')));
     } on FirebaseFunctionsException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_errorMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_errorMessage(error))));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('삭제하지 못했어요. 다시 시도해 주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('삭제하지 못했어요. 다시 시도해 주세요.')));
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -167,7 +160,8 @@ class _AifcPersonalTagManagementChatSheetState
               builder: (context, tagSnapshot) {
                 if (tagSnapshot.hasError) {
                   return _SheetMessage(
-                      message: _errorMessage(tagSnapshot.error));
+                    message: _errorMessage(tagSnapshot.error),
+                  );
                 }
                 if (!tagSnapshot.hasData) {
                   return const Center(
@@ -178,34 +172,36 @@ class _AifcPersonalTagManagementChatSheetState
                   );
                 }
                 final tags = [...tagSnapshot.data!]..sort((a, b) {
-                    final createdAt = a.createdAt.compareTo(b.createdAt);
-                    return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
-                  });
+                  final createdAt = a.createdAt.compareTo(b.createdAt);
+                  return createdAt != 0 ? createdAt : a.id.compareTo(b.id);
+                });
 
                 return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: _membersStream,
                   builder: (context, memberSnapshot) {
                     final counts = <String, int>{
-                      for (final tag in tags) tag.id: 0
+                      for (final tag in tags) tag.id: 0,
                     };
                     for (final document
                         in memberSnapshot.data?.docs ?? const []) {
                       final data = document.data();
                       if (data['isDeleted'] == true) continue;
-                      final ids = data['personalTagIds'] is Iterable
-                          ? (data['personalTagIds'] as Iterable)
-                              .map((value) => value.toString())
-                              .toSet()
-                          : const <String>{};
+                      final ids =
+                          data['personalTagIds'] is Iterable
+                              ? (data['personalTagIds'] as Iterable)
+                                  .map((value) => value.toString())
+                                  .toSet()
+                              : const <String>{};
                       for (final id in ids) {
                         if (counts.containsKey(id)) {
                           counts[id] = counts[id]! + 1;
                         }
                       }
                     }
-                    final selected = tags
-                        .where((item) => item.id == _selectedTagId)
-                        .firstOrNull;
+                    final selected =
+                        tags
+                            .where((item) => item.id == _selectedTagId)
+                            .firstOrNull;
 
                     return SingleChildScrollView(
                       keyboardDismissBehavior:
@@ -218,45 +214,52 @@ class _AifcPersonalTagManagementChatSheetState
                             side: AifcBubbleSide.fc,
                             useThemeSurface: true,
                             text: '태그를 관리해볼까요?\n태그를 선택하면 이름 변경과 삭제를 할 수 있어요.',
-                            child: tags.isEmpty
-                                ? Text(
-                                    '아직 만든 태그가 없어요.',
-                                    style: TextStyle(
-                                      color: colors.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  )
-                                : PersonalTagHorizontalStrip(
-                                    scrollKey: const ValueKey(
-                                      'tag_management_sheet_scroll',
-                                    ),
-                                    children: [
-                                      for (final tag in tags)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(right: 7),
-                                          child: ChoiceChip(
-                                            label: ConstrainedBox(
-                                              constraints: const BoxConstraints(
-                                                maxWidth: 132,
-                                              ),
-                                              child: Text(
-                                                tag.name,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
+                            child:
+                                tags.isEmpty
+                                    ? Text(
+                                      '아직 만든 태그가 없어요.',
+                                      style: TextStyle(
+                                        color: colors.onSurfaceVariant,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    )
+                                    : PersonalTagHorizontalStrip(
+                                      scrollKey: const ValueKey(
+                                        'tag_management_sheet_scroll',
+                                      ),
+                                      children: [
+                                        for (final tag in tags)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 7,
                                             ),
-                                            selected: tag.id == _selectedTagId,
-                                            onSelected: _isBusy
-                                                ? null
-                                                : (_) => setState(
-                                                      () => _selectedTagId =
-                                                          tag.id,
+                                            child: ChoiceChip(
+                                              label: ConstrainedBox(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      maxWidth: 132,
                                                     ),
+                                                child: Text(
+                                                  tag.name,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              selected:
+                                                  tag.id == _selectedTagId,
+                                              onSelected:
+                                                  _isBusy
+                                                      ? null
+                                                      : (_) => setState(
+                                                        () =>
+                                                            _selectedTagId =
+                                                                tag.id,
+                                                      ),
+                                            ),
                                           ),
-                                        ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
                           ),
                           const SizedBox(height: 12),
                           FilledButton.icon(
@@ -271,9 +274,10 @@ class _AifcPersonalTagManagementChatSheetState
                               children: [
                                 Expanded(
                                   child: OutlinedButton.icon(
-                                    onPressed: _isBusy
-                                        ? null
-                                        : () => _renameTag(selected),
+                                    onPressed:
+                                        _isBusy
+                                            ? null
+                                            : () => _renameTag(selected),
                                     icon: const Icon(Icons.edit_outlined),
                                     label: const Text('이름 변경'),
                                   ),
@@ -281,14 +285,16 @@ class _AifcPersonalTagManagementChatSheetState
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: OutlinedButton.icon(
-                                    onPressed: _isBusy
-                                        ? null
-                                        : () => _deleteTag(
+                                    onPressed:
+                                        _isBusy
+                                            ? null
+                                            : () => _deleteTag(
                                               selected,
                                               counts[selected.id] ?? 0,
                                             ),
                                     icon: const Icon(
-                                        Icons.delete_outline_rounded),
+                                      Icons.delete_outline_rounded,
+                                    ),
                                     label: Text(
                                       '삭제 (${counts[selected.id] ?? 0}명)',
                                     ),

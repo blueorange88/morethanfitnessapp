@@ -17,7 +17,8 @@ class HomeWidgetGridMapper {
       final rowStartMinutes = hour * 60 + minute;
       final currentMinutes = currentTime.hour * 60 + currentTime.minute;
 
-      final isCurrent = weekOffset == 0 &&
+      final isCurrent =
+          weekOffset == 0 &&
           hour >= 0 &&
           currentMinutes >= rowStartMinutes &&
           currentMinutes < rowStartMinutes + 60;

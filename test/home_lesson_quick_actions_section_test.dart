@@ -111,10 +111,7 @@ void main() {
 
   testWidgets('신규 레슨에서는 AIFC 추천업무 전체를 표시하지 않는다', (tester) async {
     await tester.pumpWidget(
-      buildSection(
-        hasLinkedMember: false,
-        isPersistedSchedule: false,
-      ),
+      buildSection(hasLinkedMember: false, isPersistedSchedule: false),
     );
     await tester.pumpAndSettle();
 
@@ -128,10 +125,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      buildSection(
-        hasLinkedMember: true,
-        isPersistedSchedule: false,
-      ),
+      buildSection(hasLinkedMember: true, isPersistedSchedule: false),
     );
     await tester.pumpAndSettle();
 
@@ -254,9 +248,10 @@ void main() {
   }
 
   test('계약 버튼에는 애니메이션 강조나 내부 tier 문구가 없다', () {
-    final source = File(
-      'lib/widgets/home/lesson_editor/home_lesson_quick_actions_section.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/widgets/home/lesson_editor/home_lesson_quick_actions_section.dart',
+        ).readAsStringSync();
 
     expect(source, isNot(contains('AnimationController')));
     expect(source, isNot(contains('_RecommendedActionWash')));
@@ -273,11 +268,9 @@ void main() {
       'Future<void> _openMembershipManageFromHomeLesson',
     );
     final lessonBody = source.substring(
-        lessonStart,
-        source.indexOf(
-          'Future<void>',
-          lessonStart + 20,
-        ));
+      lessonStart,
+      source.indexOf('Future<void>', lessonStart + 20),
+    );
     final membershipBody = source.substring(membershipStart, lessonStart);
 
     expect(lessonBody, contains('AifcTierFeatureGateSheet.guard('));
@@ -296,7 +289,8 @@ void main() {
     expect(
       homeSource,
       contains(
-          'personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null'),
+        'personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null',
+      ),
     );
     expect(homeSource, contains('loadExistingDraft: false'));
     expect(contractSource, contains('if (!isPersonalContract)'));

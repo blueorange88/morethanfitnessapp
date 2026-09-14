@@ -14,9 +14,7 @@ class PersonalTrainingLogPdfPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
-      appBar: AppBar(
-        title: const Text('수업일지 PDF'),
-      ),
+      appBar: AppBar(title: const Text('수업일지 PDF')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

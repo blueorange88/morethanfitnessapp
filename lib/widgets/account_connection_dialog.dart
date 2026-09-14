@@ -73,6 +73,7 @@ class _AccountConnectionDialogCardState
   bool _obscure = true;
   bool _verificationEmailSent = false;
   String? _error;
+  bool _showSwitchAccountOption = false;
   AppAccountUser? _linkedUser;
   late AppAccountUser? _currentUser;
 
@@ -136,6 +137,7 @@ class _AccountConnectionDialogCardState
     setState(() {
       _busy = true;
       _error = null;
+      _showSwitchAccountOption = false;
     });
     try {
       final beforeUid = widget.accountService.currentUser?.uid;
@@ -153,6 +155,48 @@ class _AccountConnectionDialogCardState
         );
       }
       Navigator.of(context).pop(linked);
+    } catch (error) {
+      if (!mounted) return;
+      if (error is AppAccountException &&
+          error.code == AppAccountErrorCode.googleCanceled) {
+        setState(() => _busy = false);
+        return;
+      }
+      final showSwitch =
+          error is AppAccountException &&
+          error.code == AppAccountErrorCode.credentialAlreadyInUse;
+      setState(() {
+        _busy = false;
+        _error = appAccountErrorMessage(error);
+        _showSwitchAccountOption = showSwitch;
+      });
+      AifcInteraction.toast(
+        context: context,
+        message: _error!,
+        duration: const Duration(seconds: 3),
+      );
+    }
+  }
+
+  // 이 기기의 현재 세션(익명 또는 다른 프로필)을 버리고, 이미 다른 곳에
+  // 연결되어 있던 그 Google 계정으로 직접 로그인해서 그 계정으로
+  // 전환한다. 두 계정의 데이터는 합쳐지지 않는다.
+  Future<void> _switchAccount() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final snapshot =
+          await widget.accountService.switchToExistingGoogleAccount();
+      if (!mounted) return;
+      final user = snapshot.user;
+      if (user == null) {
+        setState(() => _busy = false);
+        return;
+      }
+      Navigator.of(context).pop(user);
     } catch (error) {
       if (!mounted) return;
       if (error is AppAccountException &&
@@ -348,6 +392,14 @@ class _AccountConnectionDialogCardState
                                 style: theme.textTheme.bodySmall,
                               ),
                             ),
+                          if (_showSwitchAccountOption) ...[
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              key: const Key('switch_google_account'),
+                              onPressed: _busy ? null : _switchAccount,
+                              child: Text(_busy ? '전환 중' : '그 계정으로 전환하기'),
+                            ),
+                          ],
                           const SizedBox(height: 10),
                         ],
                         if (!_emailAlreadyLinked)

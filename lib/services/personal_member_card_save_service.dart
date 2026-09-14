@@ -42,12 +42,10 @@ class PersonalMemberSaveTrace {
   PersonalMemberSaveTrace._({
     required this.id,
     required PersonalMemberSaveTraceSink sink,
-  })  : _sink = sink,
-        _stopwatch = Stopwatch()..start();
+  }) : _sink = sink,
+       _stopwatch = Stopwatch()..start();
 
-  factory PersonalMemberSaveTrace.start({
-    PersonalMemberSaveTraceSink? sink,
-  }) {
+  factory PersonalMemberSaveTrace.start({PersonalMemberSaveTraceSink? sink}) {
     final timestamp =
         DateTime.now().microsecondsSinceEpoch.toRadixString(36).toUpperCase();
     final sequence = (_nextSequence++ % 1296)
@@ -129,9 +127,7 @@ String personalMemberSaveTraceFailureOutcome(Object error) {
 }
 
 @visibleForTesting
-String? personalMemberSaveTraceServerReason(
-  FirebaseFunctionsException error,
-) {
+String? personalMemberSaveTraceServerReason(FirebaseFunctionsException error) {
   final diagnostic =
       '${error.message ?? ''} ${error.details ?? ''}'.trim().toLowerCase();
   for (final reason in const {
@@ -172,10 +168,7 @@ String personalMemberGenderForSave(String value) {
 
 @visibleForTesting
 String personalMemberBirthDateForSave(String value) {
-  final result = normalizeAndValidateMemberBirthDate(
-    value,
-    required: true,
-  );
+  final result = normalizeAndValidateMemberBirthDate(value, required: true);
   if (!result.isValid || result.normalizedText == null) {
     throw ArgumentError.value(value, 'birthDate', 'birth_date_invalid');
   }
@@ -334,7 +327,8 @@ class PersonalMemberCardUpdateException implements Exception {
   final Object cause;
 
   @override
-  String toString() => 'PersonalMemberCardUpdateException(stage=${stage.name}, '
+  String toString() =>
+      'PersonalMemberCardUpdateException(stage=${stage.name}, '
       'code=${personalMemberUpdateErrorCode(cause)})';
 }
 
@@ -454,16 +448,16 @@ class PersonalMemberMembershipUpdate {
   final DateTime? lastReregisterAt;
 
   Map<String, dynamic> toCallableMap() => {
-        'notRegistered': notRegistered,
-        'termMonths': termMonths,
-        'customDays': customDays,
-        'startAt': personalMemberCalendarDateForSave(startAt),
-        'endAt': personalMemberCalendarDateForSave(endAt),
-        'days': days,
-        'lastRegisteredAt': personalMemberCalendarDateForSave(lastRegisteredAt),
-        'reregisterCount': reregisterCount,
-        'lastReregisterAt': personalMemberCalendarDateForSave(lastReregisterAt),
-      };
+    'notRegistered': notRegistered,
+    'termMonths': termMonths,
+    'customDays': customDays,
+    'startAt': personalMemberCalendarDateForSave(startAt),
+    'endAt': personalMemberCalendarDateForSave(endAt),
+    'days': days,
+    'lastRegisteredAt': personalMemberCalendarDateForSave(lastRegisteredAt),
+    'reregisterCount': reregisterCount,
+    'lastReregisterAt': personalMemberCalendarDateForSave(lastReregisterAt),
+  };
 }
 
 @visibleForTesting
@@ -489,8 +483,8 @@ class PersonalMemberCardSaveService {
     required this.uid,
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? MtfFirebaseFunctions.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? MtfFirebaseFunctions.instance;
 
   final String uid;
   final FirebaseFirestore _firestore;
@@ -518,16 +512,19 @@ class PersonalMemberCardSaveService {
     Set<String> canonicalCustomGroupIds = const <String>{},
     PersonalMemberAssignmentPatch assignments =
         const PersonalMemberAssignmentPatch(),
+    String? photoUrl,
     PersonalMemberSaveTrace? trace,
   }) async {
     final normalizedGender = personalMemberGenderForSave(gender);
     final normalizedBirthDate = personalMemberBirthDateForSave(birthDate);
-    final normalizedMembershipGrade = membershipGrade == null
-        ? null
-        : personalMemberGradeForSave(membershipGrade);
-    final normalizedAnniversaryLabel = anniversaryDate == null
-        ? null
-        : (anniversaryLabel ?? '').trim().isEmpty
+    final normalizedMembershipGrade =
+        membershipGrade == null
+            ? null
+            : personalMemberGradeForSave(membershipGrade);
+    final normalizedAnniversaryLabel =
+        anniversaryDate == null
+            ? null
+            : (anniversaryLabel ?? '').trim().isEmpty
             ? '기념일'
             : anniversaryLabel!.trim();
     final groupSelection = normalizePersonalMemberGroupSelection(
@@ -555,19 +552,21 @@ class PersonalMemberCardSaveService {
         'note': note,
         ...normalizedMembershipGrade == null
             ? const <String, dynamic>{}
-            : <String, dynamic>{
-                'membershipGrade': normalizedMembershipGrade,
-              },
+            : <String, dynamic>{'membershipGrade': normalizedMembershipGrade},
         ...membership == null
             ? const <String, dynamic>{}
             : <String, dynamic>{'membership': membership.toCallableMap()},
         ...anniversaryDate == null
             ? const <String, dynamic>{}
             : <String, dynamic>{
-                'anniversaryDate':
-                    personalMemberCalendarDateForSave(anniversaryDate),
-                'anniversaryLabel': normalizedAnniversaryLabel,
-              },
+              'anniversaryDate': personalMemberCalendarDateForSave(
+                anniversaryDate,
+              ),
+              'anniversaryLabel': normalizedAnniversaryLabel,
+            },
+        ...photoUrl == null
+            ? const <String, dynamic>{}
+            : <String, dynamic>{'photoUrl': photoUrl},
         ...assignments.toCallableMap(),
       },
       expectedName: name,
@@ -579,6 +578,7 @@ class PersonalMemberCardSaveService {
       expectedMembership: membership,
       expectedAnniversaryDate: anniversaryDate,
       expectedAnniversaryLabel: normalizedAnniversaryLabel,
+      expectedPhotoUrl: photoUrl,
       groupSelection: groupSelection,
       registrationMode: 'full',
       assignments: assignments,
@@ -634,6 +634,7 @@ class PersonalMemberCardSaveService {
     required PersonalMemberMembershipUpdate? expectedMembership,
     required DateTime? expectedAnniversaryDate,
     required String? expectedAnniversaryLabel,
+    String? expectedPhotoUrl,
     required PersonalMemberGroupSelection groupSelection,
     required String registrationMode,
     required PersonalMemberAssignmentPatch assignments,
@@ -683,9 +684,10 @@ class PersonalMemberCardSaveService {
         rethrow;
       }
       functionSucceeded = true;
-      final data = response is Map
-          ? Map<String, dynamic>.from(response)
-          : const <String, dynamic>{};
+      final data =
+          response is Map
+              ? Map<String, dynamic>.from(response)
+              : const <String, dynamic>{};
       final memberId = (data['memberId'] ?? '').toString().trim();
       if (memberId.isEmpty) {
         throw StateError('member_id_missing');
@@ -714,6 +716,7 @@ class PersonalMemberCardSaveService {
           membership: expectedMembership,
           anniversaryDate: expectedAnniversaryDate,
           anniversaryLabel: expectedAnniversaryLabel,
+          photoUrl: expectedPhotoUrl,
         )) {
           throw StateError('member_readback_identity_mismatch');
         }
@@ -767,6 +770,7 @@ class PersonalMemberCardSaveService {
                     membership: expectedMembership,
                     anniversaryDate: expectedAnniversaryDate,
                     anniversaryLabel: expectedAnniversaryLabel,
+                    photoUrl: expectedPhotoUrl,
                   ) &&
                   assignments.matchesMember(snapshotMember);
             })
@@ -844,14 +848,16 @@ class PersonalMemberCardSaveService {
     required String? anniversaryLabel,
     PersonalMemberAssignmentPatch assignments =
         const PersonalMemberAssignmentPatch(),
+    String? photoUrl,
     PersonalMemberSaveTrace? trace,
   }) async {
     final normalizedGender = personalMemberGenderForSave(gender);
     final normalizedBirthDate = personalMemberBirthDateForSave(birthDate);
     final normalizedLessonType =
         lessonType.trim().isEmpty ? '미입력' : lessonType.trim();
-    final normalizedMembershipGrade =
-        personalMemberGradeForSave(membershipGrade);
+    final normalizedMembershipGrade = personalMemberGradeForSave(
+      membershipGrade,
+    );
     var stage = PersonalMemberCardUpdateStage.callable;
     try {
       trace?.record(
@@ -886,11 +892,15 @@ class PersonalMemberCardSaveService {
           'membershipGrade': normalizedMembershipGrade,
           'membership': membership.toCallableMap(),
           'anniversaryDate': personalMemberCalendarDateForSave(anniversaryDate),
-          'anniversaryLabel': anniversaryDate == null
-              ? null
-              : (anniversaryLabel ?? '').trim().isEmpty
+          'anniversaryLabel':
+              anniversaryDate == null
+                  ? null
+                  : (anniversaryLabel ?? '').trim().isEmpty
                   ? '기념일'
                   : anniversaryLabel!.trim(),
+          ...photoUrl == null
+              ? const <String, dynamic>{}
+              : <String, dynamic>{'photoUrl': photoUrl},
           ...assignments.toCallableMap(),
         },
       );
@@ -933,9 +943,10 @@ class PersonalMemberCardSaveService {
         membership: membership,
         anniversaryDate: anniversaryDate,
       );
-      final data = response is Map
-          ? Map<String, dynamic>.from(response)
-          : const <String, dynamic>{};
+      final data =
+          response is Map
+              ? Map<String, dynamic>.from(response)
+              : const <String, dynamic>{};
       if (data['updated'] != true || data['memberId'] != memberId) {
         throw StateError('member_update_response_mismatch');
       }
@@ -976,6 +987,7 @@ class PersonalMemberCardSaveService {
           anniversaryDate: anniversaryDate,
           anniversaryLabel: anniversaryLabel,
           assignments: assignments,
+          photoUrl: photoUrl,
         )) {
           throw StateError('member_update_readback_mismatch');
         }
@@ -1026,6 +1038,7 @@ class PersonalMemberCardSaveService {
                 anniversaryDate: anniversaryDate,
                 anniversaryLabel: anniversaryLabel,
                 assignments: assignments,
+                photoUrl: photoUrl,
               ),
             )
             .firstWhere((observed) => observed)
@@ -1111,7 +1124,11 @@ class PersonalMemberCardSaveService {
       'result=$result '
       'errorCode=${errorCode.isEmpty ? 'none' : errorCode} '
       'membershipRegistered=${!membership.notRegistered} '
-      'termMode=${membership.termMonths != null ? 'months' : membership.customDays != null ? 'days' : 'none'} '
+      'termMode=${membership.termMonths != null
+          ? 'months'
+          : membership.customDays != null
+          ? 'days'
+          : 'none'} '
       'hasStart=${membership.startAt != null} '
       'hasEnd=${membership.endAt != null} '
       'hasAnniversary=${anniversaryDate != null}',
@@ -1139,6 +1156,7 @@ class PersonalMemberCardSaveService {
     required DateTime? anniversaryDate,
     required String? anniversaryLabel,
     required PersonalMemberAssignmentPatch assignments,
+    String? photoUrl,
   }) {
     if (!_hasExpectedIdentity(
       document: document,
@@ -1149,11 +1167,15 @@ class PersonalMemberCardSaveService {
     )) {
       return false;
     }
+    if (photoUrl != null && member!['photoUrl'] != photoUrl) {
+      return false;
+    }
     final sessions = member!['sessions'];
     final storedMembership = member['membership'];
-    final expectedAnniversaryLabel = anniversaryDate == null
-        ? null
-        : (anniversaryLabel ?? '').trim().isEmpty
+    final expectedAnniversaryLabel =
+        anniversaryDate == null
+            ? null
+            : (anniversaryLabel ?? '').trim().isEmpty
             ? '기념일'
             : anniversaryLabel!.trim();
     return (member['name'] ?? '').toString().trim() == name.trim() &&
@@ -1205,18 +1227,47 @@ class PersonalMemberCardSaveService {
         assignments.matchesMember(member);
   }
 
+  Future<void> updatePhotoUrlAndVerify({
+    required String memberId,
+    required String? photoUrl,
+  }) async {
+    final response = await MtfFirebaseFunctions.call(
+      'updateManagedMember',
+      functions: _functions,
+      parameters: {'memberId': memberId, 'photoUrl': photoUrl},
+    );
+    final data =
+        response is Map
+            ? Map<String, dynamic>.from(response)
+            : const <String, dynamic>{};
+    if (data['updated'] != true || data['memberId'] != memberId) {
+      throw StateError('member_photo_update_response_mismatch');
+    }
+    final document = await _firestore
+        .collection('members')
+        .doc(memberId)
+        .get(const GetOptions(source: Source.server));
+    final member = document.data();
+    if (!document.exists ||
+        member == null ||
+        member['memberId'] != memberId ||
+        member['trainerId'] != uid ||
+        member['workspaceType'] != 'personal' ||
+        member['photoUrl'] != photoUrl) {
+      throw StateError('member_photo_update_readback_mismatch');
+    }
+  }
+
   Future<void> deleteAndVerify({required String memberId}) async {
     final response = await MtfFirebaseFunctions.call(
       'transitionManagedMemberState',
       functions: _functions,
-      parameters: {
-        'memberId': memberId,
-        'nextState': 'deleted',
-      },
+      parameters: {'memberId': memberId, 'nextState': 'deleted'},
     );
-    final data = response is Map
-        ? Map<String, dynamic>.from(response)
-        : const <String, dynamic>{};
+    final data =
+        response is Map
+            ? Map<String, dynamic>.from(response)
+            : const <String, dynamic>{};
     if (data['memberId'] != memberId) {
       throw StateError('member_delete_response_mismatch');
     }
@@ -1249,14 +1300,12 @@ class PersonalMemberCardSaveService {
     final response = await MtfFirebaseFunctions.call(
       'transitionManagedMemberState',
       functions: _functions,
-      parameters: {
-        'memberId': memberId,
-        'nextState': nextState,
-      },
+      parameters: {'memberId': memberId, 'nextState': nextState},
     );
-    final data = response is Map
-        ? Map<String, dynamic>.from(response)
-        : const <String, dynamic>{};
+    final data =
+        response is Map
+            ? Map<String, dynamic>.from(response)
+            : const <String, dynamic>{};
     if (data['memberId'] != memberId) {
       throw StateError('member_state_response_mismatch');
     }
@@ -1296,7 +1345,8 @@ class PersonalMemberCardSaveService {
     final birth = member['birth'];
     if (birth is! Timestamp) return false;
     final date = birth.toDate().toUtc();
-    final storedBirthDate = '${date.year.toString().padLeft(4, '0')}-'
+    final storedBirthDate =
+        '${date.year.toString().padLeft(4, '0')}-'
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
     return storedBirthDate == birthDate;
@@ -1315,6 +1365,7 @@ class PersonalMemberCardSaveService {
     required PersonalMemberMembershipUpdate? membership,
     required DateTime? anniversaryDate,
     required String? anniversaryLabel,
+    String? photoUrl,
   }) {
     if (!document.exists ||
         document.id != memberId ||
@@ -1327,6 +1378,9 @@ class PersonalMemberCardSaveService {
         (member['name'] ?? '').toString().trim() != name.trim() ||
         (member['phone'] ?? '').toString().trim() != phone.trim() ||
         member['createdAt'] is! Timestamp) {
+      return false;
+    }
+    if (photoUrl != null && member['photoUrl'] != photoUrl) {
       return false;
     }
     if (consultDate != null &&

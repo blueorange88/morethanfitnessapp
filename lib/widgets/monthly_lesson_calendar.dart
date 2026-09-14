@@ -8,7 +8,7 @@ enum MonthlyLessonViewState {
   success,
   empty,
   permissionDenied,
-  networkError
+  networkError,
 }
 
 class MonthlyLessonCalendar extends StatelessWidget {
@@ -224,7 +224,8 @@ class MonthlyLessonCalendar extends StatelessWidget {
             final day = DateTime(month.year, month.month, dayNumber);
             final records = summary?.recordsForDay(day) ?? const [];
             final count = summary?.countForDay(day) ?? 0;
-            final selected = selectedDay?.year == day.year &&
+            final selected =
+                selectedDay?.year == day.year &&
                 selectedDay?.month == day.month &&
                 selectedDay?.day == day.day;
             final statuses = records
@@ -239,14 +240,16 @@ class MonthlyLessonCalendar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
                 decoration: BoxDecoration(
-                  color: selected
-                      ? const Color(0xFFEEF2FF)
-                      : const Color(0xFFF8FAFC),
+                  color:
+                      selected
+                          ? const Color(0xFFEEF2FF)
+                          : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: selected
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFE5E7EB),
+                    color:
+                        selected
+                            ? const Color(0xFF6366F1)
+                            : const Color(0xFFE5E7EB),
                   ),
                 ),
                 child: Column(
@@ -326,9 +329,10 @@ class MonthlyLessonCalendar extends StatelessWidget {
   }
 
   Widget _buildRecordTile(MonthlyLessonRecord record) {
-    final name = record.memberNameSnapshot.isEmpty
-        ? '이름 기록 없음'
-        : record.memberNameSnapshot;
+    final name =
+        record.memberNameSnapshot.isEmpty
+            ? '이름 기록 없음'
+            : record.memberNameSnapshot;
     final session =
         record.lessonNumberSnapshot > 0 && record.sessionTotalSnapshot > 0
             ? '${record.lessonNumberSnapshot}/${record.sessionTotalSnapshot}회차'
@@ -373,9 +377,10 @@ class MonthlyLessonCalendar extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    [statusLabel(record.status), session]
-                        .where((value) => value.isNotEmpty)
-                        .join(' · '),
+                    [
+                      statusLabel(record.status),
+                      session,
+                    ].where((value) => value.isNotEmpty).join(' · '),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -413,20 +418,20 @@ class MonthlyLessonCalendar extends StatelessWidget {
   }
 
   static Color _statusColor(String status) => switch (status) {
-        'completed' => _completedColor,
-        'service' => _serviceColor,
-        'no_show_deducted' => _noShowDeductedColor,
-        'no_show_not_deducted' => _noShowNotDeductedColor,
-        'confirm_cancelled' => _cancelledColor,
-        _ => _cancelledColor,
-      };
+    'completed' => _completedColor,
+    'service' => _serviceColor,
+    'no_show_deducted' => _noShowDeductedColor,
+    'no_show_not_deducted' => _noShowNotDeductedColor,
+    'confirm_cancelled' => _cancelledColor,
+    _ => _cancelledColor,
+  };
 
   static String statusLabel(String status) => switch (status) {
-        'completed' => '소진',
-        'service' => '서비스',
-        'no_show_deducted' => '노쇼 차감',
-        'no_show_not_deducted' => '노쇼 미차감',
-        'confirm_cancelled' => '확정취소',
-        _ => '기록',
-      };
+    'completed' => '소진',
+    'service' => '서비스',
+    'no_show_deducted' => '노쇼 차감',
+    'no_show_not_deducted' => '노쇼 미차감',
+    'confirm_cancelled' => '확정취소',
+    _ => '기록',
+  };
 }

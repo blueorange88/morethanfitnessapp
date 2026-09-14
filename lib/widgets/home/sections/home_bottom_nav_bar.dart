@@ -61,7 +61,7 @@ class HomeBottomNavBar extends StatelessWidget {
                           Expanded(
                             child: _HomeNavItem(
                               icon: Icons.description_outlined,
-                              label: '신규 계약',
+                              label: '레슨계약',
                               index: 1,
                               activeIndex: activeIndex,
                               primaryColor: primaryColor,
@@ -91,7 +91,7 @@ class HomeBottomNavBar extends StatelessWidget {
                           Expanded(
                             child: _HomeNavItem(
                               icon: Icons.credit_card_outlined,
-                              label: '고객리스트',
+                              label: '회원리스트',
                               index: 3,
                               activeIndex: activeIndex,
                               primaryColor: primaryColor,
@@ -120,10 +120,7 @@ class HomeBottomNavBar extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
-                        colors: [
-                          primaryColor,
-                          secondaryColor,
-                        ],
+                        colors: [primaryColor, secondaryColor],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -177,35 +174,37 @@ class _HomeBottomNavNotchPainter extends CustomPainter {
     const double notchRadius = 38;
     const double notchDepth = 31;
 
-    final paint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = backgroundColor
+          ..style = PaintingStyle.fill;
 
-    final path = Path()
-      ..moveTo(0, topRadius)
-      ..quadraticBezierTo(0, 0, topRadius, 0)
-      ..lineTo(size.width / 2 - notchRadius - 18, 0)
-      ..cubicTo(
-        size.width / 2 - notchRadius + 4,
-        0,
-        size.width / 2 - notchRadius + 2,
-        notchDepth,
-        size.width / 2,
-        notchDepth,
-      )
-      ..cubicTo(
-        size.width / 2 + notchRadius - 2,
-        notchDepth,
-        size.width / 2 + notchRadius - 4,
-        0,
-        size.width / 2 + notchRadius + 18,
-        0,
-      )
-      ..lineTo(size.width - topRadius, 0)
-      ..quadraticBezierTo(size.width, 0, size.width, topRadius)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
+    final path =
+        Path()
+          ..moveTo(0, topRadius)
+          ..quadraticBezierTo(0, 0, topRadius, 0)
+          ..lineTo(size.width / 2 - notchRadius - 18, 0)
+          ..cubicTo(
+            size.width / 2 - notchRadius + 4,
+            0,
+            size.width / 2 - notchRadius + 2,
+            notchDepth,
+            size.width / 2,
+            notchDepth,
+          )
+          ..cubicTo(
+            size.width / 2 + notchRadius - 2,
+            notchDepth,
+            size.width / 2 + notchRadius - 4,
+            0,
+            size.width / 2 + notchRadius + 18,
+            0,
+          )
+          ..lineTo(size.width - topRadius, 0)
+          ..quadraticBezierTo(size.width, 0, size.width, topRadius)
+          ..lineTo(size.width, size.height)
+          ..lineTo(0, size.height)
+          ..close();
 
     canvas.drawShadow(path, shadowColor.withOpacity(0.10), 14, false);
     canvas.drawPath(path, paint);

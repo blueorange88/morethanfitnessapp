@@ -19,7 +19,9 @@ void main() {
       isNot(MtfThemeTokens.dark.widgetPreviewSurface),
     );
     expect(
-        MtfThemeTokens.light.trainingLogCompleted, isNot(Colors.transparent));
+      MtfThemeTokens.light.trainingLogCompleted,
+      isNot(Colors.transparent),
+    );
     expect(MtfThemeTokens.dark.trainingLogCompleted, isNot(Colors.transparent));
   });
 
@@ -40,16 +42,21 @@ void main() {
     final page =
         File('lib/pages/personal_training_log_page.dart').readAsStringSync();
     final workspace =
-        File('lib/pages/personal_training_log_workspace_page.dart')
-            .readAsStringSync();
+        File(
+          'lib/pages/personal_training_log_workspace_page.dart',
+        ).readAsStringSync();
     final textVoice =
-        File('lib/pages/personal_training_log_text_voice_page.dart')
-            .readAsStringSync();
-    final category = File('lib/pages/personal_training_log_category_page.dart')
-        .readAsStringSync();
+        File(
+          'lib/pages/personal_training_log_text_voice_page.dart',
+        ).readAsStringSync();
+    final category =
+        File(
+          'lib/pages/personal_training_log_category_page.dart',
+        ).readAsStringSync();
     final quickSign =
-        File('lib/pages/personal_training_log_quick_sign_page.dart')
-            .readAsStringSync();
+        File(
+          'lib/pages/personal_training_log_quick_sign_page.dart',
+        ).readAsStringSync();
 
     for (final source in [page, workspace, textVoice, category, quickSign]) {
       expect(source, contains("theme/app_colors.dart"));
@@ -61,7 +68,9 @@ void main() {
     expect(category, contains('trainingLogSetRow'));
     expect(category, contains('trainingLogSetDivider'));
     expect(
-        category, isNot(contains('backgroundColor: const Color(0xFFF3F4F6)')));
+      category,
+      isNot(contains('backgroundColor: const Color(0xFFF3F4F6)')),
+    );
     expect(quickSign, contains('signatureCanvasSurface'));
   });
 
@@ -105,8 +114,9 @@ void main() {
 
   test('빠른서명 URL 의미와 서명 반환 경로는 변경하지 않는다', () {
     final quickSign =
-        File('lib/pages/personal_training_log_quick_sign_page.dart')
-            .readAsStringSync();
+        File(
+          'lib/pages/personal_training_log_quick_sign_page.dart',
+        ).readAsStringSync();
     final memberWeb =
         File('lib/pages/member_signature_web_page.dart').readAsStringSync();
     final signUrl =

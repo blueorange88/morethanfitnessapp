@@ -488,6 +488,7 @@ async function main() {
       },
       anniversaryDate: "2026-12-25",
       anniversaryLabel: "대회",
+      photoUrl: "https://storage.googleapis.com/demo-bucket/profile_1.jpg",
     };
     const fullCreated = await callFunction(
       "createManagedMember",
@@ -521,8 +522,12 @@ async function main() {
         data.anniversaryDate.toDate().toISOString().slice(0, 10),
         "2026-12-25",
       );
+      assert.equal(
+        data.photoUrl,
+        "https://storage.googleapis.com/demo-bucket/profile_1.jpg",
+      );
     });
-    await scenario("member grade update persists without changing membership", async () => {
+    await scenario("member grade update persists without changing membership or photo", async () => {
       const memberId = fullCreated.body.result.memberId;
       const updated = await callFunction(
         "updateManagedMember",
@@ -537,6 +542,44 @@ async function main() {
       assert.equal(data.membership.customDays, 120);
       assert.equal(data.membership.days, 120);
       assert.equal(data.anniversaryLabel, "대회");
+      assert.equal(
+        data.photoUrl,
+        "https://storage.googleapis.com/demo-bucket/profile_1.jpg",
+      );
+    });
+    await scenario("photo url update replaces stored value only", async () => {
+      const memberId = fullCreated.body.result.memberId;
+      const updated = await callFunction(
+        "updateManagedMember",
+        legacyOwner.idToken,
+        {
+          memberId,
+          photoUrl: "https://storage.googleapis.com/demo-bucket/profile_2.jpg",
+        },
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", memberId));
+      const data = snapshot.data();
+      assert.equal(
+        data.photoUrl,
+        "https://storage.googleapis.com/demo-bucket/profile_2.jpg",
+      );
+      assert.equal(data.membershipGrade, "SILVER");
+    });
+    await scenario("photo url explicit null clears stored value", async () => {
+      const memberId = fullCreated.body.result.memberId;
+      const updated = await callFunction(
+        "updateManagedMember",
+        legacyOwner.idToken,
+        {memberId, photoUrl: null},
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      const db = context(env, legacyOwner.localId, true).firestore();
+      const snapshot = await getDoc(doc(db, "members", memberId));
+      const data = snapshot.data();
+      assert.equal(data.photoUrl, null);
+      assert.equal(data.membershipGrade, "SILVER");
     });
     await scenario("unsupported member grade is rejected without write", async () => {
       const memberId = fullCreated.body.result.memberId;
@@ -1347,6 +1390,74 @@ async function main() {
       const profile = await profileData(env, owner.localId);
       assert.equal(profile.intro, "운동을 넘어 건강한 일상을 함께 만듭니다.");
     });
+    await scenario("business card photo url and align persist together", async () => {
+      const saved = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {
+          businessCardPhotoUrl: "https://storage.googleapis.com/demo-bucket/trainer.jpg",
+          businessCardPhotoAlign: "0.25,-0.50",
+        },
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      const profile = await profileData(env, owner.localId);
+      assert.equal(
+        profile.businessCardPhotoUrl,
+        "https://storage.googleapis.com/demo-bucket/trainer.jpg",
+      );
+      assert.equal(profile.businessCardPhotoAlign, "0.25,-0.50");
+    });
+    await scenario("malformed business card photo align is rejected", async () => {
+      const rejected = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {businessCardPhotoAlign: "not-a-number,also-not"},
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.businessCardPhotoAlign, "0.25,-0.50");
+    });
+    await scenario("business card photo url can be cleared with empty string", async () => {
+      const cleared = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {businessCardPhotoUrl: "", businessCardPhotoAlign: "0.00,0.00"},
+      );
+      assert.equal(cleared.status, 200, JSON.stringify(cleared.body));
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.businessCardPhotoUrl, "");
+      assert.equal(profile.businessCardPhotoAlign, "0.00,0.00");
+    });
+    await scenario("business card photo align accepts an optional zoom scale", async () => {
+      const saved = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {businessCardPhotoAlign: "-0.30,0.10,2.50"},
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.businessCardPhotoAlign, "-0.30,0.10,2.50");
+    });
+    await scenario("business card photo zoom scale out of range is rejected", async () => {
+      const rejected = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {businessCardPhotoAlign: "0.00,0.00,5.00"},
+      );
+      assert.equal(rejected.body.error.status, "INVALID_ARGUMENT");
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.businessCardPhotoAlign, "-0.30,0.10,2.50");
+    });
+    await scenario("business card photo align accepts a shrink-below-original scale", async () => {
+      const saved = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {businessCardPhotoAlign: "0.10,-0.20,0.40"},
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      const profile = await profileData(env, owner.localId);
+      assert.equal(profile.businessCardPhotoAlign, "0.10,-0.20,0.40");
+    });
     await scenario("sponsorship does not affect tier", async () => {
       await env.withSecurityRulesDisabled(async (admin) => {
         await updateDoc(
@@ -1430,8 +1541,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 70);
-    process.stdout.write("All 70 anonymous member and tier scenarios passed.\n");
+    assert.equal(passed, 78);
+    process.stdout.write("All 78 anonymous member and tier scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

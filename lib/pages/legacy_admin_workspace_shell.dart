@@ -25,8 +25,11 @@ class LegacyAdminWorkspaceShell extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.storage_rounded,
-                        size: 16, color: Colors.white),
+                    const Icon(
+                      Icons.storage_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                     const SizedBox(width: 7),
                     const Expanded(
                       child: Text(

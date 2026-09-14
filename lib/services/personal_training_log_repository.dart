@@ -62,8 +62,8 @@ class PersonalTrainingLogRepository {
     required this.uid,
     required PersonalTrainingLogDataSource dataSource,
     required PersonalTrainingLogMutationGateway mutationGateway,
-  })  : _dataSource = dataSource,
-        _mutationGateway = mutationGateway;
+  }) : _dataSource = dataSource,
+       _mutationGateway = mutationGateway;
 
   factory PersonalTrainingLogRepository.firebase({required String uid}) {
     return PersonalTrainingLogRepository(
@@ -286,8 +286,8 @@ class FirebasePersonalTrainingLogDataSource
   FirebasePersonalTrainingLogDataSource({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
@@ -342,10 +342,7 @@ class FirebasePersonalTrainingLogDataSource
   }
 
   @override
-  Future<void> updateLog(
-    String lessonLogId,
-    Map<String, dynamic> changes,
-  ) {
+  Future<void> updateLog(String lessonLogId, Map<String, dynamic> changes) {
     return _firestore.collection('training_logs').doc(lessonLogId).update({
       ...changes,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -361,19 +358,20 @@ class FirebasePersonalTrainingLogDataSource
   ) {
     final data = snapshot.data() ?? const <String, dynamic>{};
     DateTime date(dynamic value) => switch (value) {
-          Timestamp timestamp => timestamp.toDate(),
-          DateTime dateTime => dateTime,
-          _ => DateTime.fromMillisecondsSinceEpoch(0),
-        };
+      Timestamp timestamp => timestamp.toDate(),
+      DateTime dateTime => dateTime,
+      _ => DateTime.fromMillisecondsSinceEpoch(0),
+    };
     return PersonalTrainingLogRecord(
       lessonLogId: snapshot.id,
       trainerId: (data['trainerId'] ?? '').toString(),
       workspaceType: (data['workspaceType'] ?? '').toString(),
       schemaVersion: (data['schemaVersion'] as num?)?.toInt() ?? 0,
       memberId: (data['memberId'] ?? '').toString(),
-      scheduleDocId: (data['scheduleDocId'] ?? '').toString().trim().isEmpty
-          ? null
-          : (data['scheduleDocId'] ?? '').toString().trim(),
+      scheduleDocId:
+          (data['scheduleDocId'] ?? '').toString().trim().isEmpty
+              ? null
+              : (data['scheduleDocId'] ?? '').toString().trim(),
       lessonDate: date(data['lessonDate']),
       startAt: date(data['startAt']),
       endAt: date(data['endAt']),
@@ -391,7 +389,7 @@ class FirebasePersonalTrainingLogDataSource
 class FirebasePersonalTrainingLogMutationGateway
     implements PersonalTrainingLogMutationGateway {
   FirebasePersonalTrainingLogMutationGateway({FirebaseFunctions? functions})
-      : _functions = functions ?? MtfFirebaseFunctions.instance;
+    : _functions = functions ?? MtfFirebaseFunctions.instance;
 
   final FirebaseFunctions _functions;
 

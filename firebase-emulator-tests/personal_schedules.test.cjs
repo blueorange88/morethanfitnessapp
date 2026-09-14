@@ -299,14 +299,90 @@ async function main() {
         getDoc(doc(owner, "schedules", goodId)));
       assert.equal(rolledBack.exists(), false);
     });
+    await scenario("ten distinct linked members fit the rules access budget", async () => {
+      await env.withSecurityRulesDisabled(async (admin) => {
+        for (let index = 0; index < 10; index += 1) {
+          await setDoc(doc(admin.firestore(), "members", `batch-member-${index}`), {
+            trainerId: "trainer-a", workspaceType: "personal",
+            managementState: "active",
+          });
+        }
+      });
+      const batch = writeBatch(owner);
+      for (let index = 0; index < 20; index += 1) {
+        const id = scheduleId("trainer-a", `linked-batch-safe-${index}`);
+        batch.set(doc(owner, "schedules", id),
+          scheduleData(id, "trainer-a", new Date(start.getTime() + index * 3600000), {
+            memberId: `batch-member-${index % 10}`,
+          }));
+      }
+      await assertSucceeds(batch.commit());
+    });
+    await scenario("eleven distinct linked members exceed the rules access budget", async () => {
+      await env.withSecurityRulesDisabled(async (admin) => {
+        for (let index = 0; index < 11; index += 1) {
+          await setDoc(doc(admin.firestore(), "members", `denied-member-${index}`), {
+            trainerId: "trainer-a", workspaceType: "personal",
+            managementState: "active",
+          });
+        }
+      });
+      const batch = writeBatch(owner);
+      for (let index = 0; index < 11; index += 1) {
+        const id = scheduleId("trainer-a", `linked-batch-denied-${index}`);
+        batch.set(doc(owner, "schedules", id),
+          scheduleData(id, "trainer-a", new Date(start.getTime() + index * 3600000), {
+            memberId: `denied-member-${index}`,
+          }));
+      }
+      await assertFails(batch.commit());
+      const first = await assertSucceeds(getDoc(doc(owner, "schedules",
+        scheduleId("trainer-a", "linked-batch-denied-0"))));
+      assert.equal(first.exists(), false);
+    });
+    await scenario("PROD-shaped 37 linked schedules succeed in two safe batches", async () => {
+      await env.withSecurityRulesDisabled(async (admin) => {
+        for (let index = 0; index < 17; index += 1) {
+          await setDoc(doc(admin.firestore(), "members", `chunk-member-${index}`), {
+            trainerId: "trainer-a", workspaceType: "personal",
+            managementState: "active",
+          });
+        }
+      });
+      const firstBatch = writeBatch(owner);
+      for (let index = 0; index < 20; index += 1) {
+        const id = scheduleId("trainer-a", `chunk-first-${index}`);
+        firstBatch.set(doc(owner, "schedules", id),
+          scheduleData(id, "trainer-a", new Date(start.getTime() + index * 3600000), {
+            memberId: `chunk-member-${index % 10}`,
+          }));
+      }
+      await assertSucceeds(firstBatch.commit());
+
+      const secondBatch = writeBatch(owner);
+      for (let index = 0; index < 17; index += 1) {
+        const id = scheduleId("trainer-a", `chunk-second-${index}`);
+        secondBatch.set(doc(owner, "schedules", id),
+          scheduleData(id, "trainer-a", new Date(start.getTime() + (20 + index) * 3600000), {
+            memberId: `chunk-member-${10 + (index % 7)}`,
+          }));
+      }
+      await assertSucceeds(secondBatch.commit());
+
+      const first = await assertSucceeds(getDoc(doc(owner, "schedules",
+        scheduleId("trainer-a", "chunk-first-0"))));
+      const last = await assertSucceeds(getDoc(doc(owner, "schedules",
+        scheduleId("trainer-a", "chunk-second-16"))));
+      assert.equal(first.exists() && last.exists(), true);
+    });
     for (const path of ["training_logs", "contracts"]) {
       await scenario(`${path} personal access remains denied`, async () => {
         await assertFails(getDoc(doc(owner, path, "closed")));
       });
     }
 
-    assert.equal(passed, 27);
-    process.stdout.write("All 27 personal schedule rules scenarios passed.\n");
+    assert.equal(passed, 30);
+    process.stdout.write("All 30 personal schedule rules scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

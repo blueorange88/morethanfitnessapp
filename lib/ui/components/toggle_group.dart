@@ -57,17 +57,15 @@ class _ShadcnToggleItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 13,
-          vertical: 9,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
         decoration: BoxDecoration(
           color: selected ? selectedBg : unselectedBg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected
-                ? selectedBg
-                : theme.colorScheme.outline.withOpacity(0.35),
+            color:
+                selected
+                    ? selectedBg
+                    : theme.colorScheme.outline.withOpacity(0.35),
             width: 0.8,
           ),
         ),

@@ -219,7 +219,7 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
     final memberLabel = aifcPersonLabel(name);
 
     await aifcRunActionThenReply(
-      userText: goDetail ? '고객카드까지 이어서 작성할게요' : '빠른등록할게요',
+      userText: goDetail ? '회원카드까지 이어서 작성할게요' : '빠른등록할게요',
       groupKey: 'quick_register_done',
       action: () async {
         if (goDetail) {
@@ -230,8 +230,8 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
       },
       successText:
           goDetail
-              ? '$memberLabel 기본 정보를 먼저 등록하고,\n고객카드 작성으로 이어갈게요.'
-              : '$memberLabel을 등록했어요.\n필요하면 고객카드에서 더 자세히 채울 수 있어요.',
+              ? '$memberLabel 기본 정보를 먼저 등록하고,\n회원카드 작성으로 이어갈게요.'
+              : '$memberLabel을 등록했어요.\n필요하면 회원카드에서 더 자세히 채울 수 있어요.',
       errorTextBuilder: personalMemberUpdateErrorMessage,
       onError: _handleSubmitError,
       closeAfterReply: true,
@@ -329,7 +329,7 @@ class _AifcQuickRegisterChatSheetState extends State<AifcQuickRegisterChatSheet>
 
     await aifcUserThenFc(
       userText: '취소할게요',
-      fcText: '작성 중인 고객등록을 닫을까요?\n지금 닫으면 입력한 내용은 저장되지 않아요.',
+      fcText: '작성 중인 회원등록을 닫을까요?\n지금 닫으면 입력한 내용은 저장되지 않아요.',
       groupKey: 'quick_register_discard',
       fcChild: Row(
         children: [
@@ -617,7 +617,7 @@ class _QuickRegisterActionCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _SmallActionButton(
-          label: '고객카드까지 이어서 작성하기',
+          label: '회원카드까지 이어서 작성하기',
           foregroundColor: scheme.primary,
           backgroundColor: scheme.secondaryContainer,
           borderColor: scheme.outline,

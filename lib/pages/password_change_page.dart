@@ -77,9 +77,9 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
       if (mounted) setState(() => _busy = false);
     }
     if (!mounted || !completed) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('비밀번호를 안전하게 변경했어요.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('비밀번호를 안전하게 변경했어요.')));
     if (widget.onCompleted != null) {
       widget.onCompleted!();
     } else {
@@ -97,9 +97,7 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
       await _passwordService.sendPasswordReset();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('입력하신 계정을 확인할 수 있다면 재설정 메일을 보내드려요.'),
-        ),
+        const SnackBar(content: Text('입력하신 계정을 확인할 수 있다면 재설정 메일을 보내드려요.')),
       );
     } catch (error) {
       if (mounted) {
@@ -224,9 +222,10 @@ class _PasswordChangePageState extends State<PasswordChangePage> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () => setState(() => _obscure = !_obscure),
+                          onPressed:
+                              _busy
+                                  ? null
+                                  : () => setState(() => _obscure = !_obscure),
                           icon: Icon(
                             _obscure
                                 ? Icons.visibility_outlined
@@ -301,43 +300,37 @@ class _PasswordField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextField(
-        controller: controller,
-        enabled: enabled,
-        obscureText: obscure,
-        autocorrect: false,
-        enableSuggestions: false,
-        onSubmitted: onSubmitted,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            color: kOnboardingMuted,
-            fontWeight: FontWeight.w700,
-          ),
-          prefixIcon: const Icon(
-            Icons.lock_outline_rounded,
-            color: kOnboardingPrimary,
-          ),
-          filled: true,
-          fillColor: const Color(0xFFF9FAFB),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: kOnboardingBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: kOnboardingBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(
-              color: kOnboardingPrimary,
-              width: 1.5,
-            ),
-          ),
-        ),
-      );
+    controller: controller,
+    enabled: enabled,
+    obscureText: obscure,
+    autocorrect: false,
+    enableSuggestions: false,
+    onSubmitted: onSubmitted,
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(
+        color: kOnboardingMuted,
+        fontWeight: FontWeight.w700,
+      ),
+      prefixIcon: const Icon(
+        Icons.lock_outline_rounded,
+        color: kOnboardingPrimary,
+      ),
+      filled: true,
+      fillColor: const Color(0xFFF9FAFB),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: kOnboardingBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: kOnboardingBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: kOnboardingPrimary, width: 1.5),
+      ),
+    ),
+  );
 }

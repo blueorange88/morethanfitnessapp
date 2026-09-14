@@ -1,8 +1,4 @@
-enum HomeScheduleTombstoneDecision {
-  keep,
-  confirmedDeleted,
-  sourceStillExists,
-}
+enum HomeScheduleTombstoneDecision { keep, confirmedDeleted, sourceStillExists }
 
 bool shouldApplyHomeScheduleSnapshot({
   required int bindingId,

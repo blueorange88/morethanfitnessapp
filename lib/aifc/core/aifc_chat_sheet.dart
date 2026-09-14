@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../widgets/aifc_interaction.dart';
 import '../core/aifc_chat_bubble.dart';
 import '../core/aifc_sheet_frame.dart';
 import '../core/aifc_typing_dots.dart';
@@ -50,18 +51,19 @@ class AifcChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcChatSheet(
-        question: question,
-        inputLabel: inputLabel,
-        onSave: onSave,
-        initialValue: initialValue,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        skipLabel: skipLabel,
-        autoCompleteHints: autoCompleteHints,
-        onSkip: onSkip,
-        skipClosesImmediately: skipClosesImmediately,
-      ),
+      builder:
+          (_) => AifcChatSheet(
+            question: question,
+            inputLabel: inputLabel,
+            onSave: onSave,
+            initialValue: initialValue,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+            skipLabel: skipLabel,
+            autoCompleteHints: autoCompleteHints,
+            onSkip: onSkip,
+            skipClosesImmediately: skipClosesImmediately,
+          ),
     );
   }
 
@@ -69,16 +71,10 @@ class AifcChatSheet extends StatefulWidget {
   State<AifcChatSheet> createState() => _AifcChatSheetState();
 }
 
-enum _BubbleType {
-  fc,
-  user,
-}
+enum _BubbleType { fc, user }
 
 class _Bubble {
-  const _Bubble({
-    required this.type,
-    required this.text,
-  });
+  const _Bubble({required this.type, required this.text});
 
   final _BubbleType type;
   final String text;
@@ -109,12 +105,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
       _inputCtrl.text = widget.initialValue.trim();
     }
 
-    _addBubble(
-      _Bubble(
-        type: _BubbleType.fc,
-        text: widget.question,
-      ),
-    );
+    _addBubble(_Bubble(type: _BubbleType.fc, text: widget.question));
 
     _inputCtrl.addListener(_onInputChanged);
     _focusNode.addListener(_onFocusChanged);
@@ -228,12 +219,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
       _isSaving = true;
     });
 
-    _addBubble(
-      _Bubble(
-        type: _BubbleType.user,
-        text: value,
-      ),
-    );
+    _addBubble(_Bubble(type: _BubbleType.user, text: value));
 
     _inputCtrl.clear();
     _focusNode.unfocus();
@@ -253,6 +239,8 @@ class _AifcChatSheetState extends State<AifcChatSheet>
     try {
       replyText = await widget.onSave(value);
       saveSucceeded = true;
+    } on AifcInputValidationException catch (e) {
+      replyText = e.message;
     } catch (_) {
       replyText = '저장하지 못했어요.\n다시 시도해주세요.';
     }
@@ -268,9 +256,10 @@ class _AifcChatSheetState extends State<AifcChatSheet>
     _addBubble(
       _Bubble(
         type: _BubbleType.fc,
-        text: replyText.isNotEmpty
-            ? replyText
-            : '$value(으)로 안내할게요 😊\n언제든 마이페이지에서 바꿀 수 있어요.',
+        text:
+            replyText.isNotEmpty
+                ? replyText
+                : '$value(으)로 안내할게요 😊\n언제든 마이페이지에서 바꿀 수 있어요.',
       ),
     );
 
@@ -310,9 +299,10 @@ class _AifcChatSheetState extends State<AifcChatSheet>
     _addBubble(
       _Bubble(
         type: _BubbleType.user,
-        text: widget.skipLabel.trim().isEmpty
-            ? '나중에 알려드릴게요'
-            : widget.skipLabel.replaceAll('알려드릴게요', '').trim().isEmpty
+        text:
+            widget.skipLabel.trim().isEmpty
+                ? '나중에 알려드릴게요'
+                : widget.skipLabel.replaceAll('알려드릴게요', '').trim().isEmpty
                 ? '나중에 알려드릴게요'
                 : '나중에 알려드릴게요',
       ),
@@ -400,12 +390,13 @@ class _AifcChatSheetState extends State<AifcChatSheet>
           ),
           if (widget.onSkip != null)
             GestureDetector(
-              onTap: widget.skipClosesImmediately
-                  ? () {
-                      widget.onSkip?.call();
-                      Navigator.of(context).pop(null);
-                    }
-                  : _skip,
+              onTap:
+                  widget.skipClosesImmediately
+                      ? () {
+                        widget.onSkip?.call();
+                        Navigator.of(context).pop(null);
+                      }
+                      : _skip,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
@@ -432,10 +423,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: AifcChatBubble(
-        side: side,
-        text: bubble.text,
-      ),
+      child: AifcChatBubble(side: side, text: bubble.text),
     );
   }
 
@@ -453,10 +441,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
       child: Align(
         alignment: Alignment.centerRight,
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: tokens.aifcUserBubble,
             borderRadius: const BorderRadius.only(
@@ -473,9 +458,7 @@ class _AifcChatSheetState extends State<AifcChatSheet>
               ),
             ],
           ),
-          child: AifcTypingDots(
-            color: tokens.aifcUserBubbleForeground,
-          ),
+          child: AifcTypingDots(color: tokens.aifcUserBubbleForeground),
         ),
       ),
     );
@@ -567,48 +550,52 @@ class _AifcChatSheetState extends State<AifcChatSheet>
         color: tokens.aifcInputSurface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: _inputFocused || hasText
-              ? theme.colorScheme.secondary
-              : theme.colorScheme.outline,
+          color:
+              _inputFocused || hasText
+                  ? theme.colorScheme.secondary
+                  : theme.colorScheme.outline,
           width: _inputFocused || hasText ? 1.5 : 1,
         ),
-        boxShadow: _inputFocused
-            ? [
-                BoxShadow(
-                  color: theme.colorScheme.secondary.withOpacity(0.12),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : [],
+        boxShadow:
+            _inputFocused
+                ? [
+                  BoxShadow(
+                    color: theme.colorScheme.secondary.withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+                : [],
       ),
       child: Row(
         children: [
           Expanded(
-              child: TextField(
-            controller: _inputCtrl,
-            focusNode: _focusNode,
-            maxLines: widget.maxLines,
-            keyboardType: widget.keyboardType,
-            autofocus: true,
-            textInputAction: widget.maxLines == 1
-                ? TextInputAction.send
-                : TextInputAction.newline,
-            onSubmitted: widget.maxLines == 1 ? (_) => _submit() : null,
-            decoration: InputDecoration(
-              hintText: widget.inputLabel,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              hintStyle: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+            child: TextField(
+              controller: _inputCtrl,
+              focusNode: _focusNode,
+              maxLines: widget.maxLines,
+              keyboardType: widget.keyboardType,
+              autofocus: true,
+              textInputAction:
+                  widget.maxLines == 1
+                      ? TextInputAction.send
+                      : TextInputAction.newline,
+              onSubmitted: widget.maxLines == 1 ? (_) => _submit() : null,
+              decoration: InputDecoration(
+                hintText: widget.inputLabel,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          )),
+          ),
           AnimatedOpacity(
             opacity: hasText ? 1.0 : 0.28,
             duration: const Duration(milliseconds: 60),
@@ -621,16 +608,18 @@ class _AifcChatSheetState extends State<AifcChatSheet>
                 decoration: BoxDecoration(
                   color: theme.colorScheme.secondary,
                   shape: BoxShape.circle,
-                  boxShadow: hasText
-                      ? [
-                          BoxShadow(
-                            color:
-                                theme.colorScheme.secondary.withOpacity(0.30),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [],
+                  boxShadow:
+                      hasText
+                          ? [
+                            BoxShadow(
+                              color: theme.colorScheme.secondary.withOpacity(
+                                0.30,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                          : [],
                 ),
                 child: Icon(
                   Icons.arrow_forward_rounded,
@@ -647,37 +636,23 @@ class _AifcChatSheetState extends State<AifcChatSheet>
 }
 
 class _AnimatedBubble extends StatelessWidget {
-  const _AnimatedBubble({
-    required this.controller,
-    required this.child,
-  });
+  const _AnimatedBubble({required this.controller, required this.child});
 
   final AnimationController controller;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final opacity = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut,
-    );
+    final opacity = CurvedAnimation(parent: controller, curve: Curves.easeOut);
 
     final slide = Tween<Offset>(
       begin: const Offset(0, 0.12),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
 
     return FadeTransition(
       opacity: opacity,
-      child: SlideTransition(
-        position: slide,
-        child: child,
-      ),
+      child: SlideTransition(position: slide, child: child),
     );
   }
 }

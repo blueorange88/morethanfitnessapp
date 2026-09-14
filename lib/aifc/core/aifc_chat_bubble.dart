@@ -5,10 +5,7 @@ import 'aifc_avatar.dart';
 import 'aifc_theme.dart';
 import 'aifc_typing_dots.dart';
 
-enum AifcBubbleSide {
-  fc,
-  user,
-}
+enum AifcBubbleSide { fc, user }
 
 class AifcChatBubble extends StatelessWidget {
   const AifcChatBubble({
@@ -51,10 +48,7 @@ class AifcChatBubble extends StatelessWidget {
         const SizedBox(width: 48),
         Flexible(
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 11,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
               color: tokens.aifcUserBubble,
               borderRadius: const BorderRadius.only(
@@ -89,9 +83,10 @@ class AifcChatBubble extends StatelessWidget {
   Widget _buildFcBubble(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
-    final backgroundColor = useThemeSurface
-        ? colorScheme.surfaceContainerHighest
-        : tokens.aifcSurface;
+    final backgroundColor =
+        useThemeSurface
+            ? colorScheme.surfaceContainerHighest
+            : tokens.aifcSurface;
     final borderColor =
         useThemeSurface ? colorScheme.outlineVariant : tokens.cardBorder;
 
@@ -117,10 +112,7 @@ class AifcChatBubble extends StatelessWidget {
                 bottomLeft: Radius.circular(4),
                 bottomRight: Radius.circular(16),
               ),
-              border: Border.all(
-                color: borderColor,
-                width: 0.5,
-              ),
+              border: Border.all(color: borderColor, width: 0.5),
               boxShadow: AifcShadow.soft,
             ),
             child: Column(
@@ -160,10 +152,7 @@ class AifcChatBubble extends StatelessWidget {
 }
 
 class AifcTypingBubble extends StatelessWidget {
-  const AifcTypingBubble({
-    super.key,
-    this.showAvatar = true,
-  });
+  const AifcTypingBubble({super.key, this.showAvatar = true});
 
   final bool showAvatar;
 
@@ -183,10 +172,7 @@ class AifcTypingBubble extends StatelessWidget {
         ] else
           const SizedBox(width: 39),
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 13,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
             color: tokens.aifcSurface,
             borderRadius: const BorderRadius.only(
@@ -195,10 +181,7 @@ class AifcTypingBubble extends StatelessWidget {
               bottomLeft: Radius.circular(4),
               bottomRight: Radius.circular(16),
             ),
-            border: Border.all(
-              color: tokens.cardBorder,
-              width: 0.5,
-            ),
+            border: Border.all(color: tokens.cardBorder, width: 0.5),
             boxShadow: AifcShadow.soft,
           ),
           child: const AifcTypingDots(),

@@ -53,7 +53,7 @@ abstract interface class PersonalNicknameOnboardingGateway {
 class FirebasePersonalNicknameOnboardingGateway
     implements PersonalNicknameOnboardingGateway {
   FirebasePersonalNicknameOnboardingGateway({FirebaseFunctions? functions})
-      : _functionsOverride = functions;
+    : _functionsOverride = functions;
 
   final FirebaseFunctions? _functionsOverride;
 
@@ -101,7 +101,7 @@ class FirebasePersonalNicknameOnboardingGateway
 
 class FirebasePersonalProfileStartReader implements PersonalProfileStartReader {
   FirebasePersonalProfileStartReader({FirebaseFirestore? firestore})
-      : _firestoreOverride = firestore;
+    : _firestoreOverride = firestore;
 
   final FirebaseFirestore? _firestoreOverride;
 
@@ -127,9 +127,10 @@ class FirebasePersonalProfileStartReader implements PersonalProfileStartReader {
               .toString()
               .trim();
       final completedAt = data['onboardingCompletedAt'];
-      final completedAtLabel = completedAt is Timestamp
-          ? completedAt.toDate().toIso8601String()
-          : completedAt?.toString() ?? 'null';
+      final completedAtLabel =
+          completedAt is Timestamp
+              ? completedAt.toDate().toIso8601String()
+              : completedAt?.toString() ?? 'null';
       debugPrint(
         '[MTF_NICKNAME_STATE] uid=${user.uid} '
         'isAnonymous=${user.isAnonymous} '

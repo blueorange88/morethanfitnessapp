@@ -37,12 +37,13 @@ class AifcSheetFrame extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: Container(
-            constraints: maxHeightFactor == null
-                ? null
-                : BoxConstraints(
-                    maxHeight:
-                        MediaQuery.of(context).size.height * maxHeightFactor!,
-                  ),
+            constraints:
+                maxHeightFactor == null
+                    ? null
+                    : BoxConstraints(
+                      maxHeight:
+                          MediaQuery.of(context).size.height * maxHeightFactor!,
+                    ),
             decoration: BoxDecoration(
               color: tokens.sheetBackground,
               borderRadius: BorderRadius.circular(AifcRadius.sheet),
@@ -50,10 +51,7 @@ class AifcSheetFrame extends StatelessWidget {
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                if (showHandle) const AifcSheetHandle(),
-                ...children,
-              ],
+              children: [if (showHandle) const AifcSheetHandle(), ...children],
             ),
           ),
         ),

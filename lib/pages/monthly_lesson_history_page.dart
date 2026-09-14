@@ -48,8 +48,9 @@ class _MonthlyLessonHistoryPageState extends State<MonthlyLessonHistoryPage> {
 
   Future<void> _prepareAccess() async {
     try {
-      final access = await (widget.accessLoader?.call() ??
-          AppTierAccessService.loadPersonalTrainerAccess(uid: _ownerUid));
+      final access =
+          await (widget.accessLoader?.call() ??
+              AppTierAccessService.loadPersonalTrainerAccess(uid: _ownerUid));
       if (!mounted) return;
       final allowed = AppTierAccessService.canUseFeature(
         access,
@@ -102,9 +103,10 @@ class _MonthlyLessonHistoryPageState extends State<MonthlyLessonHistoryPage> {
       }
       setState(() {
         _summary = summary;
-        _state = summary.totalConfirmed == 0
-            ? MonthlyLessonViewState.empty
-            : MonthlyLessonViewState.success;
+        _state =
+            summary.totalConfirmed == 0
+                ? MonthlyLessonViewState.empty
+                : MonthlyLessonViewState.success;
       });
     } on FirebaseException catch (error) {
       if (!mounted ||
@@ -113,9 +115,10 @@ class _MonthlyLessonHistoryPageState extends State<MonthlyLessonHistoryPage> {
         return;
       }
       setState(() {
-        _state = error.code == 'permission-denied'
-            ? MonthlyLessonViewState.permissionDenied
-            : MonthlyLessonViewState.networkError;
+        _state =
+            error.code == 'permission-denied'
+                ? MonthlyLessonViewState.permissionDenied
+                : MonthlyLessonViewState.networkError;
       });
     } catch (_) {
       if (!mounted ||
@@ -147,33 +150,32 @@ class _MonthlyLessonHistoryPageState extends State<MonthlyLessonHistoryPage> {
     final memberId = record.memberId.trim();
     if (memberId.isEmpty) return;
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(memberId)
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(memberId)
+              .get();
       final data = snapshot.data();
-      final owned = snapshot.exists &&
+      final owned =
+          snapshot.exists &&
           data?['memberId'] == memberId &&
           data?['trainerId'] == _ownerUid &&
           data?['workspaceType'] == 'personal' &&
           data?['managementState'] != 'deleted';
-      debugPrint(
-        '[MTF_MONTHLY_LESSON_MEMBER] workspace=personal owned=$owned',
-      );
+      debugPrint('[MTF_MONTHLY_LESSON_MEMBER] workspace=personal owned=$owned');
       if (!owned || !mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => ClientCardPage(
-            memberId: memberId,
-            isEditMode: true,
-            personalOwnerUid: _ownerUid,
-          ),
+          builder:
+              (_) => ClientCardPage(
+                memberId: memberId,
+                isEditMode: true,
+                personalOwnerUid: _ownerUid,
+              ),
         ),
       );
     } catch (_) {
-      debugPrint(
-        '[MTF_MONTHLY_LESSON_MEMBER] workspace=personal owned=false',
-      );
+      debugPrint('[MTF_MONTHLY_LESSON_MEMBER] workspace=personal owned=false');
     }
   }
 
@@ -191,56 +193,56 @@ class _MonthlyLessonHistoryPageState extends State<MonthlyLessonHistoryPage> {
       ),
       body: SafeArea(
         top: false,
-        child: _tierLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _tierFailed
+        child:
+            _tierLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _tierFailed
                 ? const Center(
-                    child: Text(
-                      '등급 정보를 확인하지 못했어요.\n잠시 후 다시 시도해주세요.',
-                      textAlign: TextAlign.center,
-                    ),
-                  )
+                  child: Text(
+                    '등급 정보를 확인하지 못했어요.\n잠시 후 다시 시도해주세요.',
+                    textAlign: TextAlign.center,
+                  ),
+                )
                 : !_canUseLessonInsights
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                '인사이트는 Pro부터 사용할 수 있어요.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFF312E81),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              FilledButton(
-                                onPressed: _showTierGuide,
-                                child: const Text('등급 안내 보기'),
-                              ),
-                            ],
+                ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '인사이트는 Pro부터 사용할 수 있어요.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF312E81),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      )
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                        child: MonthlyLessonCalendar(
-                          month: _selectedMonth,
-                          state: _state,
-                          summary: _summary,
-                          selectedDay: _selectedDay,
-                          onPreviousMonth: () => _moveMonth(-1),
-                          onNextMonth: () => _moveMonth(1),
-                          onCurrentMonth: _returnToCurrentMonth,
-                          onDaySelected: (day) =>
-                              setState(() => _selectedDay = day),
-                          onRetry: _loadMonth,
-                          onMemberTap: _openMember,
+                        const SizedBox(height: 14),
+                        FilledButton(
+                          onPressed: _showTierGuide,
+                          child: const Text('등급 안내 보기'),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                )
+                : SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                  child: MonthlyLessonCalendar(
+                    month: _selectedMonth,
+                    state: _state,
+                    summary: _summary,
+                    selectedDay: _selectedDay,
+                    onPreviousMonth: () => _moveMonth(-1),
+                    onNextMonth: () => _moveMonth(1),
+                    onCurrentMonth: _returnToCurrentMonth,
+                    onDaySelected: (day) => setState(() => _selectedDay = day),
+                    onRetry: _loadMonth,
+                    onMemberTap: _openMember,
+                  ),
+                ),
       ),
     );
   }

@@ -26,10 +26,9 @@ class AifcTierCelebrationSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _TierCelebrationBody(
-        trainerName: trainerName,
-        upgrade: upgrade,
-      ),
+      builder:
+          (_) =>
+              _TierCelebrationBody(trainerName: trainerName, upgrade: upgrade),
     );
   }
 }
@@ -121,10 +120,11 @@ _TierTheme _themeFor(AifcTierUpgrade upgrade) {
         toBg: const Color(0xFFEFF6FF),
         toBorder: const Color(0xFF93C5FD),
         title: 'Amateur 등급으로 성장했어요.',
-        subtitle: '레슨 일정을 채우고 선생님 정보까지 완료하셨어요.\n'
-            '이제 고객카드로 회원관리를 시작할 수 있어요.',
-        features: ['고객카드 회원관리', '회원별 레슨 이력', '남은 회차 확인'],
-        btnLabel: '고객카드 시작하기',
+        subtitle:
+            '레슨 일정을 채우고 선생님 정보까지 완료하셨어요.\n'
+            '이제 회원카드로 회원관리를 시작할 수 있어요.',
+        features: ['회원카드 회원관리', '회원별 레슨 이력', '남은 회차 확인'],
+        btnLabel: '회원카드 시작하기',
         fxType: _FxType.popper,
       );
 
@@ -254,10 +254,14 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
-    _riseOpacity = Tween(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: _riseCtrl, curve: Curves.easeOut));
-    _riseSlide = Tween(begin: const Offset(0, 0.4), end: Offset.zero).animate(
-        CurvedAnimation(parent: _riseCtrl, curve: const _SpringCurve()));
+    _riseOpacity = Tween(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _riseCtrl, curve: Curves.easeOut));
+    _riseSlide = Tween(
+      begin: const Offset(0, 0.4),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _riseCtrl, curve: const _SpringCurve()));
 
     HapticFeedback.heavyImpact();
     _startSequence();
@@ -328,8 +332,9 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
             Container(
               decoration: BoxDecoration(
                 color: _theme.sheetBg,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(26)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(26),
+                ),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -360,9 +365,15 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
                         ),
                         Padding(
                           padding: const EdgeInsets.only(
-                              bottom: 18, left: 10, right: 10),
-                          child: Icon(Icons.arrow_forward_rounded,
-                              size: 16, color: _theme.subColor),
+                            bottom: 18,
+                            left: 10,
+                            right: 10,
+                          ),
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 16,
+                            color: _theme.subColor,
+                          ),
                         ),
                         _buildToBadge(),
                       ],
@@ -400,17 +411,21 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
                         border: Border.all(color: _theme.featBorderColor),
                       ),
                       child: Column(
-                        children: _theme.features
-                            .map((f) => Padding(
-                                  padding: EdgeInsets.only(
-                                      bottom:
-                                          f == _theme.features.last ? 0 : 8),
-                                  child: _FeatureRow(
+                        children:
+                            _theme.features
+                                .map(
+                                  (f) => Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: f == _theme.features.last ? 0 : 8,
+                                    ),
+                                    child: _FeatureRow(
                                       text: f,
                                       dotColor: _theme.subColor,
-                                      textColor: _theme.featTextColor),
-                                ))
-                            .toList(),
+                                      textColor: _theme.featTextColor,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -432,15 +447,20 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
                           elevation: 0,
                           minimumSize: const Size(double.infinity, 48),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         onPressed: () {
                           HapticFeedback.mediumImpact();
                           Navigator.of(context).pop(true);
                         },
-                        child: Text(_theme.btnLabel,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w900)),
+                        child: Text(
+                          _theme.btnLabel,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -466,51 +486,61 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
             if (_theme.fxType == _FxType.popper)
               AnimatedBuilder(
                 animation: _popperCtrl,
-                builder: (_, __) => Positioned.fill(
-                  child: IgnorePointer(
-                    child: ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(26)),
-                      child: CustomPaint(
-                        painter: _PopperPainter(progress: _popperCtrl.value),
+                builder:
+                    (_, __) => Positioned.fill(
+                      child: IgnorePointer(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(26),
+                          ),
+                          child: CustomPaint(
+                            painter: _PopperPainter(
+                              progress: _popperCtrl.value,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
               ),
 
             // ── 아마추어→세미프로: 빔+링+파티클 ──
             if (_theme.fxType == _FxType.ranked)
               AnimatedBuilder(
                 animation: _fxCtrl,
-                builder: (_, __) => Positioned.fill(
-                  child: IgnorePointer(
-                    child: ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(26)),
-                      child: CustomPaint(
-                        painter: _RankedPainter(progress: _fxCtrl.value),
+                builder:
+                    (_, __) => Positioned.fill(
+                      child: IgnorePointer(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(26),
+                          ),
+                          child: CustomPaint(
+                            painter: _RankedPainter(progress: _fxCtrl.value),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
               ),
 
             // ── 세미프로→프로: 모퉁이 문양+파티클 ──
             if (_theme.fxType == _FxType.pro)
               AnimatedBuilder(
                 animation: _fxCtrl,
-                builder: (_, __) => Positioned.fill(
-                  child: IgnorePointer(
-                    child: ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(26)),
-                      child: CustomPaint(
-                        painter: _GoldOrnamentPainter(progress: _fxCtrl.value),
+                builder:
+                    (_, __) => Positioned.fill(
+                      child: IgnorePointer(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(26),
+                          ),
+                          child: CustomPaint(
+                            painter: _GoldOrnamentPainter(
+                              progress: _fxCtrl.value,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
               ),
 
             // ── 플래시 (세미프로 / 프로 공통) ──
@@ -519,14 +549,16 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
                 animation: _flashAnim,
                 builder: (_, __) {
                   if (_flashAnim.value <= 0) return const SizedBox.shrink();
-                  final flashColor = _theme.fxType == _FxType.ranked
-                      ? const Color(0xFF7C3AED)
-                      : const Color(0xFFFFEB96);
+                  final flashColor =
+                      _theme.fxType == _FxType.ranked
+                          ? const Color(0xFF7C3AED)
+                          : const Color(0xFFFFEB96);
                   return Positioned.fill(
                     child: IgnorePointer(
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(26)),
+                          top: Radius.circular(26),
+                        ),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: RadialGradient(
@@ -558,7 +590,8 @@ class _TierCelebrationBodyState extends State<_TierCelebrationBody>
                     child: IgnorePointer(
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(26)),
+                          top: Radius.circular(26),
+                        ),
                         child: ColoredBox(
                           color: Colors.white.withOpacity(v * 0.92),
                         ),
@@ -605,9 +638,14 @@ class _TierBadge extends StatelessWidget {
           child: Icon(icon, color: iconColor, size: 24),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(
-                color: iconColor, fontSize: 11, fontWeight: FontWeight.w700)),
+        Text(
+          label,
+          style: TextStyle(
+            color: iconColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -633,9 +671,14 @@ class _FeatureRow extends StatelessWidget {
           decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
         ),
         const SizedBox(width: 9),
-        Text(text,
-            style: TextStyle(
-                color: textColor, fontSize: 12, fontWeight: FontWeight.w700)),
+        Text(
+          text,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -651,7 +694,11 @@ class _PopperPainter extends CustomPainter {
   static List<_Particle>? _p1, _p2, _p3;
 
   static List<_Particle> _makePopper(
-      double ox, double oy, int seed, List<Color> cols) {
+    double ox,
+    double oy,
+    int seed,
+    List<Color> cols,
+  ) {
     final rng = Random(seed);
     return List.generate(32, (_) {
       final a = rng.nextDouble() * pi * 2;
@@ -692,7 +739,11 @@ class _PopperPainter extends CustomPainter {
   }
 
   void _drawPopper(
-      Canvas canvas, Size size, List<_Particle> parts, double startT) {
+    Canvas canvas,
+    Size size,
+    List<_Particle> parts,
+    double startT,
+  ) {
     if (progress < startT) return;
     final t = ((progress - startT) / (1 - startT)).clamp(0.0, 1.0);
     final steps = t * 55;
@@ -700,14 +751,16 @@ class _PopperPainter extends CustomPainter {
     // 터질 때 플래시
     if (t < 0.12) {
       final fa = t / 0.12;
-      final grd = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            Colors.white.withOpacity(fa * 0.7),
-            Colors.transparent,
-          ],
-        ).createShader(Rect.fromCircle(
-            center: Offset(parts[0].ox, parts[0].oy), radius: 30));
+      final grd =
+          Paint()
+            ..shader = RadialGradient(
+              colors: [Colors.white.withOpacity(fa * 0.7), Colors.transparent],
+            ).createShader(
+              Rect.fromCircle(
+                center: Offset(parts[0].ox, parts[0].oy),
+                radius: 30,
+              ),
+            );
       canvas.drawCircle(Offset(parts[0].ox, parts[0].oy), 30 * fa, grd);
     }
 
@@ -725,7 +778,10 @@ class _PopperPainter extends CustomPainter {
       canvas.rotate(p.rot + p.vr * steps);
       canvas.drawRect(
         Rect.fromCenter(
-            center: Offset.zero, width: p.size, height: p.size * p.aspect),
+          center: Offset.zero,
+          width: p.size,
+          height: p.size * p.aspect,
+        ),
         Paint()..color = p.color.withOpacity(alpha),
       );
       canvas.restore();
@@ -780,19 +836,21 @@ class _RankedPainter extends CustomPainter {
     final t = progress;
 
     // 빔
-    final beamAlpha = t < 0.3
-        ? t / 0.3
-        : t < 0.6
+    final beamAlpha =
+        t < 0.3
+            ? t / 0.3
+            : t < 0.6
             ? 1.0
             : (1 - (t - 0.6) / 0.4).clamp(0.0, 1.0);
     if (beamAlpha > 0) {
       for (int i = 0; i < 16; i++) {
         final a = (i / 16) * pi * 2;
         final len = size.width * 0.55 * min(1, t * 3);
-        final p = Paint()
-          ..color = const Color(0xFFA78BFA).withOpacity(beamAlpha * 0.18)
-          ..strokeWidth = 5
-          ..style = PaintingStyle.stroke;
+        final p =
+            Paint()
+              ..color = const Color(0xFFA78BFA).withOpacity(beamAlpha * 0.18)
+              ..strokeWidth = 5
+              ..style = PaintingStyle.stroke;
         canvas.drawLine(
           Offset(cx, cy),
           Offset(cx + cos(a) * len, cy + sin(a) * len),
@@ -825,14 +883,16 @@ class _RankedPainter extends CustomPainter {
 
     // 글로우
     if (t < 0.4) {
-      final grd = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            const Color(0xFFA78BFA).withOpacity((0.4 - t) / 0.4 * 0.4),
-            Colors.transparent,
-          ],
-        ).createShader(
-            Rect.fromCircle(center: Offset(cx, cy), radius: size.width * 0.4));
+      final grd =
+          Paint()
+            ..shader = RadialGradient(
+              colors: [
+                const Color(0xFFA78BFA).withOpacity((0.4 - t) / 0.4 * 0.4),
+                Colors.transparent,
+              ],
+            ).createShader(
+              Rect.fromCircle(center: Offset(cx, cy), radius: size.width * 0.4),
+            );
       canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), grd);
     }
 
@@ -850,23 +910,27 @@ class _RankedPainter extends CustomPainter {
       if (alpha <= 0) continue;
 
       if (p.isCircle) {
-        canvas.drawCircle(Offset(px, py), p.size,
-            Paint()..color = p.color.withOpacity(alpha));
+        canvas.drawCircle(
+          Offset(px, py),
+          p.size,
+          Paint()..color = p.color.withOpacity(alpha),
+        );
       } else {
         canvas.save();
         canvas.translate(px, py);
         canvas.rotate(pt * pi);
         final r = p.size;
-        final path = Path()
-          ..moveTo(0, -r)
-          ..lineTo(r * 0.4, -r * 0.4)
-          ..lineTo(r, 0)
-          ..lineTo(r * 0.4, r * 0.4)
-          ..lineTo(0, r)
-          ..lineTo(-r * 0.4, r * 0.4)
-          ..lineTo(-r, 0)
-          ..lineTo(-r * 0.4, -r * 0.4)
-          ..close();
+        final path =
+            Path()
+              ..moveTo(0, -r)
+              ..lineTo(r * 0.4, -r * 0.4)
+              ..lineTo(r, 0)
+              ..lineTo(r * 0.4, r * 0.4)
+              ..lineTo(0, r)
+              ..lineTo(-r * 0.4, r * 0.4)
+              ..lineTo(-r, 0)
+              ..lineTo(-r * 0.4, -r * 0.4)
+              ..close();
         canvas.drawPath(path, Paint()..color = p.color.withOpacity(alpha));
         canvas.restore();
       }
@@ -911,9 +975,10 @@ class _GoldOrnamentPainter extends CustomPainter {
         ox = size.width / 2 + (rng.nextDouble() - 0.5) * size.width * 0.7;
         oy = size.height * 0.1 + rng.nextDouble() * size.height * 0.4;
       } else {
-        ox = rng.nextBool()
-            ? rng.nextDouble() * size.width * 0.25
-            : size.width * 0.75 + rng.nextDouble() * size.width * 0.25;
+        ox =
+            rng.nextBool()
+                ? rng.nextDouble() * size.width * 0.25
+                : size.width * 0.75 + rng.nextDouble() * size.width * 0.25;
         oy = rng.nextDouble() * size.height * 0.5;
       }
       return _Particle(
@@ -950,8 +1015,14 @@ class _GoldOrnamentPainter extends CustomPainter {
       canvas.drawPath(
         Path()
           ..moveTo(c.sx * sz * 0.08, c.sy * sz * 0.52)
-          ..cubicTo(c.sx * sz * .08, c.sy * sz * .22, c.sx * sz * .22,
-              c.sy * sz * .08, c.sx * sz * .52, c.sy * sz * .08),
+          ..cubicTo(
+            c.sx * sz * .08,
+            c.sy * sz * .22,
+            c.sx * sz * .22,
+            c.sy * sz * .08,
+            c.sx * sz * .52,
+            c.sy * sz * .08,
+          ),
         Paint()
           ..color = const Color(0xFFF59E0B).withOpacity(ep * 0.9)
           ..strokeWidth = 1.6
@@ -961,8 +1032,14 @@ class _GoldOrnamentPainter extends CustomPainter {
       canvas.drawPath(
         Path()
           ..moveTo(c.sx * sz * .14, c.sy * sz * .44)
-          ..cubicTo(c.sx * sz * .14, c.sy * sz * .26, c.sx * sz * .26,
-              c.sy * sz * .14, c.sx * sz * .44, c.sy * sz * .14),
+          ..cubicTo(
+            c.sx * sz * .14,
+            c.sy * sz * .26,
+            c.sx * sz * .26,
+            c.sy * sz * .14,
+            c.sx * sz * .44,
+            c.sy * sz * .14,
+          ),
         Paint()
           ..color = const Color(0xFFFCD34D).withOpacity(ep * 0.55)
           ..strokeWidth = 0.8
@@ -972,8 +1049,12 @@ class _GoldOrnamentPainter extends CustomPainter {
       canvas.drawPath(
         Path()
           ..moveTo(c.sx * sz * .10, c.sy * sz * .32)
-          ..quadraticBezierTo(c.sx * sz * .10, c.sy * sz * .10, c.sx * sz * .32,
-              c.sy * sz * .10),
+          ..quadraticBezierTo(
+            c.sx * sz * .10,
+            c.sy * sz * .10,
+            c.sx * sz * .32,
+            c.sy * sz * .10,
+          ),
         Paint()
           ..color = const Color(0xFFFDE68A).withOpacity(ep * 0.3)
           ..strokeWidth = 0.7
@@ -984,8 +1065,11 @@ class _GoldOrnamentPainter extends CustomPainter {
         Offset(c.sx * sz * .08, c.sy * sz * .52),
         Offset(c.sx * sz * .52, c.sy * sz * .08),
       ]) {
-        canvas.drawCircle(pt, 2.4 * ep,
-            Paint()..color = const Color(0xFFFCD34D).withOpacity(ep));
+        canvas.drawCircle(
+          pt,
+          2.4 * ep,
+          Paint()..color = const Color(0xFFFCD34D).withOpacity(ep),
+        );
       }
       // 다이아
       final ds = 4.5 * ep;
@@ -1000,25 +1084,39 @@ class _GoldOrnamentPainter extends CustomPainter {
         Paint()..color = const Color(0xFFF59E0B).withOpacity(ep * 0.95),
       );
       // 틱
-      final tp = Paint()
-        ..color = const Color(0xFFFDE68A).withOpacity(ep * 0.45)
-        ..strokeWidth = 0.8
-        ..style = PaintingStyle.stroke;
+      final tp =
+          Paint()
+            ..color = const Color(0xFFFDE68A).withOpacity(ep * 0.45)
+            ..strokeWidth = 0.8
+            ..style = PaintingStyle.stroke;
       for (final f in [0.27, 0.38]) {
-        canvas.drawLine(Offset(c.sx * sz * f, c.sy * sz * .08),
-            Offset(c.sx * sz * f, c.sy * sz * .15), tp);
-        canvas.drawLine(Offset(c.sx * sz * .08, c.sy * sz * f),
-            Offset(c.sx * sz * .15, c.sy * sz * f), tp);
+        canvas.drawLine(
+          Offset(c.sx * sz * f, c.sy * sz * .08),
+          Offset(c.sx * sz * f, c.sy * sz * .15),
+          tp,
+        );
+        canvas.drawLine(
+          Offset(c.sx * sz * .08, c.sy * sz * f),
+          Offset(c.sx * sz * .15, c.sy * sz * f),
+          tp,
+        );
       }
       // 엣지선
-      final ep2 = Paint()
-        ..color = const Color(0xFFF59E0B).withOpacity(ep * 0.28)
-        ..strokeWidth = 1.0
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(Offset(c.sx * sz * .52, c.sy * sz * .08),
-          Offset(c.sx * sz * 1.05, c.sy * sz * .08), ep2);
-      canvas.drawLine(Offset(c.sx * sz * .08, c.sy * sz * .52),
-          Offset(c.sx * sz * .08, c.sy * sz * 1.05), ep2);
+      final ep2 =
+          Paint()
+            ..color = const Color(0xFFF59E0B).withOpacity(ep * 0.28)
+            ..strokeWidth = 1.0
+            ..style = PaintingStyle.stroke;
+      canvas.drawLine(
+        Offset(c.sx * sz * .52, c.sy * sz * .08),
+        Offset(c.sx * sz * 1.05, c.sy * sz * .08),
+        ep2,
+      );
+      canvas.drawLine(
+        Offset(c.sx * sz * .08, c.sy * sz * .52),
+        Offset(c.sx * sz * .08, c.sy * sz * 1.05),
+        ep2,
+      );
 
       canvas.restore();
     }
@@ -1038,17 +1136,21 @@ class _GoldOrnamentPainter extends CustomPainter {
       if (alpha <= 0) continue;
 
       if (p.isCircle) {
-        canvas.drawCircle(Offset(px, py), p.size,
-            Paint()..color = p.color.withOpacity(alpha));
+        canvas.drawCircle(
+          Offset(px, py),
+          p.size,
+          Paint()..color = p.color.withOpacity(alpha),
+        );
       } else {
         canvas.save();
         canvas.translate(px, py);
         canvas.rotate(p.rot + p.vr * steps);
         canvas.drawRect(
           Rect.fromCenter(
-              center: Offset.zero,
-              width: p.size * 2,
-              height: p.size * p.aspect),
+            center: Offset.zero,
+            width: p.size * 2,
+            height: p.size * p.aspect,
+          ),
           Paint()..color = p.color.withOpacity(alpha),
         );
         canvas.restore();

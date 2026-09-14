@@ -1,9 +1,8 @@
 String? parsePersonalTierLabel(Object? value) {
-  final normalized = (value ?? '')
-      .toString()
-      .trim()
-      .toLowerCase()
-      .replaceAll(RegExp(r'[\s_-]+'), '');
+  final normalized = (value ?? '').toString().trim().toLowerCase().replaceAll(
+    RegExp(r'[\s_-]+'),
+    '',
+  );
 
   switch (normalized) {
     case 'beginner':

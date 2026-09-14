@@ -14,10 +14,7 @@ void main() {
     test('canonical 성별과 과거 표시값도 안전하게 정규화한다', () {
       expect(personalMemberGenderForSave('male'), 'male');
       expect(personalMemberGenderForSave('여성'), 'female');
-      expect(
-        () => personalMemberGenderForSave('미입력'),
-        throwsArgumentError,
-      );
+      expect(() => personalMemberGenderForSave('미입력'), throwsArgumentError);
     });
 
     test('생년월일을 canonical yyyy-MM-dd로 정규화한다', () {
@@ -32,10 +29,7 @@ void main() {
       for (final grade in const ['VVIP', 'VIP', 'gold', 'Silver', 'BRONZE']) {
         expect(personalMemberGradeForSave(grade), grade.toUpperCase());
       }
-      expect(
-        () => personalMemberGradeForSave('PLATINUM'),
-        throwsArgumentError,
-      );
+      expect(() => personalMemberGradeForSave('PLATINUM'), throwsArgumentError);
     });
   });
 
@@ -72,10 +66,7 @@ void main() {
         selectedGroupId: 'legacy_group_3',
       );
 
-      expect(
-        result.type,
-        PersonalMemberGroupSelectionType.legacyOrMissing,
-      );
+      expect(result.type, PersonalMemberGroupSelectionType.legacyOrMissing);
       expect(result.groupId, isNull);
       expect(result.isValid, isTrue);
       expect(result.fallbackApplied, isTrue);
@@ -123,10 +114,7 @@ void main() {
       expect(logs, hasLength(2));
       expect(logs.every((log) => log.contains('trace=${trace.id}')), isTrue);
       expect(logs.first, contains('stage=SAVE_BUTTON_TAP status=START'));
-      expect(
-        logs.last,
-        contains('stage=CALLABLE_RESPONSE status=OK'),
-      );
+      expect(logs.last, contains('stage=CALLABLE_RESPONSE status=OK'));
       expect(logs.join('\n'), isNot(contains('memberId=')));
       expect(logs.join('\n'), isNot(contains('phone=')));
       expect(logs.join('\n'), isNot(contains('uid=')));

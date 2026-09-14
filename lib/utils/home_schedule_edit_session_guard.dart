@@ -7,10 +7,7 @@ enum HomeScheduleEditSessionState {
   disposed,
 }
 
-enum HomeScheduleEditMutationAction {
-  save,
-  delete,
-}
+enum HomeScheduleEditMutationAction { save, delete }
 
 class HomeScheduleEditMutationAttempt {
   const HomeScheduleEditMutationAttempt({
@@ -32,9 +29,9 @@ class HomeScheduleEditSessionGuard {
     required String currentActualDocId,
     required String currentDataDocId,
     required DateTime? currentStartAt,
-  })  : currentActualDocId = currentActualDocId.trim(),
-        currentDataDocId = currentDataDocId.trim(),
-        currentStartAt = currentStartAt;
+  }) : currentActualDocId = currentActualDocId.trim(),
+       currentDataDocId = currentDataDocId.trim(),
+       currentStartAt = currentStartAt;
 
   final String editSessionId;
 
@@ -45,12 +42,9 @@ class HomeScheduleEditSessionGuard {
 
   int _mutationSequence = 0;
 
-  HomeScheduleEditMutationAttempt begin(
-    HomeScheduleEditMutationAction action,
-  ) {
+  HomeScheduleEditMutationAttempt begin(HomeScheduleEditMutationAction action) {
     final stateBefore = state;
-    final mutationId =
-        '$editSessionId-${action.name}-${++_mutationSequence}';
+    final mutationId = '$editSessionId-${action.name}-${++_mutationSequence}';
 
     if (state != HomeScheduleEditSessionState.idle) {
       return HomeScheduleEditMutationAttempt(
@@ -80,9 +74,10 @@ class HomeScheduleEditSessionGuard {
     currentActualDocId = targetActualDocId.trim();
     currentDataDocId = targetDataDocId.trim();
     currentStartAt = targetStartAt;
-    state = moved
-        ? HomeScheduleEditSessionState.moved
-        : HomeScheduleEditSessionState.completed;
+    state =
+        moved
+            ? HomeScheduleEditSessionState.moved
+            : HomeScheduleEditSessionState.completed;
   }
 
   void completeDelete() {
@@ -118,8 +113,7 @@ class HomeScheduleEditSaveSelection {
   final bool invariantCorrected;
   final String correctionReason;
 
-  bool get isMultiDay =>
-      explicitMultiDaySelection && selectedDays.length > 1;
+  bool get isMultiDay => explicitMultiDaySelection && selectedDays.length > 1;
 }
 
 HomeScheduleEditSaveSelection normalizeHomeScheduleEditSelectionForSave({
@@ -128,24 +122,23 @@ HomeScheduleEditSaveSelection normalizeHomeScheduleEditSelectionForSave({
   required bool explicitMultiDaySelection,
 }) {
   final cleanTargetDay = currentTargetDay.trim();
-  final cleanSelectedDays = selectedDays
-      .map((day) => day.trim())
-      .where((day) => day.isNotEmpty)
-      .toSet();
+  final cleanSelectedDays =
+      selectedDays
+          .map((day) => day.trim())
+          .where((day) => day.isNotEmpty)
+          .toSet();
 
   if (!explicitMultiDaySelection) {
-    final normalizedDays = cleanTargetDay.isEmpty
-        ? <String>{}
-        : <String>{cleanTargetDay};
-    final corrected = cleanSelectedDays.length != normalizedDays.length ||
+    final normalizedDays =
+        cleanTargetDay.isEmpty ? <String>{} : <String>{cleanTargetDay};
+    final corrected =
+        cleanSelectedDays.length != normalizedDays.length ||
         !cleanSelectedDays.containsAll(normalizedDays);
     return HomeScheduleEditSaveSelection(
       selectedDays: normalizedDays,
       explicitMultiDaySelection: false,
       invariantCorrected: corrected,
-      correctionReason: corrected
-          ? 'implicit_single_selection_state_leak'
-          : '',
+      correctionReason: corrected ? 'implicit_single_selection_state_leak' : '',
     );
   }
 
@@ -168,7 +161,7 @@ HomeScheduleEditSaveSelection normalizeHomeScheduleEditSelectionForSave({
 
 class HomeScheduleEditSelectionState {
   HomeScheduleEditSelectionState.single({required String currentDay})
-      : _selectedDays = initialHomeScheduleEditSelectedDays(currentDay);
+    : _selectedDays = initialHomeScheduleEditSelectedDays(currentDay);
 
   final Set<String> _selectedDays;
   bool explicitMultiDaySelection = false;

@@ -40,13 +40,16 @@ class ShadcnDropdownMenu extends StatelessWidget {
                   if (items[i].icon != null)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: Icon(items[i].icon,
-                          size: 18, color: cs.onSurfaceVariant),
+                      child: Icon(
+                        items[i].icon,
+                        size: 18,
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   Text(items[i].label),
                 ],
               ),
-            )
+            ),
         ];
       },
       onSelected: (i) => items[i].onPressed(),

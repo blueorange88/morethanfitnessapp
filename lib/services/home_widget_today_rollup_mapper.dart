@@ -40,13 +40,13 @@ class HomeWidgetTodayRollupItem {
   bool isOngoingAt(DateTime now) => !startAt.isAfter(now) && endAt.isAfter(now);
 
   Map<String, Object?> toJson() => {
-        'startAtEpochMs': startAt.millisecondsSinceEpoch,
-        'endAtEpochMs': endAt.millisecondsSinceEpoch,
-        'displayName': memberName.trim(),
-        'lessonType': lessonType.trim(),
-        if (remainingSessions != null) 'remainingSessions': remainingSessions,
-        'status': status.trim().toLowerCase(),
-      };
+    'startAtEpochMs': startAt.millisecondsSinceEpoch,
+    'endAtEpochMs': endAt.millisecondsSinceEpoch,
+    'displayName': memberName.trim(),
+    'lessonType': lessonType.trim(),
+    if (remainingSessions != null) 'remainingSessions': remainingSessions,
+    'status': status.trim().toLowerCase(),
+  };
 }
 
 class HomeWidgetTodayRollupSnapshot {
@@ -122,19 +122,22 @@ class HomeWidgetTodayRollupMapper {
   }) {
     final cleanOwnerUid = currentOwnerUid.trim();
     final today = seoulDateKey(generatedAt);
-    final todayCandidates = sourceItems.where((item) {
-      return cleanOwnerUid.isNotEmpty &&
-          item.ownerUid.trim() == cleanOwnerUid &&
-          item.workspaceType.trim() == 'personal' &&
-          seoulDateKey(item.startAt) == today;
-    }).toList(growable: false);
-    final selected = todayCandidates.where((item) {
-      return item.endAt.isAfter(item.startAt) &&
-          !_excludedTodayRollupStatuses.contains(
-            _normalizedStatus(item.status),
-          );
-    }).toList()
-      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    final todayCandidates = sourceItems
+        .where((item) {
+          return cleanOwnerUid.isNotEmpty &&
+              item.ownerUid.trim() == cleanOwnerUid &&
+              item.workspaceType.trim() == 'personal' &&
+              seoulDateKey(item.startAt) == today;
+        })
+        .toList(growable: false);
+    final selected =
+        todayCandidates.where((item) {
+            return item.endAt.isAfter(item.startAt) &&
+                !_excludedTodayRollupStatuses.contains(
+                  _normalizedStatus(item.status),
+                );
+          }).toList()
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
     return HomeWidgetTodayRollupSelection(
       items: List.unmodifiable(selected),
       todayCandidateCount: todayCandidates.length,
@@ -149,9 +152,10 @@ class HomeWidgetTodayRollupMapper {
     final safeRemainingCapacity = remainingCapacity < 0 ? 0 : remainingCapacity;
     final topCardCount = safeUpcomingCount > 2 ? 2 : safeUpcomingCount;
     final remainingSourceCount = safeUpcomingCount - topCardCount;
-    final visibleRemainingCount = remainingSourceCount > safeRemainingCapacity
-        ? safeRemainingCapacity
-        : remainingSourceCount;
+    final visibleRemainingCount =
+        remainingSourceCount > safeRemainingCapacity
+            ? safeRemainingCapacity
+            : remainingSourceCount;
     return HomeWidgetTodayRollupLayout(
       upcomingCount: safeUpcomingCount,
       topCardCount: topCardCount,
@@ -195,19 +199,20 @@ class HomeWidgetTodayRollupMapper {
       );
     }
 
-    final visible = snapshot.items.where((item) {
-      final status = _normalizedStatus(item.status);
-      return seoulDateKey(item.startAt) == seoulDateKey(now) &&
-          item.endAt.isAfter(now) &&
-          item.endAt.isAfter(item.startAt) &&
-          !_excludedTodayRollupStatuses.contains(status);
-    }).toList()
-      ..sort((a, b) {
-        final aOngoing = a.isOngoingAt(now);
-        final bOngoing = b.isOngoingAt(now);
-        if (aOngoing != bOngoing) return aOngoing ? -1 : 1;
-        return a.startAt.compareTo(b.startAt);
-      });
+    final visible =
+        snapshot.items.where((item) {
+            final status = _normalizedStatus(item.status);
+            return seoulDateKey(item.startAt) == seoulDateKey(now) &&
+                item.endAt.isAfter(now) &&
+                item.endAt.isAfter(item.startAt) &&
+                !_excludedTodayRollupStatuses.contains(status);
+          }).toList()
+          ..sort((a, b) {
+            final aOngoing = a.isOngoingAt(now);
+            final bOngoing = b.isOngoingAt(now);
+            if (aOngoing != bOngoing) return aOngoing ? -1 : 1;
+            return a.startAt.compareTo(b.startAt);
+          });
 
     return HomeWidgetTodayRollupView(
       next: visible.isEmpty ? null : visible.first,

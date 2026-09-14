@@ -22,24 +22,25 @@ class _ShadcnPopoverState extends State<ShadcnPopover> {
     if (_overlay != null) return;
 
     _overlay = OverlayEntry(
-      builder: (_) => Positioned(
-        child: CompositedTransformFollower(
-          link: _link,
-          offset: const Offset(0, 10),
-          child: Material(
-            borderRadius: BorderRadius.circular(10),
-            elevation: 10,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
+      builder:
+          (_) => Positioned(
+            child: CompositedTransformFollower(
+              link: _link,
+              offset: const Offset(0, 10),
+              child: Material(
                 borderRadius: BorderRadius.circular(10),
-                color: Theme.of(context).colorScheme.surface,
+                elevation: 10,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Theme.of(context).colorScheme.surface,
+                  ),
+                  child: widget.content,
+                ),
               ),
-              child: widget.content,
             ),
           ),
-        ),
-      ),
     );
 
     Overlay.of(context).insert(_overlay!);

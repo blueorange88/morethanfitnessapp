@@ -35,13 +35,15 @@ class HomeMemberMatchPickerSheet {
       final remain = candidate['remainingSessions'];
       final total = candidate['totalSessions'];
 
-      final remainValue = remain is num
-          ? remain.toInt()
-          : int.tryParse((remain ?? '').toString()) ?? 0;
+      final remainValue =
+          remain is num
+              ? remain.toInt()
+              : int.tryParse((remain ?? '').toString()) ?? 0;
 
-      final totalValue = total is num
-          ? total.toInt()
-          : int.tryParse((total ?? '').toString()) ?? 0;
+      final totalValue =
+          total is num
+              ? total.toInt()
+              : int.tryParse((total ?? '').toString()) ?? 0;
 
       if (totalValue <= 0 && remainValue <= 0) {
         return '회차정보 없음';
@@ -120,26 +122,29 @@ class HomeMemberMatchPickerSheet {
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: candidates.length,
-                          separatorBuilder: (_, __) =>
-                          const SizedBox(height: 8),
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final candidate = candidates[index];
-                            final isSelected =
-                            identical(selectedCandidate, candidate);
+                            final isSelected = identical(
+                              selectedCandidate,
+                              candidate,
+                            );
 
-                            final name = (candidate['name'] ?? typedName)
-                                .toString()
-                                .trim();
+                            final name =
+                                (candidate['name'] ?? typedName)
+                                    .toString()
+                                    .trim();
 
-                            final phone = (candidate['phone'] ?? '')
-                                .toString()
-                                .trim();
+                            final phone =
+                                (candidate['phone'] ?? '').toString().trim();
 
                             final meta = memberMetaLabel(candidate);
                             final phoneText = shortPhoneLabel(phone);
                             final sessionText = sessionLabel(candidate);
-                            final nextLesson =
-                            nextLessonLabel(candidate['nextLessonAt']);
+                            final nextLesson = nextLessonLabel(
+                              candidate['nextLessonAt'],
+                            );
 
                             return InkWell(
                               borderRadius: BorderRadius.circular(16),
@@ -151,18 +156,25 @@ class HomeMemberMatchPickerSheet {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 140),
                                 width: double.infinity,
-                                padding:
-                                const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  12,
+                                  12,
+                                  12,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xFF4F46E5)
-                                      .withOpacity(0.07)
-                                      : Colors.white,
+                                  color:
+                                      isSelected
+                                          ? const Color(
+                                            0xFF4F46E5,
+                                          ).withOpacity(0.07)
+                                          : Colors.white,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: isSelected
-                                        ? const Color(0xFF4F46E5)
-                                        : const Color(0xFFE5E7EB),
+                                    color:
+                                        isSelected
+                                            ? const Color(0xFF4F46E5)
+                                            : const Color(0xFFE5E7EB),
                                     width: isSelected ? 1.4 : 1,
                                   ),
                                   boxShadow: [
@@ -182,18 +194,19 @@ class HomeMemberMatchPickerSheet {
                                         isSelected
                                             ? Icons.radio_button_checked_rounded
                                             : Icons
-                                            .radio_button_unchecked_rounded,
+                                                .radio_button_unchecked_rounded,
                                         size: 20,
-                                        color: isSelected
-                                            ? const Color(0xFF4F46E5)
-                                            : const Color(0xFF9CA3AF),
+                                        color:
+                                            isSelected
+                                                ? const Color(0xFF4F46E5)
+                                                : const Color(0xFF9CA3AF),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             '$name 님',
@@ -245,56 +258,58 @@ class HomeMemberMatchPickerSheet {
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () {
-                                Navigator.of(sheetContext).pop({
-                                  'manual': true,
-                                });
+                                Navigator.of(
+                                  sheetContext,
+                                ).pop({'manual': true});
                               },
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF374151),
                                 side: const BorderSide(
                                   color: Color(0xFFD1D5DB),
                                 ),
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 13),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
                               child: const Text(
                                 '새로 저장',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w800),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: FilledButton(
-                              onPressed: selectedCandidate == null
-                                  ? null
-                                  : () {
-                                Navigator.of(sheetContext)
-                                    .pop(selectedCandidate);
-                              },
+                              onPressed:
+                                  selectedCandidate == null
+                                      ? null
+                                      : () {
+                                        Navigator.of(
+                                          sheetContext,
+                                        ).pop(selectedCandidate);
+                                      },
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF4F46E5),
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor:
-                                const Color(0xFFE5E7EB),
-                                disabledForegroundColor:
-                                const Color(0xFF9CA3AF),
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 13),
+                                disabledBackgroundColor: const Color(
+                                  0xFFE5E7EB,
+                                ),
+                                disabledForegroundColor: const Color(
+                                  0xFF9CA3AF,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
                               child: const Text(
                                 '선택한 회원으로 저장',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w900),
                               ),
                             ),
                           ),

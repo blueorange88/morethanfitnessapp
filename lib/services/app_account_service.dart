@@ -144,6 +144,8 @@ abstract interface class AppEmailVerificationGateway {
 
 abstract interface class AppGoogleIdentityGateway {
   Future<AppAccountUser?> linkWithGoogleCredential();
+
+  Future<AppAccountUser?> signInWithGoogleCredential();
 }
 
 abstract interface class AnonymousProfileGateway {
@@ -313,6 +315,30 @@ class FirebaseAppAccountAuthGateway
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       final result = await user.linkWithCredential(credential);
       return _requiredUser(result.user);
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled) return null;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<AppAccountUser?> signInWithGoogleCredential() async {
+    try {
+      _googleInitialization ??= GoogleSignIn.instance.initialize();
+      await _googleInitialization;
+      if (!GoogleSignIn.instance.supportsAuthenticate()) {
+        throw const AppAccountException(
+          AppAccountErrorCode.googleSetupRequired,
+        );
+      }
+      final account = await GoogleSignIn.instance.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw const AppAccountException(AppAccountErrorCode.invalidCredential);
+      }
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      final result = await _auth.signInWithCredential(credential);
+      return _mapUser(result.user);
     } on GoogleSignInException catch (error) {
       if (error.code == GoogleSignInExceptionCode.canceled) return null;
       rethrow;
@@ -747,6 +773,31 @@ class AppAccountService {
       throw const AppAccountException(AppAccountErrorCode.googleCanceled);
     }
     return AppAccountSnapshot.fromUser(linked);
+  }
+
+  // 익명 세션에 Google 계정을 연결하려는데 그 Google 계정이 이미 다른
+  // UID에 연결되어 있는 경우(credentialAlreadyInUse)를 위한 복구 경로다.
+  // 현재 익명 세션을 버리고 그 Google 계정으로 실제 로그인(sign-in)해서
+  // 기존 계정으로 전환한다. 로컬 세션만 바뀌며 두 계정의 데이터를 합치지
+  // 않는다.
+  Future<AppAccountSnapshot> switchToExistingGoogleAccount() async {
+    return _guard(() async {
+      final googleGateway = _googleGateway;
+      if (googleGateway == null) {
+        throw const AppAccountException(
+          AppAccountErrorCode.googleSetupRequired,
+        );
+      }
+      try {
+        final user = await googleGateway.signInWithGoogleCredential();
+        if (user == null) {
+          throw const AppAccountException(AppAccountErrorCode.googleCanceled);
+        }
+        return AppAccountSnapshot.fromUser(user);
+      } catch (error) {
+        throw _translate(error);
+      }
+    });
   }
 
   Future<T> _guard<T>(Future<T> Function() action) async {

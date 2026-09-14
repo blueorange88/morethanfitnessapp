@@ -38,11 +38,11 @@ class PersonalTrainingLogRecord {
   bool get isDraft => status == 'draft';
   bool get isCancelled => status == 'confirm_cancelled';
   bool get isFinalized => const {
-        'completed',
-        'no_show_deducted',
-        'no_show_not_deducted',
-        'service',
-      }.contains(status);
+    'completed',
+    'no_show_deducted',
+    'no_show_not_deducted',
+    'service',
+  }.contains(status);
 }
 
 class PersonalTrainingLogDraft {

@@ -4,10 +4,7 @@ class ShadcnSelectItem<T> {
   final String label;
   final T value;
 
-  ShadcnSelectItem({
-    required this.label,
-    required this.value,
-  });
+  ShadcnSelectItem({required this.label, required this.value});
 }
 
 class ShadcnSelect<T> extends StatelessWidget {
@@ -46,7 +43,7 @@ class ShadcnSelect<T> extends StatelessWidget {
                 item.label,
                 style: TextStyle(color: cs.onSurfaceVariant),
               ),
-            )
+            ),
         ],
       ),
     );

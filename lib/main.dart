@@ -46,9 +46,7 @@ Future<void> runMtfApp({required AppEnvironment environment}) async {
 
   runApp(
     ProviderScope(
-      child: MyApp(
-        firebaseEmulatorStartupError: firebaseEmulatorStartupError,
-      ),
+      child: MyApp(firebaseEmulatorStartupError: firebaseEmulatorStartupError),
     ),
   );
 
@@ -68,10 +66,7 @@ Future<void> _registerWidgetInteractivity() async {
 }
 
 class MyApp extends ConsumerWidget {
-  const MyApp({
-    this.firebaseEmulatorStartupError,
-    super.key,
-  });
+  const MyApp({this.firebaseEmulatorStartupError, super.key});
 
   final Object? firebaseEmulatorStartupError;
 
@@ -80,10 +75,7 @@ class MyApp extends ConsumerWidget {
     final appTheme = ref.watch(appThemeProvider);
     return MaterialApp(
       locale: const Locale('ko', 'KR'),
-      supportedLocales: const [
-        Locale('ko', 'KR'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -109,12 +101,16 @@ class MyApp extends ConsumerWidget {
       },
       initialRoute: '/',
       routes: {
-        '/': (context) => firebaseEmulatorStartupError == null
-            ? _buildAppHome()
-            : const _FirebaseEmulatorStartupErrorPage(),
-        '/sign': (context) => firebaseEmulatorStartupError == null
-            ? _buildAppHome()
-            : const _FirebaseEmulatorStartupErrorPage(),
+        '/':
+            (context) =>
+                firebaseEmulatorStartupError == null
+                    ? _buildAppHome()
+                    : const _FirebaseEmulatorStartupErrorPage(),
+        '/sign':
+            (context) =>
+                firebaseEmulatorStartupError == null
+                    ? _buildAppHome()
+                    : const _FirebaseEmulatorStartupErrorPage(),
         '/widget-settings': (context) => const WidgetSettingsPage(),
       },
     );
@@ -126,30 +122,30 @@ class _FirebaseEmulatorStartupErrorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Scaffold(
-        key: Key('firebase_emulator_startup_error'),
-        body: Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.cloud_off_rounded, size: 44),
-                SizedBox(height: 16),
-                Text(
-                  '로컬 Firebase에 연결하지 못했어요.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Emulator Suite와 USB 포트 연결을 확인한 뒤 앱을 다시 시작해주세요.',
-                  textAlign: TextAlign.center,
-                ),
-              ],
+    key: Key('firebase_emulator_startup_error'),
+    body: Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_rounded, size: 44),
+            SizedBox(height: 16),
+            Text(
+              '로컬 Firebase에 연결하지 못했어요.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
-          ),
+            SizedBox(height: 8),
+            Text(
+              'Emulator Suite와 USB 포트 연결을 확인한 뒤 앱을 다시 시작해주세요.',
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class RootPage extends StatefulWidget {
@@ -159,10 +155,10 @@ class RootPage extends StatefulWidget {
 }
 
 class _RootPageState extends State<RootPage> {
-  // 0=고객리스트, 1=홈, 2=테스트, 3=설정
+  // 0=회원리스트, 1=홈, 2=테스트, 3=설정
   int _index = 1;
 
-  static const _titles = ['고객리스트', '홈', '테스트', '설정'];
+  static const _titles = ['회원리스트', '홈', '테스트', '설정'];
 
   final List<Widget> _pages = const [
     ClientListPage(),
@@ -174,11 +170,7 @@ class _RootPageState extends State<RootPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       // ✅ 홈(index 1)일 때만 AppBar 숨김 → 왼쪽 상단 "홈" 안 보임
-      appBar: _index == 1
-          ? null
-          : AppBar(
-              title: Text(_titles[_index]),
-            ),
+      appBar: _index == 1 ? null : AppBar(title: Text(_titles[_index])),
       body: IndexedStack(index: _index, children: _pages),
     );
   }

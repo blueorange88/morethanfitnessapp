@@ -71,9 +71,7 @@ class _AppEnvironmentBannerState extends State<AppEnvironmentBanner> {
                           ),
                           for (final fixture in DevTierFixture.values)
                             InkWell(
-                              key: Key(
-                                'dev_tier_fixture_${fixture.name}',
-                              ),
+                              key: Key('dev_tier_fixture_${fixture.name}'),
                               borderRadius: BorderRadius.circular(10),
                               onTap: () {
                                 DevTierFixtureController.select(fixture);
@@ -119,11 +117,12 @@ class _AppEnvironmentBannerState extends State<AppEnvironmentBanner> {
           right: 8,
           child: SafeArea(
             child: GestureDetector(
-              onLongPress: _fixtureEnabled
-                  ? () => setState(() {
+              onLongPress:
+                  _fixtureEnabled
+                      ? () => setState(() {
                         _fixturePanelOpen = !_fixturePanelOpen;
                       })
-                  : null,
+                      : null,
               child: const DecoratedBox(
                 decoration: BoxDecoration(
                   color: Color(0xCC1D4ED8),

@@ -44,10 +44,7 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 0.5,
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 0.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -71,9 +68,7 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(14),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
             ),
             child: Row(
               children: [
@@ -112,13 +107,13 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
                     TextField(
                       controller: nameController,
                       maxLength: 8,
-                      buildCounter: (
-                          context, {
+                      buildCounter:
+                          (
+                            context, {
                             required currentLength,
                             required isFocused,
                             maxLength,
-                          }) =>
-                      null,
+                          }) => null,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -133,8 +128,7 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
                         ),
                         filled: true,
                         fillColor: const Color(0xFFF8FAFF),
-                        contentPadding:
-                        const EdgeInsets.fromLTRB(10, 8, 42, 8),
+                        contentPadding: const EdgeInsets.fromLTRB(10, 8, 42, 8),
                         isDense: true,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(9),
@@ -191,44 +185,48 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
                 Wrap(
                   spacing: 7,
                   runSpacing: 7,
-                  children: paletteColorHexes.map((hex) {
-                    final color = _colorFromHex(hex);
-                    final selected =
-                        selectedColorHex.toUpperCase() == hex.toUpperCase();
+                  children:
+                      paletteColorHexes.map((hex) {
+                        final color = _colorFromHex(hex);
+                        final selected =
+                            selectedColorHex.toUpperCase() == hex.toUpperCase();
 
-                    return GestureDetector(
-                      onTap: () => onColorSelected(hex),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color:
-                            selected ? Colors.white : Colors.transparent,
-                            width: 2,
+                        return GestureDetector(
+                          onTap: () => onColorSelected(hex),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 140),
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color:
+                                    selected
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                width: 2,
+                              ),
+                              boxShadow:
+                                  selected
+                                      ? [
+                                        BoxShadow(
+                                          color: color.withOpacity(0.55),
+                                          blurRadius: 8,
+                                          spreadRadius: 1,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                        const BoxShadow(
+                                          color: Color(0xFF111827),
+                                          blurRadius: 0,
+                                          spreadRadius: 0.6,
+                                        ),
+                                      ]
+                                      : null,
+                            ),
                           ),
-                          boxShadow: selected
-                              ? [
-                            BoxShadow(
-                              color: color.withOpacity(0.55),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                              offset: const Offset(0, 2),
-                            ),
-                            const BoxShadow(
-                              color: Color(0xFF111827),
-                              blurRadius: 0,
-                              spreadRadius: 0.6,
-                            ),
-                          ]
-                              : null,
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                        );
+                      }).toList(),
                 ),
                 const SizedBox(height: 11),
                 Row(
@@ -238,9 +236,7 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
                         onPressed: onDelete,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
-                          side: BorderSide(
-                            color: Colors.red.withOpacity(0.28),
-                          ),
+                          side: BorderSide(color: Colors.red.withOpacity(0.28)),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 7,
@@ -284,10 +280,7 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
                     DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF4F46E5),
-                            Color(0xFF9333EA),
-                          ],
+                          colors: [Color(0xFF4F46E5), Color(0xFF9333EA)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),

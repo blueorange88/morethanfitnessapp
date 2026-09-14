@@ -9,10 +9,7 @@ import '../theme/app_colors.dart';
 /// - 모어댄 컬러(인디고+퍼플 그라데이션) 사용
 /// - 저장 callback이 있으면 서버 저장 성공 뒤에만 true를 반환한다.
 class TrainingLogConsentPage extends StatefulWidget {
-  const TrainingLogConsentPage({
-    super.key,
-    this.onAgree,
-  });
+  const TrainingLogConsentPage({super.key, this.onAgree});
 
   final Future<void> Function()? onAgree;
 
@@ -64,10 +61,7 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
             ),
             title: const Text(
               '수업일지 개인정보 동의',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             centerTitle: true,
           ),
@@ -193,14 +187,16 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                         children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _saving
-                                  ? null
-                                  : () {
-                                      Navigator.of(context).pop(false);
-                                    },
+                              onPressed:
+                                  _saving
+                                      ? null
+                                      : () {
+                                        Navigator.of(context).pop(false);
+                                      },
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                               child: const Text(
                                 '동의하지 않음',
@@ -213,25 +209,27 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
                             child: ElevatedButton(
                               onPressed: _saving ? null : _submitAgreement,
                               style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
-                              child: _saving
-                                  ? SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: scheme.onSecondary,
+                              child:
+                                  _saving
+                                      ? SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: scheme.onSecondary,
+                                        ),
+                                      )
+                                      : const Text(
+                                        '동의하고 계속하기',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    )
-                                  : const Text(
-                                      '동의하고 계속하기',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
                             ),
                           ),
                         ],

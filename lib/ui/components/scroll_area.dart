@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class ShadcnScrollArea extends StatelessWidget {
   final Widget child;
 
-  const ShadcnScrollArea({
-    super.key,
-    required this.child,
-  });
+  const ShadcnScrollArea({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +25,10 @@ class ShadcnScrollArea extends StatelessWidget {
 class _NoGlowScroll extends ScrollBehavior {
   @override
   Widget buildViewportChrome(
-      BuildContext context, Widget child, AxisDirection axisDirection) {
+    BuildContext context,
+    Widget child,
+    AxisDirection axisDirection,
+  ) {
     return child;
   }
 }

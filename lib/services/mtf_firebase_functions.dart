@@ -2,8 +2,9 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
-final FirebaseFunctions mtfFirebaseFunctions =
-    FirebaseFunctions.instanceFor(region: MtfFirebaseFunctions.region);
+final FirebaseFunctions mtfFirebaseFunctions = FirebaseFunctions.instanceFor(
+  region: MtfFirebaseFunctions.region,
+);
 
 abstract final class MtfFirebaseFunctions {
   static const region = 'asia-northeast3';
@@ -26,9 +27,10 @@ abstract final class MtfFirebaseFunctions {
       );
     }
     final callable = (functions ?? mtfFirebaseFunctions).httpsCallable(name);
-    final result = parameters == null
-        ? await callable.call()
-        : await callable.call(parameters);
+    final result =
+        parameters == null
+            ? await callable.call()
+            : await callable.call(parameters);
     return result.data;
   }
 

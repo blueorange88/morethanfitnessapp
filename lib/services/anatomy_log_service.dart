@@ -45,10 +45,10 @@ class AnatomyLogSaveContext {
   final String scheduleDocId;
 
   List<String> get missingFields => <String>[
-        if (lessonLogId.trim().isEmpty) 'lessonLogId',
-        if (memberId.trim().isEmpty) 'memberId',
-        if (trainerId.trim().isEmpty) 'trainerId',
-      ];
+    if (lessonLogId.trim().isEmpty) 'lessonLogId',
+    if (memberId.trim().isEmpty) 'memberId',
+    if (trainerId.trim().isEmpty) 'trainerId',
+  ];
 
   bool get isValid => missingFields.isEmpty;
 }
@@ -104,13 +104,12 @@ class AnatomyLogService {
     FirebaseFirestore? firestore,
     AnatomyLogStore? store,
     AnatomyCurrentUid? currentUid,
-  })  : assert(firestore == null || store == null),
-        _store = store ??
-            _FirestoreAnatomyLogStore(
-              firestore ?? FirebaseFirestore.instance,
-            ),
-        _currentUid =
-            currentUid ?? (() => FirebaseAuth.instance.currentUser?.uid);
+  }) : assert(firestore == null || store == null),
+       _store =
+           store ??
+           _FirestoreAnatomyLogStore(firestore ?? FirebaseFirestore.instance),
+       _currentUid =
+           currentUid ?? (() => FirebaseAuth.instance.currentUser?.uid);
 
   final AnatomyLogStore _store;
   final AnatomyCurrentUid _currentUid;
@@ -138,12 +137,7 @@ class AnatomyLogService {
 
       for (final document in documents) {
         try {
-          _validateStoredRecord(
-            document.id,
-            document.data,
-            context,
-            parent!,
-          );
+          _validateStoredRecord(document.id, document.data, context, parent!);
           records.add(
             AnatomyLogRecord.fromFirestore(
               Map<String, dynamic>.from(document.data)
@@ -184,12 +178,14 @@ class AnatomyLogService {
     _validateActor(context.trainerId);
     _validateContext(context);
 
-    final resolved = records.map((record) {
-      if (record.anatomyLogId.trim().isNotEmpty) return record;
-      return record.copyWith(
-        anatomyLogId: _store.newRecordId(context.lessonLogId),
-      );
-    }).toList(growable: false);
+    final resolved = records
+        .map((record) {
+          if (record.anatomyLogId.trim().isNotEmpty) return record;
+          return record.copyWith(
+            anatomyLogId: _store.newRecordId(context.lessonLogId),
+          );
+        })
+        .toList(growable: false);
     final ids = resolved.map((record) => record.anatomyLogId).toList();
     if (ids.toSet().length != ids.length ||
         ids.any(deletedRecordIds.contains)) {
@@ -227,9 +223,7 @@ class AnatomyLogService {
         for (final id in deletedRecordIds.where((id) => id.trim().isNotEmpty)) {
           final previous = existing[id];
           if (previous == null) {
-            throw const AnatomyLogException(
-              AnatomyLogErrorCode.recordNotFound,
-            );
+            throw const AnatomyLogException(AnatomyLogErrorCode.recordNotFound);
           }
           _validateStoredRecord(id, previous, context, validatedParent);
         }
@@ -429,9 +423,10 @@ class AnatomyLogService {
         trainerId:
             record.trainerId.isEmpty ? context.trainerId : record.trainerId,
         memberId: record.memberId.isEmpty ? context.memberId : record.memberId,
-        lessonLogId: record.lessonLogId.isEmpty
-            ? context.lessonLogId
-            : record.lessonLogId,
+        lessonLogId:
+            record.lessonLogId.isEmpty
+                ? context.lessonLogId
+                : record.lessonLogId,
       );
       try {
         _validateIncomingRecord(normalized, context, parent);
@@ -477,9 +472,7 @@ class AnatomyLogService {
   }
 
   void _logIntegrityError(AnatomyLogErrorCode code, String action) {
-    debugPrint(
-      '[MTF_ANATOMY_INTEGRITY] action=$action code=${code.value}',
-    );
+    debugPrint('[MTF_ANATOMY_INTEGRITY] action=$action code=${code.value}');
   }
 
   static String _text(dynamic value) => (value ?? '').toString().trim();
@@ -510,10 +503,8 @@ class _FirestoreAnatomyLogStore implements AnatomyLogStore {
     final snapshot = await _records(lessonLogId).get();
     return snapshot.docs
         .map(
-          (document) => AnatomyLogDocument(
-            id: document.id,
-            data: document.data(),
-          ),
+          (document) =>
+              AnatomyLogDocument(id: document.id, data: document.data()),
         )
         .toList(growable: false);
   }
@@ -521,12 +512,10 @@ class _FirestoreAnatomyLogStore implements AnatomyLogStore {
   @override
   Future<T> runTransaction<T>(
     Future<T> Function(AnatomyLogTransaction transaction) action,
-  ) =>
-      _firestore.runTransaction(
-        (transaction) => action(
-          _FirestoreAnatomyLogTransaction(_firestore, transaction),
-        ),
-      );
+  ) => _firestore.runTransaction(
+    (transaction) =>
+        action(_FirestoreAnatomyLogTransaction(_firestore, transaction)),
+  );
 }
 
 class _FirestoreAnatomyLogTransaction implements AnatomyLogTransaction {
@@ -541,8 +530,7 @@ class _FirestoreAnatomyLogTransaction implements AnatomyLogTransaction {
   DocumentReference<Map<String, dynamic>> _record(
     String lessonLogId,
     String anatomyLogId,
-  ) =>
-      _parent(lessonLogId).collection('anatomyRecords').doc(anatomyLogId);
+  ) => _parent(lessonLogId).collection('anatomyRecords').doc(anatomyLogId);
 
   @override
   Future<Map<String, dynamic>?> getParent(String lessonLogId) async {
@@ -555,9 +543,7 @@ class _FirestoreAnatomyLogTransaction implements AnatomyLogTransaction {
     String lessonLogId,
     String anatomyLogId,
   ) async {
-    final snapshot = await _transaction.get(
-      _record(lessonLogId, anatomyLogId),
-    );
+    final snapshot = await _transaction.get(_record(lessonLogId, anatomyLogId));
     return snapshot.exists ? snapshot.data() : null;
   }
 

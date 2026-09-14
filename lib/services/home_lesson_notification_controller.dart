@@ -5,9 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
 class HomeLessonNotificationController {
-  HomeLessonNotificationController({
-    required this.nudgePrefsKey,
-  });
+  HomeLessonNotificationController({required this.nudgePrefsKey});
 
   final String nudgePrefsKey;
 
@@ -55,9 +53,10 @@ class HomeLessonNotificationController {
         enabled: true,
         permissionGranted: granted,
         title: '$label 알림을 켰습니다',
-        subtitle: granted
-            ? '알림 간격은 설정에서 변경 할 수 있습니다'
-            : '휴대폰 알림 권한이 꺼져 있으면 알림이 보이지 않을 수 있어요',
+        subtitle:
+            granted
+                ? '알림 간격은 설정에서 변경 할 수 있습니다'
+                : '휴대폰 알림 권한이 꺼져 있으면 알림이 보이지 않을 수 있어요',
       );
     }
 

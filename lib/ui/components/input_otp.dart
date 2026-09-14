@@ -4,11 +4,8 @@ class ShadcnInputOtp extends StatelessWidget {
   final int length;
   final List<TextEditingController> controllers;
 
-  ShadcnInputOtp({
-    super.key,
-    this.length = 6,
-  }) : controllers =
-  List.generate(6, (_) => TextEditingController());
+  ShadcnInputOtp({super.key, this.length = 6})
+    : controllers = List.generate(6, (_) => TextEditingController());
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +15,7 @@ class ShadcnInputOtp extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
         length,
-            (i) => Container(
+        (i) => Container(
           width: 44,
           height: 54,
           margin: const EdgeInsets.symmetric(horizontal: 4),

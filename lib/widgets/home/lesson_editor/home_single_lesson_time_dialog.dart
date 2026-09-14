@@ -138,10 +138,7 @@ class HomeSingleLessonTimeDialog {
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 5,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           decoration: BoxDecoration(
             color: selected ? _primaryColor : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
@@ -189,9 +186,7 @@ class HomeSingleLessonTimeDialog {
               int nextMinute = tempMinute;
 
               if (useKeyboard) {
-                final parsedHour = int.tryParse(
-                  hourTextController.text.trim(),
-                );
+                final parsedHour = int.tryParse(hourTextController.text.trim());
 
                 final parsedMinute = int.tryParse(
                   minuteTextController.text.trim(),
@@ -294,8 +289,9 @@ class HomeSingleLessonTimeDialog {
                                       controller: hourWheelController,
                                       itemCount: 24,
                                       selectedIndex: tempHour,
-                                      labelBuilder: (index) =>
-                                          index.toString().padLeft(2, '0'),
+                                      labelBuilder:
+                                          (index) =>
+                                              index.toString().padLeft(2, '0'),
                                       onChanged: (idx) {
                                         localSetState(() {
                                           tempHour = idx;
@@ -322,10 +318,11 @@ class HomeSingleLessonTimeDialog {
                                       label: '분',
                                       controller: minuteWheelController,
                                       itemCount: validMinutes.length,
-                                      selectedIndex:
-                                          validMinutes.indexOf(tempMinute),
-                                      labelBuilder: (index) =>
-                                          validMinutes[index]
+                                      selectedIndex: validMinutes.indexOf(
+                                        tempMinute,
+                                      ),
+                                      labelBuilder:
+                                          (index) => validMinutes[index]
                                               .toString()
                                               .padLeft(2, '0'),
                                       onChanged: (idx) {
@@ -348,40 +345,45 @@ class HomeSingleLessonTimeDialog {
                                           FilteringTextInputFormatter
                                               .digitsOnly,
                                           const HomeMaxNumberInputFormatter(
-                                              max: 23),
+                                            max: 23,
+                                          ),
                                         ],
                                         decoration: InputDecoration(
                                           labelText: '시',
                                           hintText: '0~23',
                                           filled: true,
-                                          fillColor: Theme.of(dialogContext)
-                                              .inputDecorationTheme
-                                              .fillColor,
+                                          fillColor:
+                                              Theme.of(
+                                                dialogContext,
+                                              ).inputDecorationTheme.fillColor,
                                           isDense: true,
                                           contentPadding:
                                               const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 10,
-                                          ),
+                                                horizontal: 10,
+                                                vertical: 10,
+                                              ),
                                           border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,
@@ -399,40 +401,45 @@ class HomeSingleLessonTimeDialog {
                                           FilteringTextInputFormatter
                                               .digitsOnly,
                                           const HomeMaxNumberInputFormatter(
-                                              max: 55),
+                                            max: 55,
+                                          ),
                                         ],
                                         decoration: InputDecoration(
                                           labelText: '분',
                                           hintText: '00~55',
                                           filled: true,
-                                          fillColor: Theme.of(dialogContext)
-                                              .inputDecorationTheme
-                                              .fillColor,
+                                          fillColor:
+                                              Theme.of(
+                                                dialogContext,
+                                              ).inputDecorationTheme.fillColor,
                                           isDense: true,
                                           contentPadding:
                                               const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 10,
-                                          ),
+                                                horizontal: 10,
+                                                vertical: 10,
+                                              ),
                                           border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFFD7DCE5),
                                               width: 0.8,
                                             ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(9),
+                                            borderRadius: BorderRadius.circular(
+                                              9,
+                                            ),
                                             borderSide: const BorderSide(
                                               color: Color(0xFF8B5CF6),
                                               width: 1.1,

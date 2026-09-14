@@ -1,10 +1,20 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../services/mtf_firebase_functions.dart';
+import 'business_card_photo_edit_page.dart';
 import 'settings_page.dart';
 import 'password_change_page.dart';
 import 'stats_page.dart';
@@ -17,6 +27,7 @@ import '../services/app_account_service.dart'
 import '../services/lesson_product_service.dart';
 import '../services/managed_member_workspace_service.dart';
 import '../services/app_environment.dart';
+import '../services/dev_tier_fixture.dart';
 import '../services/my_page_draft_store.dart';
 import '../utils/personal_tier_parser.dart';
 import '../utils/member_input_validation.dart';
@@ -36,6 +47,7 @@ import '../widgets/mtf_header_neon_overlay.dart';
 import '../widgets/mtf_floating_more_menu.dart';
 import '../widgets/aifc_upgrade_chat_sheet.dart';
 import '../widgets/account_connection_dialog.dart';
+import '../widgets/my_header_business_card.dart';
 import '../theme/app_colors.dart';
 
 import '../aifc/core/aifc_chat_sheet.dart';
@@ -248,6 +260,13 @@ class _MyPageState extends State<MyPage> {
   final _introController = TextEditingController();
   final _lessonSpecialtyController = TextEditingController();
   final _contractTrainerCustomNameController = TextEditingController();
+  final _businessCardPicker = ImagePicker();
+  final _businessCardCaptureKey = GlobalKey();
+  Uint8List? _businessCardPhotoBytes;
+  String? _businessCardPhotoUrl;
+  double _businessCardPhotoAlignX = 0;
+  double _businessCardPhotoAlignY = 0;
+  double _businessCardPhotoScale = 1.0;
   String? _affiliationType;
   final List<String> _selectedActivityRegions = <String>[];
   bool _optionalJobTitleExpanded = false;
@@ -260,7 +279,7 @@ class _MyPageState extends State<MyPage> {
   String _loadedJobTitle = '';
 
   String _gender = 'unset';
-  // ✅ UX 개선: 라디오 그룹으로 변경 (realName / displayName / manual)
+  //  UX 개선: 라디오 그룹으로 변경 (realName / displayName / manual)
   String _contractTrainerNameSource = 'manual';
   bool _isLoading = true;
   bool _isSaving = false;
@@ -321,6 +340,10 @@ class _MyPageState extends State<MyPage> {
     _loadProfile();
     _loadTierStatus();
 
+    if (DevTierFixtureController.isAvailable) {
+      DevTierFixtureController.selection.addListener(_loadTierStatus);
+    }
+
     for (final c in [
       _nameController,
       _displayNameController,
@@ -342,6 +365,10 @@ class _MyPageState extends State<MyPage> {
   @override
   void dispose() {
     AifcInteraction.hideToast();
+
+    if (DevTierFixtureController.isAvailable) {
+      DevTierFixtureController.selection.removeListener(_loadTierStatus);
+    }
 
     for (final c in [
       _nameController,
@@ -799,6 +826,26 @@ class _MyPageState extends State<MyPage> {
             _gymNameController.text.trim().isNotEmpty ||
             _centerLocationController.text.trim().isNotEmpty;
         _introController.text = (data['intro'] ?? '').toString();
+        final loadedPhotoUrl =
+            (data['businessCardPhotoUrl'] ?? '').toString().trim();
+        _businessCardPhotoUrl = loadedPhotoUrl.isEmpty ? null : loadedPhotoUrl;
+        final loadedAlign =
+            (data['businessCardPhotoAlign'] ?? '').toString().trim();
+        final alignParts = loadedAlign.split(',');
+        if (alignParts.length >= 2) {
+          _businessCardPhotoAlignX =
+              double.tryParse(alignParts[0])?.clamp(-1.0, 1.0) ?? 0;
+          _businessCardPhotoAlignY =
+              double.tryParse(alignParts[1])?.clamp(-1.0, 1.0) ?? 0;
+          _businessCardPhotoScale =
+              alignParts.length >= 3
+                  ? double.tryParse(alignParts[2])?.clamp(1.0, 4.0) ?? 1.0
+                  : 1.0;
+        } else {
+          _businessCardPhotoAlignX = 0;
+          _businessCardPhotoAlignY = 0;
+          _businessCardPhotoScale = 1.0;
+        }
         _lessonSpecialtyController.text = myPageLessonFieldsFromProfile(
           data,
           personalWorkspace: _isPersonalWorkspace,
@@ -1002,19 +1049,30 @@ class _MyPageState extends State<MyPage> {
           const GetOptions(source: Source.server),
         );
         final profile = snapshot.data() ?? const {};
-        final tier = parsePersonalTierLabel(profile['tier']);
-        if (!snapshot.exists || tier == null) {
+        final serverTier = parsePersonalTierLabel(profile['tier']);
+        if (!snapshot.exists || serverTier == null) {
           throw StateError('personal_tier_unavailable');
         }
+        final effectiveTierRank = DevTierFixtureController.resolveTierRank(
+          _tierRank(serverTier),
+        );
+        final tier = AppTierAccessService.tierLabelFromRank(effectiveTierRank);
         if (kDebugMode) {
           debugPrint(
             '[MTF_TIER_READ] uid=${widget.personalOwnerUid!.trim()} '
             'environment=${AppEnvironmentConfig.environmentName} '
             'profileExists=${snapshot.exists} '
             'source=${myPageProfileDocumentPath(widget.personalOwnerUid)} '
-            'rawTier=${(profile['tier'] ?? '').toString()} parsedTier=$tier '
+            'rawTier=${(profile['tier'] ?? '').toString()} '
+            'parsedTier=$serverTier effectiveTier=$tier '
             'result=success errorCode=none',
           );
+          if (DevTierFixtureController.isAvailable && tier != serverTier) {
+            debugPrint(
+              '[MTF_DEV_TIER_FIXTURE] '
+              'serverTier=$serverTier effectiveTier=$tier localOnly=true',
+            );
+          }
         }
         final progress = PersonalTierProgress.fromProfile(profile);
         if (kDebugMode) {
@@ -1239,10 +1297,10 @@ class _MyPageState extends State<MyPage> {
         return '레슨 일정 10개와 선생님 정보 입력을 완료하면 Amateur로 올라갈 수 있어요.';
 
       case 'Amateur':
-        return '기본 관리 흐름이 열렸어요. 활성 회원 30명 또는 카카오+고객카드 연동 20명부터 Semi-Pro로 올라가요.';
+        return '기본 관리 흐름이 열렸어요. 활성 회원 30명 또는 카카오+회원카드 연동 20명부터 Semi-Pro로 올라가요.';
 
       case 'Semi-Pro':
-        return '계약서와 레슨일지 기반 관리 기능을 사용할 수 있어요. 활성 회원 50명, 카카오+고객카드 연동 40명, 계약서 20명부터 Pro 흐름이 열려요.';
+        return '계약서와 레슨일지 기반 관리 기능을 사용할 수 있어요. 활성 회원 50명, 카카오+회원카드 연동 40명, 계약서 20명부터 Pro 흐름이 열려요.';
 
       case 'Pro':
         return '고급 인사이트와 자동화까지 더 넓게 사용할 수 있어요. 이제 프로다운 관리 흐름에 가까워졌어요.';
@@ -1258,7 +1316,7 @@ class _MyPageState extends State<MyPage> {
     }
   }
 
-  // ── 저장 ──────────────────────────────────────────────────────────────────
+  // ── 이름 저장 준비 ────────────────────────────────────────────────────────
   Future<bool> _prepareNamesForSave() async {
     final nickname = _displayNameController.text.trim();
     final realName = _nameController.text.trim();
@@ -1455,6 +1513,27 @@ class _MyPageState extends State<MyPage> {
 
       if (_isPersonalWorkspace) {
         final uid = widget.personalOwnerUid!.trim();
+
+        var businessCardPhotoUrl = _businessCardPhotoUrl;
+        if (_businessCardPhotoBytes != null) {
+          try {
+            final path =
+                'trainer_photos/$uid/'
+                'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            final photoRef = FirebaseStorage.instance.ref(path);
+            await photoRef.putData(
+              _businessCardPhotoBytes!,
+              SettableMetadata(
+                contentType: 'image/jpeg',
+                cacheControl: 'public, max-age=3600',
+              ),
+            );
+            businessCardPhotoUrl = await photoRef.getDownloadURL();
+          } catch (_) {
+            // 명함 사진 업로드에 실패해도 나머지 프로필 저장은 계속 진행한다.
+          }
+        }
+
         activeSaveStep = 'profile';
         if (kDebugMode) {
           debugPrint(
@@ -1481,7 +1560,14 @@ class _MyPageState extends State<MyPage> {
           contractTrainerNameSource: _contractTrainerNameSource,
           contractTrainerCustomName: contractCustomName,
           intro: intro,
+          businessCardPhotoUrl: businessCardPhotoUrl,
+          businessCardPhotoAlign:
+              '${_businessCardPhotoAlignX.toStringAsFixed(2)},'
+              '${_businessCardPhotoAlignY.toStringAsFixed(2)},'
+              '${_businessCardPhotoScale.toStringAsFixed(2)}',
         );
+        _businessCardPhotoUrl = businessCardPhotoUrl;
+        _businessCardPhotoBytes = null;
         try {
           await FirebaseManagedMemberWorkspaceGateway(
             uid: uid,
@@ -1936,7 +2022,7 @@ class _MyPageState extends State<MyPage> {
     setState(() => _didShowAiFcProfileNudge = false);
   }
 
-  // ── 유틸 ──────────────────────────────────────────────────────────────────
+  // ── 유틸 ──────────────────────────────────────────────────────────────
   String _normalizePhone(String value) => value.replaceAll(RegExp(r'\D'), '');
 
   String get _activityRegionSummary {
@@ -1960,7 +2046,7 @@ class _MyPageState extends State<MyPage> {
   String _buildShortName(String raw) {
     final text = raw.trim();
 
-    if (text.isEmpty) return '트';
+    if (text.isEmpty) return '';
 
     final normalized =
         text.endsWith('강사')
@@ -1981,8 +2067,8 @@ class _MyPageState extends State<MyPage> {
   int _myPageHeaderVariant() {
     final now = DateTime.now();
 
-    // 완전 랜덤이 아니라, 같은 시간대에서는 안정적으로 유지되는 2개 타입 선택
-    // 입력 중 setState가 발생해도 문구가 계속 바뀌지 않게 하기 위함
+    // 완전 랜덤은 아니고, 같은 시간대에서는 고정되도록 날짜+시간대 기반 2개 중 택1
+    // 입력 중 setState가 발생해도 문구가 계속 바뀌지 않게 여기서 고정
     return (now.day + (now.hour ~/ 3)) % 2;
   }
 
@@ -1996,18 +2082,20 @@ class _MyPageState extends State<MyPage> {
     }
 
     if (hour >= 11 && hour < 14) {
-      return variant == 0 ? '점심은 챙기셨나요, $name' : '잠깐 숨 고르기 좋은 시간이네요, $name';
+      return variant == 0 ? '점심은 챙기셨나요, $name' : '잠깐 숨 고르기 좋은 시간이네요,  $name';
     }
 
     if (hour >= 14 && hour < 17) {
-      return variant == 0 ? '오후도 차분히 가볼까요, $name' : '남은 오후도 무리 없이 이어가요, $name';
+      return variant == 0 ? '오후도 차분히 가볼까요, $name' : '남은 오후도 무리 없이 이어가요,  $name';
     }
 
     if (hour >= 17 && hour < 21) {
-      return variant == 0 ? '오늘도 하루가 저물어가네요, $name' : '저녁이 천천히 내려앉고 있어요, $name';
+      return variant == 0
+          ? '오늘도 하루가 저물어가네요, $name'
+          : '저녁이 천천히 내려앉고 있어요,  $name';
     }
 
-    return variant == 0 ? '오늘 하루도 고생 많으셨어요, $name' : '오늘도 정말 수고 많으셨어요, $name';
+    return variant == 0 ? '오늘 하루도 고생 많으셨어요, $name' : '오늘도 정말 수고 많으셨어요,  $name';
   }
 
   String _buildMyPageHeaderSubtitle() {
@@ -2093,7 +2181,8 @@ class _MyPageState extends State<MyPage> {
 
   Widget _buildEmailVerificationCard() {
     final user = AppAccountService.instance.currentUser;
-    if (user == null || user.isAnonymous) return const SizedBox.shrink();
+    if (user == null) return const SizedBox.shrink();
+    final hasEmail = !user.isAnonymous && user.email.trim().isNotEmpty;
     final verified = user.emailVerified;
     final googleLinked = user.hasProvider('google.com');
     return Card(
@@ -2103,16 +2192,18 @@ class _MyPageState extends State<MyPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.mark_email_read_outlined),
-              title: const Text('이메일 계정 연결됨'),
-              subtitle: Text(
-                '${myPageMaskedEmail(user.email)}\n'
-                '${verified ? '인증 완료 ✓' : '인증 필요'}',
+            if (hasEmail) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.mark_email_read_outlined),
+                title: const Text('이메일 계정 연결됨'),
+                subtitle: Text(
+                  '${myPageMaskedEmail(user.email)}\n'
+                  '${verified ? '인증 완료 ✓' : '인증 필요'}',
+                ),
               ),
-            ),
-            if (!verified)
+            ],
+            if (hasEmail && !verified)
               LayoutBuilder(
                 builder: (context, constraints) {
                   final resend = OutlinedButton(
@@ -2146,7 +2237,7 @@ class _MyPageState extends State<MyPage> {
                   );
                 },
               ),
-            const Divider(height: 24),
+            if (hasEmail) const Divider(height: 24),
             ListTile(
               key: Key(
                 googleLinked
@@ -2188,15 +2279,36 @@ class _MyPageState extends State<MyPage> {
     _showSnack('$label 기능은 준비중입니다.');
   }
 
-  Future<void> _handleSendBusinessCardToKakao() async {
+  Future<void> _shareBusinessCard() async {
     final canUse = await _guardBusinessCardFeature();
 
     if (!mounted || !canUse) return;
 
-    _showActionToast(
-      '카카오톡 명함 전송 틀을 준비했어요. 다음 단계에서 이미지 생성과 공유를 연결할게요.',
-      bottomOffset: 110,
-    );
+    try {
+      final boundary =
+          _businessCardCaptureKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      if (byteData == null || !mounted) return;
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File(
+        '${tempDir.path}/business_card_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(byteData.buffer.asUint8List());
+      if (!mounted) return;
+
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], text: '명함을 확인해주세요.'),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      _showActionToast('명함 공유에 실패했어요. 잠시 후 다시 시도해주세요.');
+    }
   }
 
   void _showActionToast(String message, {double bottomOffset = 76}) {
@@ -2207,7 +2319,7 @@ class _MyPageState extends State<MyPage> {
     );
   }
 
-  // ── AI FC 프로필 넛지 ─────────────────────────────────────────────────────
+  // ── AI FC 안내 넛지 ───────────────────────────────────────────────────────
   Future<void> _maybeShowAiFcProfileNudge() async {
     if (_didShowAiFcProfileNudge) return;
     if (_isLoading) return;
@@ -2253,7 +2365,7 @@ class _MyPageState extends State<MyPage> {
         key: 'lessonSpecialty',
         title: 'AI FC',
         message:
-            '${aifcNicknameLabel(nickname)} \n 어떤 종류의 레슨을 전문으로 하고 계신가요?\n 이제 회원님들께 레슨 분야를 자연스럽게 안내할게요.',
+            '${aifcNicknameLabel(nickname)} \n n 어떤 종류의 레슨을 전문으로 하고 계신가요?\n 이제 회원님들께 레슨 분야를 자연스럽게 안내할게요.',
         label: '레슨 분야',
         hint: '예: PT / 필라테스 / 재활 / 체형교정 / 그룹레슨',
         initialValue: _lessonSpecialtyController.text,
@@ -2266,7 +2378,7 @@ class _MyPageState extends State<MyPage> {
         key: 'activityArea',
         title: 'AI FC',
         message:
-            '${aifcNicknameLabel(nickname)} 우리 레슨플레이스 위치는 어떻게 회원님들께 안내할까요?',
+            '${aifcNicknameLabel(nickname)}  우리 레슨플레이스 위치는 어떻게 회원님들께 안내할까요?',
         label: '센터,샵 위치 / 활동지역',
         hint: '예: 강남 / 송도 / 서울 강남구',
         initialValue: _activityAreaController.text,
@@ -2317,7 +2429,7 @@ class _MyPageState extends State<MyPage> {
         key: 'phone',
         title: 'AI FC',
         message:
-            '${aifcNicknameLabel(nickname)} 회원님들께 안내하거나 카카오톡 연동에 사용할 연락처가 필요할 수 있어요.\n어떤 번호로 안내할까요?',
+            '${aifcNicknameLabel(nickname)}  회원님들께 안내하거나 카카오톡 연동에 사용할 연락처가 필요할 수 있어요.\n어떤 번호로 안내할까요?',
         label: '안내 연락처',
         hint: '01012345678',
         initialValue: _phoneController.text,
@@ -2332,7 +2444,7 @@ class _MyPageState extends State<MyPage> {
         key: 'intro',
         title: 'AI FC',
         message:
-            '${aifcNicknameLabel(nickname)} 회원님께 어떤 강사님으로 소개할까요?\n레슨 스타일이나 전문 분야를 한 줄로 남겨보세요.',
+            '${aifcNicknameLabel(nickname)}  회원님께 어떤 강사님으로 소개할까요?\n레슨 스타일이나 전문 분야를 한 줄로 남겨보세요.',
         label: '한줄 소개',
         hint: '예: PT / AT / 필라테스 / 요가 / 발레핏',
         initialValue: _introController.text,
@@ -2642,12 +2754,7 @@ class _MyPageState extends State<MyPage> {
                                       const SizedBox(height: 14),
                                       _buildProfileFormCard(),
                                       const SizedBox(height: 14),
-                                      if (_isPersonalWorkspace &&
-                                          AppAccountService
-                                                  .instance
-                                                  .currentUser
-                                                  ?.isAnonymous ==
-                                              false) ...[
+                                      if (_isPersonalWorkspace) ...[
                                         _buildEmailVerificationCard(),
                                         const SizedBox(height: 14),
                                       ],
@@ -2730,7 +2837,7 @@ class _MyPageState extends State<MyPage> {
     );
   }
 
-  // ── 헤더 ──────────────────────────────────────────────────────────────────
+  // ── 캘린더 모드로 전환 ────────────────────────────────────────────────────
 
   void _openHeaderCard() {
     if (!mounted) return;
@@ -2922,6 +3029,172 @@ class _MyPageState extends State<MyPage> {
     );
   }
 
+  Future<void> _pickBusinessCardPhoto({
+    required String name,
+    required String nameEn,
+    required String gymName,
+    required String specialty,
+    required String phone,
+    required String address,
+  }) async {
+    final file = await _businessCardPicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+      maxWidth: 1600,
+      maxHeight: 1600,
+    );
+    if (file == null || !mounted) return;
+
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+
+    final result = await showBusinessCardPhotoEditSheet(
+      context,
+      name: name,
+      nameEn: nameEn,
+      gymName: gymName,
+      specialty: specialty,
+      phone: phone,
+      address: address,
+      photoBytes: bytes,
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _businessCardPhotoBytes = result.newPhotoBytes ?? bytes;
+      _businessCardPhotoAlignX = result.alignX;
+      _businessCardPhotoAlignY = result.alignY;
+      _businessCardPhotoScale = result.scale;
+      _isDirty = true;
+    });
+    _showActionToast('명함 사진을 반영했어요. 저장하면 적용돼요. (길게 누르면 삭제)');
+  }
+
+  Future<void> _editBusinessCardPhoto({
+    required String name,
+    required String nameEn,
+    required String gymName,
+    required String specialty,
+    required String phone,
+    required String address,
+  }) async {
+    final result = await showBusinessCardPhotoEditSheet(
+      context,
+      name: name,
+      nameEn: nameEn,
+      gymName: gymName,
+      specialty: specialty,
+      phone: phone,
+      address: address,
+      photoBytes: _businessCardPhotoBytes,
+      photoUrl: _businessCardPhotoUrl,
+      initialAlignX: _businessCardPhotoAlignX,
+      initialAlignY: _businessCardPhotoAlignY,
+      initialScale: _businessCardPhotoScale,
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      if (result.newPhotoBytes != null) {
+        _businessCardPhotoBytes = result.newPhotoBytes;
+        _businessCardPhotoUrl = null;
+      }
+      _businessCardPhotoAlignX = result.alignX;
+      _businessCardPhotoAlignY = result.alignY;
+      _businessCardPhotoScale = result.scale;
+      _isDirty = true;
+    });
+  }
+
+  void _handleBusinessCardPhotoTap({
+    required String name,
+    required String nameEn,
+    required String gymName,
+    required String specialty,
+    required String phone,
+    required String address,
+  }) {
+    final hasPhoto =
+        _businessCardPhotoBytes != null ||
+        (_businessCardPhotoUrl ?? '').isNotEmpty;
+    if (hasPhoto) {
+      unawaited(
+        _editBusinessCardPhoto(
+          name: name,
+          nameEn: nameEn,
+          gymName: gymName,
+          specialty: specialty,
+          phone: phone,
+          address: address,
+        ),
+      );
+    } else {
+      unawaited(
+        _pickBusinessCardPhoto(
+          name: name,
+          nameEn: nameEn,
+          gymName: gymName,
+          specialty: specialty,
+          phone: phone,
+          address: address,
+        ),
+      );
+    }
+  }
+
+  Future<void> _clearBusinessCardPhoto() async {
+    final hasLocalPreview = _businessCardPhotoBytes != null;
+    final hasSavedPhoto = (_businessCardPhotoUrl ?? '').isNotEmpty;
+    if (!hasLocalPreview && !hasSavedPhoto) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('명함 사진을 삭제할까요?'),
+            content: const Text('나중에 다시 등록할 수 있어요.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('삭제'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _businessCardPhotoBytes = null;
+      _businessCardPhotoAlignX = 0;
+      _businessCardPhotoAlignY = 0;
+      _businessCardPhotoScale = 1.0;
+    });
+
+    if (!hasSavedPhoto) return;
+
+    try {
+      await MtfFirebaseFunctions.call(
+        'updatePersonalTrainerProfile',
+        parameters: {
+          'businessCardPhotoUrl': '',
+          'businessCardPhotoAlign': '0.00,0.00,1.00',
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _businessCardPhotoUrl = null;
+      });
+      _showActionToast('명함 사진을 삭제했어요.');
+    } catch (_) {
+      if (!mounted) return;
+      _showActionToast('명함 사진을 삭제하지 못했어요.');
+    }
+  }
+
   Widget _buildHeaderBusinessCardArea({
     required String previewName,
     required String nameEn,
@@ -2931,14 +3204,35 @@ class _MyPageState extends State<MyPage> {
     required String address,
   }) {
     final canUseCard = _canUseBusinessCardFeature;
+    final resolvedName = previewName.isEmpty ? '강사님' : previewName;
 
-    final card = _MyHeaderBusinessCard(
-      name: previewName.isEmpty ? '강사님' : previewName,
-      nameEn: nameEn,
-      gymName: gymName,
-      specialty: specialty,
-      phone: phone,
-      address: address,
+    final card = RepaintBoundary(
+      key: _businessCardCaptureKey,
+      child: MyHeaderBusinessCard(
+        name: resolvedName,
+        nameEn: nameEn,
+        gymName: gymName,
+        specialty: specialty,
+        phone: phone,
+        address: address,
+        photoBytes: _businessCardPhotoBytes,
+        photoUrl: _businessCardPhotoUrl,
+        photoAlignX: _businessCardPhotoAlignX,
+        photoAlignY: _businessCardPhotoAlignY,
+        photoScale: _businessCardPhotoScale,
+        onTapPhoto:
+            canUseCard
+                ? () => _handleBusinessCardPhotoTap(
+                  name: resolvedName,
+                  nameEn: nameEn,
+                  gymName: gymName,
+                  specialty: specialty,
+                  phone: phone,
+                  address: address,
+                )
+                : null,
+        onLongPressPhoto: canUseCard ? _clearBusinessCardPhoto : null,
+      ),
     );
 
     return Stack(
@@ -3001,7 +3295,7 @@ class _MyPageState extends State<MyPage> {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          '회원님께 카카오톡으로 보낼 명함을\n미리 준비해둘 수 있어요.',
+                          '회원님께 보낼 명함을\n미리 준비해둘 수 있어요.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.76),
@@ -3175,7 +3469,7 @@ class _MyPageState extends State<MyPage> {
                               child: OutlinedButton.icon(
                                 onPressed: () {
                                   if (_canUseBusinessCardFeature) {
-                                    unawaited(_handleSendBusinessCardToKakao());
+                                    unawaited(_shareBusinessCard());
                                   } else {
                                     unawaited(_openUpgradeChatSheet());
                                   }
@@ -3200,8 +3494,8 @@ class _MyPageState extends State<MyPage> {
                                 ),
                                 label: Text(
                                   _canUseBusinessCardFeature
-                                      ? '카카오톡으로 명함 전송'
-                                      : 'Semi-Pro부터 카카오톡 전송 가능',
+                                      ? '명함 공유하기'
+                                      : 'Semi-Pro부터 명함 공유 가능',
                                   style: const TextStyle(
                                     fontSize: 13.2,
                                     fontWeight: FontWeight.w900,
@@ -3223,7 +3517,7 @@ class _MyPageState extends State<MyPage> {
     );
   }
 
-  // ── 프로필 폼 카드 ─────────────────────────────────────────────────────────
+  // ── 프로필 폼 카드 ────────────────────────────────────────────────────────
 
   static const _activityRegions = <String, List<String>>{
     '서울특별시': [
@@ -3244,11 +3538,11 @@ class _MyPageState extends State<MyPage> {
       '중구',
     ],
     '부산광역시': ['강서구', '금정구', '남구', '동래구', '부산진구', '북구', '수영구', '연제구', '해운대구'],
-    '대구광역시': ['달서구', '달성군', '동구', '북구', '수성구', '중구'],
+    '대구광역시': ['달서구', '달성군', '동구', '수성구', '중구'],
     '인천광역시': ['계양구', '남동구', '미추홀구', '부평구', '서구', '연수구'],
     '광주광역시': ['광산구', '남구', '동구', '북구', '서구'],
-    '대전광역시': ['대덕구', '동구', '서구', '유성구', '중구'],
-    '울산광역시': ['남구', '동구', '북구', '울주군', '중구'],
+    '대전광역시': ['대덕구', '유성구'],
+    '울산광역시': ['울주군'],
     '세종특별자치시': ['세종시'],
     '경기도': [
       '고양시',
@@ -3678,7 +3972,7 @@ class _MyPageState extends State<MyPage> {
                     key: const Key('my_page_add_activity_region'),
                     onPressed: _addActivityRegion,
                     icon: const Icon(Icons.add_location_alt_outlined),
-                    label: const Text('활동 지역 추가'),
+                    label: const Text('지역 추가'),
                   ),
                 )
               else
@@ -3752,7 +4046,7 @@ class _MyPageState extends State<MyPage> {
       icon: Icons.auto_awesome_rounded,
       child: Column(
         children: [
-          // ── 기본 정보 그룹 ──────────────────────────────
+          // ── 기본 정보 그룹 ────────────────────────────────────────────────
           _buildContractNameSourceField(
             controller: _nameController,
             focusNode: _realNameFocusNode,
@@ -3861,13 +4155,13 @@ class _MyPageState extends State<MyPage> {
             },
           ),
 
-          // ── 구분선 ─────────────────────────────────────
+          // ── 구분선 ────────────────────────────────────────────────────────
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Divider(height: 1, color: kMyBorder),
           ),
 
-          // ── 운영 정보 그룹 ──────────────────────────────
+          // ── 운영 정보 그룹 ────────────────────────────────────────────────
           if (_isPersonalWorkspace) ...[
             _buildAffiliationTypeField(),
             const SizedBox(height: 12),
@@ -4053,11 +4347,11 @@ class _MyPageState extends State<MyPage> {
         break;
 
       case AifcTierGuideAction.goFillInfo:
-        _showSnack('AI FC 안내 정보를 채워주세요.');
+        _showSnack('AI FC FC 안내 정보를 채워주세요.');
         break;
 
       case AifcTierGuideAction.goAddMember:
-        _showSnack('고객카드는 홈 또는 고객리스트에서 추가할 수 있어요.');
+        _showSnack('회원카드는 홈 또는 회원리스트에서 추가할 수 있어요.');
         break;
 
       case AifcTierGuideAction.goAddProduct:
@@ -4069,7 +4363,7 @@ class _MyPageState extends State<MyPage> {
     }
   }
 
-  // ── 프리미엄 배너 ─────────────────────────────────────────────────────────
+  // ── 프리미엄 배너 ────────────────────────────────────────────────────────
   Future<void> _openUpgradeChatSheet() async {
     final trainerName =
         _displayNameController.text.trim().isNotEmpty
@@ -4103,11 +4397,11 @@ class _MyPageState extends State<MyPage> {
         break;
 
       case AifcUpgradeAction.goFillInfo:
-        _showSnack('AI FC 안내 정보를 채워주세요.');
+        _showSnack('AI FC FC 안내 정보를 채워주세요.');
         break;
 
       case AifcUpgradeAction.goAddMember:
-        _showSnack('고객카드 추가 화면 연결은 다음 단계에서 붙일게요.');
+        _showSnack('회원카드 추가 화면 연결은 다음 단계에서 붙일게요.');
         break;
 
       case AifcUpgradeAction.goAddProduct:
@@ -4301,7 +4595,7 @@ class _MyPageState extends State<MyPage> {
     );
   }
 
-  // ── 메뉴 섹션 ─────────────────────────────────────────────────────────────
+  //  메뉴 섹션
   Widget _buildMenuSection({
     required String title,
     required List<_MyMenuItem> items,
@@ -4325,9 +4619,9 @@ class _MyPageState extends State<MyPage> {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // 공용 위젯들
-// ══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 
 class _MySectionCard extends StatelessWidget {
   const _MySectionCard({
@@ -4565,7 +4859,7 @@ class _TierInfoRow extends StatelessWidget {
   }
 }
 
-// ── 월 목표 체크 섹션 ─────────────────────────────────────────────────────────
+// ── 월 목표 체크 섹션 ─────────────────────────────────────────────────────
 
 class _GoalSettingSection extends StatefulWidget {
   const _GoalSettingSection();
@@ -4610,7 +4904,7 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
         _monthlyMemberController.text =
             (goals['monthlyMemberTarget'] ?? '').toString();
 
-        // ✅ 버그 수정: 숫자만 추출 후 포맷
+        // 버그 수정: 숫자만 추출 후 포맷
         final revenueRaw = (goals['monthlyRevenueTarget'] ?? '').toString();
         final revenueDigits = revenueRaw.replaceAll(RegExp(r'[^0-9]'), '');
         _monthlyRevenueController
@@ -4783,7 +5077,7 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
   }
 }
 
-// ── 레슨 상품 관리 섹션 ───────────────────────────────────────────────────────
+// ── 레슨 상품 관리 섹션 ───────────────────────────────────────────────────
 
 class _ProductManagementSection extends StatelessWidget {
   const _ProductManagementSection({required this.nickname});
@@ -4822,7 +5116,7 @@ class _ProductManagementSection extends StatelessWidget {
       return;
     }
 
-    // 상품이 0개일 때만 AI FC 채팅 먼저
+    // // 상품이 0개일 때만 AI FC 채팅 먼저
     final chatNickname = aifcNicknameLabel(nickname);
     String specialty = '';
 
@@ -4955,7 +5249,7 @@ class _ProductManagementSection extends StatelessWidget {
       nickname: normalizeAifcNickname(nickname),
       title: '상품을 삭제할까요?',
       message:
-          '${product.name} 상품을 삭제하면 레슨 상품 목록에서 사라져요.\n실수로 삭제했다면 바로 되돌릴 수 있어요.',
+          '${product.name}  상품을 삭제하면 레슨 상품 목록에서 사라져요.\n실수로 삭제했다면 바로 되돌릴 수 있어요.',
       cancelText: '취소',
       confirmText: '삭제',
       userCancelText: '취소할게요',
@@ -5173,7 +5467,7 @@ IconData _lessonCategoryIcon(String category) {
 
   if (c.contains('pt') ||
       c.contains('피티') ||
-      c.contains('웨이트') ||
+      c.contains('퍼스널') ||
       c.contains('weight') ||
       c.contains('weight training') ||
       c.contains('퍼스널 트레이닝') ||
@@ -5207,7 +5501,7 @@ IconData _lessonCategoryIcon(String category) {
     return Icons.groups_rounded;
   }
 
-  if (c.contains('요가') || c.contains('요기') || c.contains('yoga')) {
+  if (c.contains('요가') || c.contains('명상') || c.contains('yoga')) {
     return Icons.self_improvement_rounded;
   }
 
@@ -5216,7 +5510,7 @@ IconData _lessonCategoryIcon(String category) {
   }
 
   if (c.contains('러닝') ||
-      c.contains('유산소') ||
+      c.contains('조깅') ||
       c.contains('running') ||
       c.contains('running training') ||
       c.contains('runining pt')) {
@@ -5655,8 +5949,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
 
       if (!mounted) return;
 
-      // ✅ 여기서는 토스트를 띄우지 않고 true만 넘겨줌
-      Navigator.of(context).pop(true);
+      //  여기서는 토스트를 띄우지 않고 true만 넘겨줌      Navigator.of(context).pop(true);
     } catch (e) {
       debugPrint('레슨 상품 저장 실패: $e');
 
@@ -5690,7 +5983,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
           validator ??
           (value) {
             if (value == null || value.trim().isEmpty)
-              return '$label 입력이 필요합니다.';
+              return '$label 정보 입력이 필요합니다.';
             return null;
           },
       decoration: InputDecoration(
@@ -5807,7 +6100,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                 _field(
                   controller: _unitPriceController,
                   label: '회당 금액',
-                  prefixText: '₩ ',
+                  prefixText: '₩',
                   suffixText: '원',
                   keyboardType: TextInputType.number,
                   inputFormatters: const [_MyMoneyInputFormatter()],
@@ -5866,7 +6159,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                 _field(
                   controller: _totalPriceController,
                   label: '총 결제금액',
-                  prefixText: '₩ ',
+                  prefixText: '₩',
                   suffixText: '원',
                   keyboardType: TextInputType.number,
                   inputFormatters: const [_MyMoneyInputFormatter()],
@@ -5902,7 +6195,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
   }
 }
 
-// ── 버전 정보 카드 ─────────────────────────────────────────────────────────────
+// ── 버전 정보 카드 ────────────────────────────────────────────────────────
 
 class _VersionInfoCard extends StatelessWidget {
   const _VersionInfoCard();
@@ -5948,7 +6241,7 @@ class _VersionInfoCard extends StatelessWidget {
   }
 }
 
-// ── 소형 공용 위젯 ─────────────────────────────────────────────────────────────
+// ── 소형 공용 위젯 ────────────────────────────────────────────────────────
 
 class _MyBirthDateInputFormatter extends TextInputFormatter {
   const _MyBirthDateInputFormatter();
@@ -6158,288 +6451,4 @@ class _MyMoneyInputFormatter extends TextInputFormatter {
     }
     return buffer.toString();
   }
-}
-
-class _MyHeaderBusinessCard extends StatelessWidget {
-  const _MyHeaderBusinessCard({
-    required this.name,
-    required this.nameEn,
-    required this.gymName,
-    required this.specialty,
-    required this.phone,
-    required this.address,
-  });
-
-  final String name;
-  final String nameEn;
-  final String gymName;
-  final String specialty;
-  final String phone;
-  final String address;
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1.78,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            const DecoratedBox(
-              decoration: BoxDecoration(color: Color(0xFF0D1117)),
-            ),
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _MyHeaderPhotoAreaPainter(
-                  photoBg: const Color(0xFF1A2332),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: CustomPaint(painter: _MyHeaderSlashLinePainter()),
-            ),
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 0, 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    if (gymName.isNotEmpty)
-                      Row(
-                        children: [
-                          Container(
-                            width: 5,
-                            height: 5,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF38BDF8),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Flexible(
-                            child: Text(
-                              gymName.toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      const SizedBox.shrink(),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
-                            height: 1.1,
-                          ),
-                        ),
-                        if (nameEn.isNotEmpty) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            nameEn,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white38,
-                              fontSize: 10,
-                              letterSpacing: 0.7,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 7),
-                        if (specialty.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF38BDF8).withOpacity(0.14),
-                              borderRadius: BorderRadius.circular(5),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFF38BDF8,
-                                ).withOpacity(0.28),
-                              ),
-                            ),
-                            child: Text(
-                              specialty,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF7DD3FC),
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Divider(
-                          height: 1,
-                          color: Colors.white.withOpacity(0.12),
-                          thickness: 0.5,
-                        ),
-                        const SizedBox(height: 8),
-                        if (phone.isNotEmpty)
-                          _MyHeaderContactRow(label: 'TEL', value: phone),
-                        if (address.isNotEmpty)
-                          _MyHeaderContactRow(label: 'ADD', value: address),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              right: 18,
-              top: 18,
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.12)),
-                ),
-                child: const Icon(
-                  Icons.badge_outlined,
-                  color: Colors.white54,
-                  size: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MyHeaderContactRow extends StatelessWidget {
-  const _MyHeaderContactRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 24,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white30,
-                fontSize: 8.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 9.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MyHeaderPhotoAreaPainter extends CustomPainter {
-  const _MyHeaderPhotoAreaPainter({required this.photoBg});
-
-  final Color photoBg;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path =
-        Path()
-          ..moveTo(size.width * 0.64, 0)
-          ..lineTo(size.width, 0)
-          ..lineTo(size.width, size.height)
-          ..lineTo(size.width * 0.55, size.height)
-          ..close();
-
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = photoBg
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _MyHeaderPhotoAreaPainter oldDelegate) {
-    return oldDelegate.photoBg != photoBg;
-  }
-}
-
-class _MyHeaderSlashLinePainter extends CustomPainter {
-  const _MyHeaderSlashLinePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final x1 = size.width * 0.64;
-    final x2 = size.width * 0.55;
-
-    final paint =
-        Paint()
-          ..shader = ui.Gradient.linear(
-            Offset(x1, 0),
-            Offset(x2, size.height),
-            [
-              const Color(0xFF38BDF8).withOpacity(0.1),
-              const Color(0xFF38BDF8),
-              const Color(0xFF9333EA),
-              const Color(0xFF38BDF8).withOpacity(0.1),
-            ],
-            [0.0, 0.28, 0.72, 1.0],
-          )
-          ..strokeWidth = 3.0
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(Offset(x1, 0), Offset(x2, size.height), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

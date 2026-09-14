@@ -19,38 +19,40 @@ class HomeLessonDaySelector extends StatelessWidget {
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      children: allDays.map((day) {
-        final bool isSelected = selectedDays.contains(day);
+      children:
+          allDays.map((day) {
+            final bool isSelected = selectedDays.contains(day);
 
-        return GestureDetector(
-          onTap: () {
-            onDayTapped(day);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 7,
-            ),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? activeColor.withOpacity(0.10)
-                  : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isSelected ? activeColor : Colors.grey.shade300,
+            return GestureDetector(
+              onTap: () {
+                onDayTapped(day);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      isSelected
+                          ? activeColor.withOpacity(0.10)
+                          : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: isSelected ? activeColor : Colors.grey.shade300,
+                  ),
+                ),
+                child: Text(
+                  day,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? activeColor : Colors.black87,
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              day,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: isSelected ? activeColor : Colors.black87,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 }

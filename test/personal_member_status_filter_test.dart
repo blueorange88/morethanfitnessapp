@@ -22,10 +22,7 @@ void main() {
       personalMemberStatusFromCanonical({'managementState': 'expired'}),
       '만료',
     );
-    expect(
-      personalMemberStatusFromCanonical({'memberStatus': '휴면'}),
-      '휴면',
-    );
+    expect(personalMemberStatusFromCanonical({'memberStatus': '휴면'}), '휴면');
   });
 
   test('기존 memberStatus 기준으로 전체·휴면·만료를 판정한다', () {
@@ -101,9 +98,7 @@ void main() {
   test('canonical membership 종료일과 활동상태 필터 의미를 분리한다', () {
     final member = Member.fromFirestore('member-test', {
       'memberStatus': '활성',
-      'membership': {
-        'endAt': DateTime.now().subtract(const Duration(days: 1)),
-      },
+      'membership': {'endAt': DateTime.now().subtract(const Duration(days: 1))},
     });
     expect(member.isExpired, isTrue);
     expect(
@@ -117,9 +112,10 @@ void main() {
 
   test('상태 변경과 taxonomy는 별도 client write 계약이다', () {
     final source = File('lib/pages/client_list_page.dart').readAsStringSync();
-    final saveService = File(
-      'lib/services/personal_member_card_save_service.dart',
-    ).readAsStringSync();
+    final saveService =
+        File(
+          'lib/services/personal_member_card_save_service.dart',
+        ).readAsStringSync();
     expect(source, isNot(contains('PersonalMemberStatusFilterBar')));
     expect(source, contains('PersonalTaxonomyFilterRole.statusDormant'));
     expect(source, contains('PersonalTaxonomyFilterRole.statusExpired'));
@@ -127,18 +123,9 @@ void main() {
     expect(source, contains('.transitionStateAndVerify('));
     expect(saveService, contains("'transitionManagedMemberState'"));
     expect(saveService, contains("member['managementState'] != nextState"));
-    expect(
-      source,
-      contains("return member.memberStatus == '만료';"),
-    );
-    expect(
-      source,
-      contains("return member.memberStatus == '휴면';"),
-    );
-    expect(
-      source,
-      isNot(contains("visibleSystemGroups: {\n        if")),
-    );
+    expect(source, contains("return member.memberStatus == '만료';"));
+    expect(source, contains("return member.memberStatus == '휴면';"));
+    expect(source, isNot(contains("visibleSystemGroups: {\n        if")));
   });
 
   test('통합 strip 전체는 분류 세 축만 초기화하고 검색어는 유지한다', () {
@@ -165,9 +152,10 @@ void main() {
   });
 
   test('그룹 관리 page는 공통 header·surface 토큰을 사용한다', () {
-    final source = File(
-      'lib/pages/personal_member_taxonomy_management_page.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/pages/personal_member_taxonomy_management_page.dart',
+        ).readAsStringSync();
     expect(source, contains('context.mtfHeaderGradient'));
     expect(source, contains('personal_taxonomy_management_header'));
     expect(source, contains('SystemUiOverlayStyle.light'));
@@ -186,9 +174,10 @@ void main() {
   });
 
   test('태그 관리는 기존 AIFC sheet·bubble·dialog 컴포넌트를 유지한다', () {
-    final source = File(
-      'lib/widgets/aifc_personal_tag_management_chat_sheet.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/widgets/aifc_personal_tag_management_chat_sheet.dart',
+        ).readAsStringSync();
     expect(source, contains('AifcSheetFrame('));
     expect(source, contains('AifcChatBubble('));
     expect(source, contains('AifcChatSheet.show('));

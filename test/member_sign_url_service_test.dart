@@ -38,9 +38,8 @@ void main() {
   });
 
   test('웹 서명 실패 로그는 예외 원문을 출력하지 않는다', () {
-    final source = File(
-      'lib/pages/member_signature_web_page.dart',
-    ).readAsStringSync();
+    final source =
+        File('lib/pages/member_signature_web_page.dart').readAsStringSync();
 
     expect(source, isNot(contains("실패: \$e")));
   });

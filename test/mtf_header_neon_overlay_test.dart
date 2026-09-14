@@ -26,10 +26,11 @@ void main() {
       MaterialApp(
         home: ValueListenableBuilder<bool>(
           valueListenable: expanded,
-          builder: (_, value, __) => MtfHeaderNeonOverlay(
-            isExpanded: value,
-            child: const SizedBox(height: 120),
-          ),
+          builder:
+              (_, value, __) => MtfHeaderNeonOverlay(
+                isExpanded: value,
+                child: const SizedBox(height: 120),
+              ),
         ),
       ),
     );

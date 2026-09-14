@@ -83,8 +83,9 @@ void main() {
       );
     }
     expect(
-      AppTierAccessService.featureInfo(AppTierFeatureKey.lessonInsights)
-          .requiredRank,
+      AppTierAccessService.featureInfo(
+        AppTierFeatureKey.lessonInsights,
+      ).requiredRank,
       3,
     );
   });
@@ -115,9 +116,8 @@ void main() {
 
   test('월간 query는 StatsPage가 아니라 별도 월간 기록 화면에서만 시작한다', () {
     final statsPage = File('lib/pages/stats_page.dart').readAsStringSync();
-    final monthlyPage = File(
-      'lib/pages/monthly_lesson_history_page.dart',
-    ).readAsStringSync();
+    final monthlyPage =
+        File('lib/pages/monthly_lesson_history_page.dart').readAsStringSync();
 
     expect(statsPage, isNot(contains('PersonalMonthlyLessonStatsRepository(')));
     expect(statsPage, contains("label: '월간 레슨 기록'"));
@@ -130,9 +130,10 @@ void main() {
     final myPage = File('lib/pages/my_page.dart').readAsStringSync();
     final drawer =
         File('lib/widgets/mtf_animated_drawer.dart').readAsStringSync();
-    final bottomNav = File(
-      'lib/widgets/home/sections/home_bottom_nav_bar.dart',
-    ).readAsStringSync();
+    final bottomNav =
+        File(
+          'lib/widgets/home/sections/home_bottom_nav_bar.dart',
+        ).readAsStringSync();
 
     expect(home, contains('AppTierFeatureKey.lessonInsights'));
     expect(myPage, contains('AppTierFeatureKey.lessonInsights'));
@@ -151,10 +152,10 @@ void main() {
         home: MonthlyLessonHistoryPage(
           personalOwnerUid: 'uid-a',
           repository: repository,
-          accessLoader: () async =>
-              AppTierAccessService.personalSnapshotFromProfile({
-            'tier': 'Beginner',
-          }),
+          accessLoader:
+              () async => AppTierAccessService.personalSnapshotFromProfile({
+                'tier': 'Beginner',
+              }),
         ),
       ),
     );
@@ -175,10 +176,10 @@ void main() {
         home: MonthlyLessonHistoryPage(
           personalOwnerUid: 'uid-a',
           repository: repository,
-          accessLoader: () async =>
-              AppTierAccessService.personalSnapshotFromProfile({
-            'tier': 'Pro',
-          }),
+          accessLoader:
+              () async => AppTierAccessService.personalSnapshotFromProfile({
+                'tier': 'Pro',
+              }),
         ),
       ),
     );
@@ -190,12 +191,14 @@ void main() {
 
   test('Home과 서명 확정 경로는 동일 snapshot 필드를 기록한다', () {
     final home = File('lib/pages/home_page.dart').readAsStringSync();
-    final direct = File(
-      'lib/services/lesson_confirmation_service.dart',
-    ).readAsStringSync();
-    final quickSign = File(
-      'lib/pages/personal_training_log_quick_sign_page.dart',
-    ).readAsStringSync();
+    final direct =
+        File(
+          'lib/services/lesson_confirmation_service.dart',
+        ).readAsStringSync();
+    final quickSign =
+        File(
+          'lib/pages/personal_training_log_quick_sign_page.dart',
+        ).readAsStringSync();
 
     expect(home, contains('PersonalTrainingLogRepository.firebase'));
     for (final source in [direct, quickSign]) {
@@ -239,31 +242,15 @@ void main() {
 
   test('선택 월 경계와 owner workspace 격리를 강제한다', () async {
     final dataSource = FakeMonthlyDataSource([
-      record(
-        id: 'first',
-        status: 'completed',
-        startAt: DateTime(2026, 7, 1),
-      ),
+      record(id: 'first', status: 'completed', startAt: DateTime(2026, 7, 1)),
       record(
         id: 'last',
         status: 'completed',
         startAt: DateTime(2026, 7, 31, 23, 59, 59),
       ),
-      record(
-        id: 'next',
-        status: 'completed',
-        startAt: DateTime(2026, 8, 1),
-      ),
-      record(
-        id: 'other',
-        status: 'completed',
-        trainerId: 'uid-b',
-      ),
-      record(
-        id: 'legacy',
-        status: 'completed',
-        workspaceType: 'legacy',
-      ),
+      record(id: 'next', status: 'completed', startAt: DateTime(2026, 8, 1)),
+      record(id: 'other', status: 'completed', trainerId: 'uid-b'),
+      record(id: 'legacy', status: 'completed', workspaceType: 'legacy'),
     ]);
     final summary = await PersonalMonthlyLessonStatsRepository(
       uid: 'uid-a',
@@ -286,10 +273,7 @@ void main() {
       uid: 'uid-a',
       dataSource: FakeMonthlyDataSource(const [], currentUid: 'uid-b'),
     );
-    expect(
-      () => repository.loadMonth(DateTime(2026, 7)),
-      throwsStateError,
-    );
+    expect(() => repository.loadMonth(DateTime(2026, 7)), throwsStateError);
   });
 
   testWidgets('달력에서 날짜별 횟수와 상세 snapshot을 표시한다', (tester) async {
@@ -351,20 +335,20 @@ void main() {
 
   testWidgets('빈 달과 네트워크 오류를 구분한다', (tester) async {
     Widget app(MonthlyLessonViewState state) => MaterialApp(
-          home: Scaffold(
-            body: MonthlyLessonCalendar(
-              month: DateTime(2026, 7),
-              state: state,
-              summary: MonthlyLessonSummary(records: const []),
-              selectedDay: null,
-              onPreviousMonth: () {},
-              onNextMonth: () {},
-              onCurrentMonth: () {},
-              onDaySelected: (_) {},
-              onRetry: () {},
-            ),
-          ),
-        );
+      home: Scaffold(
+        body: MonthlyLessonCalendar(
+          month: DateTime(2026, 7),
+          state: state,
+          summary: MonthlyLessonSummary(records: const []),
+          selectedDay: null,
+          onPreviousMonth: () {},
+          onNextMonth: () {},
+          onCurrentMonth: () {},
+          onDaySelected: (_) {},
+          onRetry: () {},
+        ),
+      ),
+    );
     await tester.pumpWidget(app(MonthlyLessonViewState.empty));
     expect(find.text('이 달에 확정된 레슨 기록이 없어요.'), findsOneWidget);
     await tester.pumpWidget(app(MonthlyLessonViewState.networkError));
@@ -380,11 +364,13 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         await tester.pumpWidget(
           MaterialApp(
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context)
-                  .copyWith(textScaler: TextScaler.linear(scale)),
-              child: child!,
-            ),
+            builder:
+                (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: TextScaler.linear(scale)),
+                  child: child!,
+                ),
             home: Scaffold(
               body: SingleChildScrollView(
                 child: MonthlyLessonCalendar(

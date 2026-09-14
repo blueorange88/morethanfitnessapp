@@ -21,11 +21,12 @@ void main() {
 
   test('user가 없으면 anonymous session을 한 번 생성한다', () async {
     final gateway = _FakeIdentityGateway(anonymousResult: anonymous);
-    final result = await AppAccountService(
-      gateway: gateway,
-      anonymousGateway: gateway,
-      profileGateway: _FakeProfileGateway(),
-    ).ensureAnonymousSession();
+    final result =
+        await AppAccountService(
+          gateway: gateway,
+          anonymousGateway: gateway,
+          profileGateway: _FakeProfileGateway(),
+        ).ensureAnonymousSession();
 
     expect(result, anonymous);
     expect(gateway.anonymousCalls, 1);
@@ -52,11 +53,12 @@ void main() {
 
   test('기존 anonymous session은 새 인증 없이 재사용한다', () async {
     final gateway = _FakeIdentityGateway(currentUser: anonymous);
-    final result = await AppAccountService(
-      gateway: gateway,
-      anonymousGateway: gateway,
-      profileGateway: _FakeProfileGateway(),
-    ).ensureAnonymousSession();
+    final result =
+        await AppAccountService(
+          gateway: gateway,
+          anonymousGateway: gateway,
+          profileGateway: _FakeProfileGateway(),
+        ).ensureAnonymousSession();
 
     expect(result, anonymous);
     expect(gateway.anonymousCalls, 0);
@@ -64,11 +66,12 @@ void main() {
 
   test('기존 linked user도 변경하지 않고 반환한다', () async {
     final gateway = _FakeIdentityGateway(currentUser: linked);
-    final result = await AppAccountService(
-      gateway: gateway,
-      anonymousGateway: gateway,
-      profileGateway: _FakeProfileGateway(),
-    ).ensureAnonymousSession();
+    final result =
+        await AppAccountService(
+          gateway: gateway,
+          anonymousGateway: gateway,
+          profileGateway: _FakeProfileGateway(),
+        ).ensureAnonymousSession();
 
     expect(result, linked);
     expect(gateway.anonymousCalls, 0);
@@ -258,11 +261,12 @@ void main() {
     final gateway = _FakeIdentityGateway(currentUser: linked, steps: steps);
     final profile = _FakeProfileGateway(steps: steps);
 
-    final result = await AppAccountService(
-      gateway: gateway,
-      anonymousGateway: gateway,
-      profileGateway: profile,
-    ).completeCurrentEmailLink();
+    final result =
+        await AppAccountService(
+          gateway: gateway,
+          anonymousGateway: gateway,
+          profileGateway: profile,
+        ).completeCurrentEmailLink();
 
     expect(result.uid, anonymous.uid);
     expect(gateway.linkCalls, 0);
@@ -323,8 +327,8 @@ void main() {
 }
 
 Matcher _failsWith(AppAccountErrorCode code) => throwsA(
-      isA<AppAccountException>().having((error) => error.code, 'code', code),
-    );
+  isA<AppAccountException>().having((error) => error.code, 'code', code),
+);
 
 class _FakeIdentityGateway
     implements AppAccountAuthGateway, AppAnonymousIdentityGateway {
@@ -359,9 +363,10 @@ class _FakeIdentityGateway
   Future<AppAccountUser> signInAnonymously() async {
     anonymousCalls += 1;
     if (anonymousError != null) throw anonymousError!;
-    final result = anonymousCompleter == null
-        ? anonymousResult!
-        : await anonymousCompleter!.future;
+    final result =
+        anonymousCompleter == null
+            ? anonymousResult!
+            : await anonymousCompleter!.future;
     currentUser = result;
     return result;
   }
@@ -390,15 +395,13 @@ class _FakeIdentityGateway
   Future<AppAccountUser> createUserWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<AppAccountUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> sendEmailVerification() => throw UnimplementedError();
@@ -416,7 +419,7 @@ class _FakeIdentityGateway
 
 class _FakeProfileGateway implements AnonymousProfileGateway {
   _FakeProfileGateway({this.steps, List<Object>? transitionErrors})
-      : transitionErrors = transitionErrors ?? <Object>[];
+    : transitionErrors = transitionErrors ?? <Object>[];
 
   final List<String>? steps;
   final List<Object> transitionErrors;
@@ -437,10 +440,10 @@ class _FakeProfileGateway implements AnonymousProfileGateway {
 
   @override
   Future<Map<String, dynamic>> reconcilePersonalTier() async => const {
-        'tier': 'Beginner',
-        'amateurConditionCount': 0,
-        'amateurConditionTotal': 2,
-        'eligible': false,
-        'changed': false,
-      };
+    'tier': 'Beginner',
+    'amateurConditionCount': 0,
+    'amateurConditionTotal': 2,
+    'eligible': false,
+    'changed': false,
+  };
 }

@@ -60,10 +60,11 @@ class HomeDeletedMemberScheduleService {
 
     if (memberIds.isEmpty) return <String>{};
 
-    final snapshot = await _members
-        .where('trainerId', isEqualTo: ownerUid)
-        .where('workspaceType', isEqualTo: 'personal')
-        .get();
+    final snapshot =
+        await _members
+            .where('trainerId', isEqualTo: ownerUid)
+            .where('workspaceType', isEqualTo: 'personal')
+            .get();
 
     final ownedMembersById = <String, Map<String, dynamic>>{
       for (final doc in snapshot.docs)
@@ -101,27 +102,23 @@ class HomeDeletedMemberScheduleService {
       if (memberId.isEmpty) continue;
       if (!deletedMemberIds.contains(memberId)) continue;
 
-      batch.set(
-        doc.reference,
-        {
-          'memberId': FieldValue.delete(),
-          'phone': FieldValue.delete(),
-          'totalSessions': FieldValue.delete(),
-          'remainingSessions': FieldValue.delete(),
-          'remainSessions': FieldValue.delete(),
-          'sessionSnapshotTotal': FieldValue.delete(),
-          'sessionSnapshotRemainBefore': FieldValue.delete(),
-          'sessionSnapshotRemainAfter': FieldValue.delete(),
-          'sessionSnapshotDoneBefore': FieldValue.delete(),
-          'sessionSnapshotDoneAfter': FieldValue.delete(),
-          'sessionSnapshotLessonNumber': FieldValue.delete(),
-          'sessionSnapshotLabel': FieldValue.delete(),
-          'linkedMemberDeleted': true,
-          'deletedMemberId': memberId,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(doc.reference, {
+        'memberId': FieldValue.delete(),
+        'phone': FieldValue.delete(),
+        'totalSessions': FieldValue.delete(),
+        'remainingSessions': FieldValue.delete(),
+        'remainSessions': FieldValue.delete(),
+        'sessionSnapshotTotal': FieldValue.delete(),
+        'sessionSnapshotRemainBefore': FieldValue.delete(),
+        'sessionSnapshotRemainAfter': FieldValue.delete(),
+        'sessionSnapshotDoneBefore': FieldValue.delete(),
+        'sessionSnapshotDoneAfter': FieldValue.delete(),
+        'sessionSnapshotLessonNumber': FieldValue.delete(),
+        'sessionSnapshotLabel': FieldValue.delete(),
+        'linkedMemberDeleted': true,
+        'deletedMemberId': memberId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       count++;
       await commitIfNeeded();
@@ -152,20 +149,16 @@ class HomeDeletedMemberScheduleService {
     }
 
     for (final doc in snap.docs) {
-      batch.set(
-        doc.reference,
-        {
-          'memberId': FieldValue.delete(),
-          'phone': FieldValue.delete(),
-          'totalSessions': FieldValue.delete(),
-          'remainingSessions': FieldValue.delete(),
-          'remainSessions': FieldValue.delete(),
-          'linkedMemberDeleted': true,
-          'deletedMemberId': cleanMemberId,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(doc.reference, {
+        'memberId': FieldValue.delete(),
+        'phone': FieldValue.delete(),
+        'totalSessions': FieldValue.delete(),
+        'remainingSessions': FieldValue.delete(),
+        'remainSessions': FieldValue.delete(),
+        'linkedMemberDeleted': true,
+        'deletedMemberId': cleanMemberId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       count++;
       await commitIfNeeded();

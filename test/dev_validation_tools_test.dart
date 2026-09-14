@@ -9,19 +9,19 @@ import 'package:mtf_app/widgets/app_environment_banner.dart';
 import 'package:mtf_app/widgets/dev_client_card_viewport.dart';
 
 AppTierAccessSnapshot _serverAccess(int rank) => AppTierAccessSnapshot(
-      tierRank: rank,
-      earnedTierRank: rank,
-      supportTierRank: 0,
-      organizationTierRank: 0,
-      storedTierRank: rank,
-      isSponsor: false,
-      profileCompleted: false,
-      kakaoLinked: false,
-      activeMemberCount: 0,
-      kakaoCardLinkedMemberCount: 0,
-      contractSignedMemberCount: 0,
-      branchCount: 0,
-    );
+  tierRank: rank,
+  earnedTierRank: rank,
+  supportTierRank: 0,
+  organizationTierRank: 0,
+  storedTierRank: rank,
+  isSponsor: false,
+  profileCompleted: false,
+  kakaoLinked: false,
+  activeMemberCount: 0,
+  kakaoCardLinkedMemberCount: 0,
+  contractSignedMemberCount: 0,
+  branchCount: 0,
+);
 
 void main() {
   setUp(() {
@@ -105,10 +105,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('dev_tier_fixture_amateur')));
     await tester.pump();
-    expect(
-      DevTierFixtureController.selection.value,
-      DevTierFixture.amateur,
-    );
+    expect(DevTierFixtureController.selection.value, DevTierFixture.amateur);
   });
 
   testWidgets('PROD에서는 DEV tier selector가 열리지 않는다', (tester) async {
@@ -197,9 +194,7 @@ void main() {
     });
   }
 
-  testWidgets('PROD에서는 viewport selector와 width override를 숨긴다', (
-    tester,
-  ) async {
+  testWidgets('PROD에서는 viewport selector와 width override를 숨긴다', (tester) async {
     DevClientCardViewportController.select(360);
     AppEnvironmentConfig.select(AppEnvironment.prod);
     await tester.pumpWidget(

@@ -49,16 +49,16 @@ class GuestScheduleRecord {
   }
 
   Map<String, dynamic> toJson() => {
-        'guestScheduleId': guestScheduleId,
-        'nameOrAlias': nameOrAlias,
-        'lessonType': lessonType,
-        'startAt': startAt.toIso8601String(),
-        'endAt': endAt.toIso8601String(),
-        'memo': memo,
-        'colorHex': colorHex,
-        'createdAtLocal': createdAtLocal.toIso8601String(),
-        'updatedAtLocal': updatedAtLocal.toIso8601String(),
-      };
+    'guestScheduleId': guestScheduleId,
+    'nameOrAlias': nameOrAlias,
+    'lessonType': lessonType,
+    'startAt': startAt.toIso8601String(),
+    'endAt': endAt.toIso8601String(),
+    'memo': memo,
+    'colorHex': colorHex,
+    'createdAtLocal': createdAtLocal.toIso8601String(),
+    'updatedAtLocal': updatedAtLocal.toIso8601String(),
+  };
 
   factory GuestScheduleRecord.fromJson(Map<String, dynamic> json) {
     return GuestScheduleRecord(
@@ -75,16 +75,16 @@ class GuestScheduleRecord {
   }
 
   Map<String, dynamic> toScheduleMap() => {
-        'docId': guestScheduleId,
-        'guestScheduleId': guestScheduleId,
-        'name': nameOrAlias,
-        'typeName': lessonType,
-        'startAt': startAt,
-        'endAt': endAt,
-        'memo': memo,
-        'typeColorHex': colorHex,
-        'isGuestLocal': true,
-      };
+    'docId': guestScheduleId,
+    'guestScheduleId': guestScheduleId,
+    'name': nameOrAlias,
+    'typeName': lessonType,
+    'startAt': startAt,
+    'endAt': endAt,
+    'memo': memo,
+    'typeColorHex': colorHex,
+    'isGuestLocal': true,
+  };
 }
 
 enum GuestScheduleSaveStatus { saved, limitReached }
@@ -101,8 +101,8 @@ class GuestScheduleRepository {
     this.limit = 5,
     SharedPreferences? preferences,
     DateTime Function()? now,
-  })  : _preferences = preferences,
-        _now = now ?? DateTime.now;
+  }) : _preferences = preferences,
+       _now = now ?? DateTime.now;
 
   static const storageKey = 'guest_home_schedules_v1';
 
@@ -122,14 +122,17 @@ class GuestScheduleRepository {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return [];
-      final records = decoded
-          .whereType<Map>()
-          .map((item) => GuestScheduleRecord.fromJson(
-                Map<String, dynamic>.from(item),
-              ))
-          .where((record) => record.guestScheduleId.isNotEmpty)
-          .toList()
-        ..sort((left, right) => left.startAt.compareTo(right.startAt));
+      final records =
+          decoded
+              .whereType<Map>()
+              .map(
+                (item) => GuestScheduleRecord.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .where((record) => record.guestScheduleId.isNotEmpty)
+              .toList()
+            ..sort((left, right) => left.startAt.compareTo(right.startAt));
       return records;
     } catch (_) {
       return [];
@@ -148,11 +151,12 @@ class GuestScheduleRepository {
     return _locked(() async {
       final records = await load();
       final cleanId = guestScheduleId?.trim() ?? '';
-      final existingIndex = cleanId.isEmpty
-          ? -1
-          : records.indexWhere(
-              (record) => record.guestScheduleId == cleanId,
-            );
+      final existingIndex =
+          cleanId.isEmpty
+              ? -1
+              : records.indexWhere(
+                (record) => record.guestScheduleId == cleanId,
+              );
       if (existingIndex < 0 && records.length >= limit) {
         return const GuestScheduleSaveResult(
           GuestScheduleSaveStatus.limitReached,
@@ -160,28 +164,29 @@ class GuestScheduleRepository {
       }
 
       final now = _now();
-      final record = existingIndex >= 0
-          ? records[existingIndex].copyWith(
-              nameOrAlias: nameOrAlias.trim(),
-              lessonType: lessonType.trim(),
-              startAt: startAt,
-              endAt: endAt,
-              memo: memo.trim(),
-              colorHex: colorHex,
-              updatedAtLocal: now,
-            )
-          : GuestScheduleRecord(
-              guestScheduleId:
-                  'guest-${now.microsecondsSinceEpoch}-${_idSequence++}',
-              nameOrAlias: nameOrAlias.trim(),
-              lessonType: lessonType.trim(),
-              startAt: startAt,
-              endAt: endAt,
-              memo: memo.trim(),
-              colorHex: colorHex,
-              createdAtLocal: now,
-              updatedAtLocal: now,
-            );
+      final record =
+          existingIndex >= 0
+              ? records[existingIndex].copyWith(
+                nameOrAlias: nameOrAlias.trim(),
+                lessonType: lessonType.trim(),
+                startAt: startAt,
+                endAt: endAt,
+                memo: memo.trim(),
+                colorHex: colorHex,
+                updatedAtLocal: now,
+              )
+              : GuestScheduleRecord(
+                guestScheduleId:
+                    'guest-${now.microsecondsSinceEpoch}-${_idSequence++}',
+                nameOrAlias: nameOrAlias.trim(),
+                lessonType: lessonType.trim(),
+                startAt: startAt,
+                endAt: endAt,
+                memo: memo.trim(),
+                colorHex: colorHex,
+                createdAtLocal: now,
+                updatedAtLocal: now,
+              );
 
       if (existingIndex >= 0) {
         records[existingIndex] = record;

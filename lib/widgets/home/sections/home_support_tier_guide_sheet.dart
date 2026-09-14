@@ -44,23 +44,20 @@ class HomeSupportTierGuideSheet {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                gradient: highlighted
-                    ? LinearGradient(
-                        colors: [
-                          primaryColor,
-                          secondaryColor,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
+                gradient:
+                    highlighted
+                        ? LinearGradient(
+                          colors: [primaryColor, secondaryColor],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                        : null,
                 color: highlighted ? null : Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                border: highlighted
-                    ? null
-                    : Border.all(
-                        color: const Color(0xFFE5E7EB),
-                      ),
+                border:
+                    highlighted
+                        ? null
+                        : Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: Icon(
                 icon,
@@ -78,9 +75,10 @@ class HomeSupportTierGuideSheet {
                       Text(
                         tierName,
                         style: TextStyle(
-                          color: highlighted
-                              ? primaryColor
-                              : const Color(0xFF111827),
+                          color:
+                              highlighted
+                                  ? primaryColor
+                                  : const Color(0xFF111827),
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                         ),
@@ -204,9 +202,7 @@ class HomeSupportTierGuideSheet {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Container(
               width: double.infinity,
-              constraints: BoxConstraints(
-                maxHeight: maxSheetHeight,
-              ),
+              constraints: BoxConstraints(maxHeight: maxSheetHeight),
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
               decoration: BoxDecoration(
                 color: tokens.sheetBackground,
@@ -308,9 +304,7 @@ class HomeSupportTierGuideSheet {
                             style: OutlinedButton.styleFrom(
                               foregroundColor:
                                   theme.colorScheme.onSurfaceVariant,
-                              side: BorderSide(
-                                color: tokens.cardBorder,
-                              ),
+                              side: BorderSide(color: tokens.cardBorder),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
@@ -318,9 +312,7 @@ class HomeSupportTierGuideSheet {
                             ),
                             child: const Text(
                               '나중에',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: TextStyle(fontWeight: FontWeight.w800),
                             ),
                           ),
                         ),

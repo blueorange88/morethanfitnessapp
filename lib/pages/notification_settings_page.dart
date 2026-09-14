@@ -112,9 +112,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           await LessonNotificationPrefs.loadSmartAlarmFirstLessonEnabled();
 
       final ownerUid = (widget.personalOwnerUid ?? '').trim();
-      final tierAccess = ownerUid.isEmpty
-          ? await AppTierAccessService.loadTrainerAccess()
-          : await AppTierAccessService.loadPersonalTrainerAccess(uid: ownerUid);
+      final tierAccess =
+          ownerUid.isEmpty
+              ? await AppTierAccessService.loadTrainerAccess()
+              : await AppTierAccessService.loadPersonalTrainerAccess(
+                uid: ownerUid,
+              );
 
       final aifcTrainerName = await _loadAifcTrainerName();
 
@@ -319,189 +322,210 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     canUseContractBasisAlarm: _canUseContractBasisAlarm,
                   ),
                   Expanded(
-                    child: _loading
-                        ? const Center(
-                            child: CircularProgressIndicator(),
-                          )
-                        : SingleChildScrollView(
-                            padding: EdgeInsets.fromLTRB(
-                              16,
-                              16,
-                              16,
-                              28 + bottomSafe + 4,
-                            ),
-                            child: Column(
-                              children: [
-                                _SectionCard(
-                                  title: '레슨 알림',
-                                  subtitle: '레슨 시작 전 필요한 타이밍에 알려드려요',
-                                  icon: Icons.notifications_active_outlined,
-                                  children: [
-                                    _SwitchTile(
-                                      icon: Icons.notifications_outlined,
-                                      title: '레슨 알림 사용',
-                                      subtitle: _lessonEnabled
-                                          ? '레슨 시작 전 알림을 사용 중입니다'
-                                          : '레슨 알림이 꺼져 있습니다',
-                                      value: _lessonEnabled,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _lessonEnabled = value;
-                                        });
-                                        _markChanged();
-                                      },
-                                    ),
-                                    const _SettingsDivider(),
-                                    _ReminderMinuteSelector(
-                                      enabled: _lessonEnabled,
-                                      selectedMinutes: _selectedMinutes,
-                                      options: _minuteOptions,
-                                      summary: _selectedMinuteSummary,
-                                      onTap: _toggleMinute,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                _SectionCard(
-                                  title: '알림 방식',
-                                  subtitle: '무음, 진동, 소리 방식을 선택해요',
-                                  icon: Icons.volume_up_outlined,
-                                  children: [
-                                    _ChoiceTile<LessonNotificationAlertStyle>(
-                                      enabled: _lessonEnabled,
-                                      title: '무음',
-                                      subtitle: LessonNotificationAlertStyle
-                                          .silent.description,
-                                      icon: Icons.notifications_paused_outlined,
-                                      value:
-                                          LessonNotificationAlertStyle.silent,
-                                      groupValue: _alertStyle,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _alertStyle = value;
-                                        });
-                                        _markChanged();
-                                      },
-                                    ),
-                                    const _SettingsDivider(),
-                                    _ChoiceTile<LessonNotificationAlertStyle>(
-                                      enabled: _lessonEnabled,
-                                      title: '진동만',
-                                      subtitle: LessonNotificationAlertStyle
-                                          .vibrationOnly.description,
-                                      icon: Icons.vibration_rounded,
-                                      value: LessonNotificationAlertStyle
-                                          .vibrationOnly,
-                                      groupValue: _alertStyle,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _alertStyle = value;
-                                        });
-                                        _markChanged();
-                                      },
-                                    ),
-                                    const _SettingsDivider(),
-                                    _ChoiceTile<LessonNotificationAlertStyle>(
-                                      enabled: _lessonEnabled,
-                                      title: '소리 + 진동',
-                                      subtitle: LessonNotificationAlertStyle
-                                          .soundAndVibration.description,
-                                      icon: Icons.volume_up_rounded,
-                                      value: LessonNotificationAlertStyle
-                                          .soundAndVibration,
-                                      groupValue: _alertStyle,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _alertStyle = value;
-                                        });
-                                        _markChanged();
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                _SectionCard(
-                                  title: '기기 모드',
-                                  subtitle: '휴대폰 무음/방해금지 설정 반영 방식을 정해요',
-                                  icon: Icons.phone_android_rounded,
-                                  children: [
-                                    _ChoiceTile<LessonNotificationDeviceMode>(
-                                      enabled: _lessonEnabled,
-                                      title: LessonNotificationDeviceMode
-                                          .followDevice.label,
-                                      subtitle: LessonNotificationDeviceMode
-                                          .followDevice.description,
-                                      icon: Icons.phone_iphone_rounded,
-                                      value: LessonNotificationDeviceMode
-                                          .followDevice,
-                                      groupValue: _deviceMode,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _deviceMode = value;
-                                        });
-                                        _markChanged();
-                                      },
-                                    ),
-                                    const _SettingsDivider(),
-                                    _ChoiceTile<LessonNotificationDeviceMode>(
-                                      enabled: _lessonEnabled,
-                                      title: LessonNotificationDeviceMode
-                                          .appPreferred.label,
-                                      subtitle: LessonNotificationDeviceMode
-                                          .appPreferred.description,
-                                      icon: Icons.app_settings_alt_rounded,
-                                      value: LessonNotificationDeviceMode
-                                          .appPreferred,
-                                      groupValue: _deviceMode,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _deviceMode = value;
-                                        });
-                                        _markChanged();
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                _SmartAlarmEntryCard(
-                                  enabled: _lessonEnabled,
-                                  smartAlarmEnabled: _smartAlarmEnabled,
-                                  smartAlarmGapSummary: _smartAlarmGapSummary,
-                                  priorityMemoEnabled: _priorityMemoEnabled,
-                                  firstLessonEnabled: _firstLessonEnabled,
-                                  canUseContractBasisAlarm:
-                                      _canUseContractBasisAlarm,
-                                  canUseSmartAlarm: _canUseSmartAlarm,
-                                  accessLoading: _smartAlarmAccessLoading,
-                                  onTap: _openSmartAlarmChatSheet,
-                                ),
-                                const SizedBox(height: 18),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: FilledButton(
-                                    onPressed: _save,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: kNotifyPrimary,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 15,
+                    child:
+                        _loading
+                            ? const Center(child: CircularProgressIndicator())
+                            : SingleChildScrollView(
+                              padding: EdgeInsets.fromLTRB(
+                                16,
+                                16,
+                                16,
+                                28 + bottomSafe + 4,
+                              ),
+                              child: Column(
+                                children: [
+                                  _SectionCard(
+                                    title: '레슨 알림',
+                                    subtitle: '레슨 시작 전 필요한 타이밍에 알려드려요',
+                                    icon: Icons.notifications_active_outlined,
+                                    children: [
+                                      _SwitchTile(
+                                        icon: Icons.notifications_outlined,
+                                        title: '레슨 알림 사용',
+                                        subtitle:
+                                            _lessonEnabled
+                                                ? '레슨 시작 전 알림을 사용 중입니다'
+                                                : '레슨 알림이 꺼져 있습니다',
+                                        value: _lessonEnabled,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _lessonEnabled = value;
+                                          });
+                                          _markChanged();
+                                        },
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
+                                      const _SettingsDivider(),
+                                      _ReminderMinuteSelector(
+                                        enabled: _lessonEnabled,
+                                        selectedMinutes: _selectedMinutes,
+                                        options: _minuteOptions,
+                                        summary: _selectedMinuteSummary,
+                                        onTap: _toggleMinute,
                                       ),
-                                    ),
-                                    child: const Text(
-                                      '알림 설정 저장',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w900,
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SectionCard(
+                                    title: '알림 방식',
+                                    subtitle: '무음, 진동, 소리 방식을 선택해요',
+                                    icon: Icons.volume_up_outlined,
+                                    children: [
+                                      _ChoiceTile<LessonNotificationAlertStyle>(
+                                        enabled: _lessonEnabled,
+                                        title: '무음',
+                                        subtitle:
+                                            LessonNotificationAlertStyle
+                                                .silent
+                                                .description,
+                                        icon:
+                                            Icons.notifications_paused_outlined,
+                                        value:
+                                            LessonNotificationAlertStyle.silent,
+                                        groupValue: _alertStyle,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _alertStyle = value;
+                                          });
+                                          _markChanged();
+                                        },
+                                      ),
+                                      const _SettingsDivider(),
+                                      _ChoiceTile<LessonNotificationAlertStyle>(
+                                        enabled: _lessonEnabled,
+                                        title: '진동만',
+                                        subtitle:
+                                            LessonNotificationAlertStyle
+                                                .vibrationOnly
+                                                .description,
+                                        icon: Icons.vibration_rounded,
+                                        value:
+                                            LessonNotificationAlertStyle
+                                                .vibrationOnly,
+                                        groupValue: _alertStyle,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _alertStyle = value;
+                                          });
+                                          _markChanged();
+                                        },
+                                      ),
+                                      const _SettingsDivider(),
+                                      _ChoiceTile<LessonNotificationAlertStyle>(
+                                        enabled: _lessonEnabled,
+                                        title: '소리 + 진동',
+                                        subtitle:
+                                            LessonNotificationAlertStyle
+                                                .soundAndVibration
+                                                .description,
+                                        icon: Icons.volume_up_rounded,
+                                        value:
+                                            LessonNotificationAlertStyle
+                                                .soundAndVibration,
+                                        groupValue: _alertStyle,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _alertStyle = value;
+                                          });
+                                          _markChanged();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SectionCard(
+                                    title: '기기 모드',
+                                    subtitle: '휴대폰 무음/방해금지 설정 반영 방식을 정해요',
+                                    icon: Icons.phone_android_rounded,
+                                    children: [
+                                      _ChoiceTile<LessonNotificationDeviceMode>(
+                                        enabled: _lessonEnabled,
+                                        title:
+                                            LessonNotificationDeviceMode
+                                                .followDevice
+                                                .label,
+                                        subtitle:
+                                            LessonNotificationDeviceMode
+                                                .followDevice
+                                                .description,
+                                        icon: Icons.phone_iphone_rounded,
+                                        value:
+                                            LessonNotificationDeviceMode
+                                                .followDevice,
+                                        groupValue: _deviceMode,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _deviceMode = value;
+                                          });
+                                          _markChanged();
+                                        },
+                                      ),
+                                      const _SettingsDivider(),
+                                      _ChoiceTile<LessonNotificationDeviceMode>(
+                                        enabled: _lessonEnabled,
+                                        title:
+                                            LessonNotificationDeviceMode
+                                                .appPreferred
+                                                .label,
+                                        subtitle:
+                                            LessonNotificationDeviceMode
+                                                .appPreferred
+                                                .description,
+                                        icon: Icons.app_settings_alt_rounded,
+                                        value:
+                                            LessonNotificationDeviceMode
+                                                .appPreferred,
+                                        groupValue: _deviceMode,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _deviceMode = value;
+                                          });
+                                          _markChanged();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SmartAlarmEntryCard(
+                                    enabled: _lessonEnabled,
+                                    smartAlarmEnabled: _smartAlarmEnabled,
+                                    smartAlarmGapSummary: _smartAlarmGapSummary,
+                                    priorityMemoEnabled: _priorityMemoEnabled,
+                                    firstLessonEnabled: _firstLessonEnabled,
+                                    canUseContractBasisAlarm:
+                                        _canUseContractBasisAlarm,
+                                    canUseSmartAlarm: _canUseSmartAlarm,
+                                    accessLoading: _smartAlarmAccessLoading,
+                                    onTap: _openSmartAlarmChatSheet,
+                                  ),
+                                  const SizedBox(height: 18),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton(
+                                      onPressed: _save,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: kNotifyPrimary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 15,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        '알림 설정 저장',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
                   ),
                 ],
               ),
@@ -564,17 +588,10 @@ class _NotificationHeader extends StatelessWidget {
 
   List<String> get _chips {
     if (!lessonEnabled) {
-      return const [
-        '레슨 알림 OFF',
-        '설정 대기',
-      ];
+      return const ['레슨 알림 OFF', '설정 대기'];
     }
 
-    final chips = <String>[
-      '레슨 알림 ON',
-      selectedMinuteSummary,
-      alertStyleLabel,
-    ];
+    final chips = <String>['레슨 알림 ON', selectedMinuteSummary, alertStyleLabel];
 
     if (smartAlarmEnabled && canUseSmartAlarm) {
       final smartParts = <String>['스마트 ON'];
@@ -605,9 +622,7 @@ class _NotificationHeader extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 20),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -705,9 +720,10 @@ class _NotificationHeader extends StatelessWidget {
           Wrap(
             spacing: 7,
             runSpacing: 7,
-            children: _chips.map((chip) {
-              return _HeaderStatusChip(text: chip);
-            }).toList(),
+            children:
+                _chips.map((chip) {
+                  return _HeaderStatusChip(text: chip);
+                }).toList(),
           ),
         ],
       ),
@@ -716,9 +732,7 @@ class _NotificationHeader extends StatelessWidget {
 }
 
 class _HeaderStatusChip extends StatelessWidget {
-  const _HeaderStatusChip({
-    required this.text,
-  });
+  const _HeaderStatusChip({required this.text});
 
   final String text;
 
@@ -727,10 +741,7 @@ class _HeaderStatusChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.14),
         borderRadius: BorderRadius.circular(999),
@@ -870,11 +881,7 @@ class _SwitchTile extends StatelessWidget {
                 color: scheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: scheme.onSecondaryContainer,
-              ),
+              child: Icon(icon, size: 20, color: scheme.onSecondaryContainer),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -962,27 +969,29 @@ class _ReminderMinuteSelector extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: options.map((minute) {
-                final selected = selectedMinutes.contains(minute);
+              children:
+                  options.map((minute) {
+                    final selected = selectedMinutes.contains(minute);
 
-                return ChoiceChip(
-                  label: Text('$minute분 전'),
-                  selected: selected,
-                  onSelected: enabled ? (_) => onTap(minute) : null,
-                  showCheckmark: false,
-                  selectedColor: scheme.secondaryContainer,
-                  backgroundColor: scheme.surfaceContainerHighest,
-                  side: BorderSide(
-                    color: selected ? scheme.secondary : scheme.outline,
-                  ),
-                  labelStyle: TextStyle(
-                    color: selected
-                        ? scheme.onSecondaryContainer
-                        : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                  ),
-                );
-              }).toList(),
+                    return ChoiceChip(
+                      label: Text('$minute분 전'),
+                      selected: selected,
+                      onSelected: enabled ? (_) => onTap(minute) : null,
+                      showCheckmark: false,
+                      selectedColor: scheme.secondaryContainer,
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      side: BorderSide(
+                        color: selected ? scheme.secondary : scheme.outline,
+                      ),
+                      labelStyle: TextStyle(
+                        color:
+                            selected
+                                ? scheme.onSecondaryContainer
+                                : scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 9),
             Text(
@@ -1037,17 +1046,19 @@ class _ChoiceTile<T> extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: selected
-                      ? scheme.secondaryContainer
-                      : scheme.surfaceContainerHighest,
+                  color:
+                      selected
+                          ? scheme.secondaryContainer
+                          : scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
                   size: 20,
-                  color: selected
-                      ? scheme.onSecondaryContainer
-                      : scheme.onSurfaceVariant,
+                  color:
+                      selected
+                          ? scheme.onSecondaryContainer
+                          : scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1153,27 +1164,29 @@ class _GapSelector extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: options.map((gap) {
-                final selected = gap == selectedGapMinutes;
+              children:
+                  options.map((gap) {
+                    final selected = gap == selectedGapMinutes;
 
-                return ChoiceChip(
-                  label: Text(_labelFor(gap)),
-                  selected: selected,
-                  onSelected: enabled ? (_) => onChanged(gap) : null,
-                  showCheckmark: false,
-                  selectedColor: scheme.secondaryContainer,
-                  backgroundColor: scheme.surfaceContainerHighest,
-                  side: BorderSide(
-                    color: selected ? scheme.secondary : scheme.outline,
-                  ),
-                  labelStyle: TextStyle(
-                    color: selected
-                        ? scheme.onSecondaryContainer
-                        : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                  ),
-                );
-              }).toList(),
+                    return ChoiceChip(
+                      label: Text(_labelFor(gap)),
+                      selected: selected,
+                      onSelected: enabled ? (_) => onChanged(gap) : null,
+                      showCheckmark: false,
+                      selectedColor: scheme.secondaryContainer,
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      side: BorderSide(
+                        color: selected ? scheme.secondary : scheme.outline,
+                      ),
+                      labelStyle: TextStyle(
+                        color:
+                            selected
+                                ? scheme.onSecondaryContainer
+                                : scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 9),
             Text(
@@ -1192,9 +1205,7 @@ class _GapSelector extends StatelessWidget {
 }
 
 class _InfoBox extends StatelessWidget {
-  const _InfoBox({
-    required this.text,
-  });
+  const _InfoBox({required this.text});
 
   final String text;
 
@@ -1208,9 +1219,7 @@ class _InfoBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.notificationLockedSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: scheme.outline,
-        ),
+        border: Border.all(color: scheme.outline),
       ),
       child: Text(
         text,
@@ -1280,10 +1289,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
       }
 
       if (smartAlarmEnabled) {
-        final parts = <String>[
-          '사용 중',
-          smartAlarmGapSummary,
-        ];
+        final parts = <String>['사용 중', smartAlarmGapSummary];
 
         if (canUseContractBasisAlarm) {
           parts.add('계약서/레슨일지 메모');
@@ -1328,9 +1334,10 @@ class _SmartAlarmEntryCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           decoration: BoxDecoration(
-            color: locked
-                ? tokens.notificationLockedSurface
-                : tokens.notificationCardSurface,
+            color:
+                locked
+                    ? tokens.notificationLockedSurface
+                    : tokens.notificationCardSurface,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: locked ? scheme.outline : scheme.secondary,
@@ -1349,18 +1356,20 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: locked
-                      ? scheme.surfaceContainerHighest
-                      : scheme.secondaryContainer,
+                  color:
+                      locked
+                          ? scheme.surfaceContainerHighest
+                          : scheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(
                   locked
                       ? Icons.lock_outline_rounded
                       : Icons.auto_awesome_rounded,
-                  color: locked
-                      ? scheme.onSurfaceVariant
-                      : scheme.onSecondaryContainer,
+                  color:
+                      locked
+                          ? scheme.onSurfaceVariant
+                          : scheme.onSecondaryContainer,
                   size: 22,
                 ),
               ),
@@ -1399,9 +1408,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF5F3FF),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFFDDD6FE),
-                          ),
+                          border: Border.all(color: const Color(0xFFDDD6FE)),
                         ),
                         child: const Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1409,7 +1416,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                             Icon(
                               Icons.workspace_premium_rounded,
                               size: 16,
-                              color: Color(0xFF4F46E5),
+                              color: kNotifyPrimary,
                             ),
                             SizedBox(width: 8),
                             Expanded(
@@ -1435,9 +1442,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFFBEB),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFFFDE68A),
-                          ),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
                         ),
                         child: const Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1473,16 +1478,6 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
-                    if (enabled &&
-                        canUseSmartAlarm &&
-                        !canUseContractBasisAlarm) ...[
-                      const SizedBox(height: 10),
-                      // Semi-Pro 안내 박스
-                    ],
-                    if (enabled && !accessLoading && !canUseSmartAlarm) ...[
-                      const SizedBox(height: 10),
-                      // Semi-Pro 잠금 안내 박스
-                    ],
                   ],
                 ),
               ),

@@ -1,10 +1,7 @@
 import 'package:flutter/services.dart';
 
 class MemberInputValidationResult {
-  const MemberInputValidationResult({
-    required this.isValid,
-    this.errorText,
-  });
+  const MemberInputValidationResult({required this.isValid, this.errorText});
 
   final bool isValid;
   final String? errorText;
@@ -234,7 +231,8 @@ MemberBirthDateNormalizationResult normalizeAndValidateMemberBirthDate(
     );
   }
 
-  final normalizedText = '${date.year.toString().padLeft(4, '0')}-'
+  final normalizedText =
+      '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
 
@@ -248,7 +246,8 @@ MemberBirthDateNormalizationResult normalizeAndValidateMemberBirthDate(
 int ageFromBirthDate(DateTime birthDate, DateTime now) {
   var age = now.year - birthDate.year;
 
-  final birthdayPassed = now.month > birthDate.month ||
+  final birthdayPassed =
+      now.month > birthDate.month ||
       (now.month == birthDate.month && now.day >= birthDate.day);
 
   if (!birthdayPassed) {
@@ -321,12 +320,13 @@ class MemberBirthDateInputFormatter extends TextInputFormatter {
 
     final safeSelectionOffset =
         newValue.selection.baseOffset.clamp(0, newValue.text.length).toInt();
-    final digitsBeforeSelection = newValue.text
-        .substring(0, safeSelectionOffset)
-        .replaceAll(RegExp(r'[^0-9]'), '')
-        .length
-        .clamp(0, digits.length)
-        .toInt();
+    final digitsBeforeSelection =
+        newValue.text
+            .substring(0, safeSelectionOffset)
+            .replaceAll(RegExp(r'[^0-9]'), '')
+            .length
+            .clamp(0, digits.length)
+            .toInt();
 
     String text;
 
@@ -335,7 +335,8 @@ class MemberBirthDateInputFormatter extends TextInputFormatter {
     } else if (digits.length <= 6) {
       text = '${digits.substring(0, 4)}-${digits.substring(4)}';
     } else {
-      text = '${digits.substring(0, 4)}-'
+      text =
+          '${digits.substring(0, 4)}-'
           '${digits.substring(4, 6)}-'
           '${digits.substring(6)}';
     }

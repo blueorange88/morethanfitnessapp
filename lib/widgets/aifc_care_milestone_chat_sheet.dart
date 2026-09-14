@@ -63,15 +63,16 @@ class AifcCareMilestoneChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcCareMilestoneChatSheet(
-        memberName: memberName,
-        nickname: nickname,
-        autoItems: autoItems,
-        activeItems: activeItems,
-        doneItems: doneItems,
-        onComplete: onComplete,
-        onDelete: onDelete,
-      ),
+      builder:
+          (_) => AifcCareMilestoneChatSheet(
+            memberName: memberName,
+            nickname: nickname,
+            autoItems: autoItems,
+            activeItems: activeItems,
+            doneItems: doneItems,
+            onComplete: onComplete,
+            onDelete: onDelete,
+          ),
     );
   }
 
@@ -80,9 +81,9 @@ class AifcCareMilestoneChatSheet extends StatefulWidget {
       _AifcCareMilestoneChatSheetState();
 }
 
-class _AifcCareMilestoneChatSheetState
-    extends State<AifcCareMilestoneChatSheet>
-    with TickerProviderStateMixin,
+class _AifcCareMilestoneChatSheetState extends State<AifcCareMilestoneChatSheet>
+    with
+        TickerProviderStateMixin,
         AifcChatFlowMixin<AifcCareMilestoneChatSheet> {
   static const _groupInitial = 'care_milestone_initial';
   static const _groupAction = 'care_milestone_action';
@@ -103,7 +104,8 @@ class _AifcCareMilestoneChatSheetState
     aifcSetActiveGroup(_groupInitial);
 
     aifcAddFcMessage(
-      text: '$_coachLabel, $_safeMemberName 님의 MORE 포커스를 정리해볼게요.\n'
+      text:
+          '$_coachLabel, $_safeMemberName 님의 MORE 포커스를 정리해볼게요.\n'
           '자동으로 잡힌 포인트와 직접 추가한 관리 포인트를 함께 볼 수 있어요.',
       groupKey: _groupInitial,
       child: _CareMilestoneOverviewBlock(
@@ -199,7 +201,8 @@ class _AifcCareMilestoneChatSheetState
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -280,7 +283,7 @@ class _CareMilestoneOverviewBlock extends StatelessWidget {
         ),
         child: const Text(
           '아직 표시할 MORE 포커스가 없어요.\n'
-              '잔여 회차, 재등록, 목표 이후 케어 같은 포인트가 생기면 여기에 표시돼요.',
+          '잔여 회차, 재등록, 목표 이후 케어 같은 포인트가 생기면 여기에 표시돼요.',
           style: TextStyle(
             color: AifcColors.textMuted,
             fontSize: 12,
@@ -310,16 +313,16 @@ class _CareMilestoneOverviewBlock extends StatelessWidget {
           const _CareEmptyText('진행 중인 MORE 포커스가 없어요.')
         else
           ...activeItems.map((item) {
-            final color = item.isManual
-                ? const Color(0xFF059669)
-                : AifcColors.primary;
+            final color =
+                item.isManual ? AifcColors.success : AifcColors.primary;
 
             return _CareMilestoneTile(
               title: item.title,
               badge: item.badge,
-              icon: item.isManual
-                  ? Icons.edit_note_rounded
-                  : Icons.auto_awesome_rounded,
+              icon:
+                  item.isManual
+                      ? Icons.edit_note_rounded
+                      : Icons.auto_awesome_rounded,
               color: color,
               onComplete: item.canComplete ? () => onComplete(item) : null,
               onDelete: item.canDelete ? () => onDelete(item) : null,
@@ -421,11 +424,7 @@ class _CareMilestoneTile extends StatelessWidget {
               color: color.withOpacity(0.10),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: color,
-            ),
+            child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -452,9 +451,7 @@ class _CareMilestoneTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: color.withOpacity(0.14),
-                    ),
+                    border: Border.all(color: color.withOpacity(0.14)),
                   ),
                   child: Text(
                     badge,
@@ -485,7 +482,7 @@ class _CareMilestoneTile extends StatelessWidget {
               icon: const Icon(
                 Icons.close_rounded,
                 size: 20,
-                color: Color(0xFF9CA3AF),
+                color: AifcColors.inactiveIcon,
               ),
             ),
         ],

@@ -105,8 +105,9 @@ void main() {
     expect(multiSession.explicitMultiDaySelection, isTrue);
     multiSession.dispose();
 
-    final thursdaySession =
-        HomeScheduleEditSelectionState.single(currentDay: '목');
+    final thursdaySession = HomeScheduleEditSelectionState.single(
+      currentDay: '목',
+    );
     expect(thursdaySession.selectedDays, {'목'});
     expect(thursdaySession.explicitMultiDaySelection, isFalse);
   });

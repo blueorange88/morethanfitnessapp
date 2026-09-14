@@ -162,26 +162,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     if (value.contains('바디프로필') ||
         value.contains('바프') ||
         value.contains('body')) {
-      return (
-        code: AchievementBadgeCode.bodyProfileDone,
-        title: '바디프로필 완료',
-      );
+      return (code: AchievementBadgeCode.bodyProfileDone, title: '바디프로필 완료');
     }
 
     if (value.contains('대회') ||
         value.contains('시합') ||
         value.contains('competition')) {
-      return (
-        code: AchievementBadgeCode.competitionDone,
-        title: '대회 완료',
-      );
+      return (code: AchievementBadgeCode.competitionDone, title: '대회 완료');
     }
 
     if (value.contains('웨딩') || value.contains('결혼') || value.contains('촬영')) {
-      return (
-        code: AchievementBadgeCode.weddingDone,
-        title: '웨딩촬영 완료',
-      );
+      return (code: AchievementBadgeCode.weddingDone, title: '웨딩촬영 완료');
     }
 
     return (
@@ -216,47 +207,23 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   List<({String suffix, String title, int dayOffset})>
-      _followUpSpecsForGoalName(String goalName) {
+  _followUpSpecsForGoalName(String goalName) {
     final cleanName = goalName.trim().isEmpty ? 'D-DAY' : goalName.trim();
 
     if (_isBodyProfileGoalName(goalName)) {
       return [
-        (
-          suffix: '14',
-          title: '$cleanName 후 14일 컨디션 체크',
-          dayOffset: 14,
-        ),
-        (
-          suffix: '50',
-          title: '$cleanName 후 50일 루틴 재정비',
-          dayOffset: 50,
-        ),
-        (
-          suffix: '100',
-          title: '$cleanName 후 100일 리텐션 체크',
-          dayOffset: 100,
-        ),
+        (suffix: '14', title: '$cleanName 후 14일 컨디션 체크', dayOffset: 14),
+        (suffix: '50', title: '$cleanName 후 50일 루틴 재정비', dayOffset: 50),
+        (suffix: '100', title: '$cleanName 후 100일 리텐션 체크', dayOffset: 100),
       ];
     }
 
     if (_isCompetitionGoalName(goalName)) {
-      return [
-        (
-          suffix: '14',
-          title: '$cleanName 후 14일 회복 체크',
-          dayOffset: 14,
-        ),
-      ];
+      return [(suffix: '14', title: '$cleanName 후 14일 회복 체크', dayOffset: 14)];
     }
 
     if (_isWeddingGoalName(goalName)) {
-      return [
-        (
-          suffix: '14',
-          title: '$cleanName 후 14일 컨디션 체크',
-          dayOffset: 14,
-        ),
-      ];
+      return [(suffix: '14', title: '$cleanName 후 14일 컨디션 체크', dayOffset: 14)];
     }
 
     // 생일, 결혼기념일, 자녀 수능, 가족 행사 같은 개인 일정은
@@ -281,11 +248,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         .collection('achievement_badges');
 
     try {
-      final existing = await ref
-          .where('source', isEqualTo: 'goal_dday')
-          .where('sourceGoalId', isEqualTo: goal.id)
-          .limit(1)
-          .get();
+      final existing =
+          await ref
+              .where('source', isEqualTo: 'goal_dday')
+              .where('sourceGoalId', isEqualTo: goal.id)
+              .limit(1)
+              .get();
 
       if (existing.docs.isNotEmpty) return;
 
@@ -315,10 +283,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     try {
       final snapshot = await ref.orderBy('targetDate').get();
 
-      final items = snapshot.docs
-          .map((doc) => _GoalDdayItem.fromFirestore(doc.id, doc.data()))
-          .where((item) => item.name.trim().isNotEmpty)
-          .toList();
+      final items =
+          snapshot.docs
+              .map((doc) => _GoalDdayItem.fromFirestore(doc.id, doc.data()))
+              .where((item) => item.name.trim().isNotEmpty)
+              .toList();
 
       if (!mounted) return;
 
@@ -337,10 +306,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     if (memberId.isEmpty) return;
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(memberId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(memberId)
+              .get();
 
       final data = snap.data();
       if (data == null) return;
@@ -351,13 +321,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         return;
       }
 
-      final health = data['health'] is Map
-          ? Map<String, dynamic>.from(data['health'] as Map)
-          : <String, dynamic>{};
+      final health =
+          data['health'] is Map
+              ? Map<String, dynamic>.from(data['health'] as Map)
+              : <String, dynamic>{};
 
-      final femaleCondition = health['femaleCondition'] is Map
-          ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
-          : <String, dynamic>{};
+      final femaleCondition =
+          health['femaleCondition'] is Map
+              ? Map<String, dynamic>.from(health['femaleCondition'] as Map)
+              : <String, dynamic>{};
 
       DateTime? toDate(dynamic value) {
         if (value is Timestamp) return value.toDate();
@@ -390,13 +362,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final docId = item.id.trim().isEmpty ? _goalDdayDocId() : item.id;
     item.id = docId;
 
-    await ref.doc(docId).set(
-      {
-        ...item.toFirestorePayload(),
-        'createdAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await ref.doc(docId).set({
+      ...item.toFirestorePayload(),
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     await _loadGoalDdaysFromFirestore();
     await _syncNextMoreDaySummaryToMember();
@@ -421,20 +390,14 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     final completedAt = DateTime.now();
 
-    await ref.doc(item.id).set(
-      {
-        'isCompleted': true,
-        'status': 'completed',
-        'completedAt': Timestamp.fromDate(completedAt),
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await ref.doc(item.id).set({
+      'isCompleted': true,
+      'status': 'completed',
+      'completedAt': Timestamp.fromDate(completedAt),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
-    await _createAchievementBadgeFromGoal(
-      goal: item,
-      completedAt: completedAt,
-    );
+    await _createAchievementBadgeFromGoal(goal: item, completedAt: completedAt);
 
     final followUpEnabled = await _isDdayFollowUpEnabled();
     int createdFollowUpCount = 0;
@@ -446,13 +409,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       );
 
       if (createdFollowUpCount > 0) {
-        await ref.doc(item.id).set(
-          {
-            'followUpCreated': true,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        await ref.doc(item.id).set({
+          'followUpCreated': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
     }
 
@@ -468,10 +428,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     );
   }
 
-  Future<void> _updateGoalDdayStatus(
-    _GoalDdayItem item,
-    String status,
-  ) async {
+  Future<void> _updateGoalDdayStatus(_GoalDdayItem item, String status) async {
     final ref = _goalDdaysRef();
 
     if (ref == null) {
@@ -551,21 +508,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     for (final item in followUps) {
       final dueDate = completedDate.add(Duration(days: item.dayOffset));
 
-      batch.set(
-        ref.doc('follow_${goal.id}_${item.suffix}'),
-        {
-          'source': 'goal_dday_follow_up',
-          'sourceGoalId': goal.id,
-          'sourceGoalName': goalName,
-          'title': item.title,
-          'type': 'auto',
-          'status': 'active',
-          'dueDate': Timestamp.fromDate(dueDate),
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(ref.doc('follow_${goal.id}_${item.suffix}'), {
+        'source': 'goal_dday_follow_up',
+        'sourceGoalId': goal.id,
+        'sourceGoalName': goalName,
+        'title': item.title,
+        'type': 'auto',
+        'status': 'active',
+        'dueDate': Timestamp.fromDate(dueDate),
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     }
 
     await batch.commit();
@@ -592,29 +545,32 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   _GoalDdayItem? _nearestActiveGoalDdayForSummary() {
-    final activeGoals = _goalDdays.where((goal) {
-      if (goal.isCompleted) return false;
-      if (goal.status == 'paused') return false;
-      if (goal.status == 'stopped') return false;
-      return goal.name.trim().isNotEmpty;
-    }).toList();
+    final activeGoals =
+        _goalDdays.where((goal) {
+          if (goal.isCompleted) return false;
+          if (goal.status == 'paused') return false;
+          if (goal.status == 'stopped') return false;
+          return goal.name.trim().isNotEmpty;
+        }).toList();
 
     if (activeGoals.isEmpty) return null;
 
     final today = _dateOnly(DateTime.now());
 
-    final futureGoals = activeGoals.where((goal) {
-      final goalDate = _dateOnly(goal.date);
-      return !goalDate.isBefore(today);
-    }).toList()
-      ..sort((a, b) => _dateOnly(a.date).compareTo(_dateOnly(b.date)));
+    final futureGoals =
+        activeGoals.where((goal) {
+            final goalDate = _dateOnly(goal.date);
+            return !goalDate.isBefore(today);
+          }).toList()
+          ..sort((a, b) => _dateOnly(a.date).compareTo(_dateOnly(b.date)));
 
     if (futureGoals.isNotEmpty) {
       return futureGoals.first;
     }
 
-    final pastGoals = activeGoals.toList()
-      ..sort((a, b) => _dateOnly(b.date).compareTo(_dateOnly(a.date)));
+    final pastGoals =
+        activeGoals.toList()
+          ..sort((a, b) => _dateOnly(b.date).compareTo(_dateOnly(a.date)));
 
     return pastGoals.first;
   }
@@ -665,15 +621,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     if (memberId.isEmpty) return true;
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(memberId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(memberId)
+              .get();
 
       final data = snap.data();
-      final settings = (data?['milestoneSettings'] is Map)
-          ? Map<String, dynamic>.from(data!['milestoneSettings'] as Map)
-          : <String, dynamic>{};
+      final settings =
+          (data?['milestoneSettings'] is Map)
+              ? Map<String, dynamic>.from(data!['milestoneSettings'] as Map)
+              : <String, dynamic>{};
 
       return (settings['ddayFollowUpEnabled'] as bool?) ?? true;
     } catch (_) {
@@ -692,8 +650,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     var expectedDate = _dateOnly(lastStart);
 
-    while (
-        expectedDate.isBefore(targetDate.subtract(const Duration(days: 2)))) {
+    while (expectedDate.isBefore(
+      targetDate.subtract(const Duration(days: 2)),
+    )) {
       expectedDate = expectedDate.add(Duration(days: cycleDays));
     }
 
@@ -738,8 +697,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         .replaceAll('/', '-')
         .replaceAll(RegExp(r'\s+'), '');
 
-    final match =
-        RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$').firstMatch(normalized);
+    final match = RegExp(
+      r'^(\d{4})-(\d{1,2})-(\d{1,2})$',
+    ).firstMatch(normalized);
     if (match == null) return null;
 
     final y = int.tryParse(match.group(1)!);
@@ -762,12 +722,13 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   _GoalDdayItem? _nearestGoalDday() {
-    final activeGoals = _goalDdays.where((goal) {
-      if (goal.isCompleted) return false;
-      if (goal.status == 'paused') return false;
-      if (goal.status == 'stopped') return false;
-      return true;
-    }).toList();
+    final activeGoals =
+        _goalDdays.where((goal) {
+          if (goal.isCompleted) return false;
+          if (goal.status == 'paused') return false;
+          if (goal.status == 'stopped') return false;
+          return true;
+        }).toList();
 
     if (activeGoals.isEmpty) return null;
 
@@ -954,8 +915,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       context: context,
       ownerUid: owner,
       memberId: widget.memberId ?? '',
-      loadAccess: () =>
-          AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+      loadAccess:
+          () => AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
       entryPoint: 'personal_training_log_direct_route',
     );
     if (!mounted) return;
@@ -1060,13 +1021,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         final trainerSignature = data['trainerSignature'];
         final memberSignature = data['memberSignature'];
 
-        final trainerSignedAt = trainerSignature is Map
-            ? _quickLogDateFromAny(trainerSignature['signedAt'])
-            : null;
+        final trainerSignedAt =
+            trainerSignature is Map
+                ? _quickLogDateFromAny(trainerSignature['signedAt'])
+                : null;
 
-        final memberSignedAt = memberSignature is Map
-            ? _quickLogDateFromAny(memberSignature['signedAt'])
-            : null;
+        final memberSignedAt =
+            memberSignature is Map
+                ? _quickLogDateFromAny(memberSignature['signedAt'])
+                : null;
 
         final trainerSignedDate =
             trainerSignedAt == null ? '' : _quickLogDateText(trainerSignedAt);
@@ -1098,29 +1061,39 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             inputMethod: 'quick_sign',
             source: (data['source'] ?? '').toString(),
             waitingTrainerConfirm: data['waitingTrainerConfirm'] == true,
-            memberSignedFromWeb: memberSignature is Map &&
+            memberSignedFromWeb:
+                memberSignature is Map &&
                 (memberSignature['signedBy'] ?? '').toString() == 'member_web',
             sessionStatus: localStatus,
             isDraft: false,
-            trainerSig: trainerSigned
-                ? const SigCell(type: 'typed', value: '서명 완료')
-                : SigCell.empty(),
-            customerSig: memberSigned
-                ? const SigCell(type: 'typed', value: '서명 완료')
-                : SigCell.empty(),
-            locked: data['locked'] == true &&
+            trainerSig:
+                trainerSigned
+                    ? const SigCell(type: 'typed', value: '서명 완료')
+                    : SigCell.empty(),
+            customerSig:
+                memberSigned
+                    ? const SigCell(type: 'typed', value: '서명 완료')
+                    : SigCell.empty(),
+            locked:
+                data['locked'] == true &&
                 data['confirmCancelled'] != true &&
                 data['voided'] != true,
             trainerSignedDate: trainerSignedDate,
             trainerSignedTime: trainerSignedTime,
             customerSignedDate: memberSignedDate,
             customerSignedTime: memberSignedTime,
-            lockedAtDate: data['lockedAt'] is Timestamp
-                ? _quickLogDateText((data['lockedAt'] as Timestamp).toDate())
-                : '',
-            lockedAtTime: data['lockedAt'] is Timestamp
-                ? _quickLogTimeText((data['lockedAt'] as Timestamp).toDate())
-                : '',
+            lockedAtDate:
+                data['lockedAt'] is Timestamp
+                    ? _quickLogDateText(
+                      (data['lockedAt'] as Timestamp).toDate(),
+                    )
+                    : '',
+            lockedAtTime:
+                data['lockedAt'] is Timestamp
+                    ? _quickLogTimeText(
+                      (data['lockedAt'] as Timestamp).toDate(),
+                    )
+                    : '',
           ),
         );
       }
@@ -1178,10 +1151,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       if (nextLogs.isEmpty || !mounted) return;
 
       setState(() {
-        final existingDocIds = _logs
-            .map((log) => log.trainingLogDocId.trim())
-            .where((id) => id.isNotEmpty)
-            .toSet();
+        final existingDocIds =
+            _logs
+                .map((log) => log.trainingLogDocId.trim())
+                .where((id) => id.isNotEmpty)
+                .toSet();
         for (final log in nextLogs) {
           if (existingDocIds.add(log.trainingLogDocId)) {
             _logs.add(log);
@@ -1276,7 +1250,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     int count = 0;
 
     for (final log in asc) {
-      final isServiceLike = log.sessionStatus == 'service' ||
+      final isServiceLike =
+          log.sessionStatus == 'service' ||
           log.sessionStatus == 'no_show_no_deduct';
 
       if (isServiceLike) {
@@ -1322,51 +1297,59 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     var items = _logsNewestFirst();
 
     if (_selectedDateFilter != null) {
-      items = items
-          .where((e) => _isSameDate(e.date, _selectedDateFilter!))
-          .toList();
+      items =
+          items
+              .where((e) => _isSameDate(e.date, _selectedDateFilter!))
+              .toList();
     }
 
     switch (_logFilter) {
       case 'unsigned':
-        items = items.where((e) {
-          if (e.confirmCancelled) return false;
+        items =
+            items.where((e) {
+              if (e.confirmCancelled) return false;
 
-          final trainerOk = e.trainerSig.isSigned;
-          final customerOk = e.customerSig.isSigned;
+              final trainerOk = e.trainerSig.isSigned;
+              final customerOk = e.customerSig.isSigned;
 
-          return !(trainerOk && customerOk);
-        }).toList();
+              return !(trainerOk && customerOk);
+            }).toList();
         break;
 
       case 'locked':
-        items = items.where((e) {
-          return e.locked && !e.confirmCancelled;
-        }).toList();
+        items =
+            items.where((e) {
+              return e.locked && !e.confirmCancelled;
+            }).toList();
         break;
 
       case 'no_show':
-        items = items.where((e) {
-          return e.sessionStatus == 'no_show' && !e.confirmCancelled;
-        }).toList();
+        items =
+            items.where((e) {
+              return e.sessionStatus == 'no_show' && !e.confirmCancelled;
+            }).toList();
         break;
 
       case 'no_show_no_deduct':
-        items = items.where((e) {
-          return e.sessionStatus == 'no_show_no_deduct' && !e.confirmCancelled;
-        }).toList();
+        items =
+            items.where((e) {
+              return e.sessionStatus == 'no_show_no_deduct' &&
+                  !e.confirmCancelled;
+            }).toList();
         break;
 
       case 'service':
-        items = items.where((e) {
-          return e.sessionStatus == 'service' && !e.confirmCancelled;
-        }).toList();
+        items =
+            items.where((e) {
+              return e.sessionStatus == 'service' && !e.confirmCancelled;
+            }).toList();
         break;
 
       case 'cancelled':
-        items = items.where((e) {
-          return e.confirmCancelled;
-        }).toList();
+        items =
+            items.where((e) {
+              return e.confirmCancelled;
+            }).toList();
         break;
 
       case 'all':
@@ -1376,19 +1359,16 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     }
 
     if (_searchQuery.isNotEmpty) {
-      items = items.where((e) {
-        final dateText =
-            '${e.date.year}.${e.date.month.toString().padLeft(2, '0')}.${e.date.day.toString().padLeft(2, '0')}';
+      items =
+          items.where((e) {
+            final dateText =
+                '${e.date.year}.${e.date.month.toString().padLeft(2, '0')}.${e.date.day.toString().padLeft(2, '0')}';
 
-        final target = [
-          e.title,
-          e.memo,
-          e.type,
-          dateText,
-        ].join(' ').toLowerCase();
+            final target =
+                [e.title, e.memo, e.type, dateText].join(' ').toLowerCase();
 
-        return target.contains(_searchQuery);
-      }).toList();
+            return target.contains(_searchQuery);
+          }).toList();
     }
 
     return items;
@@ -1422,12 +1402,13 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _LessonCalendarSheet(
-        lessonDates: _lessonDates(),
-        selectedDate: _selectedDateFilter,
-        firstDate: _firstLogDate(),
-        lastDate: _latestLogDate(),
-      ),
+      builder:
+          (_) => _LessonCalendarSheet(
+            lessonDates: _lessonDates(),
+            selectedDate: _selectedDateFilter,
+            firstDate: _firstLogDate(),
+            lastDate: _latestLogDate(),
+          ),
     );
 
     if (!mounted || result == null) return;
@@ -1449,9 +1430,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   Future<void> _loadTierAccess() async {
     try {
       final owner = widget.personalOwnerUid?.trim() ?? '';
-      final access = owner.isEmpty
-          ? await AppTierAccessService.loadTrainerAccess()
-          : await AppTierAccessService.loadPersonalTrainerAccess(uid: owner);
+      final access =
+          owner.isEmpty
+              ? await AppTierAccessService.loadTrainerAccess()
+              : await AppTierAccessService.loadPersonalTrainerAccess(
+                uid: owner,
+              );
 
       if (!mounted) return;
 
@@ -1475,19 +1459,20 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       context: context,
       access: _tierAccess,
       feature: AppTierFeatureKey.dday,
-      loadAccess: owner.isEmpty
-          ? AppTierAccessService.loadTrainerAccess
-          : () => AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
+      loadAccess:
+          owner.isEmpty
+              ? AppTierAccessService.loadTrainerAccess
+              : () =>
+                  AppTierAccessService.loadPersonalTrainerAccess(uid: owner),
       onShowTierGuide: (info) async {
         _showSnack(
-            '${info.requiredTierLabel} 안내는 마이페이지의 등급 안내에서 다시 확인할 수 있어요.');
+          '${info.requiredTierLabel} 안내는 마이페이지의 등급 안내에서 다시 확인할 수 있어요.',
+        );
       },
     );
   }
 
-  Future<bool> _openGoalDdayAifcFlow({
-    required _GoalDdayItem? editing,
-  }) async {
+  Future<bool> _openGoalDdayAifcFlow({required _GoalDdayItem? editing}) async {
     if (!await _guardDdayFeature()) return false;
 
     if (editing == null &&
@@ -1498,18 +1483,13 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     final goalName = await AifcChatSheet.show(
       context: context,
-      question: editing == null
-          ? '어떤 D-DAY 목표를 등록할까요?\n\n바디프로필, 대회, 웨딩촬영처럼 날짜가 정해진 목표를 등록할 수 있어요.'
-          : '수정할 D-DAY 목표 이름을 알려주세요.',
+      question:
+          editing == null
+              ? '어떤 D-DAY 목표를 등록할까요?\n\n바디프로필, 대회, 웨딩촬영처럼 날짜가 정해진 목표를 등록할 수 있어요.'
+              : '수정할 D-DAY 목표 이름을 알려주세요.',
       inputLabel: '예: 바디프로필 / 대회 / 웨딩촬영',
       initialValue: editing?.name ?? '',
-      autoCompleteHints: const [
-        '바디프로필',
-        '대회',
-        '웨딩촬영',
-        '결혼식',
-        '생일',
-      ],
+      autoCompleteHints: const ['바디프로필', '대회', '웨딩촬영', '결혼식', '생일'],
       skipLabel: '취소할게요',
       onSkip: () {},
       onSave: (value) async {
@@ -1543,9 +1523,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       skipLabel: '취소할게요',
       onSkip: () {},
       onSave: (value) async {
-        final rawDate = value.trim().isEmpty
-            ? _goalDateText(defaultGoalDate)
-            : value.trim();
+        final rawDate =
+            value.trim().isEmpty
+                ? _goalDateText(defaultGoalDate)
+                : value.trim();
 
         final parsed = _parseGoalDateText(rawDate);
 
@@ -1562,13 +1543,14 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
         final diff = target.difference(today).inDays;
 
-        final ddayText = diff == 0
-            ? 'D-DAY'
-            : diff > 0
+        final ddayText =
+            diff == 0
+                ? 'D-DAY'
+                : diff > 0
                 ? 'D-$diff'
                 : 'D+${diff.abs()}';
 
-        return '${goalName.trim()} · $ddayText로 저장할게요.\n고객리스트의 MORE 데이에도 함께 반영돼요.';
+        return '${goalName.trim()} · $ddayText로 저장할게요.\n회원리스트의 MORE 데이에도 함께 반영돼요.';
       },
     );
 
@@ -1576,9 +1558,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       return false;
     }
 
-    final safeDateText = dateText.trim().isEmpty
-        ? _goalDateText(defaultGoalDate)
-        : dateText.trim();
+    final safeDateText =
+        dateText.trim().isEmpty
+            ? _goalDateText(defaultGoalDate)
+            : dateText.trim();
 
     final parsedDate = _parseGoalDateText(safeDateText);
 
@@ -1595,7 +1578,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       return false;
     }
 
-    final next = editing ??
+    final next =
+        editing ??
         _GoalDdayItem(
           id: _goalDdayDocId(),
           name: goalName.trim(),
@@ -1629,71 +1613,72 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _GoalDdayManageSheet(
-        goals: List<_GoalDdayItem>.from(_goalDdays),
-        onAdd: () async {
-          Navigator.of(context).pop();
-          await Future.delayed(const Duration(milliseconds: 160));
-          if (!mounted) return;
-          await _openGoalDdayAifcFlow(editing: null);
-        },
-        onEdit: (goal) async {
-          Navigator.of(context).pop();
-          await Future.delayed(const Duration(milliseconds: 160));
-          if (!mounted) return;
-          await _openGoalDdayAifcFlow(editing: goal);
-        },
-        onComplete: (goal) async {
-          Navigator.of(context).pop();
-          await _completeGoalDday(goal);
-        },
-        onPause: (goal) async {
-          Navigator.of(context).pop();
-          await _pauseGoalDday(goal);
-        },
-        onStop: (goal) async {
-          Navigator.of(context).pop();
-          await _stopGoalDday(goal);
-        },
-        onResume: (goal) async {
-          Navigator.of(context).pop();
-          await _resumeGoalDday(goal);
-        },
-        onDelete: (goal) async {
-          Navigator.of(context).pop();
-
-          final ok = await showDialog<bool>(
-            context: context,
-            builder: (dialogContext) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                title: const Text('D-DAY를 삭제할까요?'),
-                content: Text(
-                  '${goal.name} D-DAY를 삭제합니다.\n삭제 후에는 되돌릴 수 없어요.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
-                    child: const Text('취소'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
-                    child: const Text('삭제'),
-                  ),
-                ],
-              );
+      builder:
+          (_) => _GoalDdayManageSheet(
+            goals: List<_GoalDdayItem>.from(_goalDdays),
+            onAdd: () async {
+              Navigator.of(context).pop();
+              await Future.delayed(const Duration(milliseconds: 160));
+              if (!mounted) return;
+              await _openGoalDdayAifcFlow(editing: null);
             },
-          );
+            onEdit: (goal) async {
+              Navigator.of(context).pop();
+              await Future.delayed(const Duration(milliseconds: 160));
+              if (!mounted) return;
+              await _openGoalDdayAifcFlow(editing: goal);
+            },
+            onComplete: (goal) async {
+              Navigator.of(context).pop();
+              await _completeGoalDday(goal);
+            },
+            onPause: (goal) async {
+              Navigator.of(context).pop();
+              await _pauseGoalDday(goal);
+            },
+            onStop: (goal) async {
+              Navigator.of(context).pop();
+              await _stopGoalDday(goal);
+            },
+            onResume: (goal) async {
+              Navigator.of(context).pop();
+              await _resumeGoalDday(goal);
+            },
+            onDelete: (goal) async {
+              Navigator.of(context).pop();
 
-          if (ok == true) {
-            await _deleteGoalDday(goal);
-            if (!mounted) return;
-            _showSnack('${goal.name} D-DAY를 삭제했어요.');
-          }
-        },
-      ),
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) {
+                  return AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: const Text('D-DAY를 삭제할까요?'),
+                    content: Text(
+                      '${goal.name} D-DAY를 삭제합니다.\n삭제 후에는 되돌릴 수 없어요.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('취소'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text('삭제'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (ok == true) {
+                await _deleteGoalDday(goal);
+                if (!mounted) return;
+                _showSnack('${goal.name} D-DAY를 삭제했어요.');
+              }
+            },
+          ),
     );
   }
 
@@ -1800,9 +1785,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
       if (picked == null) return;
 
-      final recognizer = TextRecognizer(
-        script: TextRecognitionScript.korean,
-      );
+      final recognizer = TextRecognizer(script: TextRecognitionScript.korean);
 
       final inputImage = InputImage.fromFilePath(picked.path);
       final recognizedText = await recognizer.processImage(inputImage);
@@ -1823,11 +1806,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   _ExtractedInbodyData _extractInbodyData(String raw) {
-    final lines = raw
-        .split(RegExp(r'[\r\n]+'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final lines =
+        raw
+            .split(RegExp(r'[\r\n]+'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     String findValue(List<String> keywords) {
       for (int i = 0; i < lines.length; i++) {
@@ -1839,15 +1823,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
         if (!hasKeyword) continue;
 
-        final currentMatch =
-            RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i]);
+        final currentMatch = RegExp(
+          r'(\d{1,3}(?:[.,]\d{1,2})?)',
+        ).firstMatch(lines[i]);
         if (currentMatch != null) {
           return currentMatch.group(1)!.replaceAll(',', '.');
         }
 
         if (i + 1 < lines.length) {
-          final nextMatch =
-              RegExp(r'(\d{1,3}(?:[.,]\d{1,2})?)').firstMatch(lines[i + 1]);
+          final nextMatch = RegExp(
+            r'(\d{1,3}(?:[.,]\d{1,2})?)',
+          ).firstMatch(lines[i + 1]);
           if (nextMatch != null) {
             return nextMatch.group(1)!.replaceAll(',', '.');
           }
@@ -1857,8 +1843,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       return '';
     }
 
-    final dateMatch =
-        RegExp(r'(20\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2})').firstMatch(raw);
+    final dateMatch = RegExp(
+      r'(20\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2})',
+    ).firstMatch(raw);
 
     return _ExtractedInbodyData(
       date: dateMatch?.group(1)?.replaceAll('/', '.') ?? '',
@@ -1891,9 +1878,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             top: false,
@@ -1910,10 +1895,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                 children: [
                   const Text(
                     '인바디 인식 결과 확인',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 6),
                   const Text(
@@ -2022,18 +2004,20 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final lastLessonText =
         latestLessonDate == null ? '기록없음' : _fmtDotYmd(latestLessonDate);
 
-    final recentIssue = (widget.recentIssue ?? '').trim().isNotEmpty
-        ? widget.recentIssue!.trim()
-        : '최근 이슈 · 무릎 통증 호소';
+    final recentIssue =
+        (widget.recentIssue ?? '').trim().isNotEmpty
+            ? widget.recentIssue!.trim()
+            : '최근 이슈 · 무릎 통증 호소';
 
     final reRegistrationLabel =
         (widget.reRegistrationLabel ?? '').trim().isNotEmpty
             ? widget.reRegistrationLabel!.trim()
             : '3회차';
 
-    final openingMent = (widget.openingMent ?? '').trim().isNotEmpty
-        ? widget.openingMent!.trim()
-        : '지난레슨에 상체근력 트레이닝 진행하여, 오늘은 하체근력 트레이닝을 진행해볼게요.';
+    final openingMent =
+        (widget.openingMent ?? '').trim().isNotEmpty
+            ? widget.openingMent!.trim()
+            : '지난레슨에 상체근력 트레이닝 진행하여, 오늘은 하체근력 트레이닝을 진행해볼게요.';
     final headerInitialGoal = _initialGoalLabel();
     final headerGoalDday = _goalDdayLabel();
 
@@ -2114,9 +2098,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final latest = _latestScore();
     final change = _scoreChange();
 
-    final changeLabel = change == 0
-        ? '변화 없음'
-        : change > 0
+    final changeLabel =
+        change == 0
+            ? '변화 없음'
+            : change > 0
             ? '+${change.toStringAsFixed(1)}'
             : change.toStringAsFixed(1);
 
@@ -2156,8 +2141,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(999),
@@ -2203,18 +2190,19 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: chartLogs.isEmpty
-                ? const Center(
-                    child: Text(
-                      '아직 표시할 운동성과 기록이 없어요.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black45,
+            child:
+                chartLogs.isEmpty
+                    ? const Center(
+                      child: Text(
+                        '아직 표시할 운동성과 기록이 없어요.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black45,
+                        ),
                       ),
-                    ),
-                  )
-                : _PerformanceLineChart(logs: chartLogs),
+                    )
+                    : _PerformanceLineChart(logs: chartLogs),
           ),
           const SizedBox(height: 14),
           _buildCreateButton(),
@@ -2249,9 +2237,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Row(
-        children: chips,
-      ),
+      child: Row(children: chips),
     );
   }
 
@@ -2274,11 +2260,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.search_rounded,
-            size: 20,
-            color: scheme.onSurfaceVariant,
-          ),
+          Icon(Icons.search_rounded, size: 20, color: scheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -2332,9 +2314,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         decoration: BoxDecoration(
           color: opened ? tokens.trainingLogSetRow : tokens.trainingLogSurface,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: tokens.trainingLogSetDivider,
-          ),
+          border: Border.all(color: tokens.trainingLogSetDivider),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2376,10 +2356,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Container(
-              height: 1,
-              color: tokens.trainingLogSetDivider,
-            ),
+            child: Container(height: 1, color: tokens.trainingLogSetDivider),
           ),
         ],
       ),
@@ -2438,10 +2415,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             icon: const Icon(Icons.add_rounded),
             label: const Text(
               '오늘 레슨일지 작성',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             ),
           ),
         ),
@@ -2452,9 +2426,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             onPressed: _openMemberSignRequestSheetFromLogPage,
             style: OutlinedButton.styleFrom(
               foregroundColor: scheme.secondary,
-              side: BorderSide(
-                color: scheme.secondary.withValues(alpha: 0.44),
-              ),
+              side: BorderSide(color: scheme.secondary.withValues(alpha: 0.44)),
               padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -2463,10 +2435,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             icon: const Icon(Icons.qr_code_2_rounded),
             label: const Text(
               '회원 서명 요청',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
             ),
           ),
         ),
@@ -2565,8 +2534,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       final currentDate = DateTime(log.date.year, log.date.month, log.date.day);
 
       if (_isMonthChanged(currentDate, previousDate)) {
-        children
-            .add(_buildTimelineSectionHeader(_monthSectionLabel(currentDate)));
+        children.add(
+          _buildTimelineSectionHeader(_monthSectionLabel(currentDate)),
+        );
       }
 
       children.add(
@@ -2671,28 +2641,31 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final c = TextEditingController();
     return showDialog<String>(
       context: ctx,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('PIN 입력'),
-        content: TextField(
-          controller: c,
-          obscureText: true,
-          decoration: const InputDecoration(
-            hintText: '기본 PIN 0000',
-            border: OutlineInputBorder(),
+      builder:
+          (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text('PIN 입력'),
+            content: TextField(
+              controller: c,
+              obscureText: true,
+              decoration: const InputDecoration(
+                hintText: '기본 PIN 0000',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, c.text),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, c.text),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -2770,15 +2743,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   String _koreanLessonDateTimeText(DateTime value) {
-    const weekdays = [
-      '월요일',
-      '화요일',
-      '수요일',
-      '목요일',
-      '금요일',
-      '토요일',
-      '일요일',
-    ];
+    const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
 
     final weekday = weekdays[value.weekday - 1];
     final isPm = value.hour >= 12;
@@ -2803,16 +2768,13 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       return db.collection('schedules').doc(cleanScheduleId);
     }
 
-    final fields = [
-      'trainingLogId',
-      'quickTrainingLogId',
-      'lastTrainingLogId',
-    ];
+    final fields = ['trainingLogId', 'quickTrainingLogId', 'lastTrainingLogId'];
 
     try {
       for (final field in fields) {
-        Query<Map<String, dynamic>> query =
-            db.collection('schedules').where(field, isEqualTo: logDocId);
+        Query<Map<String, dynamic>> query = db
+            .collection('schedules')
+            .where(field, isEqualTo: logDocId);
         if (_isPersonalWorkspace) {
           final memberId = (widget.memberId ?? '').trim();
           if (memberId.isEmpty) return null;
@@ -2850,10 +2812,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     String resolvedPhone = _normalizePhone(memberPhone);
 
     try {
-      final memberSnap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(cleanMemberId)
-          .get();
+      final memberSnap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(cleanMemberId)
+              .get();
 
       final data = memberSnap.data();
 
@@ -2876,9 +2839,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       'templateCode': 'lesson_confirm_cancelled_v1',
 
       // 실제 카카오 API 연결 전까지 대기 상태
-      'status': resolvedPhone.isEmpty
-          ? 'pending_missing_phone'
-          : 'pending_integration',
+      'status':
+          resolvedPhone.isEmpty
+              ? 'pending_missing_phone'
+              : 'pending_integration',
 
       // 확정취소는 설정과 무관하게 필수 발송 대상
       'sendRequired': true,
@@ -2956,11 +2920,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     String resolvedScheduleDocId = log.scheduleDocId.trim();
     String resolvedMemberPhone = (widget.memberPhone ?? '').toString();
-    String resolvedMemberName = log.name.trim().isEmpty
-        ? ((widget.memberName ?? '').trim().isEmpty
-            ? '회원'
-            : widget.memberName!.trim())
-        : log.name.trim();
+    String resolvedMemberName =
+        log.name.trim().isEmpty
+            ? ((widget.memberName ?? '').trim().isEmpty
+                ? '회원'
+                : widget.memberName!.trim())
+            : log.name.trim();
 
     DateTime resolvedStartAt = _actualLessonDateTime(log);
     String resolvedLessonType = log.type;
@@ -3008,13 +2973,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         if (memberPhone.isNotEmpty) resolvedMemberPhone = memberPhone;
       }
 
-      final sessions = memberData['sessions'] is Map
-          ? Map<String, dynamic>.from(memberData['sessions'] as Map)
-          : <String, dynamic>{};
+      final sessions =
+          memberData['sessions'] is Map
+              ? Map<String, dynamic>.from(memberData['sessions'] as Map)
+              : <String, dynamic>{};
 
-      final lessonStats = memberData['lessonStats'] is Map
-          ? Map<String, dynamic>.from(memberData['lessonStats'] as Map)
-          : <String, dynamic>{};
+      final lessonStats =
+          memberData['lessonStats'] is Map
+              ? Map<String, dynamic>.from(memberData['lessonStats'] as Map)
+              : <String, dynamic>{};
 
       final currentRemain = _intFromAny(
         memberData['remainSessions'] ??
@@ -3031,17 +2998,20 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       );
 
       final rawDone = memberData['doneSessions'] ?? sessions['done'];
-      final currentDone = rawDone == null
-          ? (currentTotal - currentRemain).clamp(0, currentTotal)
-          : _intFromAny(rawDone);
+      final currentDone =
+          rawDone == null
+              ? (currentTotal - currentRemain).clamp(0, currentTotal)
+              : _intFromAny(rawDone);
 
       final logDeductionApplied =
           logData['deductionApplied'] == true || log.deductionApplied;
 
-      final snapshotBefore =
-          _intFromAny(scheduleData['sessionSnapshotRemainBefore']);
-      final snapshotAfter =
-          _intFromAny(scheduleData['sessionSnapshotRemainAfter']);
+      final snapshotBefore = _intFromAny(
+        scheduleData['sessionSnapshotRemainBefore'],
+      );
+      final snapshotAfter = _intFromAny(
+        scheduleData['sessionSnapshotRemainAfter'],
+      );
 
       final looksDeductedBySnapshot =
           snapshotBefore > 0 && snapshotBefore > snapshotAfter;
@@ -3051,14 +3021,16 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       final restoredRemain =
           shouldRestoreOne ? currentRemain + 1 : currentRemain;
 
-      final restoredDone = shouldRestoreOne
-          ? (currentDone > 0 ? currentDone - 1 : 0)
-          : currentDone;
+      final restoredDone =
+          shouldRestoreOne
+              ? (currentDone > 0 ? currentDone - 1 : 0)
+              : currentDone;
 
-      final firestoreStatus = (logData['sessionStatus'] ??
-              scheduleData['lessonConfirmStatus'] ??
-              _firestoreStatusFromLocalStatus(log.sessionStatus))
-          .toString();
+      final firestoreStatus =
+          (logData['sessionStatus'] ??
+                  scheduleData['lessonConfirmStatus'] ??
+                  _firestoreStatusFromLocalStatus(log.sessionStatus))
+              .toString();
 
       final deductionKeys = _deductionKeysForCancel(
         log: log,
@@ -3089,78 +3061,81 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         }
 
         if (firestoreStatus == 'no_show_deducted') {
-          memberUpdate['noShowDeductedCount'] =
-              _minusOneFloorZero(memberData['noShowDeductedCount']);
-          memberUpdate['sessions.noShowDeductedCount'] =
-              _minusOneFloorZero(sessions['noShowDeductedCount']);
-          memberUpdate['lessonStats.noShowDeductedCount'] =
-              _minusOneFloorZero(lessonStats['noShowDeductedCount']);
+          memberUpdate['noShowDeductedCount'] = _minusOneFloorZero(
+            memberData['noShowDeductedCount'],
+          );
+          memberUpdate['sessions.noShowDeductedCount'] = _minusOneFloorZero(
+            sessions['noShowDeductedCount'],
+          );
+          memberUpdate['lessonStats.noShowDeductedCount'] = _minusOneFloorZero(
+            lessonStats['noShowDeductedCount'],
+          );
         } else if (firestoreStatus == 'no_show_not_deducted') {
-          memberUpdate['noShowUndeductedCount'] =
-              _minusOneFloorZero(memberData['noShowUndeductedCount']);
-          memberUpdate['sessions.noShowUndeductedCount'] =
-              _minusOneFloorZero(sessions['noShowUndeductedCount']);
+          memberUpdate['noShowUndeductedCount'] = _minusOneFloorZero(
+            memberData['noShowUndeductedCount'],
+          );
+          memberUpdate['sessions.noShowUndeductedCount'] = _minusOneFloorZero(
+            sessions['noShowUndeductedCount'],
+          );
           memberUpdate['lessonStats.noShowUndeductedCount'] =
               _minusOneFloorZero(lessonStats['noShowUndeductedCount']);
         } else if (firestoreStatus == 'service') {
-          memberUpdate['serviceSessionCount'] =
-              _minusOneFloorZero(memberData['serviceSessionCount']);
-          memberUpdate['sessions.serviceSessionCount'] =
-              _minusOneFloorZero(sessions['serviceSessionCount']);
-          memberUpdate['lessonStats.serviceSessionCount'] =
-              _minusOneFloorZero(lessonStats['serviceSessionCount']);
+          memberUpdate['serviceSessionCount'] = _minusOneFloorZero(
+            memberData['serviceSessionCount'],
+          );
+          memberUpdate['sessions.serviceSessionCount'] = _minusOneFloorZero(
+            sessions['serviceSessionCount'],
+          );
+          memberUpdate['lessonStats.serviceSessionCount'] = _minusOneFloorZero(
+            lessonStats['serviceSessionCount'],
+          );
         } else if (firestoreStatus == 'completed') {
-          memberUpdate['lessonStats.completedCount'] =
-              _minusOneFloorZero(lessonStats['completedCount']);
+          memberUpdate['lessonStats.completedCount'] = _minusOneFloorZero(
+            lessonStats['completedCount'],
+          );
         }
 
-        memberUpdate['lessonStats.confirmedCount'] =
-            _minusOneFloorZero(lessonStats['confirmedCount']);
+        memberUpdate['lessonStats.confirmedCount'] = _minusOneFloorZero(
+          lessonStats['confirmedCount'],
+        );
 
         tx.set(memberRef, memberUpdate, SetOptions(merge: true));
 
-        final reverseLedgerRef =
-            memberRef.collection('lesson_ledger').doc('${logDocId}_reverse');
+        final reverseLedgerRef = memberRef
+            .collection('lesson_ledger')
+            .doc('${logDocId}_reverse');
 
-        tx.set(
-          reverseLedgerRef,
-          {
-            'type': 'reverse',
-            'source': 'confirm_cancel',
-            'scheduleId': resolvedScheduleDocId,
-            'logId': logDocId,
-            'status': firestoreStatus,
-            'restoredSessions': shouldRestoreOne ? 1 : 0,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        tx.set(reverseLedgerRef, {
+          'type': 'reverse',
+          'source': 'confirm_cancel',
+          'scheduleId': resolvedScheduleDocId,
+          'logId': logDocId,
+          'status': firestoreStatus,
+          'restoredSessions': shouldRestoreOne ? 1 : 0,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
-      tx.set(
-        logRef,
-        {
-          'voided': true,
-          'voidedAt': FieldValue.serverTimestamp(),
-          'voidReason': 'trainer_cancel_confirm',
-          'voidSource': 'training_log_page',
-          'locked': false,
-          'lessonConfirmed': false,
-          'deductionApplied': false,
-          'confirmCancelled': true,
-          'confirmCancelledAt': FieldValue.serverTimestamp(),
-          'sessionStatusBeforeCancel': firestoreStatus,
-          'updatedAt': FieldValue.serverTimestamp(),
+      tx.set(logRef, {
+        'voided': true,
+        'voidedAt': FieldValue.serverTimestamp(),
+        'voidReason': 'trainer_cancel_confirm',
+        'voidSource': 'training_log_page',
+        'locked': false,
+        'lessonConfirmed': false,
+        'deductionApplied': false,
+        'confirmCancelled': true,
+        'confirmCancelledAt': FieldValue.serverTimestamp(),
+        'sessionStatusBeforeCancel': firestoreStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
 
-          // 기존 문서가 없던 수기 로그도 최소 식별 가능하게 보강
-          'memberId': memberId.isEmpty ? null : memberId,
-          'memberName': resolvedMemberName,
-          'lessonType': resolvedLessonType,
-          'startAt': Timestamp.fromDate(resolvedStartAt),
-        },
-        SetOptions(merge: true),
-      );
+        // 기존 문서가 없던 수기 로그도 최소 식별 가능하게 보강
+        'memberId': memberId.isEmpty ? null : memberId,
+        'memberName': resolvedMemberName,
+        'lessonType': resolvedLessonType,
+        'startAt': Timestamp.fromDate(resolvedStartAt),
+      }, SetOptions(merge: true));
 
       if (scheduleRef != null) {
         final scheduleCancelUpdate = <String, dynamic>{
@@ -3201,11 +3176,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         scheduleCancelUpdate['remainingSessions'] = restoredRemain.toString();
         scheduleCancelUpdate['remainSessions'] = restoredRemain.toString();
 
-        tx.set(
-          scheduleRef,
-          scheduleCancelUpdate,
-          SetOptions(merge: true),
-        );
+        tx.set(scheduleRef, scheduleCancelUpdate, SetOptions(merge: true));
       }
     });
 
@@ -3265,11 +3236,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => SignatureSheet(
-        title: isTrainer ? '강사 서명' : '회원 서명',
-        initial: initial,
-        typedController: typedController,
-      ),
+      builder:
+          (_) => SignatureSheet(
+            title: isTrainer ? '강사 서명' : '회원 서명',
+            initial: initial,
+            typedController: typedController,
+          ),
     );
 
     if (result == null) return;
@@ -3350,9 +3322,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       final draft = _TrainingLogItem(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
         title: '레슨일지 작성 전',
-        name: (widget.memberName ?? '').trim().isEmpty
-            ? '회원 미지정'
-            : (widget.memberName ?? '').trim(),
+        name:
+            (widget.memberName ?? '').trim().isEmpty
+                ? '회원 미지정'
+                : (widget.memberName ?? '').trim(),
         time: _nowHm(),
         type: _lastSelectedSessionType,
         memo: '',
@@ -3377,10 +3350,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = math.Random.secure();
 
-    return List.generate(
-      32,
-      (_) => chars[random.nextInt(chars.length)],
-    ).join();
+    return List.generate(32, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
   String _buildMemberSignUrl(String token) {
@@ -3412,31 +3382,27 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         .collection('sign_requests')
         .doc(token)
         .set({
-      'token': token,
-      'status': 'waiting_member_signature',
-      'used': false,
-      'memberId': memberId,
-      'memberName': memberName.isEmpty ? '회원' : memberName,
-      if ((widget.memberPhone ?? '').trim().isNotEmpty)
-        'memberPhone': widget.memberPhone!.replaceAll(RegExp(r'\D'), ''),
-      'trainingLogId': trainingLogId,
-      'lessonType': _lastSelectedSessionType,
-      'startAt': Timestamp.fromDate(now),
-      'endAt': Timestamp.fromDate(now.add(const Duration(minutes: 50))),
-      'requestType': 'member_signature',
-      'source': 'training_log_page',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(
-        DateTime.now().add(const Duration(hours: 24)),
-      ),
-    }, SetOptions(merge: true));
+          'token': token,
+          'status': 'waiting_member_signature',
+          'used': false,
+          'memberId': memberId,
+          'memberName': memberName.isEmpty ? '회원' : memberName,
+          if ((widget.memberPhone ?? '').trim().isNotEmpty)
+            'memberPhone': widget.memberPhone!.replaceAll(RegExp(r'\D'), ''),
+          'trainingLogId': trainingLogId,
+          'lessonType': _lastSelectedSessionType,
+          'startAt': Timestamp.fromDate(now),
+          'endAt': Timestamp.fromDate(now.add(const Duration(minutes: 50))),
+          'requestType': 'member_signature',
+          'source': 'training_log_page',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'expiresAt': Timestamp.fromDate(
+            DateTime.now().add(const Duration(hours: 24)),
+          ),
+        }, SetOptions(merge: true));
 
-    return {
-      'token': token,
-      'link': link,
-      'trainingLogId': trainingLogId,
-    };
+    return {'token': token, 'link': link, 'trainingLogId': trainingLogId};
   }
 
   Future<void> _openMemberSignRequestSheetFromLogPage() async {
@@ -3534,9 +3500,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: link),
-                            );
+                            await Clipboard.setData(ClipboardData(text: link));
 
                             _showSnack('서명 링크를 복사했어요.');
                           },
@@ -3595,9 +3559,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             top: false,
@@ -3609,10 +3571,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                 children: [
                   const Text(
                     '작성 방식을 다시 선택할까요?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -3656,14 +3615,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   Future<void> _openAnatomyProAifcSheet() async {
     final result = await AifcChatSheet.show(
       context: context,
-      question: '아나토미 기록은 부위 선택 기반으로 레슨 내용을 더 체계적으로 정리하는 PRO 기능이에요.\n\n'
+      question:
+          '아나토미 기록은 부위 선택 기반으로 레슨 내용을 더 체계적으로 정리하는 PRO 기능이에요.\n\n'
           '지금은 텍스트, 카테고리, PDF 방식은 사용할 수 있고,\n'
           '아나토미는 PRO에서 열어둘게요.',
       inputLabel: '예: PRO 보기 / 나중에',
-      autoCompleteHints: const [
-        'PRO 보기',
-        '나중에',
-      ],
+      autoCompleteHints: const ['PRO 보기', '나중에'],
       skipLabel: '나중에 볼게요',
       onSkip: () {},
       onSave: (value) async {
@@ -3708,15 +3665,16 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogAnatomyPage(
-          lessonLogId: lessonLogId,
-          recordedAt: _actualLessonDateTime(log),
-          memberId: memberId,
-          memberName: log.name,
-          lessonType: log.type,
-          trainerId: trainerId,
-          scheduleDocId: scheduleDocId,
-        ),
+        builder:
+            (_) => PersonalTrainingLogAnatomyPage(
+              lessonLogId: lessonLogId,
+              recordedAt: _actualLessonDateTime(log),
+              memberId: memberId,
+              memberName: log.name,
+              lessonType: log.type,
+              trainerId: trainerId,
+              scheduleDocId: scheduleDocId,
+            ),
       ),
     );
 
@@ -3836,37 +3794,37 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   Future<void> _openPdfDraftPage(_TrainingLogItem log) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogPdfPage(
-          memberName: log.name,
-          sessionType: log.type,
-        ),
+        builder:
+            (_) => PersonalTrainingLogPdfPage(
+              memberName: log.name,
+              sessionType: log.type,
+            ),
       ),
     );
   }
 
-  void _applyDraftEditorResult(
-    _TrainingLogItem log,
-    Map<String, dynamic> map,
-  ) {
+  void _applyDraftEditorResult(_TrainingLogItem log, Map<String, dynamic> map) {
     final String title = (map['title'] ?? '').toString().trim();
     final String memo = (map['memo'] ?? '').toString().trim();
     final String type = (map['type'] ?? '개인PT').toString();
 
     setState(() {
       log.title = title.isEmpty ? '레슨일지' : title;
-      log.name = (map['name'] ?? '').toString().trim().isEmpty
-          ? ((widget.memberName ?? '').trim().isEmpty
-              ? '회원 미지정'
-              : (widget.memberName ?? '').trim())
-          : (map['name'] ?? '').toString().trim();
+      log.name =
+          (map['name'] ?? '').toString().trim().isEmpty
+              ? ((widget.memberName ?? '').trim().isEmpty
+                  ? '회원 미지정'
+                  : (widget.memberName ?? '').trim())
+              : (map['name'] ?? '').toString().trim();
       log.memo = memo;
       log.type = type;
       log.time = _nowHm();
       log.inputMethod = (map['inputMethod'] ?? 'text').toString();
       log.rawVoiceText = (map['rawVoiceText'] ?? '').toString();
-      log.issueChips = ((map['issueChips'] as List?) ?? [])
-          .map((e) => e.toString())
-          .toList();
+      log.issueChips =
+          ((map['issueChips'] as List?) ?? [])
+              .map((e) => e.toString())
+              .toList();
       log.homeworkStatus = (map['homeworkStatus'] ?? '없음').toString();
       log.nextLessonCheckpoint =
           (map['nextLessonCheckpoint'] ?? '').toString().trim();
@@ -3878,15 +3836,18 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       log.prePainDetail = (map['prePainDetail'] ?? '').toString().trim();
       log.preStretching = (map['preStretching'] ?? '안 함').toString();
 
-      log.duringGoals = ((map['duringGoals'] as List?) ?? [])
-          .map((e) => e.toString())
-          .toList();
-      log.duringFocusParts = ((map['duringFocusParts'] as List?) ?? [])
-          .map((e) => e.toString())
-          .toList();
-      log.duringReactions = ((map['duringReactions'] as List?) ?? [])
-          .map((e) => e.toString())
-          .toList();
+      log.duringGoals =
+          ((map['duringGoals'] as List?) ?? [])
+              .map((e) => e.toString())
+              .toList();
+      log.duringFocusParts =
+          ((map['duringFocusParts'] as List?) ?? [])
+              .map((e) => e.toString())
+              .toList();
+      log.duringReactions =
+          ((map['duringReactions'] as List?) ?? [])
+              .map((e) => e.toString())
+              .toList();
       log.duringPainDetail = (map['duringPainDetail'] ?? '').toString().trim();
 
       log.postPainChange = (map['postPainChange'] ?? '없음').toString();
@@ -3979,33 +3940,34 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   Future<void> _openTextVoiceDraftPage(_TrainingLogItem log) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogTextVoicePage(
-          initialName: log.name,
-          initialSessionLabel: _sessionDisplayText(log),
-          initialTitle: log.title == '레슨일지 작성 전' ? '' : log.title,
-          initialMemo: log.memo,
-          initialType: log.type,
-          initialIssueChips: log.issueChips,
-          initialHomeworkStatus: log.homeworkStatus,
-          initialNextLessonCheckpoint: log.nextLessonCheckpoint,
-          initialPreCondition: log.preCondition,
-          initialPreMeal: log.preMeal,
-          initialPreSleep: log.preSleep,
-          initialPrePain: log.prePain,
-          initialPreStretching: log.preStretching,
-          initialDuringGoals: log.duringGoals,
-          initialDuringFocusParts: log.duringFocusParts,
-          initialDuringReactions: log.duringReactions,
-          initialPostPainChange: log.postPainChange,
-          initialPostPerformance: log.postPerformance,
-          initialPostNextAction: log.postNextAction,
-          initialPostHomework: log.postHomework,
-          initialInternalMemo: log.internalMemo,
-          initialPublicSummary: log.publicSummary,
-          initialPublicGood: log.publicGood,
-          initialPublicHomeworkNote: log.publicHomeworkNote,
-          initialPublicCaution: log.publicCaution,
-        ),
+        builder:
+            (_) => PersonalTrainingLogTextVoicePage(
+              initialName: log.name,
+              initialSessionLabel: _sessionDisplayText(log),
+              initialTitle: log.title == '레슨일지 작성 전' ? '' : log.title,
+              initialMemo: log.memo,
+              initialType: log.type,
+              initialIssueChips: log.issueChips,
+              initialHomeworkStatus: log.homeworkStatus,
+              initialNextLessonCheckpoint: log.nextLessonCheckpoint,
+              initialPreCondition: log.preCondition,
+              initialPreMeal: log.preMeal,
+              initialPreSleep: log.preSleep,
+              initialPrePain: log.prePain,
+              initialPreStretching: log.preStretching,
+              initialDuringGoals: log.duringGoals,
+              initialDuringFocusParts: log.duringFocusParts,
+              initialDuringReactions: log.duringReactions,
+              initialPostPainChange: log.postPainChange,
+              initialPostPerformance: log.postPerformance,
+              initialPostNextAction: log.postNextAction,
+              initialPostHomework: log.postHomework,
+              initialInternalMemo: log.internalMemo,
+              initialPublicSummary: log.publicSummary,
+              initialPublicGood: log.publicGood,
+              initialPublicHomeworkNote: log.publicHomeworkNote,
+              initialPublicCaution: log.publicCaution,
+            ),
       ),
     );
 
@@ -4022,33 +3984,34 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   Future<void> _openCategoryDraftPage(_TrainingLogItem log) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogCategoryPage(
-          initialName: log.name,
-          initialSessionLabel: _sessionDisplayText(log),
-          initialTitle: log.title == '레슨일지 작성 전' ? '' : log.title,
-          initialMemo: log.memo,
-          initialType: log.type,
-          initialIssueChips: log.issueChips,
-          initialHomeworkStatus: log.homeworkStatus,
-          initialNextLessonCheckpoint: log.nextLessonCheckpoint,
-          initialPreCondition: log.preCondition,
-          initialPreMeal: log.preMeal,
-          initialPreSleep: log.preSleep,
-          initialPrePain: log.prePain,
-          initialPreStretching: log.preStretching,
-          initialDuringGoals: log.duringGoals,
-          initialDuringFocusParts: log.duringFocusParts,
-          initialDuringReactions: log.duringReactions,
-          initialPostPainChange: log.postPainChange,
-          initialPostPerformance: log.postPerformance,
-          initialPostNextAction: log.postNextAction,
-          initialPostHomework: log.postHomework,
-          initialInternalMemo: log.internalMemo,
-          initialPublicSummary: log.publicSummary,
-          initialPublicGood: log.publicGood,
-          initialPublicHomeworkNote: log.publicHomeworkNote,
-          initialPublicCaution: log.publicCaution,
-        ),
+        builder:
+            (_) => PersonalTrainingLogCategoryPage(
+              initialName: log.name,
+              initialSessionLabel: _sessionDisplayText(log),
+              initialTitle: log.title == '레슨일지 작성 전' ? '' : log.title,
+              initialMemo: log.memo,
+              initialType: log.type,
+              initialIssueChips: log.issueChips,
+              initialHomeworkStatus: log.homeworkStatus,
+              initialNextLessonCheckpoint: log.nextLessonCheckpoint,
+              initialPreCondition: log.preCondition,
+              initialPreMeal: log.preMeal,
+              initialPreSleep: log.preSleep,
+              initialPrePain: log.prePain,
+              initialPreStretching: log.preStretching,
+              initialDuringGoals: log.duringGoals,
+              initialDuringFocusParts: log.duringFocusParts,
+              initialDuringReactions: log.duringReactions,
+              initialPostPainChange: log.postPainChange,
+              initialPostPerformance: log.postPerformance,
+              initialPostNextAction: log.postNextAction,
+              initialPostHomework: log.postHomework,
+              initialInternalMemo: log.internalMemo,
+              initialPublicSummary: log.publicSummary,
+              initialPublicGood: log.publicGood,
+              initialPublicHomeworkNote: log.publicHomeworkNote,
+              initialPublicCaution: log.publicCaution,
+            ),
       ),
     );
 
@@ -4137,16 +4100,18 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                     child: Container(
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: log.sessionStatus == 'service'
-                            ? const Color(0xFFF0FDFA)
-                            : log.sessionStatus == 'no_show'
+                        color:
+                            log.sessionStatus == 'service'
+                                ? const Color(0xFFF0FDFA)
+                                : log.sessionStatus == 'no_show'
                                 ? const Color(0xFFFEF2F2)
                                 : const Color(0xFFFFF7ED),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: log.sessionStatus == 'service'
-                              ? const Color(0xFF99F6E4)
-                              : log.sessionStatus == 'no_show'
+                          color:
+                              log.sessionStatus == 'service'
+                                  ? const Color(0xFF99F6E4)
+                                  : log.sessionStatus == 'no_show'
                                   ? const Color(0xFFFECACA)
                                   : const Color(0xFFFED7AA),
                         ),
@@ -4155,17 +4120,18 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                         log.sessionStatus == 'service'
                             ? '서비스'
                             : log.sessionStatus == 'no_show'
-                                ? 'NO SHOW'
-                                : '미차감 노쇼',
+                            ? 'NO SHOW'
+                            : '미차감 노쇼',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: log.sessionStatus == 'service'
-                              ? const Color(0xFF0F766E)
-                              : log.sessionStatus == 'no_show'
+                          color:
+                              log.sessionStatus == 'service'
+                                  ? const Color(0xFF0F766E)
+                                  : log.sessionStatus == 'no_show'
                                   ? const Color(0xFFB91C1C)
                                   : const Color(0xFFEA580C),
                         ),
@@ -4375,15 +4341,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   String _weekdayKo(DateTime date) {
-    const labels = [
-      '월요일',
-      '화요일',
-      '수요일',
-      '목요일',
-      '금요일',
-      '토요일',
-      '일요일',
-    ];
+    const labels = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
 
     return labels[date.weekday - 1];
   }
@@ -4472,13 +4430,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final hour = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 0 : 0;
     final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
 
-    return DateTime(
-      log.date.year,
-      log.date.month,
-      log.date.day,
-      hour,
-      minute,
-    );
+    return DateTime(log.date.year, log.date.month, log.date.day, hour, minute);
   }
 
   Future<void> _applyRemainingSessionDeductionIfNeeded(
@@ -4504,15 +4456,18 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     }
 
     try {
-      final memberRef =
-          FirebaseFirestore.instance.collection('members').doc(memberId);
+      final memberRef = FirebaseFirestore.instance
+          .collection('members')
+          .doc(memberId);
 
-      final logDocId = log.id.startsWith('quick_')
-          ? log.id.replaceFirst('quick_', '')
-          : log.id;
+      final logDocId =
+          log.id.startsWith('quick_')
+              ? log.id.replaceFirst('quick_', '')
+              : log.id;
 
-      final logRef =
-          FirebaseFirestore.instance.collection('training_logs').doc(logDocId);
+      final logRef = FirebaseFirestore.instance
+          .collection('training_logs')
+          .doc(logDocId);
 
       int? nextRemainForMessage;
       bool alreadyDeducted = false;
@@ -4523,18 +4478,20 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
         final deductedLogIdsRaw = data['deductedTrainingLogIds'];
 
-        final deductedLogIds = deductedLogIdsRaw is List
-            ? deductedLogIdsRaw.map((e) => e.toString()).toSet()
-            : <String>{};
+        final deductedLogIds =
+            deductedLogIdsRaw is List
+                ? deductedLogIdsRaw.map((e) => e.toString()).toSet()
+                : <String>{};
 
         if (deductedLogIds.contains(deductionKey)) {
           alreadyDeducted = true;
           return;
         }
 
-        final sessions = data['sessions'] is Map
-            ? Map<String, dynamic>.from(data['sessions'] as Map)
-            : <String, dynamic>{};
+        final sessions =
+            data['sessions'] is Map
+                ? Map<String, dynamic>.from(data['sessions'] as Map)
+                : <String, dynamic>{};
 
         final lessonType = (data['lessonType'] ?? '미입력').toString().trim();
 
@@ -4542,82 +4499,73 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             sessions['notRegistered'] == true || lessonType == '미입력';
 
         if (lessonNotRegistered) {
-          transaction.set(
-            logRef,
-            {
-              'waitingTrainerConfirm': false,
-              'confirmedByTrainer': true,
-              'confirmedAt': FieldValue.serverTimestamp(),
-              'locked': true,
-              'deductionApplied': false,
-              'deductionSkipReason': 'lesson_not_registered',
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
+          transaction.set(logRef, {
+            'waitingTrainerConfirm': false,
+            'confirmedByTrainer': true,
+            'confirmedAt': FieldValue.serverTimestamp(),
+            'locked': true,
+            'deductionApplied': false,
+            'deductionSkipReason': 'lesson_not_registered',
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
           nextRemainForMessage = null;
           return;
         }
 
-        final rawRemain = data['remainSessions'] ??
+        final rawRemain =
+            data['remainSessions'] ??
             data['remainingSessions'] ??
             sessions['remain'] ??
             data['remainingPt'] ??
             data['ptRemaining'];
 
-        final currentRemain = rawRemain is num
-            ? rawRemain.toInt()
-            : int.tryParse((rawRemain ?? '').toString()) ?? 0;
+        final currentRemain =
+            rawRemain is num
+                ? rawRemain.toInt()
+                : int.tryParse((rawRemain ?? '').toString()) ?? 0;
 
         final rawDone = data['doneSessions'] ?? sessions['done'];
 
-        final currentDone = rawDone is num
-            ? rawDone.toInt()
-            : int.tryParse((rawDone ?? '').toString()) ?? 0;
+        final currentDone =
+            rawDone is num
+                ? rawDone.toInt()
+                : int.tryParse((rawDone ?? '').toString()) ?? 0;
 
         final nextRemain = currentRemain > 0 ? currentRemain - 1 : 0;
         final nextDone = currentRemain > 0 ? currentDone + 1 : currentDone;
 
         nextRemainForMessage = nextRemain;
 
-        transaction.set(
-          memberRef,
-          {
-            'remainSessions': nextRemain,
-            'remainingSessions': nextRemain,
-            'doneSessions': nextDone,
-            'sessions.remain': nextRemain,
-            'sessions.done': nextDone,
-            'sessions.source': 'log',
-            'deductedTrainingLogIds': FieldValue.arrayUnion([deductionKey]),
-            'lessonSource': 'log',
-            'lessonSync.source': 'log',
-            'lessonSync.lastLogId': deductionKey,
-            'lessonSync.updatedAt': FieldValue.serverTimestamp(),
-            'lastLogAt': Timestamp.fromDate(_actualLessonDateTime(log)),
-            'lastLessonAt': Timestamp.fromDate(_actualLessonDateTime(log)),
-            'lastLessonType': log.type,
-            'lastLessonStatus': log.sessionStatus,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        transaction.set(memberRef, {
+          'remainSessions': nextRemain,
+          'remainingSessions': nextRemain,
+          'doneSessions': nextDone,
+          'sessions.remain': nextRemain,
+          'sessions.done': nextDone,
+          'sessions.source': 'log',
+          'deductedTrainingLogIds': FieldValue.arrayUnion([deductionKey]),
+          'lessonSource': 'log',
+          'lessonSync.source': 'log',
+          'lessonSync.lastLogId': deductionKey,
+          'lessonSync.updatedAt': FieldValue.serverTimestamp(),
+          'lastLogAt': Timestamp.fromDate(_actualLessonDateTime(log)),
+          'lastLessonAt': Timestamp.fromDate(_actualLessonDateTime(log)),
+          'lastLessonType': log.type,
+          'lastLessonStatus': log.sessionStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
 
-        transaction.set(
-          logRef,
-          {
-            'waitingTrainerConfirm': false,
-            'confirmedByTrainer': true,
-            'confirmedAt': FieldValue.serverTimestamp(),
-            'locked': true,
-            'deductionApplied': true,
-            'deductionKey': deductionKey,
-            'remainAfterDeduct': nextRemain,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        transaction.set(logRef, {
+          'waitingTrainerConfirm': false,
+          'confirmedByTrainer': true,
+          'confirmedAt': FieldValue.serverTimestamp(),
+          'locked': true,
+          'deductionApplied': true,
+          'deductionKey': deductionKey,
+          'remainAfterDeduct': nextRemain,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       });
 
       if (alreadyDeducted) {
@@ -4631,7 +4579,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       if (!mounted) return;
 
       if (nextRemainForMessage == null) {
-        _showSnack('레슨일지가 확정되었어요. 레슨 미등록 고객이라 잔여 횟수는 소진하지 않았어요.');
+        _showSnack('레슨일지가 확정되었어요. 레슨 미등록 회원이라 잔여 횟수는 소진하지 않았어요.');
       } else if ((nextRemainForMessage ?? 0) <= 0) {
         _showSnack('레슨일지가 확정되었어요. 잔여 레슨은 0회입니다.');
       } else {
@@ -4666,9 +4614,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Widget _sigViewMini(SigCell cell, {bool big = false}) {
@@ -4682,9 +4628,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         child: FittedBox(
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
-          child: Image.memory(
-            _dataUrlToBytes(cell.value),
-          ),
+          child: Image.memory(_dataUrlToBytes(cell.value)),
         ),
       );
     }
@@ -4747,11 +4691,12 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       }
     }
 
-    final lines = memo
-        .split('\n')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final lines =
+        memo
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     if (lines.isEmpty) return '';
 
@@ -4826,12 +4771,7 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 1,
-              color: const Color(0xFFD1D5DB),
-            ),
-          ),
+          Expanded(child: Container(height: 1, color: const Color(0xFFD1D5DB))),
         ],
       ),
     );
@@ -4894,16 +4834,18 @@ class _EntryMethodTile extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: locked
-                          ? scheme.surfaceContainerHighest
-                          : scheme.secondaryContainer,
+                      color:
+                          locked
+                              ? scheme.surfaceContainerHighest
+                              : scheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
                       icon,
-                      color: locked
-                          ? scheme.onSurfaceVariant
-                          : scheme.onSecondaryContainer,
+                      color:
+                          locked
+                              ? scheme.onSurfaceVariant
+                              : scheme.onSecondaryContainer,
                     ),
                   ),
                   const Spacer(),
@@ -5154,9 +5096,7 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.14),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.14)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -5186,19 +5126,20 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
-              child: isExpanded
-                  ? Padding(
-                      key: const ValueKey('header_info_open'),
-                      padding: const EdgeInsets.only(top: 12),
-                      child: _HeaderMemberInfoBox(
-                        openingMent: openingMent,
-                        inbodyTrend: inbodyTrend,
-                        todayRecommendedExercise: todayRecommendedExercise,
+              child:
+                  isExpanded
+                      ? Padding(
+                        key: const ValueKey('header_info_open'),
+                        padding: const EdgeInsets.only(top: 12),
+                        child: _HeaderMemberInfoBox(
+                          openingMent: openingMent,
+                          inbodyTrend: inbodyTrend,
+                          todayRecommendedExercise: todayRecommendedExercise,
+                        ),
+                      )
+                      : const SizedBox.shrink(
+                        key: ValueKey('header_info_closed'),
                       ),
-                    )
-                  : const SizedBox.shrink(
-                      key: ValueKey('header_info_closed'),
-                    ),
             ),
           ],
         ),
@@ -5225,16 +5166,11 @@ class _HeaderMemberInfoBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.14),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.14)),
       ),
       child: Column(
         children: [
-          _HeaderMessageCard(
-            title: '다음 레슨 시작 멘트 및 체크포인트',
-            value: openingMent,
-          ),
+          _HeaderMessageCard(title: '다음 레슨 시작 멘트 및 체크포인트', value: openingMent),
           const SizedBox(height: 10),
           _HeaderMessageCard(
             title: '오늘 추천 운동',
@@ -5253,10 +5189,7 @@ class _HeaderMemberInfoBox extends StatelessWidget {
 }
 
 class _HeaderInfoTile extends StatelessWidget {
-  const _HeaderInfoTile({
-    required this.label,
-    required this.value,
-  });
+  const _HeaderInfoTile({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -5268,9 +5201,7 @@ class _HeaderInfoTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5302,10 +5233,7 @@ class _HeaderInfoTile extends StatelessWidget {
 }
 
 class _HeaderMessageCard extends StatelessWidget {
-  const _HeaderMessageCard({
-    required this.title,
-    required this.value,
-  });
+  const _HeaderMessageCard({required this.title, required this.value});
 
   final String title;
   final String value;
@@ -5318,9 +5246,7 @@ class _HeaderMessageCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5369,9 +5295,7 @@ class _MiniTrendCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5440,15 +5364,9 @@ class _HeaderTopActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.14),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.16),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.16)),
           ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 20,
-          ),
+          child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
     );
@@ -5474,9 +5392,7 @@ class _HeaderStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.14),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5513,9 +5429,7 @@ class _HeaderStatCard extends StatelessWidget {
 }
 
 class _PerformanceLineChart extends StatelessWidget {
-  const _PerformanceLineChart({
-    required this.logs,
-  });
+  const _PerformanceLineChart({required this.logs});
 
   final List<_TrainingLogItem> logs;
 
@@ -5533,21 +5447,22 @@ class _PerformanceLineChart extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Row(
-          children: logs.map((log) {
-            final label =
-                '${log.date.month.toString().padLeft(2, '0')}/${log.date.day.toString().padLeft(2, '0')}';
-            return Expanded(
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black45,
-                ),
-              ),
-            );
-          }).toList(),
+          children:
+              logs.map((log) {
+                final label =
+                    '${log.date.month.toString().padLeft(2, '0')}/${log.date.day.toString().padLeft(2, '0')}';
+                return Expanded(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black45,
+                    ),
+                  ),
+                );
+              }).toList(),
         ),
       ],
     );
@@ -5555,9 +5470,7 @@ class _PerformanceLineChart extends StatelessWidget {
 }
 
 class _PerformanceLineChartPainter extends CustomPainter {
-  _PerformanceLineChartPainter({
-    required this.values,
-  });
+  _PerformanceLineChartPainter({required this.values});
 
   final List<double> values;
 
@@ -5565,20 +5478,23 @@ class _PerformanceLineChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
 
-    final gridPaint = Paint()
-      ..color = const Color(0xFFE5E7EB)
-      ..strokeWidth = 1;
+    final gridPaint =
+        Paint()
+          ..color = const Color(0xFFE5E7EB)
+          ..strokeWidth = 1;
 
-    final linePaint = Paint()
-      ..color = const Color(0xFF4F46E5)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final linePaint =
+        Paint()
+          ..color = const Color(0xFF4F46E5)
+          ..strokeWidth = 3
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
-    final pointPaint = Paint()
-      ..color = const Color(0xFF4F46E5)
-      ..style = PaintingStyle.fill;
+    final pointPaint =
+        Paint()
+          ..color = const Color(0xFF4F46E5)
+          ..style = PaintingStyle.fill;
 
     const leftPad = 8.0;
     const rightPad = 8.0;
@@ -5605,9 +5521,10 @@ class _PerformanceLineChartPainter extends CustomPainter {
     final points = <Offset>[];
 
     for (int i = 0; i < values.length; i++) {
-      final dx = values.length == 1
-          ? size.width / 2
-          : leftPad + (chartWidth / (values.length - 1)) * i;
+      final dx =
+          values.length == 1
+              ? size.width / 2
+              : leftPad + (chartWidth / (values.length - 1)) * i;
       final normalized = (values[i] - minValue) / valueRange;
       final dy = topPad + chartHeight - (normalized * chartHeight);
       points.add(Offset(dx, dy));
@@ -5622,11 +5539,7 @@ class _PerformanceLineChartPainter extends CustomPainter {
 
     for (final point in points) {
       canvas.drawCircle(point, 4.5, pointPaint);
-      canvas.drawCircle(
-        point,
-        2.2,
-        Paint()..color = Colors.white,
-      );
+      canvas.drawCircle(point, 2.2, Paint()..color = Colors.white);
     }
   }
 
@@ -5675,16 +5588,18 @@ class _MiniSparklinePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
 
-    final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2.2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final linePaint =
+        Paint()
+          ..color = lineColor
+          ..strokeWidth = 2.2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
-    final pointPaint = Paint()
-      ..color = pointColor
-      ..style = PaintingStyle.fill;
+    final pointPaint =
+        Paint()
+          ..color = pointColor
+          ..style = PaintingStyle.fill;
 
     const leftPad = 2.0;
     const rightPad = 2.0;
@@ -5702,9 +5617,10 @@ class _MiniSparklinePainter extends CustomPainter {
     final points = <Offset>[];
 
     for (int i = 0; i < values.length; i++) {
-      final dx = values.length == 1
-          ? size.width / 2
-          : leftPad + (chartWidth / (values.length - 1)) * i;
+      final dx =
+          values.length == 1
+              ? size.width / 2
+              : leftPad + (chartWidth / (values.length - 1)) * i;
       final normalized = (values[i] - minValue) / range;
       final dy = topPad + chartHeight - (normalized * chartHeight);
       points.add(Offset(dx, dy));
@@ -5734,10 +5650,7 @@ class _LessonCalendarResult {
   final DateTime? selectedDate;
   final bool clearFilter;
 
-  const _LessonCalendarResult._({
-    this.selectedDate,
-    this.clearFilter = false,
-  });
+  const _LessonCalendarResult._({this.selectedDate, this.clearFilter = false});
 
   factory _LessonCalendarResult.select(DateTime date) {
     return _LessonCalendarResult._(
@@ -5773,7 +5686,8 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
   @override
   void initState() {
     super.initState();
-    final base = widget.selectedDate ??
+    final base =
+        widget.selectedDate ??
         widget.lastDate ??
         widget.firstDate ??
         DateTime.now();
@@ -5796,31 +5710,35 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
       final date = DateTime(_visibleMonth.year, _visibleMonth.month, day);
       final normalized = DateTime(date.year, date.month, date.day);
       final isLessonDay = widget.lessonDates.contains(normalized);
-      final isSelected = widget.selectedDate != null &&
+      final isSelected =
+          widget.selectedDate != null &&
           _isSameDate(widget.selectedDate!, normalized);
       final isToday = _isSameDate(DateTime.now(), normalized);
 
       cells.add(
         InkWell(
-          onTap: isLessonDay
-              ? () => Navigator.pop(
+          onTap:
+              isLessonDay
+                  ? () => Navigator.pop(
                     context,
                     _LessonCalendarResult.select(normalized),
                   )
-              : null,
+                  : null,
           borderRadius: BorderRadius.circular(12),
           child: Container(
             height: 48,
             decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFFEEF2FF)
-                  : isLessonDay
+              color:
+                  isSelected
+                      ? const Color(0xFFEEF2FF)
+                      : isLessonDay
                       ? Colors.white
                       : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              border: isSelected
-                  ? Border.all(color: const Color(0xFF4F46E5))
-                  : null,
+              border:
+                  isSelected
+                      ? Border.all(color: const Color(0xFF4F46E5))
+                      : null,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -5838,9 +5756,10 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: isLessonDay
-                        ? Colors.red
-                        : (isToday ? Colors.black26 : Colors.transparent),
+                    color:
+                        isLessonDay
+                            ? Colors.red
+                            : (isToday ? Colors.black26 : Colors.transparent),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -5866,17 +5785,17 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
               children: [
                 const Text(
                   '레슨 달력',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                 ),
                 const Spacer(),
                 IconButton(
                   onPressed: () {
                     setState(() {
                       _visibleMonth = DateTime(
-                          _visibleMonth.year, _visibleMonth.month - 1, 1);
+                        _visibleMonth.year,
+                        _visibleMonth.month - 1,
+                        1,
+                      );
                     });
                   },
                   icon: const Icon(Icons.chevron_left_rounded),
@@ -5892,7 +5811,10 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
                   onPressed: () {
                     setState(() {
                       _visibleMonth = DateTime(
-                          _visibleMonth.year, _visibleMonth.month + 1, 1);
+                        _visibleMonth.year,
+                        _visibleMonth.month + 1,
+                        1,
+                      );
                     });
                   },
                   icon: const Icon(Icons.chevron_right_rounded),
@@ -5946,9 +5868,10 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: widget.firstDate == null
-                        ? null
-                        : () => Navigator.pop(
+                    onPressed:
+                        widget.firstDate == null
+                            ? null
+                            : () => Navigator.pop(
                               context,
                               _LessonCalendarResult.select(
                                 DateTime(
@@ -5965,9 +5888,10 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: widget.lastDate == null
-                        ? null
-                        : () => Navigator.pop(
+                    onPressed:
+                        widget.lastDate == null
+                            ? null
+                            : () => Navigator.pop(
                               context,
                               _LessonCalendarResult.select(
                                 DateTime(
@@ -5988,10 +5912,11 @@ class _LessonCalendarSheetState extends State<_LessonCalendarSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pop(
-                      context,
-                      _LessonCalendarResult.clear(),
-                    ),
+                    onPressed:
+                        () => Navigator.pop(
+                          context,
+                          _LessonCalendarResult.clear(),
+                        ),
                     icon: const Icon(Icons.history_rounded),
                     label: const Text('전체 히스토리'),
                   ),
@@ -6054,10 +5979,7 @@ class _GoalDdayItem {
     this.status = 'active',
   });
 
-  factory _GoalDdayItem.fromFirestore(
-    String id,
-    Map<String, dynamic> data,
-  ) {
+  factory _GoalDdayItem.fromFirestore(String id, Map<String, dynamic> data) {
     DateTime? toDate(dynamic value) {
       if (value is Timestamp) return value.toDate();
       if (value is DateTime) return value;
@@ -6067,9 +5989,10 @@ class _GoalDdayItem {
 
     final rawStatus = (data['status'] ?? '').toString().trim();
 
-    final resolvedStatus = rawStatus.isNotEmpty
-        ? rawStatus
-        : data['isCompleted'] == true
+    final resolvedStatus =
+        rawStatus.isNotEmpty
+            ? rawStatus
+            : data['isCompleted'] == true
             ? 'completed'
             : 'active';
 
@@ -6164,15 +6087,14 @@ class _GoalDdayManageSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
-    final sortedGoals = List<_GoalDdayItem>.from(goals)
-      ..sort((a, b) {
-        final aDone = a.isCompleted || a.status == 'completed';
-        final bDone = b.isCompleted || b.status == 'completed';
+    final sortedGoals = List<_GoalDdayItem>.from(goals)..sort((a, b) {
+      final aDone = a.isCompleted || a.status == 'completed';
+      final bDone = b.isCompleted || b.status == 'completed';
 
-        if (aDone != bDone) return aDone ? 1 : -1;
+      if (aDone != bDone) return aDone ? 1 : -1;
 
-        return a.date.compareTo(b.date);
-      });
+      return a.date.compareTo(b.date);
+    });
 
     return SafeArea(
       top: false,
@@ -6249,137 +6171,143 @@ class _GoalDdayManageSheet extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: sortedGoals.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Text(
-                            '등록된 D-DAY가 없어요.\n바디프로필, 대회, 웨딩촬영 같은 목표를 먼저 추가해보세요.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: scheme.onSurfaceVariant,
-                              fontSize: 12.5,
-                              height: 1.45,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                        itemCount: sortedGoals.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final goal = sortedGoals[index];
-                          final statusColor = _statusColor(context, goal);
-                          final isDone =
-                              goal.isCompleted || goal.status == 'completed';
-                          final isPaused = goal.status == 'paused';
-                          final isStopped = goal.status == 'stopped';
-
-                          return Container(
-                            padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
-                            decoration: BoxDecoration(
-                              color: tokens.cardSurface,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: tokens.cardBorder,
+                child:
+                    sortedGoals.isEmpty
+                        ? Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              '등록된 D-DAY가 없어요.\n바디프로필, 대회, 웨딩촬영 같은 목표를 먼저 추가해보세요.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 12.5,
+                                height: 1.45,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        goal.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: scheme.onSurface,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
+                          ),
+                        )
+                        : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                          itemCount: sortedGoals.length,
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final goal = sortedGoals[index];
+                            final statusColor = _statusColor(context, goal);
+                            final isDone =
+                                goal.isCompleted || goal.status == 'completed';
+                            final isPaused = goal.status == 'paused';
+                            final isStopped = goal.status == 'stopped';
+
+                            return Container(
+                              padding: const EdgeInsets.fromLTRB(
+                                13,
+                                12,
+                                13,
+                                12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: tokens.cardSurface,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: tokens.cardBorder),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          goal.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: scheme.onSurface,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w900,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.10),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        _statusLabel(goal),
-                                        style: TextStyle(
-                                          color: statusColor,
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w900,
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: statusColor.withOpacity(0.10),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _statusLabel(goal),
+                                          style: TextStyle(
+                                            color: statusColor,
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w900,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  '${_dateText(goal.date)} · ${_ddayText(goal.date)}',
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(height: 11),
-                                Wrap(
-                                  spacing: 7,
-                                  runSpacing: 7,
-                                  children: [
-                                    _GoalManageActionChip(
-                                      label: '수정',
-                                      icon: Icons.edit_outlined,
-                                      onTap: () => onEdit(goal),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${_dateText(goal.date)} · ${_ddayText(goal.date)}',
+                                    style: TextStyle(
+                                      color: scheme.onSurfaceVariant,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                    if (!isDone && !isStopped)
+                                  ),
+                                  const SizedBox(height: 11),
+                                  Wrap(
+                                    spacing: 7,
+                                    runSpacing: 7,
+                                    children: [
                                       _GoalManageActionChip(
-                                        label: '완료',
-                                        icon: Icons.check_circle_outline,
-                                        onTap: () => onComplete(goal),
+                                        label: '수정',
+                                        icon: Icons.edit_outlined,
+                                        onTap: () => onEdit(goal),
                                       ),
-                                    if (!isDone && !isPaused && !isStopped)
+                                      if (!isDone && !isStopped)
+                                        _GoalManageActionChip(
+                                          label: '완료',
+                                          icon: Icons.check_circle_outline,
+                                          onTap: () => onComplete(goal),
+                                        ),
+                                      if (!isDone && !isPaused && !isStopped)
+                                        _GoalManageActionChip(
+                                          label: '보류',
+                                          icon: Icons.pause_circle_outline,
+                                          onTap: () => onPause(goal),
+                                        ),
+                                      if (!isDone && !isStopped)
+                                        _GoalManageActionChip(
+                                          label: '중단',
+                                          icon: Icons.stop_circle_outlined,
+                                          onTap: () => onStop(goal),
+                                        ),
+                                      if (!isDone && (isPaused || isStopped))
+                                        _GoalManageActionChip(
+                                          label: '다시 진행',
+                                          icon: Icons.play_circle_outline,
+                                          onTap: () => onResume(goal),
+                                        ),
                                       _GoalManageActionChip(
-                                        label: '보류',
-                                        icon: Icons.pause_circle_outline,
-                                        onTap: () => onPause(goal),
+                                        label: '삭제',
+                                        icon: Icons.delete_outline,
+                                        danger: true,
+                                        onTap: () => onDelete(goal),
                                       ),
-                                    if (!isDone && !isStopped)
-                                      _GoalManageActionChip(
-                                        label: '중단',
-                                        icon: Icons.stop_circle_outlined,
-                                        onTap: () => onStop(goal),
-                                      ),
-                                    if (!isDone && (isPaused || isStopped))
-                                      _GoalManageActionChip(
-                                        label: '다시 진행',
-                                        icon: Icons.play_circle_outline,
-                                        onTap: () => onResume(goal),
-                                      ),
-                                    _GoalManageActionChip(
-                                      label: '삭제',
-                                      icon: Icons.delete_outline,
-                                      danger: true,
-                                      onTap: () => onDelete(goal),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
@@ -6444,9 +6372,10 @@ class _GoalManageActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.primary;
+    final color =
+        danger
+            ? Theme.of(context).colorScheme.error
+            : Theme.of(context).colorScheme.primary;
 
     return InkWell(
       onTap: onTap,
@@ -6456,9 +6385,7 @@ class _GoalManageActionChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: color.withOpacity(0.16),
-          ),
+          border: Border.all(color: color.withOpacity(0.16)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -6625,9 +6552,9 @@ class _TrainingLogItem {
     this.lockedAtDate = '',
     this.lockedAtTime = '',
     this.packageCount = 0,
-  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        trainerSig = trainerSig ?? SigCell.empty(),
-        customerSig = customerSig ?? SigCell.empty();
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+       trainerSig = trainerSig ?? SigCell.empty(),
+       customerSig = customerSig ?? SigCell.empty();
 }
 
 class _TrainingLogCard extends StatelessWidget {
@@ -6788,11 +6715,12 @@ class _TrainingLogCard extends StatelessWidget {
       }
     }
 
-    final lines = memo
-        .split('\n')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final lines =
+        memo
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     if (lines.isEmpty) return '(메모 없음)';
 
@@ -6821,11 +6749,12 @@ class _TrainingLogCard extends StatelessWidget {
 
     if (memo.isEmpty) return '특이사항 없음';
 
-    final lines = memo
-        .split('\n')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final lines =
+        memo
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     if (lines.isEmpty) return '특이사항 없음';
 
@@ -7027,9 +6956,7 @@ class _TrainingLogCard extends StatelessWidget {
         child: FittedBox(
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
-          child: Image.memory(
-            _dataUrlToBytes(cell.value),
-          ),
+          child: Image.memory(_dataUrlToBytes(cell.value)),
         ),
       );
     }
@@ -7074,9 +7001,10 @@ class _TrainingLogCard extends StatelessWidget {
             color: const Color(0xFFF9FAFB),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: hasSignature
-                  ? const Color(0xFFCBD5E1)
-                  : const Color(0xFFE5E7EB),
+              color:
+                  hasSignature
+                      ? const Color(0xFFCBD5E1)
+                      : const Color(0xFFE5E7EB),
             ),
           ),
           child: Stack(
@@ -7125,8 +7053,10 @@ class _TrainingLogCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -7152,9 +7082,10 @@ class _TrainingLogCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: hasSignature
-                                  ? const Color(0xFF2563EB)
-                                  : Colors.black38,
+                              color:
+                                  hasSignature
+                                      ? const Color(0xFF2563EB)
+                                      : Colors.black38,
                             ),
                           ),
                         ],
@@ -7165,9 +7096,10 @@ class _TrainingLogCard extends StatelessWidget {
                           ? Icons.check_circle_rounded
                           : Icons.draw_rounded,
                       size: 18,
-                      color: hasSignature
-                          ? const Color(0xFF2563EB)
-                          : Colors.black38,
+                      color:
+                          hasSignature
+                              ? const Color(0xFF2563EB)
+                              : Colors.black38,
                     ),
                   ],
                 ),
@@ -7204,7 +7136,7 @@ class _TrainingLogCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                '고객 서명',
+                '회원 서명',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
@@ -7220,9 +7152,10 @@ class _TrainingLogCard extends StatelessWidget {
                   fontSize: 10,
                   height: 1.0,
                   fontWeight: FontWeight.w800,
-                  color: noDeduct
-                      ? const Color(0xFFEA580C)
-                      : const Color(0xFFB91C1C),
+                  color:
+                      noDeduct
+                          ? const Color(0xFFEA580C)
+                          : const Color(0xFFB91C1C),
                 ),
               ),
             ],
@@ -7247,26 +7180,28 @@ class _TrainingLogCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: item.sessionStatus == 'service'
-              ? const Color(0xFFF0FDFA)
-              : item.sessionStatus == 'no_show'
+          color:
+              item.sessionStatus == 'service'
+                  ? const Color(0xFFF0FDFA)
+                  : item.sessionStatus == 'no_show'
                   ? const Color(0xFFFEF2F2)
                   : item.sessionStatus == 'no_show_no_deduct'
-                      ? const Color(0xFFFFFBEB)
-                      : tokens.trainingLogSurface,
+                  ? const Color(0xFFFFFBEB)
+                  : tokens.trainingLogSurface,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: isHighlighted
-                ? const Color(0xFF2563EB)
-                : item.locked
+            color:
+                isHighlighted
+                    ? const Color(0xFF2563EB)
+                    : item.locked
                     ? const Color(0xFFD6D3D1)
                     : item.sessionStatus == 'service'
-                        ? const Color(0xFF99F6E4)
-                        : item.sessionStatus == 'no_show'
-                            ? const Color(0xFFFECACA)
-                            : item.sessionStatus == 'no_show_no_deduct'
-                                ? const Color(0xFFFED7AA)
-                                : tokens.trainingLogSetDivider,
+                    ? const Color(0xFF99F6E4)
+                    : item.sessionStatus == 'no_show'
+                    ? const Color(0xFFFECACA)
+                    : item.sessionStatus == 'no_show_no_deduct'
+                    ? const Color(0xFFFED7AA)
+                    : tokens.trainingLogSetDivider,
             width: isHighlighted ? 2 : 1,
           ),
           boxShadow: [
@@ -7286,46 +7221,48 @@ class _TrainingLogCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: item.sessionStatus == 'no_show_no_deduct'
-                      ? RichText(
-                          text: TextSpan(
-                            style: const TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF92400E),
-                            ),
-                            children: [
-                              TextSpan(
-                                text:
-                                    '${sessionNumber}회차 · ${item.date.year}.${item.date.month.toString().padLeft(2, '0')}.${item.date.day.toString().padLeft(2, '0')} ${item.time} · ',
+                  child:
+                      item.sessionStatus == 'no_show_no_deduct'
+                          ? RichText(
+                            text: TextSpan(
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF92400E),
                               ),
-                              const TextSpan(text: 'NO SHOW '),
-                              const TextSpan(
-                                text: '차감',
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  decorationThickness: 3,
+                              children: [
+                                TextSpan(
+                                  text:
+                                      '${sessionNumber}회차 · ${item.date.year}.${item.date.month.toString().padLeft(2, '0')}.${item.date.day.toString().padLeft(2, '0')} ${item.time} · ',
                                 ),
-                              ),
-                            ],
+                                const TextSpan(text: 'NO SHOW '),
+                                const TextSpan(
+                                  text: '차감',
+                                  style: TextStyle(
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationThickness: 3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          )
+                          : Text(
+                            _topLineLabel(item, sessionNumber),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color:
+                                  item.sessionStatus == 'service'
+                                      ? const Color(0xFF0F766E)
+                                      : item.sessionStatus == 'no_show'
+                                      ? const Color(0xFFB91C1C)
+                                      : scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        )
-                      : Text(
-                          _topLineLabel(item, sessionNumber),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: item.sessionStatus == 'service'
-                                ? const Color(0xFF0F766E)
-                                : item.sessionStatus == 'no_show'
-                                    ? const Color(0xFFB91C1C)
-                                    : scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
                 ),
                 const SizedBox(width: 6),
                 Icon(
@@ -7340,24 +7277,28 @@ class _TrainingLogCard extends StatelessWidget {
 
             const SizedBox(height: 7),
 
-// 1.5행: 상태 칩들은 별도 줄로 분리
+            // 1.5행: 상태 칩들은 별도 줄로 분리
             Wrap(
               spacing: 6,
               runSpacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: item.inputMethod == 'quick_sign'
-                        ? const Color(0xFFEEF2FF)
-                        : const Color(0xFFF3F4F6),
+                    color:
+                        item.inputMethod == 'quick_sign'
+                            ? const Color(0xFFEEF2FF)
+                            : const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
-                      color: item.inputMethod == 'quick_sign'
-                          ? const Color(0xFFC7D2FE)
-                          : const Color(0xFFE5E7EB),
+                      color:
+                          item.inputMethod == 'quick_sign'
+                              ? const Color(0xFFC7D2FE)
+                              : const Color(0xFFE5E7EB),
                     ),
                   ),
                   child: Row(
@@ -7366,9 +7307,10 @@ class _TrainingLogCard extends StatelessWidget {
                       Icon(
                         _inputMethodIcon(item),
                         size: 12,
-                        color: item.inputMethod == 'quick_sign'
-                            ? const Color(0xFF4F46E5)
-                            : Colors.black54,
+                        color:
+                            item.inputMethod == 'quick_sign'
+                                ? const Color(0xFF4F46E5)
+                                : Colors.black54,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -7376,9 +7318,10 @@ class _TrainingLogCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w900,
-                          color: item.inputMethod == 'quick_sign'
-                              ? const Color(0xFF4F46E5)
-                              : Colors.black54,
+                          color:
+                              item.inputMethod == 'quick_sign'
+                                  ? const Color(0xFF4F46E5)
+                                  : Colors.black54,
                         ),
                       ),
                     ],
@@ -7386,19 +7329,23 @@ class _TrainingLogCard extends StatelessWidget {
                 ),
                 if (_recordStatusText(item).isNotEmpty)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: item.confirmCancelled
-                          ? const Color(0xFFF3F4F6)
-                          : item.waitingTrainerConfirm
+                      color:
+                          item.confirmCancelled
+                              ? const Color(0xFFF3F4F6)
+                              : item.waitingTrainerConfirm
                               ? const Color(0xFFFFFBEB)
                               : const Color(0xFFECFDF5),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: item.confirmCancelled
-                            ? const Color(0xFFD1D5DB)
-                            : item.waitingTrainerConfirm
+                        color:
+                            item.confirmCancelled
+                                ? const Color(0xFFD1D5DB)
+                                : item.waitingTrainerConfirm
                                 ? const Color(0xFFFDE68A)
                                 : const Color(0xFFBBF7D0),
                       ),
@@ -7408,9 +7355,10 @@ class _TrainingLogCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: item.confirmCancelled
-                            ? const Color(0xFF6B7280)
-                            : item.waitingTrainerConfirm
+                        color:
+                            item.confirmCancelled
+                                ? const Color(0xFF6B7280)
+                                : item.waitingTrainerConfirm
                                 ? const Color(0xFFD97706)
                                 : const Color(0xFF059669),
                       ),
@@ -7418,8 +7366,10 @@ class _TrainingLogCard extends StatelessWidget {
                   ),
                 if (item.waitingTrainerConfirm && item.memberSignedFromWeb)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFECFDF5),
                       borderRadius: BorderRadius.circular(999),
@@ -7436,17 +7386,21 @@ class _TrainingLogCard extends StatelessWidget {
                   ),
                 if (item.isDraft)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: draftEntryMode.isEmpty
-                          ? const Color(0xFFFFF7ED)
-                          : const Color(0xFFEEF2FF),
+                      color:
+                          draftEntryMode.isEmpty
+                              ? const Color(0xFFFFF7ED)
+                              : const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: draftEntryMode.isEmpty
-                            ? const Color(0xFFFED7AA)
-                            : const Color(0xFFC7D2FE),
+                        color:
+                            draftEntryMode.isEmpty
+                                ? const Color(0xFFFED7AA)
+                                : const Color(0xFFC7D2FE),
                       ),
                     ),
                     child: Text(
@@ -7454,9 +7408,10 @@ class _TrainingLogCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: draftEntryMode.isEmpty
-                            ? const Color(0xFF9A3412)
-                            : const Color(0xFF4338CA),
+                        color:
+                            draftEntryMode.isEmpty
+                                ? const Color(0xFF9A3412)
+                                : const Color(0xFF4338CA),
                       ),
                     ),
                   ),
@@ -7465,7 +7420,9 @@ class _TrainingLogCard extends StatelessWidget {
                     onTap: onFemaleConditionTap,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAF3DE),
                         borderRadius: BorderRadius.circular(999),
@@ -7494,8 +7451,10 @@ class _TrainingLogCard extends StatelessWidget {
                     ),
                   ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(999),
@@ -7514,7 +7473,7 @@ class _TrainingLogCard extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-// 2행
+            // 2행
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -7549,30 +7508,30 @@ class _TrainingLogCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 item.sessionStatus == 'no_show'
                     ? _inlineNoShowSignatureChip(
-                        noDeduct: false,
-                        onLongPress: onLongPressSig,
-                      )
+                      noDeduct: false,
+                      onLongPress: onLongPressSig,
+                    )
                     : item.sessionStatus == 'no_show_no_deduct'
-                        ? _inlineNoShowSignatureChip(
-                            noDeduct: true,
-                            onLongPress: onLongPressSig,
-                          )
-                        : _inlineSignatureChip(
-                            label: '고객 서명',
-                            cell: item.customerSig,
-                            signedAt: item.customerSignedTime.isEmpty
-                                ? item.customerSignedDate
-                                : item.customerSignedTime,
-                            locked: item.locked || item.confirmCancelled,
-                            onTap:
-                                item.confirmCancelled ? null : onTapCustomerSig,
-                            onLongPress: onLongPressSig,
-                          ),
+                    ? _inlineNoShowSignatureChip(
+                      noDeduct: true,
+                      onLongPress: onLongPressSig,
+                    )
+                    : _inlineSignatureChip(
+                      label: '회원 서명',
+                      cell: item.customerSig,
+                      signedAt:
+                          item.customerSignedTime.isEmpty
+                              ? item.customerSignedDate
+                              : item.customerSignedTime,
+                      locked: item.locked || item.confirmCancelled,
+                      onTap: item.confirmCancelled ? null : onTapCustomerSig,
+                      onLongPress: onLongPressSig,
+                    ),
               ],
             ),
             const SizedBox(height: 10),
 
-// 3행
+            // 3행
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -7593,9 +7552,10 @@ class _TrainingLogCard extends StatelessWidget {
                 _inlineSignatureChip(
                   label: '담당자 서명',
                   cell: item.trainerSig,
-                  signedAt: item.trainerSignedTime.isEmpty
-                      ? item.trainerSignedDate
-                      : item.trainerSignedTime,
+                  signedAt:
+                      item.trainerSignedTime.isEmpty
+                          ? item.trainerSignedDate
+                          : item.trainerSignedTime,
                   locked: item.locked || item.confirmCancelled,
                   onTap: item.confirmCancelled ? null : onTapTrainerSig,
                   onLongPress: onLongPressSig,
@@ -7604,7 +7564,7 @@ class _TrainingLogCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-// 4행
+            // 4행
             Row(
               children: [
                 Expanded(
@@ -7623,8 +7583,10 @@ class _TrainingLogCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 if (item.confirmCancelled)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(999),
@@ -7641,8 +7603,10 @@ class _TrainingLogCard extends StatelessWidget {
                   )
                 else if (item.locked)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF7ED),
                       borderRadius: BorderRadius.circular(999),
@@ -7676,7 +7640,9 @@ class _TrainingLogCard extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(999),
@@ -7695,12 +7661,15 @@ class _TrainingLogCard extends StatelessWidget {
                         if (item.locked)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFF7ED),
                               borderRadius: BorderRadius.circular(999),
-                              border:
-                                  Border.all(color: const Color(0xFFFED7AA)),
+                              border: Border.all(
+                                color: const Color(0xFFFED7AA),
+                              ),
                             ),
                             child: const Text(
                               '기록 확정',
@@ -7888,10 +7857,7 @@ class _SigMiniBox extends StatelessWidget {
           Flexible(
             child: Text(
               cell.value,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -7981,18 +7947,12 @@ class _SessionTypeChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? set.fg : Colors.white,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isSelected ? set.fg : set.border,
-          ),
+          border: Border.all(color: isSelected ? set.fg : set.border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : set.fg,
-            ),
+            Icon(icon, size: 16, color: isSelected ? Colors.white : set.fg),
             const SizedBox(width: 6),
             Text(
               label,
@@ -8072,8 +8032,9 @@ class _SignatureSheetState extends State<SignatureSheet> {
     final tokens = context.mtfThemeTokens;
     return SafeArea(
       child: Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.72,
@@ -8134,12 +8095,15 @@ class _SignatureSheetState extends State<SignatureSheet> {
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8),
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: tokens.trainingLogSetRow,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                    color: tokens.trainingLogSetDivider),
+                                  color: tokens.trainingLogSetDivider,
+                                ),
                               ),
                               child: Text(
                                 '박스 안에 서명해주세요.',
@@ -8160,7 +8124,8 @@ class _SignatureSheetState extends State<SignatureSheet> {
                                   color: tokens.signatureCanvasSurface,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                      color: tokens.contractDocumentBorder),
+                                    color: tokens.contractDocumentBorder,
+                                  ),
                                 ),
                                 child: SimpleSignatureCanvas(
                                   key: canvasKey,
@@ -8174,10 +8139,12 @@ class _SignatureSheetState extends State<SignatureSheet> {
                               children: [
                                 const Spacer(),
                                 OutlinedButton.icon(
-                                  onPressed: () =>
-                                      canvasKey.currentState?.clear(),
-                                  icon: const Icon(Icons.refresh_rounded,
-                                      size: 16),
+                                  onPressed:
+                                      () => canvasKey.currentState?.clear(),
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 16,
+                                  ),
                                   label: const Text('지우기'),
                                 ),
                               ],
@@ -8215,9 +8182,10 @@ class _SignatureSheetState extends State<SignatureSheet> {
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
-                                      color: v.text.isEmpty
-                                          ? Colors.black38
-                                          : Colors.black87,
+                                      color:
+                                          v.text.isEmpty
+                                              ? Colors.black38
+                                              : Colors.black87,
                                     ),
                                   );
                                 },
@@ -8317,20 +8285,14 @@ class _SimpleSignatureCanvasState extends State<SimpleSignatureCanvas> {
       },
       child: CustomPaint(
         size: Size(double.infinity, widget.height),
-        painter: _SigPainter(
-          paths: _paths,
-          stroke: widget.strokeWidth,
-        ),
+        painter: _SigPainter(paths: _paths, stroke: widget.strokeWidth),
       ),
     );
   }
 }
 
 class _SigPainter extends CustomPainter {
-  _SigPainter({
-    required this.paths,
-    required this.stroke,
-  });
+  _SigPainter({required this.paths, required this.stroke});
 
   final List<List<Offset>> paths;
   final double stroke;
@@ -8340,12 +8302,13 @@ class _SigPainter extends CustomPainter {
     final bg = Paint()..color = Colors.white;
     canvas.drawRect(Offset.zero & size, bg);
 
-    final p = Paint()
-      ..color = Colors.black
-      ..strokeWidth = stroke
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final p =
+        Paint()
+          ..color = Colors.black
+          ..strokeWidth = stroke
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
     for (final path in paths) {
       if (path.length < 2) continue;
@@ -8361,13 +8324,7 @@ class _SigPainter extends CustomPainter {
   bool shouldRepaint(covariant _SigPainter oldDelegate) => true;
 }
 
-const List<String> _sessionTypes = [
-  '개인PT',
-  '재활',
-  '필라테스',
-  '요가',
-  '그룹/자율',
-];
+const List<String> _sessionTypes = ['개인PT', '재활', '필라테스', '요가', '그룹/자율'];
 
 IconData _iconForSessionType(String type) {
   switch (type) {
@@ -8452,9 +8409,7 @@ class _PdfDraftPlaceholderPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
-      appBar: AppBar(
-        title: const Text('PDF 작성'),
-      ),
+      appBar: AppBar(title: const Text('PDF 작성')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -8577,9 +8532,7 @@ class _BlueSheetHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
         bottom: false,
@@ -8591,15 +8544,9 @@ class _BlueSheetHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.16),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.18),
-                ),
+                border: Border.all(color: Colors.white.withOpacity(0.18)),
               ),
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: Icon(icon, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -8634,10 +8581,7 @@ class _BlueSheetHeader extends StatelessWidget {
             ),
             IconButton(
               onPressed: onClose ?? () => Navigator.pop(context),
-              icon: const Icon(
-                Icons.close_rounded,
-                color: Colors.white,
-              ),
+              icon: const Icon(Icons.close_rounded, color: Colors.white),
             ),
           ],
         ),

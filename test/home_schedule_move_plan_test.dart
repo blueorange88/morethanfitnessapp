@@ -15,10 +15,7 @@ void main() {
         'owner-a--20260724-1400-금',
       );
       expect(
-        homeScheduleScopedDocumentId(
-          'owner-a--20260724-1400-금',
-          'owner-a',
-        ),
+        homeScheduleScopedDocumentId('owner-a--20260724-1400-금', 'owner-a'),
         'owner-a--20260724-1400-금',
       );
     });
@@ -27,10 +24,7 @@ void main() {
       final plan = HomeScheduleMovePlan.fromSnapshot(
         actualSourceDocId: 'owner-a--20260724-1400-금',
         dataDocId: 'owner-a--20260724-1400-금',
-        targetDocId: homeScheduleScopedDocumentId(
-          '20260724-1400-금',
-          'owner-a',
-        ),
+        targetDocId: homeScheduleScopedDocumentId('20260724-1400-금', 'owner-a'),
       );
       expect(plan.shouldDeleteSource, isFalse);
     });

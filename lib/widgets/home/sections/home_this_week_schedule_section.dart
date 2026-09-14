@@ -55,12 +55,8 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
   final ValueChanged<int> onScheduleMoreMenu;
   final VoidCallback onHideScheduleExamples;
 
-  final void Function(
-    int weekOffset,
-    String day,
-    String time,
-    bool hasSession,
-  ) onCellTap;
+  final void Function(int weekOffset, String day, String time, bool hasSession)
+  onCellTap;
 
   final VoidCallback onTimeHeaderTap;
   final VoidCallback onTimeHeaderLongPress;
@@ -144,26 +140,28 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.chevron_left),
                     visualDensity: VisualDensity.compact,
-                    onPressed: weekPageIndex > 0
-                        ? () {
-                            weekPageController.previousPage(
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeOut,
-                            );
-                          }
-                        : null,
+                    onPressed:
+                        weekPageIndex > 0
+                            ? () {
+                              weekPageController.previousPage(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                            : null,
                   ),
                   IconButton(
                     icon: const Icon(Icons.chevron_right),
                     visualDensity: VisualDensity.compact,
-                    onPressed: weekPageIndex < totalWeeks - 1
-                        ? () {
-                            weekPageController.nextPage(
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeOut,
-                            );
-                          }
-                        : null,
+                    onPressed:
+                        weekPageIndex < totalWeeks - 1
+                            ? () {
+                              weekPageController.nextPage(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                            : null,
                   ),
                 ],
               ),
@@ -225,9 +223,7 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: colors.outline,
-                ),
+                border: Border.all(color: colors.outline),
               ),
               child: Row(
                 children: [
@@ -250,10 +246,7 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: onHideScheduleExamples,
-                    child: const Text(
-                      '숨기기',
-                      style: TextStyle(fontSize: 11),
-                    ),
+                    child: const Text('숨기기', style: TextStyle(fontSize: 11)),
                   ),
                 ],
               ),

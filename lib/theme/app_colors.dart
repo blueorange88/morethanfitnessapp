@@ -358,12 +358,12 @@ class MtfChartPalette extends ThemeExtension<MtfChartPalette> {
   final Color tooltipSurface;
 
   List<Color> get categoricalSeries => [
-        primarySeries,
-        secondarySeries,
-        warningSeries,
-        positiveSeries,
-        tertiarySeries,
-      ];
+    primarySeries,
+    secondarySeries,
+    warningSeries,
+    positiveSeries,
+    tertiarySeries,
+  ];
 
   @override
   MtfChartPalette copyWith({
@@ -778,46 +778,37 @@ class MtfThemeTokens extends ThemeExtension<MtfThemeTokens> {
   MtfThemeTokens lerp(ThemeExtension<MtfThemeTokens>? other, double t) {
     if (other is! MtfThemeTokens) return this;
     return MtfThemeTokens(
-      memberListBackground: Color.lerp(
-        memberListBackground,
-        other.memberListBackground,
-        t,
-      )!,
+      memberListBackground:
+          Color.lerp(memberListBackground, other.memberListBackground, t)!,
       memberListCard: Color.lerp(memberListCard, other.memberListCard, t)!,
-      memberListCardBorder: Color.lerp(
-        memberListCardBorder,
-        other.memberListCardBorder,
-        t,
-      )!,
+      memberListCardBorder:
+          Color.lerp(memberListCardBorder, other.memberListCardBorder, t)!,
       memberListSelected:
           Color.lerp(memberListSelected, other.memberListSelected, t)!,
-      navigationSheetBackground: Color.lerp(
-        navigationSheetBackground,
-        other.navigationSheetBackground,
-        t,
-      )!,
-      navigationSelectedBackground: Color.lerp(
-        navigationSelectedBackground,
-        other.navigationSelectedBackground,
-        t,
-      )!,
-      lockedItemForeground: Color.lerp(
-        lockedItemForeground,
-        other.lockedItemForeground,
-        t,
-      )!,
+      navigationSheetBackground:
+          Color.lerp(
+            navigationSheetBackground,
+            other.navigationSheetBackground,
+            t,
+          )!,
+      navigationSelectedBackground:
+          Color.lerp(
+            navigationSelectedBackground,
+            other.navigationSelectedBackground,
+            t,
+          )!,
+      lockedItemForeground:
+          Color.lerp(lockedItemForeground, other.lockedItemForeground, t)!,
       drawerBackground:
           Color.lerp(drawerBackground, other.drawerBackground, t)!,
-      drawerHeaderBackground: Color.lerp(
-        drawerHeaderBackground,
-        other.drawerHeaderBackground,
-        t,
-      )!,
-      drawerSelectedBackground: Color.lerp(
-        drawerSelectedBackground,
-        other.drawerSelectedBackground,
-        t,
-      )!,
+      drawerHeaderBackground:
+          Color.lerp(drawerHeaderBackground, other.drawerHeaderBackground, t)!,
+      drawerSelectedBackground:
+          Color.lerp(
+            drawerSelectedBackground,
+            other.drawerSelectedBackground,
+            t,
+          )!,
       sheetBackground: Color.lerp(sheetBackground, other.sheetBackground, t)!,
       dialogBackground:
           Color.lerp(dialogBackground, other.dialogBackground, t)!,
@@ -832,47 +823,37 @@ class MtfThemeTokens extends ThemeExtension<MtfThemeTokens> {
       aifcBackground: Color.lerp(aifcBackground, other.aifcBackground, t)!,
       aifcSurface: Color.lerp(aifcSurface, other.aifcSurface, t)!,
       aifcUserBubble: Color.lerp(aifcUserBubble, other.aifcUserBubble, t)!,
-      aifcUserBubbleForeground: Color.lerp(
-        aifcUserBubbleForeground,
-        other.aifcUserBubbleForeground,
-        t,
-      )!,
+      aifcUserBubbleForeground:
+          Color.lerp(
+            aifcUserBubbleForeground,
+            other.aifcUserBubbleForeground,
+            t,
+          )!,
       aifcInputSurface:
           Color.lerp(aifcInputSurface, other.aifcInputSurface, t)!,
       scheduleBackground:
           Color.lerp(scheduleBackground, other.scheduleBackground, t)!,
       scheduleGridLine:
           Color.lerp(scheduleGridLine, other.scheduleGridLine, t)!,
-      scheduleHeaderBackground: Color.lerp(
-        scheduleHeaderBackground,
-        other.scheduleHeaderBackground,
-        t,
-      )!,
+      scheduleHeaderBackground:
+          Color.lerp(
+            scheduleHeaderBackground,
+            other.scheduleHeaderBackground,
+            t,
+          )!,
       scheduleTimeText:
           Color.lerp(scheduleTimeText, other.scheduleTimeText, t)!,
-      scheduleTodayHighlight: Color.lerp(
-        scheduleTodayHighlight,
-        other.scheduleTodayHighlight,
-        t,
-      )!,
+      scheduleTodayHighlight:
+          Color.lerp(scheduleTodayHighlight, other.scheduleTodayHighlight, t)!,
       scheduleEmptySlot:
           Color.lerp(scheduleEmptySlot, other.scheduleEmptySlot, t)!,
-      scheduleSelectedBorder: Color.lerp(
-        scheduleSelectedBorder,
-        other.scheduleSelectedBorder,
-        t,
-      )!,
-      schedulerOuterSurface: Color.lerp(
-        schedulerOuterSurface,
-        other.schedulerOuterSurface,
-        t,
-      )!,
+      scheduleSelectedBorder:
+          Color.lerp(scheduleSelectedBorder, other.scheduleSelectedBorder, t)!,
+      schedulerOuterSurface:
+          Color.lerp(schedulerOuterSurface, other.schedulerOuterSurface, t)!,
       schedulerBorder: Color.lerp(schedulerBorder, other.schedulerBorder, t)!,
-      schedulerCornerSurface: Color.lerp(
-        schedulerCornerSurface,
-        other.schedulerCornerSurface,
-        t,
-      )!,
+      schedulerCornerSurface:
+          Color.lerp(schedulerCornerSurface, other.schedulerCornerSurface, t)!,
       cardSurface: Color.lerp(cardSurface, other.cardSurface, t)!,
       cardBorder: Color.lerp(cardBorder, other.cardBorder, t)!,
       trainingLogSurface:
@@ -883,31 +864,31 @@ class MtfThemeTokens extends ThemeExtension<MtfThemeTokens> {
           Color.lerp(trainingLogSetDivider, other.trainingLogSetDivider, t)!,
       trainingLogCompleted:
           Color.lerp(trainingLogCompleted, other.trainingLogCompleted, t)!,
-      contractDocumentSurface: Color.lerp(
-        contractDocumentSurface,
-        other.contractDocumentSurface,
-        t,
-      )!,
+      contractDocumentSurface:
+          Color.lerp(
+            contractDocumentSurface,
+            other.contractDocumentSurface,
+            t,
+          )!,
       contractDocumentText:
           Color.lerp(contractDocumentText, other.contractDocumentText, t)!,
-      contractDocumentBorder: Color.lerp(
-        contractDocumentBorder,
-        other.contractDocumentBorder,
-        t,
-      )!,
+      contractDocumentBorder:
+          Color.lerp(contractDocumentBorder, other.contractDocumentBorder, t)!,
       signatureCanvasSurface:
           Color.lerp(signatureCanvasSurface, other.signatureCanvasSurface, t)!,
       signatureStroke: Color.lerp(signatureStroke, other.signatureStroke, t)!,
-      notificationCardSurface: Color.lerp(
-        notificationCardSurface,
-        other.notificationCardSurface,
-        t,
-      )!,
-      notificationLockedSurface: Color.lerp(
-        notificationLockedSurface,
-        other.notificationLockedSurface,
-        t,
-      )!,
+      notificationCardSurface:
+          Color.lerp(
+            notificationCardSurface,
+            other.notificationCardSurface,
+            t,
+          )!,
+      notificationLockedSurface:
+          Color.lerp(
+            notificationLockedSurface,
+            other.notificationLockedSurface,
+            t,
+          )!,
       widgetPreviewSurface:
           Color.lerp(widgetPreviewSurface, other.widgetPreviewSurface, t)!,
       widgetPreviewBorder:
@@ -1026,8 +1007,10 @@ ThemeData lightTheme() {
         ),
       ),
       hintStyle: const TextStyle(color: AppColors.lightTextHint, fontSize: 12),
-      labelStyle:
-          const TextStyle(color: AppColors.lightTextSecondary, fontSize: 12),
+      labelStyle: const TextStyle(
+        color: AppColors.lightTextSecondary,
+        fontSize: 12,
+      ),
     ),
     elevatedButtonTheme: _elevatedButtonTheme(scheme),
     filledButtonTheme: _filledButtonTheme(scheme),
@@ -1153,10 +1136,14 @@ ThemeData darkTheme() {
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.goldBase, width: 1.5),
       ),
-      hintStyle:
-          const TextStyle(color: AppColors.darkTextTertiary, fontSize: 12),
-      labelStyle:
-          const TextStyle(color: AppColors.darkTextSecondary, fontSize: 12),
+      hintStyle: const TextStyle(
+        color: AppColors.darkTextTertiary,
+        fontSize: 12,
+      ),
+      labelStyle: const TextStyle(
+        color: AppColors.darkTextSecondary,
+        fontSize: 12,
+      ),
     ),
     elevatedButtonTheme: _elevatedButtonTheme(scheme),
     filledButtonTheme: _filledButtonTheme(scheme),
@@ -1272,18 +1259,24 @@ ThemeData lululalaTheme() {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide:
-            const BorderSide(color: AppColors.lululalaBorder, width: 0.5),
+        borderSide: const BorderSide(
+          color: AppColors.lululalaBorder,
+          width: 0.5,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide:
-            const BorderSide(color: AppColors.lululalaBorder, width: 0.5),
+        borderSide: const BorderSide(
+          color: AppColors.lululalaBorder,
+          width: 0.5,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide:
-            const BorderSide(color: AppColors.lululalaPrimary, width: 1.5),
+        borderSide: const BorderSide(
+          color: AppColors.lululalaPrimary,
+          width: 1.5,
+        ),
       ),
       hintStyle: const TextStyle(
         color: AppColors.lululalaTextSecondary,
@@ -1391,19 +1384,22 @@ NavigationBarThemeData _navigationBarTheme(ColorScheme scheme) {
     indicatorColor: scheme.secondary,
     iconTheme: WidgetStateProperty.resolveWith((states) {
       return IconThemeData(
-        color: states.contains(WidgetState.selected)
-            ? scheme.onSecondary
-            : scheme.onSurfaceVariant,
+        color:
+            states.contains(WidgetState.selected)
+                ? scheme.onSecondary
+                : scheme.onSurfaceVariant,
       );
     }),
     labelTextStyle: WidgetStateProperty.resolveWith((states) {
       return TextStyle(
-        color: states.contains(WidgetState.selected)
-            ? scheme.onSurface
-            : scheme.onSurfaceVariant,
-        fontWeight: states.contains(WidgetState.selected)
-            ? FontWeight.w800
-            : FontWeight.w600,
+        color:
+            states.contains(WidgetState.selected)
+                ? scheme.onSurface
+                : scheme.onSurfaceVariant,
+        fontWeight:
+            states.contains(WidgetState.selected)
+                ? FontWeight.w800
+                : FontWeight.w600,
       );
     }),
   );
@@ -1478,8 +1474,9 @@ DatePickerThemeData _datePickerTheme(ColorScheme scheme) {
     headerForegroundColor: scheme.onPrimaryContainer,
     todayBackgroundColor: WidgetStateProperty.all(scheme.secondaryContainer),
     todayForegroundColor: WidgetStateProperty.all(scheme.onSecondaryContainer),
-    dayOverlayColor:
-        WidgetStateProperty.all(scheme.secondary.withValues(alpha: 0.12)),
+    dayOverlayColor: WidgetStateProperty.all(
+      scheme.secondary.withValues(alpha: 0.12),
+    ),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
   );
 }

@@ -16,10 +16,11 @@ class HomeWeekPasteOverwriteSheet {
     final allConflicting = pasteableCount == 0;
     final title =
         allConflicting ? '붙여넣을 수 있는 일정이 없어요' : '겹치는 일정이 $conflictCount개 있어요';
-    final body = allConflicting
-        ? '$conflictCount개 일정이 모두 기존 일정과 겹쳐요.'
-        : '기존 일정과 겹치는 $conflictCount개를 제외하고\n'
-            '나머지 $pasteableCount개 일정을 $targetLabel에 붙여넣을까요?';
+    final body =
+        allConflicting
+            ? '$conflictCount개 일정이 모두 기존 일정과 겹쳐요.'
+            : '기존 일정과 겹치는 $conflictCount개를 제외하고\n'
+                '나머지 $pasteableCount개 일정을 $targetLabel에 붙여넣을까요?';
 
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -102,46 +103,55 @@ class HomeWeekPasteOverwriteSheet {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                    child: allConflicting
-                        ? SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              key: const Key('week_paste_conflict_ack'),
-                              onPressed: () =>
-                                  Navigator.of(sheetContext).pop(false),
-                              child: const Text('확인'),
+                    child:
+                        allConflicting
+                            ? SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                key: const Key('week_paste_conflict_ack'),
+                                onPressed:
+                                    () => Navigator.of(sheetContext).pop(false),
+                                child: const Text('확인'),
+                              ),
+                            )
+                            : Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    key: const Key(
+                                      'week_paste_conflict_cancel',
+                                    ),
+                                    onPressed:
+                                        () => Navigator.of(
+                                          sheetContext,
+                                        ).pop(false),
+                                    child: const Text('취소'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  flex: 2,
+                                  child: FilledButton(
+                                    key: const Key(
+                                      'week_paste_conflict_confirm',
+                                    ),
+                                    onPressed:
+                                        () => Navigator.of(
+                                          sheetContext,
+                                        ).pop(true),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: tokens.gradeSheetAccent,
+                                      foregroundColor:
+                                          theme.colorScheme.onSecondary,
+                                    ),
+                                    child: Text(
+                                      '$conflictCount개 제외하고 붙여넣기',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          )
-                        : Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  key: const Key('week_paste_conflict_cancel'),
-                                  onPressed: () =>
-                                      Navigator.of(sheetContext).pop(false),
-                                  child: const Text('취소'),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                flex: 2,
-                                child: FilledButton(
-                                  key: const Key('week_paste_conflict_confirm'),
-                                  onPressed: () =>
-                                      Navigator.of(sheetContext).pop(true),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: tokens.gradeSheetAccent,
-                                    foregroundColor:
-                                        theme.colorScheme.onSecondary,
-                                  ),
-                                  child: Text(
-                                    '$conflictCount개 제외하고 붙여넣기',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                   ),
                 ],
               ),

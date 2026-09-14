@@ -62,11 +62,7 @@ class _ShadcnCheckboxState extends State<ShadcnCheckbox>
               color: cs.primary,
               borderRadius: BorderRadius.circular(2),
             ),
-            child: const Icon(
-              Icons.check,
-              size: 16,
-              color: Colors.white,
-            ),
+            child: const Icon(Icons.check, size: 16, color: Colors.white),
           ),
         ),
       ),

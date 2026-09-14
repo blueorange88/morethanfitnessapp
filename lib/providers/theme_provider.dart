@@ -25,10 +25,10 @@ class AppThemeNotifier extends StateNotifier<AppThemeMode> {
   AppThemeNotifier({
     Future<SharedPreferences> Function()? preferencesLoader,
     Future<void> Function(WidgetThemeType)? widgetThemeSync,
-  })  : _preferencesLoader = preferencesLoader ?? SharedPreferences.getInstance,
-        _widgetThemeSync =
-            widgetThemeSync ?? MtfHomeWidgetService.syncWidgetTheme,
-        super(AppThemeMode.light) {
+  }) : _preferencesLoader = preferencesLoader ?? SharedPreferences.getInstance,
+       _widgetThemeSync =
+           widgetThemeSync ?? MtfHomeWidgetService.syncWidgetTheme,
+       super(AppThemeMode.light) {
     initialized = _load();
   }
 

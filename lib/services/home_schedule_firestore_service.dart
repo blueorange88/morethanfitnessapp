@@ -39,18 +39,97 @@ class HomeScheduleMutationException implements Exception {
   @override
   String toString() {
     return 'HomeScheduleMutationException('
-        'reason=$reason, mutationId=$mutationId, sourceDocId=$sourceDocId)';
+        'reason=$reason, mutationId=$mutationId, '
+        'sourceDocIdPresent=${sourceDocId?.isNotEmpty == true})';
   }
 }
 
 class HomeScheduleEditWrite {
-  const HomeScheduleEditWrite({
-    required this.targetDocId,
-    required this.data,
-  });
+  const HomeScheduleEditWrite({required this.targetDocId, required this.data});
 
   final String targetDocId;
   final Map<String, dynamic> data;
+}
+
+const int homeScheduleCopyMaxDistinctMemberLinksPerBatch = 10;
+const int homeScheduleCopyMaxWritesPerBatch = 450;
+
+List<List<HomeScheduleEditWrite>> planHomeScheduleCopyWriteBatches(
+  List<HomeScheduleEditWrite> writes,
+) {
+  final memberWrites = <String, List<HomeScheduleEditWrite>>{};
+  final unlinkedWrites = <HomeScheduleEditWrite>[];
+
+  for (final write in writes) {
+    final memberId = (write.data['memberId'] ?? '').toString().trim();
+    if (memberId.isEmpty) {
+      unlinkedWrites.add(write);
+    } else {
+      memberWrites.putIfAbsent(memberId, () => []).add(write);
+    }
+  }
+
+  final batches = <List<HomeScheduleEditWrite>>[];
+  final memberIds = memberWrites.keys.toList();
+  for (
+    var index = 0;
+    index < memberIds.length;
+    index += homeScheduleCopyMaxDistinctMemberLinksPerBatch
+  ) {
+    final groupedWrites =
+        memberIds
+            .skip(index)
+            .take(homeScheduleCopyMaxDistinctMemberLinksPerBatch)
+            .expand((memberId) => memberWrites[memberId]!)
+            .toList();
+    for (
+      var writeIndex = 0;
+      writeIndex < groupedWrites.length;
+      writeIndex += homeScheduleCopyMaxWritesPerBatch
+    ) {
+      batches.add(
+        groupedWrites
+            .skip(writeIndex)
+            .take(homeScheduleCopyMaxWritesPerBatch)
+            .toList(),
+      );
+    }
+  }
+
+  for (final write in unlinkedWrites) {
+    final targetBatch =
+        batches.isNotEmpty &&
+                batches.last.length < homeScheduleCopyMaxWritesPerBatch
+            ? batches.last
+            : <HomeScheduleEditWrite>[];
+    if (targetBatch.isEmpty) {
+      batches.add(targetBatch);
+    }
+    targetBatch.add(write);
+  }
+
+  return List.unmodifiable(
+    batches.map((batch) => List<HomeScheduleEditWrite>.unmodifiable(batch)),
+  );
+}
+
+class HomeScheduleCopyCommitException implements Exception {
+  const HomeScheduleCopyCommitException({
+    required this.committedWriteCount,
+    required this.totalWriteCount,
+    required this.cause,
+  });
+
+  final int committedWriteCount;
+  final int totalWriteCount;
+  final Object cause;
+
+  @override
+  String toString() {
+    return 'HomeScheduleCopyCommitException('
+        'committedWriteCount=$committedWriteCount, '
+        'totalWriteCount=$totalWriteCount)';
+  }
 }
 
 class HomeScheduleFirestoreService {
@@ -90,44 +169,47 @@ class HomeScheduleFirestoreService {
     required String action,
     required bool expectedExists,
   }) async {
-    await Future.wait(sourceDocIds.map((sourceDocId) async {
-      try {
-        final snapshot = await _schedules.doc(sourceDocId).get(
-              const GetOptions(source: Source.server),
+    await Future.wait(
+      sourceDocIds.map((sourceDocId) async {
+        try {
+          final snapshot = await _schedules
+              .doc(sourceDocId)
+              .get(const GetOptions(source: Source.server));
+
+          _logMutation(
+            'mutationId=$mutationId action=$action serverVerify '
+            'sourceDocIdPresent=true exists=${snapshot.exists}',
+          );
+
+          if (!isHomeScheduleSourceVerificationSuccessful(
+            sourceRetained: expectedExists,
+            sourceExists: snapshot.exists,
+          )) {
+            throw HomeScheduleMutationException(
+              reason:
+                  expectedExists
+                      ? HomeScheduleMutationFailureReason.retainedSourceMissing
+                      : HomeScheduleMutationFailureReason.sourceStillExists,
+              mutationId: mutationId,
+              sourceDocId: sourceDocId,
             );
-
-        _logMutation(
-          'mutationId=$mutationId action=$action serverVerify '
-          'sourceDocId=$sourceDocId exists=${snapshot.exists}',
-        );
-
-        if (!isHomeScheduleSourceVerificationSuccessful(
-          sourceRetained: expectedExists,
-          sourceExists: snapshot.exists,
-        )) {
+          }
+        } on HomeScheduleMutationException {
+          rethrow;
+        } catch (error) {
+          _logMutation(
+            'mutationId=$mutationId action=$action serverVerifyFailed '
+            'sourceDocIdPresent=true error=$error',
+          );
           throw HomeScheduleMutationException(
-            reason: expectedExists
-                ? HomeScheduleMutationFailureReason.retainedSourceMissing
-                : HomeScheduleMutationFailureReason.sourceStillExists,
+            reason: HomeScheduleMutationFailureReason.serverVerificationFailed,
             mutationId: mutationId,
             sourceDocId: sourceDocId,
+            cause: error,
           );
         }
-      } on HomeScheduleMutationException {
-        rethrow;
-      } catch (error) {
-        _logMutation(
-          'mutationId=$mutationId action=$action serverVerifyFailed '
-          'sourceDocId=$sourceDocId error=$error',
-        );
-        throw HomeScheduleMutationException(
-          reason: HomeScheduleMutationFailureReason.serverVerificationFailed,
-          mutationId: mutationId,
-          sourceDocId: sourceDocId,
-          cause: error,
-        );
-      }
-    }));
+      }),
+    );
   }
 
   static Future<void> _commitBatchAndVerify({
@@ -140,8 +222,9 @@ class HomeScheduleFirestoreService {
   }) async {
     _logMutation(
       'mutationId=$mutationId action=$action batchCommitStart '
-      'sourceDocIds=${sourceDocIds.join(',')} '
-      'targetDocIds=${targetDocIds.join(',')}',
+      'sourceCount=${sourceDocIds.length} '
+      'retainedSourceCount=${retainedSourceDocIds.length} '
+      'targetCount=${targetDocIds.length}',
     );
 
     try {
@@ -157,9 +240,7 @@ class HomeScheduleFirestoreService {
       );
     }
 
-    _logMutation(
-      'mutationId=$mutationId action=$action batchCommitSuccess',
-    );
+    _logMutation('mutationId=$mutationId action=$action batchCommitSuccess');
 
     await _verifySourceStateFromServer(
       sourceDocIds: sourceDocIds,
@@ -175,12 +256,61 @@ class HomeScheduleFirestoreService {
     );
   }
 
+  static Future<void> _verifyTargetStateFromServer({
+    required Iterable<String> targetDocIds,
+    required String mutationId,
+    required String action,
+  }) async {
+    final cleanTargetIds =
+        targetDocIds
+            .map((targetDocId) => targetDocId.trim())
+            .where((targetDocId) => targetDocId.isNotEmpty)
+            .toSet()
+            .toList();
+    if (cleanTargetIds.isEmpty) return;
+
+    try {
+      final snapshots = await Future.wait(
+        cleanTargetIds.map(
+          (targetDocId) => _schedules
+              .doc(targetDocId)
+              .get(const GetOptions(source: Source.server)),
+        ),
+      );
+      final missingCount =
+          snapshots.where((snapshot) => !snapshot.exists).length;
+      _logMutation(
+        'mutationId=$mutationId action=$action serverVerifyTargets '
+        'targetCount=${cleanTargetIds.length} missingCount=$missingCount',
+      );
+      if (missingCount > 0) {
+        throw HomeScheduleMutationException(
+          reason: HomeScheduleMutationFailureReason.serverVerificationFailed,
+          mutationId: mutationId,
+        );
+      }
+    } on HomeScheduleMutationException {
+      rethrow;
+    } catch (error) {
+      _logMutation(
+        'mutationId=$mutationId action=$action serverVerifyTargetsFailed '
+        'targetCount=${cleanTargetIds.length} error=$error',
+      );
+      throw HomeScheduleMutationException(
+        reason: HomeScheduleMutationFailureReason.serverVerificationFailed,
+        mutationId: mutationId,
+        cause: error,
+      );
+    }
+  }
+
   static String _dateKey(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-'
       '${value.month.toString().padLeft(2, '0')}-'
       '${value.day.toString().padLeft(2, '0')}';
 
-  static String _slotKey(DateTime value) => '${_dateKey(value)}T'
+  static String _slotKey(DateTime value) =>
+      '${_dateKey(value)}T'
       '${value.hour.toString().padLeft(2, '0')}:'
       '${value.minute.toString().padLeft(2, '0')}';
 
@@ -241,7 +371,7 @@ class HomeScheduleFirestoreService {
 
     final mutationId = _newMutationId('createOrUpdate');
     _logMutation(
-      'mutationId=$mutationId action=createOrUpdate targetDocId=$docId '
+      'mutationId=$mutationId action=createOrUpdate targetDocIdPresent=true '
       'targetStartAt=${startAt.toIso8601String()}',
     );
 
@@ -265,7 +395,9 @@ class HomeScheduleFirestoreService {
       ..._personalIdentity(ownerUid),
       'updatedAt': FieldValue.serverTimestamp(),
     };
-    await _schedules.doc(targetDocId).set(
+    await _schedules
+        .doc(targetDocId)
+        .set(
           _scheduleWriteData(
             targetDocId: targetDocId,
             data: data,
@@ -297,11 +429,12 @@ class HomeScheduleFirestoreService {
     List<String> docIds, {
     String? ownerUid,
   }) async {
-    final cleanIds = docIds
-        .map((e) => _scopedDocId(e, ownerUid))
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
+    final cleanIds =
+        docIds
+            .map((e) => _scopedDocId(e, ownerUid))
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
 
     if (cleanIds.isEmpty) return;
 
@@ -331,19 +464,21 @@ class HomeScheduleFirestoreService {
     List<HomeScheduleEditWrite> writes = const [],
     String? ownerUid,
   }) async {
-    final cleanDeleteIds = deleteDocIds
-        .map((e) => _scopedDocId(e, ownerUid))
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .toList();
+    final cleanDeleteIds =
+        deleteDocIds
+            .map((e) => _scopedDocId(e, ownerUid))
+            .where((e) => e.isNotEmpty)
+            .toSet()
+            .toList();
 
     final cleanWrites =
         writes.where((e) => e.targetDocId.trim().isNotEmpty).toList();
-    final cleanRetainedIds = retainedSourceDocIds
-        .map((e) => _scopedDocId(e, ownerUid))
-        .where((e) => e.isNotEmpty && !cleanDeleteIds.contains(e))
-        .toSet()
-        .toList();
+    final cleanRetainedIds =
+        retainedSourceDocIds
+            .map((e) => _scopedDocId(e, ownerUid))
+            .where((e) => e.isNotEmpty && !cleanDeleteIds.contains(e))
+            .toSet()
+            .toList();
 
     if (cleanDeleteIds.isEmpty && cleanWrites.isEmpty) return;
 
@@ -366,21 +501,51 @@ class HomeScheduleFirestoreService {
       );
     }
 
-    final action = resolveHomeScheduleWriteAction(
-      deleteCount: cleanDeleteIds.length,
-      writeCount: cleanWrites.length,
-    ).name;
+    final action =
+        resolveHomeScheduleWriteAction(
+          deleteCount: cleanDeleteIds.length,
+          writeCount: cleanWrites.length,
+        ).name;
     final mutationId = _newMutationId(action);
     await _commitBatchAndVerify(
       batch: batch,
       sourceDocIds: cleanDeleteIds,
       retainedSourceDocIds: cleanRetainedIds,
-      targetDocIds: cleanWrites
-          .map((write) => _scopedDocId(write.targetDocId, ownerUid))
-          .toList(),
+      targetDocIds:
+          cleanWrites
+              .map((write) => _scopedDocId(write.targetDocId, ownerUid))
+              .toList(),
       mutationId: mutationId,
       action: action,
     );
+  }
+
+  static Future<void> commitScheduleCopyWrites({
+    required List<HomeScheduleEditWrite> writes,
+    String? ownerUid,
+  }) async {
+    final batches = planHomeScheduleCopyWriteBatches(writes);
+    var committedWriteCount = 0;
+
+    for (final batch in batches) {
+      try {
+        await commitScheduleWrites(writes: batch, ownerUid: ownerUid);
+        await _verifyTargetStateFromServer(
+          targetDocIds: batch.map(
+            (write) => _scopedDocId(write.targetDocId, ownerUid),
+          ),
+          mutationId: _newMutationId('copyVerify'),
+          action: 'copyMany',
+        );
+        committedWriteCount += batch.length;
+      } catch (error) {
+        throw HomeScheduleCopyCommitException(
+          committedWriteCount: committedWriteCount,
+          totalWriteCount: writes.length,
+          cause: error,
+        );
+      }
+    }
   }
 
   static Future<void> commitEditedSchedule({
@@ -412,23 +577,26 @@ class HomeScheduleFirestoreService {
       );
     }
 
-    final sourceDocIds = cleanDeleteDocId.isEmpty
-        ? const <String>[]
-        : <String>[cleanDeleteDocId];
-    final cleanRetainedIds = retainedSourceDocIds
-        .map((e) => _scopedDocId(e, ownerUid))
-        .where((e) => e.isNotEmpty && !sourceDocIds.contains(e))
-        .toSet()
-        .toList();
+    final sourceDocIds =
+        cleanDeleteDocId.isEmpty
+            ? const <String>[]
+            : <String>[cleanDeleteDocId];
+    final cleanRetainedIds =
+        retainedSourceDocIds
+            .map((e) => _scopedDocId(e, ownerUid))
+            .where((e) => e.isNotEmpty && !sourceDocIds.contains(e))
+            .toSet()
+            .toList();
     final action = sourceDocIds.isEmpty ? 'update' : 'moveOrReplace';
     final mutationId = _newMutationId(action);
     await _commitBatchAndVerify(
       batch: batch,
       sourceDocIds: sourceDocIds,
       retainedSourceDocIds: cleanRetainedIds,
-      targetDocIds: writes
-          .map((write) => _scopedDocId(write.targetDocId, ownerUid))
-          .toList(),
+      targetDocIds:
+          writes
+              .map((write) => _scopedDocId(write.targetDocId, ownerUid))
+              .toList(),
       mutationId: mutationId,
       action: action,
     );
@@ -476,8 +644,10 @@ class HomeScheduleFirestoreService {
 
     final now = DateTime.now();
 
-    Query<Map<String, dynamic>> scheduleQuery =
-        _schedules.where('memberId', isEqualTo: cleanMemberId);
+    Query<Map<String, dynamic>> scheduleQuery = _schedules.where(
+      'memberId',
+      isEqualTo: cleanMemberId,
+    );
     final owner = ownerUid?.trim() ?? '';
     if (owner.isNotEmpty) {
       scheduleQuery = scheduleQuery

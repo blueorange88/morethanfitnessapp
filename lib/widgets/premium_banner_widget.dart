@@ -81,9 +81,10 @@ class _PremiumBannerWidgetState extends State<PremiumBannerWidget>
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
 
-    _pulseAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -124,11 +125,7 @@ class _PremiumBannerWidgetState extends State<PremiumBannerWidget>
 
 // ── 미니 배너 위젯 (드로어용) ──────────────────────────────────────────────────
 class PremiumMiniBanner extends StatelessWidget {
-  const PremiumMiniBanner({
-    super.key,
-    required this.data,
-    required this.onTap,
-  });
+  const PremiumMiniBanner({super.key, required this.data, required this.onTap});
 
   final PremiumBannerData data;
   final VoidCallback onTap;
@@ -202,9 +199,7 @@ class _MiniLayout extends StatelessWidget {
         decoration: BoxDecoration(
           color: tokens.donationSurface,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: tokens.donationAccent.withOpacity(0.35),
-          ),
+          border: Border.all(color: tokens.donationAccent.withOpacity(0.35)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -274,8 +269,9 @@ class _MiniLayout extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color:
-                                    tokens.donationForeground.withOpacity(0.70),
+                                color: tokens.donationForeground.withOpacity(
+                                  0.70,
+                                ),
                                 fontSize: 10.3,
                                 fontWeight: FontWeight.w700,
                                 height: 1.2,
@@ -332,7 +328,7 @@ class _MiniBeginner extends StatelessWidget {
       icon: Icons.rocket_launch_rounded,
       iconBg: Colors.black.withOpacity(0.10),
       iconColor: const Color(0xFF7A5C00),
-      title: '고객카드로 섬세하게',
+      title: '회원카드로 섬세하게',
       titleColor: const Color(0xFF1A1200),
       subText: 'Amateur 달성까지 조금 더 남았어요',
       subColor: Colors.black.withOpacity(0.42),
@@ -405,15 +401,11 @@ class _MiniSemiPro extends StatelessWidget {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      border: Border.all(
-        color: const Color(0xFFFF5500).withOpacity(0.18),
-      ),
+      border: Border.all(color: const Color(0xFFFF5500).withOpacity(0.18)),
       btnLabel: '후원하기',
       btnTextColor: const Color(0xFFFF5500),
       btnBg: const Color(0xFFFF5500).withOpacity(0.08),
-      btnBorder: Border.all(
-        color: const Color(0xFFFF5500).withOpacity(0.22),
-      ),
+      btnBorder: Border.all(color: const Color(0xFFFF5500).withOpacity(0.22)),
       onTap: onTap,
     );
   }
@@ -439,9 +431,7 @@ class _MiniPro extends StatelessWidget {
       btnLabel: '후원',
       btnTextColor: const Color(0xFFFF6B00),
       btnBg: Colors.transparent,
-      btnBorder: Border.all(
-        color: const Color(0xFFFF6B00).withOpacity(0.28),
-      ),
+      btnBorder: Border.all(color: const Color(0xFFFF6B00).withOpacity(0.28)),
       onTap: onTap,
     );
   }
@@ -528,12 +518,15 @@ class _BeginnerBanner extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('첫 10개의 레슨을 등록하고\nAmateur로 성장해보세요',
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: tokens.donationForeground,
-                                height: 1.45)),
+                        Text(
+                          '첫 10개의 레슨을 등록하고\nAmateur로 성장해보세요',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: tokens.donationForeground,
+                            height: 1.45,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -543,15 +536,21 @@ class _BeginnerBanner extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Amateur 달성까지',
-                      style: TextStyle(
-                          fontSize: 10.5,
-                          color: tokens.donationForeground.withOpacity(0.66))),
-                  Text('$_doneCount / $_totalCount 완료',
-                      style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          color: tokens.donationAccent)),
+                  Text(
+                    'Amateur 달성까지',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: tokens.donationForeground.withOpacity(0.66),
+                    ),
+                  ),
+                  Text(
+                    '$_doneCount / $_totalCount 완료',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: tokens.donationAccent,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 5),
@@ -570,8 +569,9 @@ class _BeginnerBanner extends StatelessWidget {
                     child: Text(
                       '레슨 일정 ${data.scheduleCount} / 10 · 선생님 정보 입력',
                       style: TextStyle(
-                          fontSize: 10.5,
-                          color: tokens.donationForeground.withOpacity(0.66)),
+                        fontSize: 10.5,
+                        color: tokens.donationForeground.withOpacity(0.66),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -619,8 +619,9 @@ class _AmateurBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: tokens.donationAccent
-                      .withOpacity(0.18 + pulseAnim.value * 0.16),
+                  color: tokens.donationAccent.withOpacity(
+                    0.18 + pulseAnim.value * 0.16,
+                  ),
                   blurRadius: 14 + pulseAnim.value * 14,
                 ),
               ],
@@ -690,12 +691,15 @@ class _AmateurBanner extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('계약서로 레슨을\n더 단단하게 관리해보세요',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: tokens.donationForeground,
-                                    height: 1.45)),
+                            Text(
+                              '계약서로 레슨을\n더 단단하게 관리해보세요',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                color: tokens.donationForeground,
+                                height: 1.45,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -705,16 +709,21 @@ class _AmateurBanner extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Semi-Pro 달성까지',
-                          style: TextStyle(
-                              fontSize: 10.5,
-                              color:
-                                  tokens.donationForeground.withOpacity(0.72))),
-                      Text('${data.memberCount} / 30명',
-                          style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: tokens.donationAccent)),
+                      Text(
+                        'Semi-Pro 달성까지',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: tokens.donationForeground.withOpacity(0.72),
+                        ),
+                      ),
+                      Text(
+                        '${data.memberCount} / 30명',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: tokens.donationAccent,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 5),
@@ -734,9 +743,9 @@ class _AmateurBanner extends StatelessWidget {
                         child: Text(
                           '작은 후원으로 모어댄의 멋진 한걸음을 응원해주세요',
                           style: TextStyle(
-                              fontSize: 10.5,
-                              color:
-                                  tokens.donationForeground.withOpacity(0.72)),
+                            fontSize: 10.5,
+                            color: tokens.donationForeground.withOpacity(0.72),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -787,9 +796,7 @@ class _SemiProBanner extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(
-            color: tokens.donationAccent.withOpacity(0.30),
-          ),
+          border: Border.all(color: tokens.donationAccent.withOpacity(0.30)),
         ),
         padding: const EdgeInsets.all(13),
         child: Column(
@@ -811,12 +818,15 @@ class _SemiProBanner extends StatelessWidget {
                 ),
                 const SizedBox(width: 11),
                 Expanded(
-                  child: Text('더 강화된 AI 기능과\n체계적인 관리 시스템을 써보세요',
-                      style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w900,
-                          color: tokens.donationForeground,
-                          height: 1.45)),
+                  child: Text(
+                    '더 강화된 AI 기능과\n체계적인 관리 시스템을 써보세요',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900,
+                      color: tokens.donationForeground,
+                      height: 1.45,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -824,16 +834,21 @@ class _SemiProBanner extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Pro 달성까지',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      color: tokens.donationForeground.withOpacity(0.70),
-                    )),
-                Text('${data.memberCount} / 50명',
-                    style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: tokens.donationAccent)),
+                Text(
+                  'Pro 달성까지',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: tokens.donationForeground.withOpacity(0.70),
+                  ),
+                ),
+                Text(
+                  '${data.memberCount} / 50명',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: tokens.donationAccent,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 5),
@@ -905,27 +920,33 @@ class _ProBanner extends StatelessWidget {
               child: Text(
                 '작은 후원으로 모어댄의 멋진 한걸음을 응원해주세요',
                 style: TextStyle(
-                    fontSize: 11.5,
-                    color: tokens.donationForeground,
-                    height: 1.4),
+                  fontSize: 11.5,
+                  color: tokens.donationForeground,
+                  height: 1.4,
+                ),
               ),
             ),
             const SizedBox(width: 10),
             GestureDetector(
               onTap: onTap,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
                   color: tokens.donationAccent,
                   border: Border.all(color: tokens.donationAccent),
                 ),
-                child: Text('후원',
-                    style: TextStyle(
-                        fontSize: 10.5,
-                        color: scheme.onSecondary,
-                        fontWeight: FontWeight.w700)),
+                child: Text(
+                  '후원',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: scheme.onSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ],
@@ -967,9 +988,10 @@ class _ShimmerProgressBarState extends State<_ShimmerProgressBar>
     super.initState();
     _ctrl = AnimationController(vsync: this, duration: widget.shimmerDuration)
       ..repeat();
-    _anim = Tween<double>(begin: -1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _anim = Tween<double>(
+      begin: -1.0,
+      end: 2.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -995,14 +1017,15 @@ class _ShimmerProgressBarState extends State<_ShimmerProgressBar>
                   return Container(
                     decoration: BoxDecoration(
                       color: widget.fillColor,
-                      boxShadow: widget.glowColor != null
-                          ? [
-                              BoxShadow(
-                                color: widget.glowColor!.withOpacity(0.7),
-                                blurRadius: 8,
-                              )
-                            ]
-                          : null,
+                      boxShadow:
+                          widget.glowColor != null
+                              ? [
+                                BoxShadow(
+                                  color: widget.glowColor!.withOpacity(0.7),
+                                  blurRadius: 8,
+                                ),
+                              ]
+                              : null,
                       gradient: LinearGradient(
                         stops: [
                           (_anim.value - 0.3).clamp(0.0, 1.0),
@@ -1061,9 +1084,14 @@ class _BannerButton extends StatelessWidget {
             ),
           ],
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 11.5, fontWeight: FontWeight.w700, color: textColor)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: textColor,
+          ),
+        ),
       ),
     );
   }

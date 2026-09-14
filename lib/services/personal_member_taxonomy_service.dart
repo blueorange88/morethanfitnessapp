@@ -5,9 +5,7 @@ import '../models/personal_member_taxonomy.dart';
 import 'mtf_firebase_functions.dart';
 
 class PersonalMemberTaxonomyDeleteResult {
-  const PersonalMemberTaxonomyDeleteResult({
-    required this.affectedMemberCount,
-  });
+  const PersonalMemberTaxonomyDeleteResult({required this.affectedMemberCount});
 
   final int affectedMemberCount;
 }
@@ -29,9 +27,9 @@ class PersonalMemberTaxonomyService {
     required String uid,
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
-  })  : uid = uid.trim(),
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? MtfFirebaseFunctions.instance;
+  }) : uid = uid.trim(),
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? MtfFirebaseFunctions.instance;
 
   final String uid;
   final FirebaseFirestore _firestore;
@@ -53,7 +51,10 @@ class PersonalMemberTaxonomyService {
   Stream<List<PersonalMemberTaxonomyItem>> watch(
     PersonalMemberTaxonomyKind kind,
   ) {
-    return _collection(kind).orderBy('createdAt').snapshots().map(
+    return _collection(kind)
+        .orderBy('createdAt')
+        .snapshots()
+        .map(
           (snapshot) => snapshot.docs
               .map(
                 (document) => PersonalMemberTaxonomyItem.fromFirestore(
@@ -68,9 +69,9 @@ class PersonalMemberTaxonomyService {
   Future<List<PersonalMemberTaxonomyItem>> loadFromServer(
     PersonalMemberTaxonomyKind kind,
   ) async {
-    final snapshot = await _collection(kind).orderBy('createdAt').get(
-          const GetOptions(source: Source.server),
-        );
+    final snapshot = await _collection(
+      kind,
+    ).orderBy('createdAt').get(const GetOptions(source: Source.server));
     return snapshot.docs
         .map(
           (document) => PersonalMemberTaxonomyItem.fromFirestore(
@@ -87,9 +88,10 @@ class PersonalMemberTaxonomyService {
     required String name,
   }) async {
     _validateName(name);
-    final functionName = kind == PersonalMemberTaxonomyKind.group
-        ? 'createPersonalGroup'
-        : 'createPersonalTag';
+    final functionName =
+        kind == PersonalMemberTaxonomyKind.group
+            ? 'createPersonalGroup'
+            : 'createPersonalTag';
     final response = await _call(functionName, {
       'idempotencyKey': idempotencyKey,
       'name': normalizePersonalTaxonomyDisplayName(name),
@@ -104,12 +106,14 @@ class PersonalMemberTaxonomyService {
     required String name,
   }) async {
     _validateName(name);
-    final functionName = kind == PersonalMemberTaxonomyKind.group
-        ? 'renamePersonalGroup'
-        : 'renamePersonalTag';
-    final idKey = kind == PersonalMemberTaxonomyKind.group
-        ? 'personalGroupId'
-        : 'personalTagId';
+    final functionName =
+        kind == PersonalMemberTaxonomyKind.group
+            ? 'renamePersonalGroup'
+            : 'renamePersonalTag';
+    final idKey =
+        kind == PersonalMemberTaxonomyKind.group
+            ? 'personalGroupId'
+            : 'personalTagId';
     final response = await _call(functionName, {
       idKey: id.trim(),
       'name': normalizePersonalTaxonomyDisplayName(name),
@@ -124,20 +128,22 @@ class PersonalMemberTaxonomyService {
     required PersonalMemberTaxonomyKind kind,
     required String id,
   }) async {
-    final functionName = kind == PersonalMemberTaxonomyKind.group
-        ? 'deletePersonalGroup'
-        : 'deletePersonalTag';
-    final idKey = kind == PersonalMemberTaxonomyKind.group
-        ? 'personalGroupId'
-        : 'personalTagId';
+    final functionName =
+        kind == PersonalMemberTaxonomyKind.group
+            ? 'deletePersonalGroup'
+            : 'deletePersonalTag';
+    final idKey =
+        kind == PersonalMemberTaxonomyKind.group
+            ? 'personalGroupId'
+            : 'personalTagId';
     final response = await _call(functionName, {idKey: id.trim()});
     if (_responseId(response, kind) != id.trim() ||
         response['deleted'] != true) {
       throw StateError('personal_taxonomy_delete_response_mismatch');
     }
-    final deleted = await _collection(kind).doc(id.trim()).get(
-          const GetOptions(source: Source.server),
-        );
+    final deleted = await _collection(
+      kind,
+    ).doc(id.trim()).get(const GetOptions(source: Source.server));
     if (deleted.exists) {
       throw StateError('personal_taxonomy_delete_readback_mismatch');
     }
@@ -217,9 +223,10 @@ class PersonalMemberTaxonomyService {
     Map<String, dynamic> response,
     PersonalMemberTaxonomyKind kind,
   ) {
-    final key = kind == PersonalMemberTaxonomyKind.group
-        ? 'personalGroupId'
-        : 'personalTagId';
+    final key =
+        kind == PersonalMemberTaxonomyKind.group
+            ? 'personalGroupId'
+            : 'personalTagId';
     final id = (response[key] ?? '').toString().trim();
     if (id.isEmpty) {
       throw StateError('personal_taxonomy_id_missing');
@@ -231,9 +238,9 @@ class PersonalMemberTaxonomyService {
     PersonalMemberTaxonomyKind kind,
     String id,
   ) async {
-    final document = await _collection(kind).doc(id).get(
-          const GetOptions(source: Source.server),
-        );
+    final document = await _collection(
+      kind,
+    ).doc(id).get(const GetOptions(source: Source.server));
     return PersonalMemberTaxonomyItem.fromFirestore(
       kind: kind,
       document: document,

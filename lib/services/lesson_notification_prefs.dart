@@ -1,10 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum LessonNotificationAlertStyle {
-  silent,
-  vibrationOnly,
-  soundAndVibration,
-}
+enum LessonNotificationAlertStyle { silent, vibrationOnly, soundAndVibration }
 
 extension LessonNotificationAlertStyleLabel on LessonNotificationAlertStyle {
   String get label {
@@ -30,10 +26,7 @@ extension LessonNotificationAlertStyleLabel on LessonNotificationAlertStyle {
   }
 }
 
-enum LessonNotificationDeviceMode {
-  followDevice,
-  appPreferred,
-}
+enum LessonNotificationDeviceMode { followDevice, appPreferred }
 
 extension LessonNotificationDeviceModeLabel on LessonNotificationDeviceMode {
   String get label {
@@ -68,11 +61,9 @@ class LessonNotificationPrefs {
   static const String reminderMinutesListKey =
       'notification_lesson_minutes_before_list';
 
-  static const String alertStyleKey =
-      'notification_lesson_alert_style';
+  static const String alertStyleKey = 'notification_lesson_alert_style';
 
-  static const String deviceModeKey =
-      'notification_lesson_device_mode';
+  static const String deviceModeKey = 'notification_lesson_device_mode';
 
   static const String smartAlarmEnabledKey =
       'notification_lesson_smart_alarm_enabled';
@@ -108,13 +99,14 @@ class LessonNotificationPrefs {
     final rawList = prefs.getStringList(reminderMinutesListKey);
 
     if (rawList != null && rawList.isNotEmpty) {
-      final values = rawList
-          .map((e) => int.tryParse(e))
-          .whereType<int>()
-          .where((e) => e > 0)
-          .toSet()
-          .toList()
-        ..sort();
+      final values =
+          rawList
+              .map((e) => int.tryParse(e))
+              .whereType<int>()
+              .where((e) => e > 0)
+              .toSet()
+              .toList()
+            ..sort();
 
       if (values.isNotEmpty) {
         return values;
@@ -135,11 +127,7 @@ class LessonNotificationPrefs {
   static Future<void> saveReminderMinutes(List<int> values) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final cleaned = values
-        .where((e) => e > 0)
-        .toSet()
-        .toList()
-      ..sort();
+    final cleaned = values.where((e) => e > 0).toSet().toList()..sort();
 
     final safeValues = cleaned.isEmpty ? defaultReminderMinutes : cleaned;
 
@@ -157,14 +145,12 @@ class LessonNotificationPrefs {
     final raw = prefs.getString(alertStyleKey);
 
     return LessonNotificationAlertStyle.values.firstWhere(
-          (e) => e.name == raw,
+      (e) => e.name == raw,
       orElse: () => LessonNotificationAlertStyle.vibrationOnly,
     );
   }
 
-  static Future<void> saveAlertStyle(
-      LessonNotificationAlertStyle value,
-      ) async {
+  static Future<void> saveAlertStyle(LessonNotificationAlertStyle value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(alertStyleKey, value.name);
   }
@@ -174,14 +160,12 @@ class LessonNotificationPrefs {
     final raw = prefs.getString(deviceModeKey);
 
     return LessonNotificationDeviceMode.values.firstWhere(
-          (e) => e.name == raw,
+      (e) => e.name == raw,
       orElse: () => LessonNotificationDeviceMode.followDevice,
     );
   }
 
-  static Future<void> saveDeviceMode(
-      LessonNotificationDeviceMode value,
-      ) async {
+  static Future<void> saveDeviceMode(LessonNotificationDeviceMode value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(deviceModeKey, value.name);
   }
@@ -205,6 +189,7 @@ class LessonNotificationPrefs {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(smartAlarmGapMinutesKey, value);
   }
+
   static Future<bool> loadSmartAlarmPriorityMemoEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(smartAlarmPriorityMemoEnabledKey) ?? true;
@@ -214,10 +199,12 @@ class LessonNotificationPrefs {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(smartAlarmPriorityMemoEnabledKey, value);
   }
+
   static Future<bool> loadSmartAlarmFirstLessonEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(smartAlarmFirstLessonEnabledKey) ?? true;
   }
+
   static Future<bool> loadSmartAlarmContractBasisEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(smartAlarmContractBasisEnabledKey) ?? true;
@@ -227,6 +214,7 @@ class LessonNotificationPrefs {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(smartAlarmContractBasisEnabledKey, value);
   }
+
   static Future<void> saveSmartAlarmFirstLessonEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(smartAlarmFirstLessonEnabledKey, value);

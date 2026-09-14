@@ -69,10 +69,7 @@ void main() {
       widgetThemeForAppTheme(AppThemeMode.light),
       WidgetThemeType.brandLight,
     );
-    expect(
-      widgetThemeForAppTheme(AppThemeMode.dark),
-      WidgetThemeType.dark,
-    );
+    expect(widgetThemeForAppTheme(AppThemeMode.dark), WidgetThemeType.dark);
     expect(
       widgetThemeForAppTheme(AppThemeMode.lululala),
       WidgetThemeType.light,
@@ -82,7 +79,9 @@ void main() {
   test('legacy 위젯 값은 삭제하지 않고 안전하게 읽는다', () {
     expect(widgetThemeTypeFromRaw('pinkperfume'), WidgetThemeType.pinkperfume);
     expect(
-        widgetThemeTypeFromRaw('brownHistory'), WidgetThemeType.brownHistory);
+      widgetThemeTypeFromRaw('brownHistory'),
+      WidgetThemeType.brownHistory,
+    );
     expect(widgetThemeTypeFromRaw('ttobak'), WidgetThemeType.ttobak);
     expect(widgetThemeTypeFromRaw('invalid'), WidgetThemeType.light);
   });
@@ -94,9 +93,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          appThemeProvider.overrideWith((ref) => notifier),
-        ],
+        overrides: [appThemeProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
           theme: lightTheme(),
           home: const WidgetSettingsPage(),
@@ -113,11 +110,12 @@ void main() {
     expect(find.text('또박또박'), findsNothing);
   });
 
-  for (final entry in <String, ThemeData>{
-    'light': lightTheme(),
-    'dark': darkTheme(),
-    'lululala': lululalaTheme(),
-  }.entries) {
+  for (final entry
+      in <String, ThemeData>{
+        'light': lightTheme(),
+        'dark': darkTheme(),
+        'lululala': lululalaTheme(),
+      }.entries) {
     testWidgets('${entry.key} 목표 카드가 테마 surface와 텍스트 대비를 사용한다', (tester) async {
       await tester.pumpWidget(
         MaterialApp(

@@ -23,11 +23,12 @@ class ShadcnPagination extends StatelessWidget {
           onPressed: page > 1 ? () => onChanged(page - 1) : null,
           icon: Icon(Icons.chevron_left, color: cs.onSurfaceVariant),
         ),
-        Text("$page / $totalPages",
-            style: TextStyle(color: cs.onSurfaceVariant)),
+        Text(
+          "$page / $totalPages",
+          style: TextStyle(color: cs.onSurfaceVariant),
+        ),
         IconButton(
-          onPressed:
-          page < totalPages ? () => onChanged(page + 1) : null,
+          onPressed: page < totalPages ? () => onChanged(page + 1) : null,
           icon: Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
         ),
       ],

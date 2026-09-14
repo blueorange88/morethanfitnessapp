@@ -26,9 +26,10 @@ class HomeFirstLessonGuideChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => HomeFirstLessonGuideChatSheet(
-        canCreateCustomerCard: canCreateCustomerCard,
-      ),
+      builder:
+          (_) => HomeFirstLessonGuideChatSheet(
+            canCreateCustomerCard: canCreateCustomerCard,
+          ),
     );
   }
 
@@ -61,7 +62,8 @@ class _HomeFirstLessonGuideChatSheetState
       case _FirstLessonChoice.usage:
         await aifcUserThenFc(
           userText: '사용방법 보기',
-          fcText: '일정표에서 레슨을 눌러 시간과 메모를 수정할 수 있어요.\n'
+          fcText:
+              '일정표에서 레슨을 눌러 시간과 메모를 수정할 수 있어요.\n'
               '레슨을 확정하면 레슨일지와 기록이 차곡차곡 쌓여요.\n'
               '필요할 때 AI FC가 다음 할 일을 함께 안내할게요.',
           groupKey: 'usage',
@@ -69,11 +71,12 @@ class _HomeFirstLessonGuideChatSheetState
         break;
       case _FirstLessonChoice.customerCard:
         await aifcUserThenFc(
-          userText: '고객카드 등록 알아보기',
-          fcText: widget.canCreateCustomerCard
-              ? '좋아요. 고객카드에서 회원 정보와 레슨 흐름을 함께 관리할 수 있어요.'
-              : '고객카드 등록은 Amateur부터 사용할 수 있어요.\n'
-                  '레슨 일정 10개와 선생님 정보 입력을 완료하면 열려요.',
+          userText: '회원카드 등록 알아보기',
+          fcText:
+              widget.canCreateCustomerCard
+                  ? '좋아요. 회원카드에서 회원 정보와 레슨 흐름을 함께 관리할 수 있어요.'
+                  : '회원카드 등록은 Amateur부터 사용할 수 있어요.\n'
+                      '레슨 일정 10개와 선생님 정보 입력을 완료하면 열려요.',
           groupKey: 'customer_card',
         );
         await Future.delayed(aifcCloseAfterReplyDelay);
@@ -111,7 +114,8 @@ class _HomeFirstLessonGuideChatSheetState
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -130,8 +134,9 @@ class _HomeFirstLessonGuideChatSheetState
         ),
         if (!aifcIsBusy)
           TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(HomeFirstLessonGuideAction.later),
+            onPressed:
+                () =>
+                    Navigator.of(context).pop(HomeFirstLessonGuideAction.later),
             child: const Text('닫기'),
           ),
       ],
@@ -156,7 +161,7 @@ class _ChoiceCard extends StatelessWidget {
       child: Column(
         children: [
           _button('사용방법 보기', _FirstLessonChoice.usage),
-          _button('고객카드 등록 알아보기', _FirstLessonChoice.customerCard),
+          _button('회원카드 등록 알아보기', _FirstLessonChoice.customerCard),
           _button('나중에 할게요', _FirstLessonChoice.later),
         ],
       ),

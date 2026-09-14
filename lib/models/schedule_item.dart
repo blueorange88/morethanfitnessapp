@@ -121,12 +121,13 @@ class ScheduleItem {
       lessonSyncSource: lessonSyncSource ?? this.lessonSyncSource,
       smartAlarmContext: smartAlarmContext ?? this.smartAlarmContext,
       lastLessonLogSummary: lastLessonLogSummary ?? this.lastLessonLogSummary,
-      lastLessonLogKeywords: lastLessonLogKeywords ?? this.lastLessonLogKeywords,
+      lastLessonLogKeywords:
+          lastLessonLogKeywords ?? this.lastLessonLogKeywords,
       nextLessonReminderHint:
-      nextLessonReminderHint ?? this.nextLessonReminderHint,
+          nextLessonReminderHint ?? this.nextLessonReminderHint,
       moreCareStatus: moreCareStatus ?? this.moreCareStatus,
       moreCareTemporaryUntil:
-      moreCareTemporaryUntil ?? this.moreCareTemporaryUntil,
+          moreCareTemporaryUntil ?? this.moreCareTemporaryUntil,
       moreCareRequestId: moreCareRequestId ?? this.moreCareRequestId,
     );
   }
@@ -159,8 +160,7 @@ class ScheduleItem {
       if (contractNo != null && contractNo!.isNotEmpty)
         'contractNo': contractNo,
 
-      if (contractSigned != null)
-        'contractSigned': contractSigned,
+      if (contractSigned != null) 'contractSigned': contractSigned,
 
       if (lessonSyncSource != null && lessonSyncSource!.isNotEmpty)
         'lessonSyncSource': lessonSyncSource,
@@ -188,29 +188,32 @@ class ScheduleItem {
   }
 
   static ScheduleItem? fromMap(
-      Map<String, dynamic> raw, {
-        required int defaultDurationMinutes,
-      }) {
+    Map<String, dynamic> raw, {
+    required int defaultDurationMinutes,
+  }) {
     final rawStartAt = raw['startAt'];
     if (rawStartAt is! DateTime) return null;
 
     final rawEndAt = raw['endAt'];
-    final endAt = rawEndAt is DateTime
-        ? rawEndAt
-        : rawStartAt.add(Duration(minutes: defaultDurationMinutes));
+    final endAt =
+        rawEndAt is DateTime
+            ? rawEndAt
+            : rawStartAt.add(Duration(minutes: defaultDurationMinutes));
 
-    final day = (raw['day'] ?? '').toString().trim().isNotEmpty
-        ? (raw['day'] ?? '').toString()
-        : const ['월', '화', '수', '목', '금', '토', '일']
-    [rawStartAt.weekday - 1];
+    final day =
+        (raw['day'] ?? '').toString().trim().isNotEmpty
+            ? (raw['day'] ?? '').toString()
+            : const ['월', '화', '수', '목', '금', '토', '일'][rawStartAt.weekday - 1];
 
-    final time = (raw['time'] ?? '').toString().trim().isNotEmpty
-        ? (raw['time'] ?? '').toString()
-        : '${rawStartAt.hour.toString().padLeft(2, '0')}:${rawStartAt.minute.toString().padLeft(2, '0')}';
+    final time =
+        (raw['time'] ?? '').toString().trim().isNotEmpty
+            ? (raw['time'] ?? '').toString()
+            : '${rawStartAt.hour.toString().padLeft(2, '0')}:${rawStartAt.minute.toString().padLeft(2, '0')}';
 
-    final endTime = (raw['endTime'] ?? '').toString().trim().isNotEmpty
-        ? (raw['endTime'] ?? '').toString()
-        : '${endAt.hour.toString().padLeft(2, '0')}:${endAt.minute.toString().padLeft(2, '0')}';
+    final endTime =
+        (raw['endTime'] ?? '').toString().trim().isNotEmpty
+            ? (raw['endTime'] ?? '').toString()
+            : '${endAt.hour.toString().padLeft(2, '0')}:${endAt.minute.toString().padLeft(2, '0')}';
 
     return ScheduleItem(
       docId: (raw['docId'] ?? '').toString(),
@@ -237,28 +240,32 @@ class ScheduleItem {
       ),
       contractId: raw['contractId']?.toString(),
       contractNo: raw['contractNo']?.toString(),
-      contractSigned: raw['contractSigned'] == true ||
+      contractSigned:
+          raw['contractSigned'] == true ||
           raw['isContractSigned'] == true ||
           raw['finalSigned'] == true,
       lessonSyncSource: raw['lessonSyncSource']?.toString(),
-      smartAlarmContext: raw['smartAlarmContext'] is Map
-          ? Map<String, dynamic>.from(raw['smartAlarmContext'] as Map)
-          : null,
+      smartAlarmContext:
+          raw['smartAlarmContext'] is Map
+              ? Map<String, dynamic>.from(raw['smartAlarmContext'] as Map)
+              : null,
       lastLessonLogSummary: raw['lastLessonLogSummary']?.toString(),
-      lastLessonLogKeywords: raw['lastLessonLogKeywords'] is List
-          ? (raw['lastLessonLogKeywords'] as List)
-          .map((e) => e.toString())
-          .toList()
-          : null,
+      lastLessonLogKeywords:
+          raw['lastLessonLogKeywords'] is List
+              ? (raw['lastLessonLogKeywords'] as List)
+                  .map((e) => e.toString())
+                  .toList()
+              : null,
       nextLessonReminderHint: raw['nextLessonReminderHint']?.toString(),
 
-      moreCareStatus: (
-          raw['moreCareStatus'] ??
-              (raw['moreCareSlot'] is Map
-                  ? (raw['moreCareSlot'] as Map)['status']
-                  : null) ??
-              ''
-      ).toString().trim(),
+      moreCareStatus:
+          (raw['moreCareStatus'] ??
+                  (raw['moreCareSlot'] is Map
+                      ? (raw['moreCareSlot'] as Map)['status']
+                      : null) ??
+                  '')
+              .toString()
+              .trim(),
 
       moreCareTemporaryUntil: _dateTimeFromAny(
         raw['moreCareTemporaryUntil'] ??
@@ -267,13 +274,14 @@ class ScheduleItem {
                 : null),
       ),
 
-      moreCareRequestId: (
-          raw['moreCareRequestId'] ??
-              (raw['moreCareSlot'] is Map
-                  ? (raw['moreCareSlot'] as Map)['requestId']
-                  : null) ??
-              ''
-      ).toString().trim(),
+      moreCareRequestId:
+          (raw['moreCareRequestId'] ??
+                  (raw['moreCareSlot'] is Map
+                      ? (raw['moreCareSlot'] as Map)['requestId']
+                      : null) ??
+                  '')
+              .toString()
+              .trim(),
     );
   }
 }

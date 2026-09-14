@@ -21,12 +21,7 @@ const Color kTextSecondary = Color(0xFF64748B);
 /// Firestore members 문서에 저장할 그룹 필드명
 const String kFilingGroupField = 'filingGroup';
 
-enum _BinderSortType {
-  recentLog,
-  expireSoon,
-  nameAsc,
-  remainingLow,
-}
+enum _BinderSortType { recentLog, expireSoon, nameAsc, remainingLow }
 
 String _sortLabel(_BinderSortType type) {
   switch (type) {
@@ -49,11 +44,7 @@ class BinderCardPage extends StatefulWidget {
 }
 
 class RailGroup {
-  RailGroup({
-    required this.id,
-    required this.name,
-    required this.color,
-  });
+  RailGroup({required this.id, required this.name, required this.color});
 
   final String id;
   String name;
@@ -125,7 +116,8 @@ class _BinderCardPageState extends State<BinderCardPage> {
 
   bool _isPinned(Member m) => _pinnedIds.contains(m.id);
 
-  bool _isSelectedForMove(String memberId) => _selectedMoveIds.contains(memberId);
+  bool _isSelectedForMove(String memberId) =>
+      _selectedMoveIds.contains(memberId);
 
   RailGroup? _groupById(String? id) {
     if (id == null || id.isEmpty) return null;
@@ -249,10 +241,10 @@ class _BinderCardPageState extends State<BinderCardPage> {
   }
 
   Future<void> _updateMembersGroup(
-      Iterable<String> memberIds, {
-        String? groupId,
-        required bool clear,
-      }) async {
+    Iterable<String> memberIds, {
+    String? groupId,
+    required bool clear,
+  }) async {
     final ids = memberIds.toList();
     if (ids.isEmpty) return;
 
@@ -280,13 +272,16 @@ class _BinderCardPageState extends State<BinderCardPage> {
     required String draggedMemberId,
     required String? targetGroupId,
   }) async {
-    final ids = _shouldDragSelectedGroup(draggedMemberId)
-        ? _selectedMoveIds.toList()
-        : <String>[draggedMemberId];
+    final ids =
+        _shouldDragSelectedGroup(draggedMemberId)
+            ? _selectedMoveIds.toList()
+            : <String>[draggedMemberId];
 
     final count = ids.length;
     final targetName =
-    targetGroupId == null ? '미분류' : (_groupById(targetGroupId)?.name ?? '그룹');
+        targetGroupId == null
+            ? '미분류'
+            : (_groupById(targetGroupId)?.name ?? '그룹');
 
     if (targetGroupId == null) {
       await _updateMembersGroup(ids, clear: true);
@@ -329,12 +324,13 @@ class _BinderCardPageState extends State<BinderCardPage> {
   Future<void> _openJournal(Member m) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogPage(
-          memberId: m.id,
-          memberName: m.name ?? '',
-          trainerName: m.trainer ?? '',
-          memberPhone: m.phone ?? '',
-        ),
+        builder:
+            (_) => PersonalTrainingLogPage(
+              memberId: m.id,
+              memberName: m.name ?? '',
+              trainerName: m.trainer ?? '',
+              memberPhone: m.phone ?? '',
+            ),
       ),
     );
   }
@@ -342,10 +338,8 @@ class _BinderCardPageState extends State<BinderCardPage> {
   Future<void> _openEdit(Member m) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ClientCardPage.edit(
-          memberId: m.id,
-          initialName: m.name,
-        ),
+        builder:
+            (_) => ClientCardPage.edit(memberId: m.id, initialName: m.name),
       ),
     );
   }
@@ -353,11 +347,12 @@ class _BinderCardPageState extends State<BinderCardPage> {
   Future<void> _openContract(Member m) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ContractPage(
-          memberId: m.id,
-          memberName: m.name ?? '',
-          trainerName: m.trainer ?? '',
-        ),
+        builder:
+            (_) => ContractPage(
+              memberId: m.id,
+              memberName: m.name ?? '',
+              trainerName: m.trainer ?? '',
+            ),
       ),
     );
   }
@@ -382,9 +377,7 @@ class _BinderCardPageState extends State<BinderCardPage> {
           content: TextField(
             controller: controller,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: '그룹 이름 입력',
-            ),
+            decoration: const InputDecoration(hintText: '그룹 이름 입력'),
           ),
           actions: [
             TextButton(
@@ -472,7 +465,7 @@ class _BinderCardPageState extends State<BinderCardPage> {
                   onBack: () => Navigator.of(context).maybePop(),
                   onCreateMember: _openCreate,
                   onResetView:
-                  _selectedGroupId == null ? null : _resetToUngroupedView,
+                      _selectedGroupId == null ? null : _resetToUngroupedView,
                   onExitMoveMode: _moveMode ? _exitMoveMode : null,
                 ),
                 _SearchSortBar(
@@ -495,7 +488,9 @@ class _BinderCardPageState extends State<BinderCardPage> {
                 Expanded(
                   child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream:
-                    FirebaseFirestore.instance.collection('members').snapshots(),
+                        FirebaseFirestore.instance
+                            .collection('members')
+                            .snapshots(),
                     builder: (context, snap) {
                       if (snap.connectionState == ConnectionState.waiting &&
                           !snap.hasData) {
@@ -503,28 +498,28 @@ class _BinderCardPageState extends State<BinderCardPage> {
                       }
 
                       if (snap.hasError) {
-                        return Center(
-                          child: Text('불러오기 실패: ${snap.error}'),
-                        );
+                        return Center(child: Text('불러오기 실패: ${snap.error}'));
                       }
 
                       final docs = snap.data?.docs ?? [];
 
                       final filingMap = <String, String?>{
                         for (final d in docs)
-                          d.id: (d.data()[kFilingGroupField] as String?)
+                          d.id: (d.data()[kFilingGroupField] as String?),
                       };
 
-                      final members = docs
-                          .map((d) => Member.fromFirestore(d.id, d.data()))
-                          .where((m) => _match(m, _query))
-                          .where((m) {
-                        final groupId = filingMap[m.id];
-                        if (_selectedGroupId == null) {
-                          return _isUngrouped(groupId);
-                        }
-                        return groupId == _selectedGroupId;
-                      }).toList();
+                      final members =
+                          docs
+                              .map((d) => Member.fromFirestore(d.id, d.data()))
+                              .where((m) => _match(m, _query))
+                              .where((m) {
+                                final groupId = filingMap[m.id];
+                                if (_selectedGroupId == null) {
+                                  return _isUngrouped(groupId);
+                                }
+                                return groupId == _selectedGroupId;
+                              })
+                              .toList();
 
                       final ordered = _applyPinnedOrder(members);
 
@@ -534,51 +529,62 @@ class _BinderCardPageState extends State<BinderCardPage> {
                             _MoveModeBar(
                               selectedCount: _selectedMoveIds.length,
                               visibleCount: ordered.length,
-                              onSelectAll: ordered.isEmpty
-                                  ? null
-                                  : () => _selectAllVisible(ordered),
+                              onSelectAll:
+                                  ordered.isEmpty
+                                      ? null
+                                      : () => _selectAllVisible(ordered),
                               onClearSelection:
-                              _selectedMoveIds.isEmpty ? null : _clearMoveSelection,
+                                  _selectedMoveIds.isEmpty
+                                      ? null
+                                      : _clearMoveSelection,
                               onDone: _exitMoveMode,
                             ),
                           Expanded(
-                            child: ordered.isEmpty
-                                ? _EmptyState(
-                              onCreate: _openCreate,
-                              keyword: _query,
-                              viewLabel: _currentViewLabel,
-                            )
-                                : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                10,
-                                16,
-                                20,
-                              ),
-                              itemCount: ordered.length,
-                              itemBuilder: (context, i) {
-                                final m = ordered[i];
-                                final groupId = filingMap[m.id];
-                                final group = _groupById(groupId);
+                            child:
+                                ordered.isEmpty
+                                    ? _EmptyState(
+                                      onCreate: _openCreate,
+                                      keyword: _query,
+                                      viewLabel: _currentViewLabel,
+                                    )
+                                    : ListView.builder(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        10,
+                                        16,
+                                        20,
+                                      ),
+                                      itemCount: ordered.length,
+                                      itemBuilder: (context, i) {
+                                        final m = ordered[i];
+                                        final groupId = filingMap[m.id];
+                                        final group = _groupById(groupId);
 
-                                return _DraggableMemberRow(
-                                  member: m,
-                                  pinned: _isPinned(m),
-                                  holderOpen: _holderOpen,
-                                  group: group,
-                                  moveMode: _moveMode,
-                                  selectedForMove: _isSelectedForMove(m.id),
-                                  selectedCount: _selectedMoveIds.length,
-                                  onPinTap: () => _togglePin(m),
-                                  onDragStarted: () =>
-                                      _enterMoveMode(initialMemberId: m.id),
-                                  onMoveTap: () => _toggleMoveSelection(m.id),
-                                  onOpenJournal: () => _openJournal(m),
-                                  onOpenEdit: () => _openEdit(m),
-                                  onOpenContract: () => _openContract(m),
-                                );
-                              },
-                            ),
+                                        return _DraggableMemberRow(
+                                          member: m,
+                                          pinned: _isPinned(m),
+                                          holderOpen: _holderOpen,
+                                          group: group,
+                                          moveMode: _moveMode,
+                                          selectedForMove: _isSelectedForMove(
+                                            m.id,
+                                          ),
+                                          selectedCount:
+                                              _selectedMoveIds.length,
+                                          onPinTap: () => _togglePin(m),
+                                          onDragStarted:
+                                              () => _enterMoveMode(
+                                                initialMemberId: m.id,
+                                              ),
+                                          onMoveTap:
+                                              () => _toggleMoveSelection(m.id),
+                                          onOpenJournal: () => _openJournal(m),
+                                          onOpenEdit: () => _openEdit(m),
+                                          onOpenContract:
+                                              () => _openContract(m),
+                                        );
+                                      },
+                                    ),
                           ),
                         ],
                       );
@@ -605,7 +611,9 @@ class _BinderCardPageState extends State<BinderCardPage> {
               width: 292,
               child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream:
-                FirebaseFirestore.instance.collection('members').snapshots(),
+                    FirebaseFirestore.instance
+                        .collection('members')
+                        .snapshots(),
                 builder: (context, snap) {
                   final docs = snap.data?.docs ?? [];
 
@@ -631,8 +639,8 @@ class _BinderCardPageState extends State<BinderCardPage> {
                     ungroupedCount: ungroupedCount,
                     moveMode: _moveMode,
                     selectedMoveCount: _selectedMoveIds.length,
-                    onHoverChanged: (value) =>
-                        setState(() => _hoveredGroupIndex = value),
+                    onHoverChanged:
+                        (value) => setState(() => _hoveredGroupIndex = value),
                     onAccept: (memberId, groupIndex) async {
                       await _handleDroppedMembers(
                         draggedMemberId: memberId,
@@ -650,9 +658,7 @@ class _BinderCardPageState extends State<BinderCardPage> {
                       if (_moveMode && _selectedMoveIds.isNotEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text(
-                              '선택한 카드 중 하나를 롱프레스해서 그룹 박스로 드롭하세요.',
-                            ),
+                            content: Text('선택한 카드 중 하나를 롱프레스해서 그룹 박스로 드롭하세요.'),
                             duration: Duration(seconds: 1),
                           ),
                         );
@@ -756,8 +762,10 @@ class _ModernHeader extends StatelessWidget {
               ),
               Container(
                 margin: const EdgeInsets.only(right: 8),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(999),
@@ -780,18 +788,17 @@ class _ModernHeader extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: kPrimaryColor,
                   foregroundColor: Colors.white,
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              _HolderToggleButton(
-                isOpen: holderOpen,
-                onTap: onMenuTap,
-              ),
+              _HolderToggleButton(isOpen: holderOpen, onTap: onMenuTap),
             ],
           ),
           const SizedBox(height: 10),
@@ -856,10 +863,7 @@ class _ModernHeader extends StatelessWidget {
 }
 
 class _CurrentViewChip extends StatelessWidget {
-  const _CurrentViewChip({
-    required this.label,
-    required this.onReset,
-  });
+  const _CurrentViewChip({required this.label, required this.onReset});
 
   final String label;
   final VoidCallback? onReset;
@@ -876,11 +880,7 @@ class _CurrentViewChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.inbox_rounded,
-            size: 16,
-            color: kPrimaryColor,
-          ),
+          const Icon(Icons.inbox_rounded, size: 16, color: kPrimaryColor),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -898,8 +898,7 @@ class _CurrentViewChip extends StatelessWidget {
             GestureDetector(
               onTap: onReset,
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: kPrimaryColor.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(999),
@@ -922,10 +921,7 @@ class _CurrentViewChip extends StatelessWidget {
 }
 
 class _HolderToggleButton extends StatelessWidget {
-  const _HolderToggleButton({
-    required this.isOpen,
-    required this.onTap,
-  });
+  const _HolderToggleButton({required this.isOpen, required this.onTap});
 
   final bool isOpen;
   final VoidCallback onTap;
@@ -938,11 +934,7 @@ class _HolderToggleButton extends StatelessWidget {
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
-          const Icon(
-            Icons.inbox_rounded,
-            size: 20,
-            color: kPrimaryColor,
-          ),
+          const Icon(Icons.inbox_rounded, size: 20, color: kPrimaryColor),
           Positioned(
             right: -6,
             top: -6,
@@ -1008,12 +1000,13 @@ class _SearchSortBar extends StatelessWidget {
                     size: 20,
                     color: kTextSecondary,
                   ),
-                  suffixIcon: controller.text.isNotEmpty
-                      ? IconButton(
-                    onPressed: onClear,
-                    icon: const Icon(Icons.clear_rounded),
-                  )
-                      : null,
+                  suffixIcon:
+                      controller.text.isNotEmpty
+                          ? IconButton(
+                            onPressed: onClear,
+                            icon: const Icon(Icons.clear_rounded),
+                          )
+                          : null,
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 13),
@@ -1051,15 +1044,16 @@ class _SearchSortBar extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: kTextPrimary,
                   ),
-                  items: _BinderSortType.values.map((type) {
-                    return DropdownMenuItem<_BinderSortType>(
-                      value: type,
-                      child: Text(
-                        _sortLabel(type),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
+                  items:
+                      _BinderSortType.values.map((type) {
+                        return DropdownMenuItem<_BinderSortType>(
+                          value: type,
+                          child: Text(
+                            _sortLabel(type),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
                   onChanged: onSortChanged,
                 ),
               ),
@@ -1122,11 +1116,7 @@ class _MoveModeBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.touch_app_rounded,
-              size: 18,
-              color: kPrimaryColor,
-            ),
+            const Icon(Icons.touch_app_rounded, size: 18, color: kPrimaryColor),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -1264,11 +1254,12 @@ class _ModernHolderPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final helperText = moveMode
-        ? (selectedMoveCount == 0
-        ? '카드를 탭해 선택하고, 선택된 카드 중 하나를 롱프레스해 여기로 드롭하세요.'
-        : '$selectedMoveCount명 선택됨 · 선택된 카드 중 하나를 롱프레스해 여기로 드롭하세요.')
-        : '그룹을 탭하면 해당 그룹을 엽니다.';
+    final helperText =
+        moveMode
+            ? (selectedMoveCount == 0
+                ? '카드를 탭해 선택하고, 선택된 카드 중 하나를 롱프레스해 여기로 드롭하세요.'
+                : '$selectedMoveCount명 선택됨 · 선택된 카드 중 하나를 롱프레스해 여기로 드롭하세요.')
+            : '그룹을 탭하면 해당 그룹을 엽니다.';
 
     return Material(
       elevation: 20,
@@ -1323,29 +1314,32 @@ class _ModernHolderPanel extends StatelessWidget {
                         vertical: 14,
                       ),
                       decoration: BoxDecoration(
-                        color: hovered
-                            ? Colors.red.withOpacity(0.08)
-                            : selected
-                            ? kPrimaryColor.withOpacity(0.08)
-                            : const Color(0xFFF8FAFC),
+                        color:
+                            hovered
+                                ? Colors.red.withOpacity(0.08)
+                                : selected
+                                ? kPrimaryColor.withOpacity(0.08)
+                                : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: hovered
-                              ? const Color(0xFFEF4444)
-                              : selected
-                              ? kPrimaryColor
-                              : kBorderColor,
+                          color:
+                              hovered
+                                  ? const Color(0xFFEF4444)
+                                  : selected
+                                  ? kPrimaryColor
+                                  : kBorderColor,
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.remove_circle_outline_rounded,
-                            color: hovered
-                                ? const Color(0xFFEF4444)
-                                : selected
-                                ? kPrimaryColor
-                                : kTextSecondary,
+                            color:
+                                hovered
+                                    ? const Color(0xFFEF4444)
+                                    : selected
+                                    ? kPrimaryColor
+                                    : kTextSecondary,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -1365,9 +1359,10 @@ class _ModernHolderPanel extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: selected
-                                        ? kPrimaryColor
-                                        : kTextSecondary,
+                                    color:
+                                        selected
+                                            ? kPrimaryColor
+                                            : kTextSecondary,
                                   ),
                                 ),
                               ],
@@ -1405,14 +1400,16 @@ class _ModernHolderPanel extends StatelessWidget {
                         duration: const Duration(milliseconds: 180),
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: isHovered || isSelected
-                              ? group.color.withOpacity(0.14)
-                              : Colors.grey[50],
+                          color:
+                              isHovered || isSelected
+                                  ? group.color.withOpacity(0.14)
+                                  : Colors.grey[50],
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: isHovered || isSelected
-                                ? group.color
-                                : kBorderColor,
+                            color:
+                                isHovered || isSelected
+                                    ? group.color
+                                    : kBorderColor,
                             width: 1.5,
                           ),
                         ),
@@ -1430,16 +1427,18 @@ class _ModernHolderPanel extends StatelessWidget {
                                   width: 38,
                                   height: 38,
                                   decoration: BoxDecoration(
-                                    color: isHovered || isSelected
-                                        ? group.color.withOpacity(0.18)
-                                        : Colors.white,
+                                    color:
+                                        isHovered || isSelected
+                                            ? group.color.withOpacity(0.18)
+                                            : Colors.white,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(
                                     Icons.inbox_rounded,
-                                    color: isHovered || isSelected
-                                        ? group.color
-                                        : kTextSecondary,
+                                    color:
+                                        isHovered || isSelected
+                                            ? group.color
+                                            : kTextSecondary,
                                     size: 20,
                                   ),
                                 ),
@@ -1447,7 +1446,7 @@ class _ModernHolderPanel extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         group.name,
@@ -1463,9 +1462,10 @@ class _ModernHolderPanel extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
-                                          color: isHovered || isSelected
-                                              ? group.color
-                                              : kTextSecondary,
+                                          color:
+                                              isHovered || isSelected
+                                                  ? group.color
+                                                  : kTextSecondary,
                                         ),
                                       ),
                                     ],
@@ -1548,12 +1548,10 @@ class _DraggableMemberRow extends StatelessWidget {
 
     final multiDrag = moveMode && selectedForMove && selectedCount > 1;
 
-    final feedbackChild = multiDrag
-        ? _MultiDragFeedback(count: selectedCount)
-        : _SingleDragFeedback(
-      member: member,
-      group: group,
-    );
+    final feedbackChild =
+        multiDrag
+            ? _MultiDragFeedback(count: selectedCount)
+            : _SingleDragFeedback(member: member, group: group);
 
     return LongPressDraggable<String>(
       data: member.id,
@@ -1573,10 +1571,7 @@ class _DraggableMemberRow extends StatelessWidget {
 }
 
 class _SingleDragFeedback extends StatelessWidget {
-  const _SingleDragFeedback({
-    required this.member,
-    required this.group,
-  });
+  const _SingleDragFeedback({required this.member, required this.group});
 
   final Member member;
   final RailGroup? group;
@@ -1669,9 +1664,7 @@ class _SingleDragFeedback extends StatelessWidget {
 }
 
 class _MultiDragFeedback extends StatelessWidget {
-  const _MultiDragFeedback({
-    required this.count,
-  });
+  const _MultiDragFeedback({required this.count});
 
   final int count;
 
@@ -1701,10 +1694,7 @@ class _MultiDragFeedback extends StatelessWidget {
               color: kPrimaryColor.withOpacity(0.10),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
-              Icons.layers_rounded,
-              color: kPrimaryColor,
-            ),
+            child: const Icon(Icons.layers_rounded, color: kPrimaryColor),
           ),
           const SizedBox(width: 12),
           Text(
@@ -1781,9 +1771,10 @@ class _MemberCardContent extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           decoration: BoxDecoration(
-            color: selectedForMove
-                ? kPrimaryColor.withOpacity(0.06)
-                : Colors.white,
+            color:
+                selectedForMove
+                    ? kPrimaryColor.withOpacity(0.06)
+                    : Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: selectedForMove ? kPrimaryColor : kBorderColor,
@@ -1813,14 +1804,16 @@ class _MemberCardContent extends StatelessWidget {
                             width: 24,
                             height: 24,
                             decoration: BoxDecoration(
-                              color: selectedForMove
-                                  ? kPrimaryColor
-                                  : Colors.white,
+                              color:
+                                  selectedForMove
+                                      ? kPrimaryColor
+                                      : Colors.white,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: selectedForMove
-                                    ? kPrimaryColor
-                                    : kBorderColor,
+                                color:
+                                    selectedForMove
+                                        ? kPrimaryColor
+                                        : kBorderColor,
                               ),
                             ),
                             child: Icon(
@@ -1828,9 +1821,10 @@ class _MemberCardContent extends StatelessWidget {
                                   ? Icons.check
                                   : Icons.radio_button_unchecked,
                               size: 14,
-                              color: selectedForMove
-                                  ? Colors.white
-                                  : kTextSecondary,
+                              color:
+                                  selectedForMove
+                                      ? Colors.white
+                                      : kTextSecondary,
                             ),
                           ),
                         ),
@@ -1953,7 +1947,7 @@ class _MemberCardContent extends StatelessWidget {
                             _MetaChip(
                               icon: Icons.confirmation_num_outlined,
                               text:
-                              '${member.remainingSessions}/${member.totalSessions}',
+                                  '${member.remainingSessions}/${member.totalSessions}',
                             ),
                             if (holderOpen)
                               const _MetaChip(
@@ -1973,9 +1967,10 @@ class _MemberCardContent extends StatelessWidget {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: pinned
-                            ? kPrimaryColor
-                            : Colors.black.withOpacity(0.04),
+                        color:
+                            pinned
+                                ? kPrimaryColor
+                                : Colors.black.withOpacity(0.04),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: pinned ? Colors.transparent : kBorderColor,
@@ -2013,10 +2008,12 @@ class _MemberCardContent extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: moveMode ? null : onOpenEdit,
                       icon: const Icon(Icons.edit_note_rounded, size: 18),
-                      label: const Text('고객카드 수정'),
+                      label: const Text('회원카드 수정'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: kPrimaryColor,
-                        side: BorderSide(color: kPrimaryColor.withOpacity(0.30)),
+                        side: BorderSide(
+                          color: kPrimaryColor.withOpacity(0.30),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -2060,8 +2057,10 @@ class _MemberDonutBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = member.totalSessions <= 0 ? 1 : member.totalSessions;
-    final used =
-    (member.totalSessions - member.remainingSessions).clamp(0, total);
+    final used = (member.totalSessions - member.remainingSessions).clamp(
+      0,
+      total,
+    );
     final progress = (used / total).clamp(0.0, 1.0);
 
     final accent = _progressColor(member.remainingSessions, total);
@@ -2138,17 +2137,19 @@ class _MiniDonutPainter extends CustomPainter {
     final c = Offset(size.width / 2, size.height / 2);
     final r = (size.width / 2) - stroke / 2;
 
-    final pBg = Paint()
-      ..color = bg
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
+    final pBg =
+        Paint()
+          ..color = bg
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.round;
 
-    final pFg = Paint()
-      ..color = fg
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
+    final pFg =
+        Paint()
+          ..color = fg
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(
       Rect.fromCircle(center: c, radius: r),
@@ -2178,10 +2179,7 @@ class _MiniDonutPainter extends CustomPainter {
 /* -------------------- Chips -------------------- */
 
 class _MetaChip extends StatelessWidget {
-  const _MetaChip({
-    required this.icon,
-    required this.text,
-  });
+  const _MetaChip({required this.icon, required this.text});
 
   final IconData icon;
   final String text;

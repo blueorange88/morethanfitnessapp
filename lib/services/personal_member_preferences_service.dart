@@ -5,6 +5,16 @@ import 'mtf_firebase_functions.dart';
 
 const String kPersonalDefaultGroupLabel = 'MORE THAN GYM';
 
+const List<String> kBuiltInLessonTypes = [
+  '미입력',
+  'PT',
+  '필라테스',
+  '요가',
+  '그룹',
+  '줌바',
+  '재활',
+];
+
 String normalizePersonalDefaultGroupLabel(Object? value) {
   final normalized = value?.toString().trim() ?? '';
   return normalized.isEmpty ? kPersonalDefaultGroupLabel : normalized;
@@ -46,15 +56,14 @@ class PersonalMemberPreferences {
     required this.customLessonTypes,
   });
 
-  factory PersonalMemberPreferences.fromProfile(
-    Map<String, dynamic>? profile,
-  ) {
+  factory PersonalMemberPreferences.fromProfile(Map<String, dynamic>? profile) {
     return PersonalMemberPreferences(
       defaultGroupLabel: normalizePersonalDefaultGroupLabel(
         profile?['memberDefaultGroupLabel'],
       ),
-      customLessonTypes:
-          normalizeCustomLessonTypes(profile?['customLessonTypes']),
+      customLessonTypes: normalizeCustomLessonTypes(
+        profile?['customLessonTypes'],
+      ),
     );
   }
 
@@ -67,9 +76,9 @@ class PersonalMemberPreferencesService {
     required String uid,
     FirebaseFirestore? firestore,
     FirebaseFunctions? functions,
-  })  : uid = uid.trim(),
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? MtfFirebaseFunctions.instance;
+  }) : uid = uid.trim(),
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _functions = functions ?? MtfFirebaseFunctions.instance;
 
   final String uid;
   final FirebaseFirestore _firestore;
@@ -80,8 +89,8 @@ class PersonalMemberPreferencesService {
 
   Stream<PersonalMemberPreferences> watch() {
     return _profileRef.snapshots().map(
-          (snapshot) => PersonalMemberPreferences.fromProfile(snapshot.data()),
-        );
+      (snapshot) => PersonalMemberPreferences.fromProfile(snapshot.data()),
+    );
   }
 
   Future<PersonalMemberPreferences> loadFromServer() async {
@@ -112,8 +121,9 @@ class PersonalMemberPreferencesService {
     final normalized = normalizeCustomLessonTypes(values);
     await _updateProfile({'customLessonTypes': normalized});
     final readback = await loadFromServer();
-    final expectedKeys =
-        normalized.map(customLessonTypeComparisonKey).toList(growable: false);
+    final expectedKeys = normalized
+        .map(customLessonTypeComparisonKey)
+        .toList(growable: false);
     final actualKeys = readback.customLessonTypes
         .map(customLessonTypeComparisonKey)
         .toList(growable: false);

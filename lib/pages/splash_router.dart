@@ -20,10 +20,11 @@ class _SplashRouterState extends State<SplashRouter> {
 
   Future<void> _checkAndRoute() async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('trainer_profile')
-          .doc('me')
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('trainer_profile')
+              .doc('me')
+              .get();
 
       final data = doc.data();
       final onboardingCompleted = data?['onboardingCompleted'] == true;
@@ -36,17 +37,15 @@ class _SplashRouterState extends State<SplashRouter> {
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) =>
-              shouldGoHome ? const HomePage() : const OnboardingPage(),
+          builder:
+              (_) => shouldGoHome ? const HomePage() : const OnboardingPage(),
         ),
       );
     } catch (e) {
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const OnboardingPage(),
-        ),
+        MaterialPageRoute(builder: (_) => const OnboardingPage()),
       );
     }
   }
@@ -57,9 +56,7 @@ class _SplashRouterState extends State<SplashRouter> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
-        child: CircularProgressIndicator(
-          color: theme.colorScheme.secondary,
-        ),
+        child: CircularProgressIndicator(color: theme.colorScheme.secondary),
       ),
     );
   }

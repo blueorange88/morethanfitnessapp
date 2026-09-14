@@ -48,7 +48,8 @@ class _PersonalTrainingLogWorkspacePageState
     final now = DateTime.now();
     _rangeStart = DateTime(now.year - 2, 1, 1);
     _rangeEnd = DateTime(now.year + 2, 1, 1);
-    _repository = widget.repository ??
+    _repository =
+        widget.repository ??
         PersonalTrainingLogRepository.firebase(uid: widget.uid);
   }
 
@@ -68,11 +69,12 @@ class _PersonalTrainingLogWorkspacePageState
       if (!mounted) return;
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
-          builder: (_) => _PersonalTrainingLogEditorPage(
-            repository: _repository,
-            lessonLogId: id,
-            initialDraft: draft,
-          ),
+          builder:
+              (_) => _PersonalTrainingLogEditorPage(
+                repository: _repository,
+                lessonLogId: id,
+                initialDraft: draft,
+              ),
         ),
       );
     } catch (error) {
@@ -93,12 +95,13 @@ class _PersonalTrainingLogWorkspacePageState
     );
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => _PersonalTrainingLogEditorPage(
-          repository: _repository,
-          lessonLogId: record.lessonLogId,
-          initialDraft: draft,
-          initialStatus: record.status,
-        ),
+        builder:
+            (_) => _PersonalTrainingLogEditorPage(
+              repository: _repository,
+              lessonLogId: record.lessonLogId,
+              initialDraft: draft,
+              initialStatus: record.status,
+            ),
       ),
     );
   }
@@ -122,7 +125,8 @@ class _PersonalTrainingLogWorkspacePageState
         onPressed: _create,
         icon: const Icon(Icons.note_add_rounded),
         label: Text(
-            widget.initialSource == 'home_quick_sign' ? '빠른 레슨일지' : '레슨일지 작성'),
+          widget.initialSource == 'home_quick_sign' ? '빠른 레슨일지' : '레슨일지 작성',
+        ),
       ),
       body: StreamBuilder<List<PersonalTrainingLogRecord>>(
         stream: _repository.watchMemberRange(
@@ -134,9 +138,12 @@ class _PersonalTrainingLogWorkspacePageState
           if (snapshot.hasError) {
             return const Center(child: Text('레슨일지를 불러오지 못했어요.'));
           }
-          final records = (snapshot.data ?? const [])
-              .where((record) => _filter == 'all' || record.status == _filter)
-              .toList();
+          final records =
+              (snapshot.data ?? const [])
+                  .where(
+                    (record) => _filter == 'all' || record.status == _filter,
+                  )
+                  .toList();
           return Column(
             children: [
               Padding(
@@ -148,10 +155,7 @@ class _PersonalTrainingLogWorkspacePageState
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('전체')),
                     DropdownMenuItem(value: 'draft', child: Text('작성 중')),
-                    DropdownMenuItem(
-                      value: 'completed',
-                      child: Text('레슨 완료'),
-                    ),
+                    DropdownMenuItem(value: 'completed', child: Text('레슨 완료')),
                     DropdownMenuItem(
                       value: 'no_show_deducted',
                       child: Text('노쇼 차감'),
@@ -166,45 +170,47 @@ class _PersonalTrainingLogWorkspacePageState
                       child: Text('확정취소 보관함'),
                     ),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _filter = value ?? 'all'),
+                  onChanged:
+                      (value) => setState(() => _filter = value ?? 'all'),
                 ),
               ),
               Expanded(
-                child: records.isEmpty
-                    ? const Center(child: Text('저장된 레슨일지가 없어요.'))
-                    : ListView.separated(
-                        itemCount: records.length,
-                        separatorBuilder: (_, __) => Divider(
-                          height: 1,
-                          color: tokens.trainingLogSetDivider,
-                        ),
-                        itemBuilder: (context, index) {
-                          final record = records[index];
-                          return ColoredBox(
-                            color: tokens.trainingLogSurface,
-                            child: ListTile(
-                              key: Key(
-                                'personal_training_log_${record.lessonLogId}',
+                child:
+                    records.isEmpty
+                        ? const Center(child: Text('저장된 레슨일지가 없어요.'))
+                        : ListView.separated(
+                          itemCount: records.length,
+                          separatorBuilder:
+                              (_, __) => Divider(
+                                height: 1,
+                                color: tokens.trainingLogSetDivider,
                               ),
-                              title: Text(
-                                '${_date(record.startAt)} · ${record.lessonType}',
-                                style: TextStyle(color: scheme.onSurface),
-                              ),
-                              subtitle: Text(
-                                '${_statusLabel(record.status)}\n${record.memo}',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: scheme.onSurfaceVariant,
+                          itemBuilder: (context, index) {
+                            final record = records[index];
+                            return ColoredBox(
+                              color: tokens.trainingLogSurface,
+                              child: ListTile(
+                                key: Key(
+                                  'personal_training_log_${record.lessonLogId}',
                                 ),
+                                title: Text(
+                                  '${_date(record.startAt)} · ${record.lessonType}',
+                                  style: TextStyle(color: scheme.onSurface),
+                                ),
+                                subtitle: Text(
+                                  '${_statusLabel(record.status)}\n${record.memo}',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                isThreeLine: record.memo.isNotEmpty,
+                                onTap: () => _open(record),
                               ),
-                              isThreeLine: record.memo.isNotEmpty,
-                              onTap: () => _open(record),
-                            ),
-                          );
-                        },
-                      ),
+                            );
+                          },
+                        ),
               ),
             ],
           );
@@ -220,13 +226,13 @@ class _PersonalTrainingLogWorkspacePageState
       '${value.minute.toString().padLeft(2, '0')}';
 
   String _statusLabel(String status) => switch (status) {
-        'completed' => '레슨 완료',
-        'no_show_deducted' => '노쇼 차감',
-        'no_show_not_deducted' => '노쇼 미차감',
-        'service' => '서비스',
-        'confirm_cancelled' => '확정취소',
-        _ => '작성 중',
-      };
+    'completed' => '레슨 완료',
+    'no_show_deducted' => '노쇼 차감',
+    'no_show_not_deducted' => '노쇼 미차감',
+    'service' => '서비스',
+    'confirm_cancelled' => '확정취소',
+    _ => '작성 중',
+  };
 }
 
 class _PersonalTrainingLogEditorPage extends StatefulWidget {
@@ -262,8 +268,9 @@ class _PersonalTrainingLogEditorPageState
   void initState() {
     super.initState();
     _status = widget.initialStatus;
-    _lessonTypeController =
-        TextEditingController(text: widget.initialDraft.lessonType);
+    _lessonTypeController = TextEditingController(
+      text: widget.initialDraft.lessonType,
+    );
     _memoController = TextEditingController(text: widget.initialDraft.memo);
     _lessonTypeController.addListener(_scheduleAutosave);
     _memoController.addListener(_scheduleAutosave);
@@ -282,9 +289,9 @@ class _PersonalTrainingLogEditorPageState
   }
 
   PersonalTrainingLogDraft get _currentDraft => widget.initialDraft.copyWith(
-        lessonType: _lessonTypeController.text.trim(),
-        memo: _memoController.text.trim(),
-      );
+    lessonType: _lessonTypeController.text.trim(),
+    memo: _memoController.text.trim(),
+  );
 
   void _scheduleAutosave() {
     if (!_isDraft || _saving) return;
@@ -386,30 +393,36 @@ class _PersonalTrainingLogEditorPageState
               runSpacing: 8,
               children: [
                 FilledButton(
-                  onPressed: _saving
-                      ? null
-                      : () => _finalize(PersonalTrainingLogStatus.completed),
+                  onPressed:
+                      _saving
+                          ? null
+                          : () =>
+                              _finalize(PersonalTrainingLogStatus.completed),
                   child: const Text('레슨 완료'),
                 ),
                 OutlinedButton(
-                  onPressed: _saving
-                      ? null
-                      : () =>
-                          _finalize(PersonalTrainingLogStatus.noShowDeducted),
+                  onPressed:
+                      _saving
+                          ? null
+                          : () => _finalize(
+                            PersonalTrainingLogStatus.noShowDeducted,
+                          ),
                   child: const Text('노쇼 차감'),
                 ),
                 OutlinedButton(
-                  onPressed: _saving
-                      ? null
-                      : () => _finalize(
+                  onPressed:
+                      _saving
+                          ? null
+                          : () => _finalize(
                             PersonalTrainingLogStatus.noShowNotDeducted,
                           ),
                   child: const Text('노쇼 미차감'),
                 ),
                 OutlinedButton(
-                  onPressed: _saving
-                      ? null
-                      : () => _finalize(PersonalTrainingLogStatus.service),
+                  onPressed:
+                      _saving
+                          ? null
+                          : () => _finalize(PersonalTrainingLogStatus.service),
                   child: const Text('서비스'),
                 ),
               ],

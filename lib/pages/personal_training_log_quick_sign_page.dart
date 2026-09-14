@@ -109,9 +109,10 @@ class _PersonalTrainingQuickLogSignPageState
       context: context,
       ownerUid: _personalOwnerUid,
       memberId: _cleanMemberId,
-      loadAccess: () => AppTierAccessService.loadPersonalTrainerAccess(
-        uid: _personalOwnerUid,
-      ),
+      loadAccess:
+          () => AppTierAccessService.loadPersonalTrainerAccess(
+            uid: _personalOwnerUid,
+          ),
       entryPoint: 'personal_training_log_quick_sign_direct_route',
     );
     if (!mounted) return;
@@ -275,10 +276,7 @@ class _PersonalTrainingQuickLogSignPageState
   }
 
   Future<void> _loadInitialData() async {
-    await Future.wait([
-      _loadMemberSummary(),
-      _loadExistingQuickLog(),
-    ]);
+    await Future.wait([_loadMemberSummary(), _loadExistingQuickLog()]);
 
     if (!mounted) return;
     setState(() {
@@ -291,21 +289,24 @@ class _PersonalTrainingQuickLogSignPageState
     if (cleanId.isEmpty) return;
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(cleanId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(cleanId)
+              .get();
 
       final data = snap.data();
       if (data == null) return;
 
-      final sessions = data['sessions'] is Map
-          ? Map<String, dynamic>.from(data['sessions'] as Map)
-          : <String, dynamic>{};
+      final sessions =
+          data['sessions'] is Map
+              ? Map<String, dynamic>.from(data['sessions'] as Map)
+              : <String, dynamic>{};
 
-      final lessonSync = data['lessonSync'] is Map
-          ? Map<String, dynamic>.from(data['lessonSync'] as Map)
-          : <String, dynamic>{};
+      final lessonSync =
+          data['lessonSync'] is Map
+              ? Map<String, dynamic>.from(data['lessonSync'] as Map)
+              : <String, dynamic>{};
 
       final loadedContractId =
           (lessonSync['contractId'] ?? '').toString().trim();
@@ -313,7 +314,8 @@ class _PersonalTrainingQuickLogSignPageState
       final loadedHasContract =
           data['contractSigned'] == true || loadedContractId.isNotEmpty;
 
-      final remainRaw = data['remainSessions'] ??
+      final remainRaw =
+          data['remainSessions'] ??
           data['remainingSessions'] ??
           sessions['remain'] ??
           data['remainingPt'] ??
@@ -327,17 +329,20 @@ class _PersonalTrainingQuickLogSignPageState
       if (!mounted) return;
 
       setState(() {
-        _remainingSessions = remainRaw is num
-            ? remainRaw.toInt()
-            : int.tryParse((remainRaw ?? '').toString());
+        _remainingSessions =
+            remainRaw is num
+                ? remainRaw.toInt()
+                : int.tryParse((remainRaw ?? '').toString());
 
-        _totalSessions = totalRaw is num
-            ? totalRaw.toInt()
-            : int.tryParse((totalRaw ?? '').toString());
+        _totalSessions =
+            totalRaw is num
+                ? totalRaw.toInt()
+                : int.tryParse((totalRaw ?? '').toString());
 
-        _doneSessions = doneRaw is num
-            ? doneRaw.toInt()
-            : int.tryParse((doneRaw ?? '').toString());
+        _doneSessions =
+            doneRaw is num
+                ? doneRaw.toInt()
+                : int.tryParse((doneRaw ?? '').toString());
 
         _hasContractLinked = loadedHasContract;
         _contractId = loadedContractId.isEmpty ? null : loadedContractId;
@@ -351,10 +356,11 @@ class _PersonalTrainingQuickLogSignPageState
     final logId = _buildLogId();
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('training_logs')
-          .doc(logId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('training_logs')
+              .doc(logId)
+              .get();
 
       final data = snap.data();
       if (data == null) return;
@@ -362,21 +368,25 @@ class _PersonalTrainingQuickLogSignPageState
       final trainerSignature = data['trainerSignature'];
       final memberSignature = data['memberSignature'];
 
-      final trainerPoints = trainerSignature is Map
-          ? _signaturePointsFromJson(trainerSignature['points'])
-          : <Offset?>[];
+      final trainerPoints =
+          trainerSignature is Map
+              ? _signaturePointsFromJson(trainerSignature['points'])
+              : <Offset?>[];
 
-      final memberPoints = memberSignature is Map
-          ? _signaturePointsFromJson(memberSignature['points'])
-          : <Offset?>[];
+      final memberPoints =
+          memberSignature is Map
+              ? _signaturePointsFromJson(memberSignature['points'])
+              : <Offset?>[];
 
-      final trainerSignedAt = trainerSignature is Map
-          ? _dateFromAny(trainerSignature['signedAt'])
-          : null;
+      final trainerSignedAt =
+          trainerSignature is Map
+              ? _dateFromAny(trainerSignature['signedAt'])
+              : null;
 
-      final memberSignedAt = memberSignature is Map
-          ? _dateFromAny(memberSignature['signedAt'])
-          : null;
+      final memberSignedAt =
+          memberSignature is Map
+              ? _dateFromAny(memberSignature['signedAt'])
+              : null;
 
       final memo = (data['memo'] ?? '').toString();
 
@@ -393,21 +403,25 @@ class _PersonalTrainingQuickLogSignPageState
     final trainerSignature = data['trainerSignature'];
     final memberSignature = data['memberSignature'];
 
-    final trainerPoints = trainerSignature is Map
-        ? _signaturePointsFromJson(trainerSignature['points'])
-        : <Offset?>[];
+    final trainerPoints =
+        trainerSignature is Map
+            ? _signaturePointsFromJson(trainerSignature['points'])
+            : <Offset?>[];
 
-    final memberPoints = memberSignature is Map
-        ? _signaturePointsFromJson(memberSignature['points'])
-        : <Offset?>[];
+    final memberPoints =
+        memberSignature is Map
+            ? _signaturePointsFromJson(memberSignature['points'])
+            : <Offset?>[];
 
-    final trainerSignedAt = trainerSignature is Map
-        ? _dateFromAny(trainerSignature['signedAt'])
-        : null;
+    final trainerSignedAt =
+        trainerSignature is Map
+            ? _dateFromAny(trainerSignature['signedAt'])
+            : null;
 
-    final memberSignedAt = memberSignature is Map
-        ? _dateFromAny(memberSignature['signedAt'])
-        : null;
+    final memberSignedAt =
+        memberSignature is Map
+            ? _dateFromAny(memberSignature['signedAt'])
+            : null;
 
     final memo = (data['memo'] ?? '').toString();
     final status = (data['sessionStatus'] ?? '').toString();
@@ -427,7 +441,8 @@ class _PersonalTrainingQuickLogSignPageState
           ..addAll(memberPoints);
         _memberSigned = data['memberSigned'] == true;
         _memberSignedAt = memberSignedAt;
-        _memberSignedFromWeb = memberSignature is Map &&
+        _memberSignedFromWeb =
+            memberSignature is Map &&
             (memberSignature['signedBy'] ?? '').toString() == 'member_web';
       }
 
@@ -464,11 +479,11 @@ class _PersonalTrainingQuickLogSignPageState
         .doc(logId)
         .snapshots()
         .listen((snap) {
-      final data = snap.data();
-      if (!mounted || data == null) return;
+          final data = snap.data();
+          if (!mounted || data == null) return;
 
-      _applyQuickLogData(data);
-    });
+          _applyQuickLogData(data);
+        });
   }
 
   String _dateLabel(DateTime value) {
@@ -596,10 +611,7 @@ class _PersonalTrainingQuickLogSignPageState
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = math.Random.secure();
 
-    return List.generate(
-      32,
-      (_) => chars[random.nextInt(chars.length)],
-    ).join();
+    return List.generate(32, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
   String _buildMemberSignUrl(String token) {
@@ -626,32 +638,28 @@ class _PersonalTrainingQuickLogSignPageState
         .collection('sign_requests')
         .doc(token)
         .set({
-      'token': token,
-      'status': 'waiting_member_signature',
-      'used': false,
-      'memberId': cleanMemberId,
-      'memberName': _cleanMemberName,
-      if (_cleanPhone.isNotEmpty) 'memberPhone': _cleanPhone,
-      if ((widget.scheduleDocId ?? '').trim().isNotEmpty)
-        'scheduleDocId': widget.scheduleDocId!.trim(),
-      'trainingLogId': logId,
-      'lessonType': widget.lessonType,
-      'startAt': Timestamp.fromDate(_effectiveStartAt),
-      'endAt': Timestamp.fromDate(_effectiveEndAt),
-      'requestType': 'member_signature',
-      'source': 'quick_sign_page',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(
-        DateTime.now().add(const Duration(hours: 24)),
-      ),
-    }, SetOptions(merge: true));
+          'token': token,
+          'status': 'waiting_member_signature',
+          'used': false,
+          'memberId': cleanMemberId,
+          'memberName': _cleanMemberName,
+          if (_cleanPhone.isNotEmpty) 'memberPhone': _cleanPhone,
+          if ((widget.scheduleDocId ?? '').trim().isNotEmpty)
+            'scheduleDocId': widget.scheduleDocId!.trim(),
+          'trainingLogId': logId,
+          'lessonType': widget.lessonType,
+          'startAt': Timestamp.fromDate(_effectiveStartAt),
+          'endAt': Timestamp.fromDate(_effectiveEndAt),
+          'requestType': 'member_signature',
+          'source': 'quick_sign_page',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'expiresAt': Timestamp.fromDate(
+            DateTime.now().add(const Duration(hours: 24)),
+          ),
+        }, SetOptions(merge: true));
 
-    return {
-      'token': token,
-      'link': link,
-      'trainingLogId': logId,
-    };
+    return {'token': token, 'link': link, 'trainingLogId': logId};
   }
 
   Future<void> _openMemberSignRequestSheet() async {
@@ -749,9 +757,7 @@ class _PersonalTrainingQuickLogSignPageState
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: link),
-                            );
+                            await Clipboard.setData(ClipboardData(text: link));
 
                             _showToast('서명 링크를 복사했어요.');
                           },
@@ -805,10 +811,7 @@ class _PersonalTrainingQuickLogSignPageState
   List<Map<String, double>?> _signaturePointsToJson(List<Offset?> points) {
     return points.map((point) {
       if (point == null) return null;
-      return {
-        'x': point.dx,
-        'y': point.dy,
-      };
+      return {'x': point.dx, 'y': point.dy};
     }).toList();
   }
 
@@ -868,9 +871,7 @@ class _PersonalTrainingQuickLogSignPageState
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
-              content: Text(
-                'MORE 관리도 잠시 열어두었어요. 관리자에게 승인 요청을 보내둘게요.',
-              ),
+              content: Text('MORE 관리도 잠시 열어두었어요. 관리자에게 승인 요청을 보내둘게요.'),
               duration: Duration(seconds: 2),
             ),
           );
@@ -912,16 +913,21 @@ class _PersonalTrainingQuickLogSignPageState
     final logId = _buildLogId();
     final deductionKey = _buildDeductionKey(logId);
 
-    final memberRef =
-        FirebaseFirestore.instance.collection('members').doc(_cleanMemberId);
+    final memberRef = FirebaseFirestore.instance
+        .collection('members')
+        .doc(_cleanMemberId);
 
-    final logRef =
-        FirebaseFirestore.instance.collection('training_logs').doc(logId);
+    final logRef = FirebaseFirestore.instance
+        .collection('training_logs')
+        .doc(logId);
 
     final scheduleDocId = (widget.scheduleDocId ?? '').trim();
-    final scheduleRef = scheduleDocId.isEmpty
-        ? null
-        : FirebaseFirestore.instance.collection('schedules').doc(scheduleDocId);
+    final scheduleRef =
+        scheduleDocId.isEmpty
+            ? null
+            : FirebaseFirestore.instance
+                .collection('schedules')
+                .doc(scheduleDocId);
 
     try {
       bool alreadyDeducted = false;
@@ -939,15 +945,17 @@ class _PersonalTrainingQuickLogSignPageState
 
         final memberData = memberSnap.data() ?? <String, dynamic>{};
 
-        final sessions = memberData['sessions'] is Map
-            ? Map<String, dynamic>.from(memberData['sessions'] as Map)
-            : <String, dynamic>{};
+        final sessions =
+            memberData['sessions'] is Map
+                ? Map<String, dynamic>.from(memberData['sessions'] as Map)
+                : <String, dynamic>{};
 
         final deductedRaw = memberData['deductedTrainingLogIds'];
 
-        final deductedIds = deductedRaw is List
-            ? deductedRaw.map((e) => e.toString()).toSet()
-            : <String>{};
+        final deductedIds =
+            deductedRaw is List
+                ? deductedRaw.map((e) => e.toString()).toSet()
+                : <String>{};
 
         final existingLogData = logSnap.data();
         final existingDeductionApplied =
@@ -956,27 +964,32 @@ class _PersonalTrainingQuickLogSignPageState
         alreadyDeducted =
             deductedIds.contains(deductionKey) || existingDeductionApplied;
 
-        final rawRemain = memberData['remainSessions'] ??
+        final rawRemain =
+            memberData['remainSessions'] ??
             memberData['remainingSessions'] ??
             sessions['remain'] ??
             memberData['remainingPt'] ??
             memberData['ptRemaining'];
 
         final rawDone = memberData['doneSessions'] ?? sessions['done'];
-        final rawTotal = memberData['totalSessions'] ??
+        final rawTotal =
+            memberData['totalSessions'] ??
             sessions['total'] ??
             memberData['sessionTotal'];
 
-        final currentRemain = rawRemain is num
-            ? rawRemain.toInt()
-            : int.tryParse((rawRemain ?? '').toString()) ?? 0;
+        final currentRemain =
+            rawRemain is num
+                ? rawRemain.toInt()
+                : int.tryParse((rawRemain ?? '').toString()) ?? 0;
 
-        final currentDone = rawDone is num
-            ? rawDone.toInt()
-            : int.tryParse((rawDone ?? '').toString()) ?? 0;
-        final currentTotal = rawTotal is num
-            ? rawTotal.toInt()
-            : int.tryParse((rawTotal ?? '').toString()) ?? 0;
+        final currentDone =
+            rawDone is num
+                ? rawDone.toInt()
+                : int.tryParse((rawDone ?? '').toString()) ?? 0;
+        final currentTotal =
+            rawTotal is num
+                ? rawTotal.toInt()
+                : int.tryParse((rawTotal ?? '').toString()) ?? 0;
 
         int nextRemain = currentRemain;
         int nextDone = currentDone;
@@ -1014,12 +1027,14 @@ class _PersonalTrainingQuickLogSignPageState
           if (_hasContractLinked) 'cancelLockedByContract': true,
           if (_hasContractLinked)
             'cancelLockContractReason': 'contract_linked_lesson_confirm',
-          'title': _mode == _QuickLogMode.normalDeduct
-              ? '빠른 서명'
-              : '빠른 서명 · $_modeLabel',
-          'logTitle': _mode == _QuickLogMode.normalDeduct
-              ? '빠른 서명'
-              : '빠른 서명 · $_modeLabel',
+          'title':
+              _mode == _QuickLogMode.normalDeduct
+                  ? '빠른 서명'
+                  : '빠른 서명 · $_modeLabel',
+          'logTitle':
+              _mode == _QuickLogMode.normalDeduct
+                  ? '빠른 서명'
+                  : '빠른 서명 · $_modeLabel',
           'name': _cleanMemberName,
           'type': widget.lessonType,
           'lessonType': widget.lessonType,
@@ -1039,15 +1054,16 @@ class _PersonalTrainingQuickLogSignPageState
             'points': _signaturePointsToJson(trainerSignaturePoints),
             'signedAt': Timestamp.fromDate(_trainerSignedAt ?? now),
           },
-          'memberSignature': _requiresMemberSignature
-              ? {
-                  'type': 'drawing',
-                  'points': _signaturePointsToJson(memberSignaturePoints),
-                  'signedAt': Timestamp.fromDate(_memberSignedAt ?? now),
-                  'signedBy':
-                      _memberSignedFromWeb ? 'member_web' : 'member_app',
-                }
-              : null,
+          'memberSignature':
+              _requiresMemberSignature
+                  ? {
+                    'type': 'drawing',
+                    'points': _signaturePointsToJson(memberSignaturePoints),
+                    'signedAt': Timestamp.fromDate(_memberSignedAt ?? now),
+                    'signedBy':
+                        _memberSignedFromWeb ? 'member_web' : 'member_app',
+                  }
+                  : null,
           'trainerSig': '[drawing]',
           if (_requiresMemberSignature) 'memberSig': '[drawing]',
           if (_requiresMemberSignature) 'customerSig': '[drawing]',
@@ -1068,9 +1084,10 @@ class _PersonalTrainingQuickLogSignPageState
           'deductionTarget': _shouldDeduct,
           'deductionApplied': actuallyDeducted || alreadyDeducted,
           'deductionAlreadyApplied': alreadyDeducted,
-          'deductionSkippedReason': noRemaining
-              ? 'no_remaining_sessions'
-              : (!_shouldDeduct ? 'not_deduction_mode' : null),
+          'deductionSkippedReason':
+              noRemaining
+                  ? 'no_remaining_sessions'
+                  : (!_shouldDeduct ? 'not_deduction_mode' : null),
           'sessionSnapshotTotal': currentTotal,
           'sessionSnapshotRemainBefore': currentRemain,
           'sessionSnapshotRemainAfter': nextRemain,
@@ -1082,11 +1099,7 @@ class _PersonalTrainingQuickLogSignPageState
           if (!logSnap.exists) 'createdAt': FieldValue.serverTimestamp(),
         };
 
-        transaction.set(
-          logRef,
-          logPayload,
-          SetOptions(merge: true),
-        );
+        transaction.set(logRef, logPayload, SetOptions(merge: true));
 
         final memberBaseUpdate = <String, dynamic>{
           'lastLogAt': Timestamp.fromDate(_effectiveStartAt),
@@ -1120,30 +1133,23 @@ class _PersonalTrainingQuickLogSignPageState
           memberBaseUpdate['lessonStats.serviceSessionCount'] =
               FieldValue.increment(1);
         } else if (_mode == _QuickLogMode.normalDeduct) {
-          memberBaseUpdate['lessonStats.completedCount'] =
-              FieldValue.increment(1);
+          memberBaseUpdate['lessonStats.completedCount'] = FieldValue.increment(
+            1,
+          );
         }
 
         if (_shouldDeduct && !alreadyDeducted && actuallyDeducted) {
-          transaction.set(
-            memberRef,
-            {
-              ...memberBaseUpdate,
-              'remainSessions': nextRemain,
-              'remainingSessions': nextRemain,
-              'doneSessions': nextDone,
-              'sessions.remain': nextRemain,
-              'sessions.done': nextDone,
-              'deductedTrainingLogIds': FieldValue.arrayUnion([deductionKey]),
-            },
-            SetOptions(merge: true),
-          );
+          transaction.set(memberRef, {
+            ...memberBaseUpdate,
+            'remainSessions': nextRemain,
+            'remainingSessions': nextRemain,
+            'doneSessions': nextDone,
+            'sessions.remain': nextRemain,
+            'sessions.done': nextDone,
+            'deductedTrainingLogIds': FieldValue.arrayUnion([deductionKey]),
+          }, SetOptions(merge: true));
         } else {
-          transaction.set(
-            memberRef,
-            memberBaseUpdate,
-            SetOptions(merge: true),
-          );
+          transaction.set(memberRef, memberBaseUpdate, SetOptions(merge: true));
         }
 
         if (scheduleRef != null) {
@@ -1218,18 +1224,20 @@ class _PersonalTrainingQuickLogSignPageState
         memberId: _cleanMemberId,
         trainingLogId: logId,
         lessonAt: _effectiveStartAt,
-        summary: _mode == _QuickLogMode.normalDeduct
-            ? '빠른 서명 · ${widget.lessonType}'
-            : '빠른 서명 · $_modeLabel · ${widget.lessonType}',
+        summary:
+            _mode == _QuickLogMode.normalDeduct
+                ? '빠른 서명 · ${widget.lessonType}'
+                : '빠른 서명 · $_modeLabel · ${widget.lessonType}',
         memo: memoText,
         conditionText: _modeStatusCode,
         painText: '',
-        nextLessonHint: memoText.isNotEmpty
-            ? memoText
-            : (_mode == _QuickLogMode.noShowDeduct ||
-                    _mode == _QuickLogMode.noShowNoDeduct
-                ? '다음 레슨 일정과 노쇼 사유를 확인해 주세요.'
-                : ''),
+        nextLessonHint:
+            memoText.isNotEmpty
+                ? memoText
+                : (_mode == _QuickLogMode.noShowDeduct ||
+                        _mode == _QuickLogMode.noShowNoDeduct
+                    ? '다음 레슨 일정과 노쇼 사유를 확인해 주세요.'
+                    : ''),
       );
 
       await _requestMoreCareSlotAfterQuickSignSaved();
@@ -1273,27 +1281,29 @@ class _PersonalTrainingQuickLogSignPageState
     final selected = _mode == mode;
 
     return InkWell(
-      onTap: _saving
-          ? null
-          : () {
-              setState(() {
-                _mode = mode;
+      onTap:
+          _saving
+              ? null
+              : () {
+                setState(() {
+                  _mode = mode;
 
-                if (!_requiresMemberSignature) {
-                  _memberSigned = false;
-                  _memberSignedAt = null;
-                }
-              });
-            },
+                  if (!_requiresMemberSignature) {
+                    _memberSigned = false;
+                    _memberSignedAt = null;
+                  }
+                });
+              },
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
         decoration: BoxDecoration(
-          color: selected
-              ? kQuickSignPrimaryColor.withOpacity(0.08)
-              : Colors.white,
+          color:
+              selected
+                  ? kQuickSignPrimaryColor.withOpacity(0.08)
+                  : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? kQuickSignPrimaryColor : const Color(0xFFE5E7EB),
@@ -1327,9 +1337,10 @@ class _PersonalTrainingQuickLogSignPageState
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w900,
-                      color: selected
-                          ? kQuickSignPrimaryColor
-                          : const Color(0xFF111827),
+                      color:
+                          selected
+                              ? kQuickSignPrimaryColor
+                              : const Color(0xFF111827),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1471,9 +1482,7 @@ class _PersonalTrainingQuickLogSignPageState
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.10),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.12),
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
             ),
             child: Row(
               children: [
@@ -1504,9 +1513,7 @@ class _PersonalTrainingQuickLogSignPageState
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.14),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.16),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.16)),
                     ),
                     child: Row(
                       children: [
@@ -1642,53 +1649,58 @@ class _PersonalTrainingQuickLogSignPageState
                     children: [
                       Listener(
                         behavior: HitTestBehavior.opaque,
-                        onPointerDown: signed
-                            ? null
-                            : (event) {
-                                setState(() {
-                                  _isSigning = true;
-                                });
+                        onPointerDown:
+                            signed
+                                ? null
+                                : (event) {
+                                  setState(() {
+                                    _isSigning = true;
+                                  });
 
-                                final pos = event.localPosition;
-                                onPointAdded(pos);
-                              },
-                        onPointerMove: signed
-                            ? null
-                            : (event) {
-                                final pos = event.localPosition;
-                                onPointAdded(pos);
-                              },
-                        onPointerUp: signed
-                            ? null
-                            : (_) {
-                                onPointAdded(null);
-                                setState(() {
-                                  _isSigning = false;
-                                });
-                              },
-                        onPointerCancel: signed
-                            ? null
-                            : (_) {
-                                onPointAdded(null);
-                                setState(() {
-                                  _isSigning = false;
-                                });
-                              },
+                                  final pos = event.localPosition;
+                                  onPointAdded(pos);
+                                },
+                        onPointerMove:
+                            signed
+                                ? null
+                                : (event) {
+                                  final pos = event.localPosition;
+                                  onPointAdded(pos);
+                                },
+                        onPointerUp:
+                            signed
+                                ? null
+                                : (_) {
+                                  onPointAdded(null);
+                                  setState(() {
+                                    _isSigning = false;
+                                  });
+                                },
+                        onPointerCancel:
+                            signed
+                                ? null
+                                : (_) {
+                                  onPointAdded(null);
+                                  setState(() {
+                                    _isSigning = false;
+                                  });
+                                },
                         child: RepaintBoundary(
                           child: CustomPaint(
                             painter: _QuickSignaturePainter(points),
-                            child: points.whereType<Offset>().isEmpty
-                                ? const Center(
-                                    child: Text(
-                                      '여기에 손서명해주세요',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF9CA3AF),
+                            child:
+                                points.whereType<Offset>().isEmpty
+                                    ? const Center(
+                                      child: Text(
+                                        '여기에 손서명해주세요',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF9CA3AF),
+                                        ),
                                       ),
-                                    ),
-                                  )
-                                : const SizedBox.expand(),
+                                    )
+                                    : const SizedBox.expand(),
                           ),
                         ),
                       ),
@@ -1707,8 +1719,9 @@ class _PersonalTrainingQuickLogSignPageState
                                   vertical: 7,
                                 ),
                                 decoration: BoxDecoration(
-                                  color:
-                                      const Color(0xFF111827).withOpacity(0.72),
+                                  color: const Color(
+                                    0xFF111827,
+                                  ).withOpacity(0.72),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: const Row(
@@ -1743,9 +1756,10 @@ class _PersonalTrainingQuickLogSignPageState
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _isQuickLogConfirmed
-                          ? null
-                          : (signed || points.isNotEmpty ? onClear : null),
+                      onPressed:
+                          _isQuickLogConfirmed
+                              ? null
+                              : (signed || points.isNotEmpty ? onClear : null),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF374151),
                         side: const BorderSide(color: Color(0xFFD1D5DB)),
@@ -1763,15 +1777,16 @@ class _PersonalTrainingQuickLogSignPageState
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton(
-                      onPressed: signed
-                          ? null
-                          : () {
-                              if (points.whereType<Offset>().isEmpty) {
-                                _showToast('서명을 먼저 입력해주세요.');
-                                return;
-                              }
-                              onSign();
-                            },
+                      onPressed:
+                          signed
+                              ? null
+                              : () {
+                                if (points.whereType<Offset>().isEmpty) {
+                                  _showToast('서명을 먼저 입력해주세요.');
+                                  return;
+                                }
+                                onSign();
+                              },
                       style: FilledButton.styleFrom(
                         backgroundColor: scheme.secondary,
                         foregroundColor: scheme.onSecondary,
@@ -1801,9 +1816,10 @@ class _PersonalTrainingQuickLogSignPageState
     final remain = _remainingSessions;
     final total = _totalSessions;
 
-    final countLabel = remain == null && total == null
-        ? '회차정보 없음'
-        : total == null
+    final countLabel =
+        remain == null && total == null
+            ? '회차정보 없음'
+            : total == null
             ? '잔여 ${remain ?? 0}회'
             : '잔여 ${remain ?? 0}/$total';
 
@@ -1816,9 +1832,7 @@ class _PersonalTrainingQuickLogSignPageState
       padding: EdgeInsets.fromLTRB(18, topInset + 6, 18, 14),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1834,9 +1848,7 @@ class _PersonalTrainingQuickLogSignPageState
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.16),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.18),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.18)),
                   ),
                   child: const Icon(
                     Icons.chevron_left_rounded,
@@ -1865,9 +1877,7 @@ class _PersonalTrainingQuickLogSignPageState
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.16),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.18),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.18)),
                   ),
                   child: const Icon(
                     Icons.qr_code_2_rounded,
@@ -1977,9 +1987,7 @@ class _PersonalTrainingQuickLogSignPageState
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.12),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.12)),
                   ),
                   child: Row(
                     children: [
@@ -2081,34 +2089,37 @@ class _PersonalTrainingQuickLogSignPageState
     final selected = _mode == mode;
 
     return InkWell(
-      onTap: _saving
-          ? null
-          : () {
-              setState(() {
-                _mode = mode;
+      onTap:
+          _saving
+              ? null
+              : () {
+                setState(() {
+                  _mode = mode;
 
-                if (!_requiresMemberSignature) {
-                  _memberSigned = false;
-                  _memberSignedAt = null;
-                }
+                  if (!_requiresMemberSignature) {
+                    _memberSigned = false;
+                    _memberSignedAt = null;
+                  }
 
-                _modeExpanded = false;
-              });
-            },
+                  _modeExpanded = false;
+                });
+              },
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         decoration: BoxDecoration(
-          color: selected
-              ? Colors.white.withOpacity(0.22)
-              : Colors.white.withOpacity(0.10),
+          color:
+              selected
+                  ? Colors.white.withOpacity(0.22)
+                  : Colors.white.withOpacity(0.10),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected
-                ? Colors.white.withOpacity(0.70)
-                : Colors.white.withOpacity(0.16),
+            color:
+                selected
+                    ? Colors.white.withOpacity(0.70)
+                    : Colors.white.withOpacity(0.16),
             width: selected ? 1.4 : 1,
           ),
         ),
@@ -2122,11 +2133,7 @@ class _PersonalTrainingQuickLogSignPageState
               size: 19,
             ),
             const SizedBox(width: 8),
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 18,
-            ),
+            Icon(icon, color: Colors.white, size: 18),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -2180,17 +2187,15 @@ class _PersonalTrainingQuickLogSignPageState
         ),
         contentPadding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
       ),
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-      ),
+      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
     );
   }
 
   Widget _buildNoticeCard() {
-    final text = _shouldDeduct
-        ? '저장하면 레슨이 잠기고 잔여 레슨이 1회 차감돼요.'
-        : '저장하면 레슨은 기록되지만 잔여 레슨은 차감되지 않아요.';
+    final text =
+        _shouldDeduct
+            ? '저장하면 레슨이 잠기고 잔여 레슨이 1회 차감돼요.'
+            : '저장하면 레슨은 기록되지만 잔여 레슨은 차감되지 않아요.';
 
     return Container(
       width: double.infinity,
@@ -2212,9 +2217,10 @@ class _PersonalTrainingQuickLogSignPageState
                 ? Icons.lock_outline_rounded
                 : Icons.info_outline_rounded,
             size: 18,
-            color: _shouldDeduct
-                ? const Color(0xFFD97706)
-                : const Color(0xFF059669),
+            color:
+                _shouldDeduct
+                    ? const Color(0xFFD97706)
+                    : const Color(0xFF059669),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -2224,9 +2230,10 @@ class _PersonalTrainingQuickLogSignPageState
                 fontSize: 11.5,
                 height: 1.35,
                 fontWeight: FontWeight.w700,
-                color: _shouldDeduct
-                    ? const Color(0xFF92400E)
-                    : const Color(0xFF047857),
+                color:
+                    _shouldDeduct
+                        ? const Color(0xFF92400E)
+                        : const Color(0xFF047857),
               ),
             ),
           ),
@@ -2262,9 +2269,10 @@ class _PersonalTrainingQuickLogSignPageState
         body: SafeArea(
           top: false,
           child: SingleChildScrollView(
-            physics: _isSigning
-                ? const NeverScrollableScrollPhysics()
-                : const BouncingScrollPhysics(),
+            physics:
+                _isSigning
+                    ? const NeverScrollableScrollPhysics()
+                    : const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(0, 0, 0, 110),
             child: Column(
               children: [
@@ -2304,9 +2312,10 @@ class _PersonalTrainingQuickLogSignPageState
                       const SizedBox(height: 12),
                       _buildSignatureBox(
                         title: '회원 서명',
-                        helper: !memberSignatureEnabled
-                            ? '노쇼 처리에서는 회원 서명을 받지 않아도 저장할 수 있어요.'
-                            : _memberSignedFromWeb
+                        helper:
+                            !memberSignatureEnabled
+                                ? '노쇼 처리에서는 회원 서명을 받지 않아도 저장할 수 있어요.'
+                                : _memberSignedFromWeb
                                 ? '회원이 링크로 서명을 완료했어요. 강사 서명 후 저장하면 레슨에 반영됩니다.'
                                 : '회원이 레슨 참여를 확인합니다.',
                         points: _memberSignaturePoints,
@@ -2353,28 +2362,30 @@ class _PersonalTrainingQuickLogSignPageState
               color: context.mtfThemeTokens.cardSurface,
               boxShadow: [
                 BoxShadow(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .shadow
-                      .withValues(alpha: 0.10),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.shadow.withValues(alpha: 0.10),
                   blurRadius: 14,
                   offset: const Offset(0, -4),
                 ),
               ],
             ),
             child: FilledButton(
-              onPressed: _isQuickLogConfirmed
-                  ? () {
-                      _showToast('이미 확정했습니다');
-                    }
-                  : (_canSave ? _saveQuickSignedLog : null),
+              onPressed:
+                  _isQuickLogConfirmed
+                      ? () {
+                        _showToast('이미 확정했습니다');
+                      }
+                      : (_canSave ? _saveQuickSignedLog : null),
               style: FilledButton.styleFrom(
-                backgroundColor: _isQuickLogConfirmed
-                    ? const Color(0xFFE5E7EB)
-                    : Theme.of(context).colorScheme.secondary,
-                foregroundColor: _isQuickLogConfirmed
-                    ? const Color(0xFF9CA3AF)
-                    : Theme.of(context).colorScheme.onSecondary,
+                backgroundColor:
+                    _isQuickLogConfirmed
+                        ? const Color(0xFFE5E7EB)
+                        : Theme.of(context).colorScheme.secondary,
+                foregroundColor:
+                    _isQuickLogConfirmed
+                        ? const Color(0xFF9CA3AF)
+                        : Theme.of(context).colorScheme.onSecondary,
                 disabledBackgroundColor: const Color(0xFFE5E7EB),
                 disabledForegroundColor: const Color(0xFF9CA3AF),
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -2382,26 +2393,27 @@ class _PersonalTrainingQuickLogSignPageState
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
-              child: _saving
-                  ? const SizedBox(
-                      width: 19,
-                      height: 19,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+              child:
+                  _saving
+                      ? const SizedBox(
+                        width: 19,
+                        height: 19,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : Text(
+                        _isQuickLogConfirmed
+                            ? '레슨 확정'
+                            : _waitingTrainerConfirm
+                            ? '강사 확인 후 레슨 반영'
+                            : (_shouldDeduct ? '레슨 완료 저장' : '서명 저장하기'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    )
-                  : Text(
-                      _isQuickLogConfirmed
-                          ? '레슨 확정'
-                          : _waitingTrainerConfirm
-                              ? '강사 확인 후 레슨 반영'
-                              : (_shouldDeduct ? '레슨 완료 저장' : '서명 저장하기'),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
             ),
           ),
         ),
@@ -2417,11 +2429,12 @@ class _QuickSignaturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF111827)
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 2.8;
+    final paint =
+        Paint()
+          ..color = const Color(0xFF111827)
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..strokeWidth = 2.8;
 
     for (int i = 0; i < points.length - 1; i++) {
       final current = points[i];

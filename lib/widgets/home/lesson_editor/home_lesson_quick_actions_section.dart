@@ -87,46 +87,48 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       Future<void> Function()? onDisabledTap,
       bool isContractTask = false,
     }) {
-      final color = isContractTask
-          ? (isDark ? const Color(0xFFFFF4CF) : const Color(0xFF0B1E32))
-          : enabled
+      final color =
+          isContractTask
+              ? (isDark ? const Color(0xFFFFF4CF) : const Color(0xFF0B1E32))
+              : enabled
               ? (foregroundColor ?? colors.primary)
               : colors.onSurfaceVariant;
-      final iconColor = isContractTask
-          ? (isDark ? const Color(0xFFEFCB62) : const Color(0xFF9A6810))
-          : color;
-      final backgroundColor = isContractTask
-          ? (isDark ? const Color(0xFF4A401F) : const Color(0xFFFFF1C2))
-          : enabled
+      final iconColor =
+          isContractTask
+              ? (isDark ? const Color(0xFFEFCB62) : const Color(0xFF9A6810))
+              : color;
+      final backgroundColor =
+          isContractTask
+              ? (isDark ? const Color(0xFF4A401F) : const Color(0xFFFFF1C2))
+              : enabled
               ? colors.surface
               : colors.surfaceContainerHigh;
-      final borderColor = isContractTask
-          ? const Color(0xFFEFCB62)
-          : enabled
+      final borderColor =
+          isContractTask
+              ? const Color(0xFFEFCB62)
+              : enabled
               ? color.withValues(alpha: 0.18)
               : colors.outline;
 
       final button = InkWell(
-        onTap: enabled
-            ? () {
-                onTap();
-              }
-            : () {
-                if (onDisabledTap != null) {
-                  onDisabledTap();
-                  return;
+        onTap:
+            enabled
+                ? () {
+                  onTap();
                 }
+                : () {
+                  if (onDisabledTap != null) {
+                    onDisabledTap();
+                    return;
+                  }
 
-                onShowToast(disabledMessage);
-              },
+                  onShowToast(disabledMessage);
+                },
         borderRadius: BorderRadius.circular(14),
         child: Container(
           key: actionKey,
           height: 36,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 9,
-            vertical: 9,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
@@ -135,11 +137,7 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color: iconColor,
-              ),
+              Icon(icon, size: 16, color: iconColor),
               const SizedBox(width: 4),
               Text(
                 label,
@@ -180,9 +178,7 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       );
     }
 
-    Widget buildLessonConfirmAction({
-      required bool hasContract,
-    }) {
+    Widget buildLessonConfirmAction({required bool hasContract}) {
       if (isConfirmedLesson) {
         return buildQuickAction(
           label: '확정완료',
@@ -224,9 +220,10 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
         icon: Icons.description_outlined,
         isContractTask: true,
         enabled: canUseLinkedMemberActions && hasCallback,
-        disabledMessage: canUseLinkedMemberActions
-            ? '레슨계약서를 열 수 없어요.'
-            : linkedMemberDisabledMessage,
+        disabledMessage:
+            canUseLinkedMemberActions
+                ? '레슨계약서를 열 수 없어요.'
+                : linkedMemberDisabledMessage,
         onTap: onOpenLessonContract ?? () async {},
       );
     }
@@ -240,9 +237,10 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
         icon: Icons.card_membership_rounded,
         isContractTask: true,
         enabled: canUseLinkedMemberActions && hasCallback,
-        disabledMessage: canUseLinkedMemberActions
-            ? '회원권계약서를 열 수 없어요.'
-            : linkedMemberDisabledMessage,
+        disabledMessage:
+            canUseLinkedMemberActions
+                ? '회원권계약서를 열 수 없어요.'
+                : linkedMemberDisabledMessage,
         onTap: onOpenMembershipManage ?? () async {},
       );
     }
@@ -315,16 +313,16 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       );
     }
 
-    Widget buildLinkedActions({
-      required bool hasContract,
-    }) {
-      final cancelBlockedByProtectedRecord = isCustomerSignedConfirmedLesson ||
+    Widget buildLinkedActions({required bool hasContract}) {
+      final cancelBlockedByProtectedRecord =
+          isCustomerSignedConfirmedLesson ||
           isContractLinkedConfirmedLesson ||
           hasContract;
 
-      final cancelDisabledMessage = isCustomerSignedConfirmedLesson
-          ? '회원 서명이 포함된 레슨확정은 임의로 확정취소할 수 없어요.'
-          : '계약서와 연결된 레슨확정은 홈에서 임의로 취소할 수 없어요.';
+      final cancelDisabledMessage =
+          isCustomerSignedConfirmedLesson
+              ? '회원 서명이 포함된 레슨확정은 임의로 확정취소할 수 없어요.'
+              : '계약서와 연결된 레슨확정은 홈에서 임의로 취소할 수 없어요.';
 
       return Wrap(
         spacing: 5,
@@ -335,9 +333,10 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
           if (isPersistedSchedule && isConfirmedLesson)
             buildQuickAction(
               label: '확정취소',
-              icon: cancelBlockedByProtectedRecord
-                  ? Icons.block_rounded
-                  : Icons.lock_open_rounded,
+              icon:
+                  cancelBlockedByProtectedRecord
+                      ? Icons.block_rounded
+                      : Icons.lock_open_rounded,
               foregroundColor: const Color(0xFFDC2626),
               enabled: !cancelBlockedByProtectedRecord,
               disabledMessage: cancelDisabledMessage,
@@ -393,9 +392,7 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
 
               final hasContract = snapshot.data == true;
 
-              return buildLinkedActions(
-                hasContract: hasContract,
-              );
+              return buildLinkedActions(hasContract: hasContract);
             },
           ),
       ],

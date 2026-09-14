@@ -27,6 +27,15 @@
         {"fieldPath": "workspaceType", "order": "ASCENDING"},
         {"fieldPath": "startAt", "order": "ASCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "trainerId", "order": "ASCENDING"},
+        {"fieldPath": "workspaceType", "order": "ASCENDING"},
+        {"fieldPath": "isDeleted", "order": "ASCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

@@ -30,7 +30,8 @@ class _PersonalWorkspaceReadyPageState
   @override
   void initState() {
     super.initState();
-    _gateway = widget.memberGateway ??
+    _gateway =
+        widget.memberGateway ??
         FirebaseManagedMemberWorkspaceGateway(uid: widget.uid);
   }
 
@@ -53,9 +54,9 @@ class _PersonalWorkspaceReadyPageState
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(managedMemberErrorMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(managedMemberErrorMessage(error))));
     }
   }
 
@@ -69,15 +70,17 @@ class _PersonalWorkspaceReadyPageState
           IconButton(
             key: const Key('open_personal_my_page'),
             tooltip: '마이페이지',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => PersonalMyPage(
-                  uid: widget.uid,
-                  accountService: widget.service,
-                  memberGateway: _gateway,
+            onPressed:
+                () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder:
+                        (_) => PersonalMyPage(
+                          uid: widget.uid,
+                          accountService: widget.service,
+                          memberGateway: _gateway,
+                        ),
+                  ),
                 ),
-              ),
-            ),
             icon: const Icon(Icons.account_circle_outlined),
           ),
         ],
@@ -98,7 +101,8 @@ class _PersonalWorkspaceReadyPageState
               StreamBuilder<ManagedMemberUsage>(
                 stream: _gateway.watchUsage(),
                 builder: (context, snapshot) {
-                  final usage = snapshot.data ??
+                  final usage =
+                      snapshot.data ??
                       const ManagedMemberUsage(count: 0, limit: 10);
                   return Card(
                     child: Padding(
@@ -128,11 +132,12 @@ class _PersonalWorkspaceReadyPageState
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 key: const Key('open_personal_schedules'),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => PersonalSchedulePage(uid: widget.uid),
-                  ),
-                ),
+                onPressed:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => PersonalSchedulePage(uid: widget.uid),
+                      ),
+                    ),
                 icon: const Icon(Icons.calendar_month_rounded),
                 label: const Text('레슨일정 관리'),
               ),
@@ -140,7 +145,8 @@ class _PersonalWorkspaceReadyPageState
               StreamBuilder<ManagedMemberUsage>(
                 stream: _gateway.watchUsage(),
                 builder: (context, snapshot) {
-                  final usage = snapshot.data ??
+                  final usage =
+                      snapshot.data ??
                       const ManagedMemberUsage(count: 0, limit: 10);
                   return FilledButton.icon(
                     key: const Key('create_managed_member_button'),
@@ -156,9 +162,7 @@ class _PersonalWorkspaceReadyPageState
                   stream: _gateway.watchMembers(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
-                      return const Center(
-                        child: Text('회원 목록을 불러오지 못했어요.'),
-                      );
+                      return const Center(child: Text('회원 목록을 불러오지 못했어요.'));
                     }
                     final members = snapshot.data ?? const [];
                     if (members.isEmpty) {
@@ -180,28 +184,42 @@ class _PersonalWorkspaceReadyPageState
                                 ? _stateLabel(member.managementState)
                                 : '${member.phone} · ${_stateLabel(member.managementState)}',
                           ),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => PersonalTrainingLogWorkspacePage(
-                                uid: widget.uid,
-                                memberId: member.memberId,
-                                memberName: member.name,
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder:
+                                      (_) => PersonalTrainingLogWorkspacePage(
+                                        uid: widget.uid,
+                                        memberId: member.memberId,
+                                        memberName: member.name,
+                                      ),
+                                ),
                               ),
-                            ),
-                          ),
                           trailing: PopupMenuButton<String>(
                             onSelected: (state) => _transition(member, state),
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(value: 'active', child: Text('활성')),
-                              PopupMenuItem(
-                                  value: 'paused', child: Text('회원권 정지')),
-                              PopupMenuItem(
-                                  value: 'dormant', child: Text('휴면')),
-                              PopupMenuItem(
-                                  value: 'expired', child: Text('만료')),
-                              PopupMenuItem(
-                                  value: 'deleted', child: Text('삭제')),
-                            ],
+                            itemBuilder:
+                                (context) => const [
+                                  PopupMenuItem(
+                                    value: 'active',
+                                    child: Text('활성'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'paused',
+                                    child: Text('회원권 정지'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'dormant',
+                                    child: Text('휴면'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'expired',
+                                    child: Text('만료'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'deleted',
+                                    child: Text('삭제'),
+                                  ),
+                                ],
                           ),
                         );
                       },
@@ -217,11 +235,11 @@ class _PersonalWorkspaceReadyPageState
   }
 
   static String _stateLabel(String state) => switch (state) {
-        'paused' => '회원권 정지',
-        'dormant' => '휴면',
-        'expired' => '만료',
-        _ => '활성',
-      };
+    'paused' => '회원권 정지',
+    'dormant' => '휴면',
+    'expired' => '만료',
+    _ => '활성',
+  };
 }
 
 class _CreateManagedMemberDialog extends StatefulWidget {

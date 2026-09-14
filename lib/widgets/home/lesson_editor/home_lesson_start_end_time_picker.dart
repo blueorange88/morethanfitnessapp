@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'home_single_lesson_time_dialog.dart';
 
-enum HomeLessonTimePickerInitialFocus {
-  start,
-  end,
-}
+enum HomeLessonTimePickerInitialFocus { start, end }
 
 class HomeLessonStartEndTimeResult {
   const HomeLessonStartEndTimeResult({
@@ -46,9 +43,7 @@ class HomeLessonStartEndTimePicker {
 
     final startBase = _baseDateFromTime(startTime);
     return _timeStringFromDateTime(
-      startBase.add(
-        Duration(minutes: preferredDurationMinutes),
-      ),
+      startBase.add(Duration(minutes: preferredDurationMinutes)),
     );
   }
 
@@ -59,9 +54,7 @@ class HomeLessonStartEndTimePicker {
   }) {
     final diff = endBase.difference(startBase).inMinutes;
 
-    return (diff == 30 || diff == 50 || diff == 60)
-        ? diff
-        : selectedDuration;
+    return (diff == 30 || diff == 50 || diff == 60) ? diff : selectedDuration;
   }
 
   static Future<HomeLessonStartEndTimeResult?> show({
@@ -139,19 +132,19 @@ class HomeLessonStartEndTimePicker {
 
     final pickedDuration = startResult['duration'];
 
-    final selectedDuration = pickedDuration is int
-        ? pickedDuration
-        : preferredDurationMinutes;
+    final selectedDuration =
+        pickedDuration is int ? pickedDuration : preferredDurationMinutes;
 
     final startBase = _baseDateFromTime(start);
 
     final fallbackEndTime = initialEndTime.trim();
 
-    final autoEnd = selectedDuration > 0
-        ? _timeStringFromDateTime(
-      startBase.add(Duration(minutes: selectedDuration)),
-    )
-        : fallbackEndTime;
+    final autoEnd =
+        selectedDuration > 0
+            ? _timeStringFromDateTime(
+              startBase.add(Duration(minutes: selectedDuration)),
+            )
+            : fallbackEndTime;
 
     final endResult = await HomeSingleLessonTimeDialog.show(
       context: context,

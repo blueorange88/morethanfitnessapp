@@ -15,6 +15,7 @@ void main() {
     String workspaceType = 'personal',
     bool isDeleted = false,
     String deleteStatus = '',
+    DateTime? lastLessonAt,
   }) {
     return HomeMemberSuggestionCandidate(
       id: id,
@@ -26,6 +27,7 @@ void main() {
       workspaceType: workspaceType,
       isDeleted: isDeleted,
       deleteStatus: deleteStatus,
+      lastLessonAt: lastLessonAt,
     );
   }
 
@@ -80,39 +82,21 @@ void main() {
   });
 
   test('입력값이 있을 때만 자동완성 dropdown을 연다', () {
-    expect(
-      shouldShowHomeMemberSearchSuggestions(
-        searchKeyword: '  ',
-      ),
-      isFalse,
-    );
-    expect(
-      shouldShowHomeMemberSearchSuggestions(
-        searchKeyword: '홍',
-      ),
-      isTrue,
-    );
+    expect(shouldShowHomeMemberSearchSuggestions(searchKeyword: '  '), isFalse);
+    expect(shouldShowHomeMemberSearchSuggestions(searchKeyword: '홍'), isTrue);
   });
 
   test('owner 범위 회원을 createdAt 최신순으로 반환한다', () {
     final results = filterHomeMemberSuggestions(
       candidates: [
-        candidate(
-          id: 'old',
-          name: '이전회원',
-          createdAt: DateTime(2026, 1, 1),
-        ),
+        candidate(id: 'old', name: '이전회원', createdAt: DateTime(2026, 1, 1)),
         candidate(
           id: 'other-owner',
           name: '다른강사회원',
           createdAt: DateTime(2026, 4, 1),
           trainerId: 'owner-b',
         ),
-        candidate(
-          id: 'new',
-          name: '최신회원',
-          createdAt: DateTime(2026, 3, 1),
-        ),
+        candidate(id: 'new', name: '최신회원', createdAt: DateTime(2026, 3, 1)),
       ],
       ownerUid: 'owner-a',
       searchKeyword: '',
@@ -154,11 +138,7 @@ void main() {
 
   test('owner가 없거나 검색 결과가 없으면 추천하지 않는다', () {
     final members = [
-      candidate(
-        id: 'member-a',
-        name: '홍길동',
-        createdAt: DateTime(2026, 3, 1),
-      ),
+      candidate(id: 'member-a', name: '홍길동', createdAt: DateTime(2026, 3, 1)),
     ];
 
     expect(
@@ -219,47 +199,52 @@ void main() {
       ),
     ];
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.all(12),
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              final hasLinkedMember = selectedMemberId != null;
-              return HomeLessonMemberInputSection(
-                key: const Key('home_member_input_section'),
-                nameController: nameController,
-                sessionCountController: sessionCountController,
-                hasLinkedMember: hasLinkedMember,
-                onNameTap: () {},
-                onNameChanged: (_) => setState(() {
-                  selectedMemberId = null;
-                }),
-                onClearName: () => setState(nameController.clear),
-                showAutocompleteDropdown:
-                    nameController.text.trim().isNotEmpty && !hasLinkedMember,
-                autocompleteDropdown: HomeMemberSearchSuggestionsList(
-                  members: members,
-                  onPicked: (member) => setState(() {
-                    selectedMemberId = member.id;
-                    nameController.value = TextEditingValue(
-                      text: member.name,
-                      selection: TextSelection.collapsed(
-                        offset: member.name.length,
-                      ),
-                    );
-                  }),
-                ),
-              );
-            },
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(12),
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                final hasLinkedMember = selectedMemberId != null;
+                return HomeLessonMemberInputSection(
+                  key: const Key('home_member_input_section'),
+                  nameController: nameController,
+                  sessionCountController: sessionCountController,
+                  hasLinkedMember: hasLinkedMember,
+                  onNameTap: () {},
+                  onNameChanged:
+                      (_) => setState(() {
+                        selectedMemberId = null;
+                      }),
+                  onClearName: () => setState(nameController.clear),
+                  showAutocompleteDropdown:
+                      nameController.text.trim().isNotEmpty && !hasLinkedMember,
+                  autocompleteDropdown: HomeMemberSearchSuggestionsList(
+                    members: members,
+                    onPicked:
+                        (member) => setState(() {
+                          selectedMemberId = member.id;
+                          nameController.value = TextEditingValue(
+                            text: member.name,
+                            selection: TextSelection.collapsed(
+                              offset: member.name.length,
+                            ),
+                          );
+                        }),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
-    ));
+    );
 
-    final heightBefore = tester
-        .getSize(find.byKey(const Key('home_member_input_section')))
-        .height;
+    final heightBefore =
+        tester
+            .getSize(find.byKey(const Key('home_member_input_section')))
+            .height;
     await tester.tap(find.byKey(const Key('home_lesson_member_name_field')));
     await tester.enterText(
       find.byKey(const Key('home_lesson_member_name_field')),
@@ -268,8 +253,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.byKey(const Key('home_member_search_suggestions_list')),
-        findsOneWidget);
+    expect(
+      find.byKey(const Key('home_member_search_suggestions_list')),
+      findsOneWidget,
+    );
     expect(
       tester.getSize(find.byKey(const Key('home_member_input_section'))).height,
       heightBefore,
@@ -284,8 +271,10 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(selectedMemberId, 'member-hgd');
-    expect(find.byKey(const Key('home_member_search_suggestions_list')),
-        findsNothing);
+    expect(
+      find.byKey(const Key('home_member_search_suggestions_list')),
+      findsNothing,
+    );
 
     await tester.tap(find.byKey(const Key('home_lesson_member_name_field')));
     await tester.enterText(
@@ -294,8 +283,10 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    expect(find.byKey(const Key('home_member_search_suggestions_list')),
-        findsNothing);
+    expect(
+      find.byKey(const Key('home_member_search_suggestions_list')),
+      findsNothing,
+    );
   });
 
   testWidgets('검색 결과 없음 문구와 스크롤 목록을 제공한다', (tester) async {
@@ -333,14 +324,11 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('320·360·390·411dp와 키보드 viewInsets에서 Overlay 높이를 유지한다',
-      (tester) async {
+  testWidgets('320·360·390·411dp와 키보드 viewInsets에서 Overlay 높이를 유지한다', (
+    tester,
+  ) async {
     final members = [
-      candidate(
-        id: 'member-hgd',
-        name: '홍길동',
-        createdAt: DateTime(2026, 3, 1),
-      ),
+      candidate(id: 'member-hgd', name: '홍길동', createdAt: DateTime(2026, 3, 1)),
     ];
 
     for (final width in const [320.0, 360.0, 390.0, 411.0]) {
@@ -393,7 +381,8 @@ void main() {
       expect(
         tester
             .getSize(
-                find.byKey(const Key('home_member_search_suggestions_list')))
+              find.byKey(const Key('home_member_search_suggestions_list')),
+            )
             .height,
         lessThanOrEqualTo(homeMemberSuggestionContentMaxHeight),
         reason: 'width=$width',
@@ -411,17 +400,24 @@ void main() {
 
   test('Home 위젯 트리는 입력 Overlay와 독립 최근 회원 영역을 함께 유지한다', () {
     final source = File('lib/pages/home_page.dart').readAsStringSync();
-    final fieldSource = File(
-      'lib/widgets/home/lesson_editor/home_lesson_editor_fields.dart',
-    ).readAsStringSync();
+    final fieldSource =
+        File(
+          'lib/widgets/home/lesson_editor/home_lesson_editor_fields.dart',
+        ).readAsStringSync();
     final inputIndex = source.indexOf('HomeLessonMemberInputSection(');
     final memoIndex = source.indexOf('HomeLessonMemoSection(', inputIndex);
-    final autocompleteIndex =
-        source.indexOf('HomeMemberSearchSuggestionsOverlay(', inputIndex);
-    final quickActionIndex =
-        source.indexOf('HomeLessonQuickActionsSection(', memoIndex);
-    final recentIndex =
-        source.indexOf('HomeRecentMembersSection(', quickActionIndex);
+    final autocompleteIndex = source.indexOf(
+      'HomeMemberSearchSuggestionsOverlay(',
+      inputIndex,
+    );
+    final quickActionIndex = source.indexOf(
+      'HomeLessonQuickActionsSection(',
+      memoIndex,
+    );
+    final recentIndex = source.indexOf(
+      'HomeRecentMembersSection(',
+      quickActionIndex,
+    );
     final footerIndex = source.indexOf('HomeLessonFooterActions(', recentIndex);
 
     expect(inputIndex, greaterThan(0));
@@ -441,14 +437,156 @@ void main() {
     expect(fieldSource, contains('OverlayEntry('));
     expect(fieldSource, contains('CompositedTransformTarget('));
     expect(fieldSource, contains('CompositedTransformFollower('));
-    expect(source.substring(inputIndex, footerIndex),
-        isNot(contains('Scrollable.ensureVisible')));
+    expect(
+      source.substring(inputIndex, footerIndex),
+      isNot(contains('Scrollable.ensureVisible')),
+    );
+  });
+
+  test('자주 레슨한 회원은 최근등록 다음에, 레슨이 뜸한 회원은 맨 마지막에 배치된다', () {
+    final now = DateTime(2026, 3, 15);
+    final candidates = [
+      candidate(id: 'm1', name: '회원1', createdAt: DateTime(2026, 3, 14)),
+      candidate(id: 'm2', name: '회원2', createdAt: DateTime(2026, 3, 13)),
+      candidate(id: 'm3', name: '회원3', createdAt: DateTime(2026, 3, 12)),
+      candidate(id: 'm4', name: '회원4', createdAt: DateTime(2026, 3, 11)),
+      candidate(id: 'freq', name: '열심회원', createdAt: DateTime(2026, 2, 1)),
+      candidate(
+        id: 'absent',
+        name: '뜸한회원',
+        createdAt: DateTime(2026, 1, 1),
+        lastLessonAt: DateTime(2026, 2, 20),
+      ),
+    ];
+
+    final result = buildAiRecommendedMembers(
+      candidatesByRecency: candidates,
+      recentLessonCounts: const {'freq': 4},
+      now: now,
+    );
+
+    expect(result, hasLength(6));
+    expect(result.sublist(0, 4).map((e) => e.candidate.id), [
+      'm1',
+      'm2',
+      'm3',
+      'm4',
+    ]);
+    expect(result[4].candidate.id, 'freq');
+    expect(result[4].reason, HomeAiRecommendationReason.frequent);
+    expect(result[5].candidate.id, 'absent');
+    expect(result[5].reason, HomeAiRecommendationReason.absent);
+    expect(
+      result.map((e) => e.candidate.id).toSet().length,
+      result.length,
+      reason: '같은 회원이 두 번 등장하면 안 된다',
+    );
+  });
+
+  test('신규 등록이 없어 최근등록이 비면 빈 자리는 자주 레슨한 회원들로 채워지고 한 줄로 줄어든다', () {
+    final now = DateTime(2026, 3, 15);
+    final candidates = [
+      candidate(id: 'old1', name: '오래된회원1', createdAt: DateTime(2025, 1, 1)),
+      candidate(id: 'freq1', name: '자주1', createdAt: DateTime(2025, 1, 2)),
+      candidate(id: 'freq2', name: '자주2', createdAt: DateTime(2025, 1, 3)),
+      candidate(
+        id: 'absent1',
+        name: '뜸함1',
+        createdAt: DateTime(2025, 1, 4),
+        lastLessonAt: DateTime(2026, 2, 1),
+      ),
+    ];
+
+    final result = buildAiRecommendedMembers(
+      candidatesByRecency: candidates,
+      recentLessonCounts: const {'freq1': 5, 'freq2': 3},
+      now: now,
+    );
+
+    expect(
+      result.where((e) => e.reason == HomeAiRecommendationReason.recent),
+      isEmpty,
+      reason: '14일 이내 등록자가 없으면 최근등록 슬롯은 비어야 한다',
+    );
+    expect(result, hasLength(3), reason: '자주 2명 + 뜸함 1명 = 한 줄(3칸)만 채워져야 한다');
+    expect(result[0].candidate.id, 'freq1');
+    expect(result[1].candidate.id, 'freq2');
+    expect(result[2].candidate.id, 'absent1');
+    expect(result[2].reason, HomeAiRecommendationReason.absent);
+  });
+
+  test('14일이 지난 등록자는 최근등록에서 빠지지만 14일 이내 신규 등록자는 그대로 포함된다', () {
+    final now = DateTime(2026, 3, 15);
+    final candidates = [
+      candidate(id: 'new1', name: '신규1', createdAt: DateTime(2026, 3, 10)),
+      candidate(id: 'old1', name: '오래됨1', createdAt: DateTime(2026, 2, 1)),
+    ];
+
+    final result = buildAiRecommendedMembers(
+      candidatesByRecency: candidates,
+      recentLessonCounts: const {},
+      now: now,
+    );
+
+    expect(result, hasLength(1));
+    expect(result.single.candidate.id, 'new1');
+    expect(result.single.reason, HomeAiRecommendationReason.recent);
+  });
+
+  test('자주/뜸한 회원 조건을 만족하는 후보가 없으면 최근 등록 회원으로 대체된다', () {
+    final now = DateTime(2026, 3, 15);
+    final candidates = [
+      candidate(id: 'm1', name: '회원1', createdAt: DateTime(2026, 3, 14)),
+      candidate(id: 'm2', name: '회원2', createdAt: DateTime(2026, 3, 13)),
+      candidate(id: 'm3', name: '회원3', createdAt: DateTime(2026, 3, 12)),
+    ];
+
+    final result = buildAiRecommendedMembers(
+      candidatesByRecency: candidates,
+      recentLessonCounts: const {},
+      now: now,
+    );
+
+    expect(result, hasLength(3));
+    expect(
+      result.every((e) => e.reason == HomeAiRecommendationReason.recent),
+      isTrue,
+    );
+  });
+
+  test('레슨 기록이 없는 신규 회원은 뜸한 회원 후보에서 제외된다', () {
+    final now = DateTime(2026, 3, 15);
+    final candidates = [
+      candidate(id: 'm1', name: '신규회원', createdAt: DateTime(2026, 3, 14)),
+    ];
+
+    final result = buildAiRecommendedMembers(
+      candidatesByRecency: candidates,
+      recentLessonCounts: const {},
+      now: now,
+    );
+
+    expect(result, hasLength(1));
+    expect(result.single.reason, HomeAiRecommendationReason.recent);
+  });
+
+  test('스케줄 문서에서 회원별 레슨 횟수를 집계하고 삭제된 문서는 제외한다', () {
+    final counts = lessonCountsFromScheduleDocs([
+      {'memberId': 'a'},
+      {'memberId': 'a'},
+      {'memberId': 'b'},
+      {'memberId': 'c', 'isDeleted': true},
+      {'memberId': ''},
+    ]);
+
+    expect(counts, {'a': 2, 'b': 1});
   });
 
   test('최근 등록 회원 query는 cache가 아닌 owner-scoped members createdAt 후보를 사용한다', () {
-    final source = File(
-      'lib/widgets/home/lesson_editor/home_recent_members_section.dart',
-    ).readAsStringSync();
+    final source =
+        File(
+          'lib/widgets/home/lesson_editor/home_recent_members_section.dart',
+        ).readAsStringSync();
 
     expect(source, contains("collection('members')"));
     expect(source, contains("where('trainerId', isEqualTo: owner)"));

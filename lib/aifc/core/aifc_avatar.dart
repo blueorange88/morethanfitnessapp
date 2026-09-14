@@ -94,9 +94,7 @@ class _AifcAvatarState extends State<AifcAvatar>
               height: _outerSize,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: SweepGradient(
-                  colors: kAifcRingColors,
-                ),
+                gradient: SweepGradient(colors: kAifcRingColors),
               ),
             ),
           ),
@@ -104,7 +102,9 @@ class _AifcAvatarState extends State<AifcAvatar>
             width: _whiteSize,
             height: _whiteSize,
             decoration: BoxDecoration(
-              color: widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
+              color:
+                  widget.backgroundColor ??
+                  Theme.of(context).scaffoldBackgroundColor,
               shape: BoxShape.circle,
             ),
           ),
@@ -115,10 +115,7 @@ class _AifcAvatarState extends State<AifcAvatar>
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [
-                  kAifcPrimary,
-                  kAifcSecond,
-                ],
+                colors: [kAifcPrimary, kAifcSecond],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

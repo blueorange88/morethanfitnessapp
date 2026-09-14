@@ -21,13 +21,12 @@ void main() {
       required AppEnvironment environment,
       required String projectId,
       required String packageName,
-    }) =>
-        AppEnvironmentConfig.canOpenDebugLegacyWorkspaceForIdentity(
-          debugBuild: debugBuild,
-          environment: environment,
-          projectId: projectId,
-          packageName: packageName,
-        );
+    }) => AppEnvironmentConfig.canOpenDebugLegacyWorkspaceForIdentity(
+      debugBuild: debugBuild,
+      environment: environment,
+      projectId: projectId,
+      packageName: packageName,
+    );
 
     expect(
       allowed(
@@ -86,15 +85,9 @@ void main() {
       'mtf_project-dev_uid-a_header_history',
     );
     expect(
-      AppEnvironmentConfig.personalScope(
-        'uid-a',
-        projectId: 'project-dev',
-      ),
+      AppEnvironmentConfig.personalScope('uid-a', projectId: 'project-dev'),
       isNot(
-        AppEnvironmentConfig.personalScope(
-          'uid-a',
-          projectId: 'project-prod',
-        ),
+        AppEnvironmentConfig.personalScope('uid-a', projectId: 'project-prod'),
       ),
     );
   });

@@ -26,8 +26,8 @@ class ProductModel {
   });
 
   factory ProductModel.fromFirestore(
-      DocumentSnapshot<Map<String, dynamic>> doc,
-      ) {
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data() ?? {};
 
     return ProductModel(

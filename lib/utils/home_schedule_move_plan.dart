@@ -48,10 +48,11 @@ class HomeScheduleEditPlan {
     required Set<String> targetActualDocIds,
   }) {
     final source = sourceActualDocId.trim();
-    final targets = targetActualDocIds
-        .map((id) => id.trim())
-        .where((id) => id.isNotEmpty)
-        .toSet();
+    final targets =
+        targetActualDocIds
+            .map((id) => id.trim())
+            .where((id) => id.isNotEmpty)
+            .toSet();
     if (source.isEmpty) {
       return HomeScheduleEditPlan(
         sourceIsRetained: false,
@@ -64,11 +65,12 @@ class HomeScheduleEditPlan {
     final multiple = targets.length > 1;
     return HomeScheduleEditPlan(
       sourceIsRetained: retained,
-      branch: retained
-          ? multiple
-              ? HomeScheduleEditBranch.copyMany
-              : HomeScheduleEditBranch.update
-          : multiple
+      branch:
+          retained
+              ? multiple
+                  ? HomeScheduleEditBranch.copyMany
+                  : HomeScheduleEditBranch.update
+              : multiple
               ? HomeScheduleEditBranch.replaceMany
               : HomeScheduleEditBranch.move,
       deleteSource: !retained,

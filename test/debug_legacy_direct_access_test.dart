@@ -12,8 +12,9 @@ import 'package:mtf_app/services/linked_account_access_service.dart';
 import 'package:mtf_app/services/personal_profile_start_reader.dart';
 
 void main() {
-  testWidgets('PROD Debug identity에서는 callback이 있어도 개발 버튼을 숨긴다',
-      (tester) async {
+  testWidgets('PROD Debug identity에서는 callback이 있어도 개발 버튼을 숨긴다', (
+    tester,
+  ) async {
     AppEnvironmentConfig.select(AppEnvironment.prod);
     await tester.pumpWidget(
       MaterialApp(
@@ -24,10 +25,7 @@ void main() {
       ),
     );
 
-    expect(
-      find.byKey(const Key('open_debug_legacy_workspace')),
-      findsNothing,
-    );
+    expect(find.byKey(const Key('open_debug_legacy_workspace')), findsNothing);
   });
 
   testWidgets('callback이 없는 보존 sample 화면에는 우회 버튼이 없다', (tester) async {
@@ -39,14 +37,12 @@ void main() {
       ),
     );
 
-    expect(
-      find.byKey(const Key('open_debug_legacy_workspace')),
-      findsNothing,
-    );
+    expect(find.byKey(const Key('open_debug_legacy_workspace')), findsNothing);
   });
 
-  testWidgets('PROD Debug AccountGate는 legacy shell과 개발 아이콘을 만들지 않는다',
-      (tester) async {
+  testWidgets('PROD Debug AccountGate는 legacy shell과 개발 아이콘을 만들지 않는다', (
+    tester,
+  ) async {
     AppEnvironmentConfig.select(AppEnvironment.prod);
     final accessGateway = _UnexpectedAccessGateway();
     final claimsGateway = _UnexpectedClaimsGateway();
@@ -116,8 +112,7 @@ class _GuestAccountGateway
   Future<AppAccountUser> createUserWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> sendEmailVerification() => throw UnimplementedError();
@@ -130,8 +125,7 @@ class _GuestAccountGateway
   Future<AppAccountUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> signOut() async {}
@@ -152,8 +146,7 @@ class _GuestAccountGateway
   Future<AppAccountUser> linkWithEmailCredential({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<void> forceRefreshIdToken() async {}
@@ -168,12 +161,12 @@ class _DebugProfileGateway implements AnonymousProfileGateway {
 
   @override
   Future<Map<String, dynamic>> reconcilePersonalTier() async => const {
-        'tier': 'Beginner',
-        'amateurConditionCount': 0,
-        'amateurConditionTotal': 2,
-        'eligible': false,
-        'changed': false,
-      };
+    'tier': 'Beginner',
+    'amateurConditionCount': 0,
+    'amateurConditionTotal': 2,
+    'eligible': false,
+    'changed': false,
+  };
 }
 
 class _DebugPersonalProfileStartReader implements PersonalProfileStartReader {

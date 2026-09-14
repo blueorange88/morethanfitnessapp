@@ -5,15 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final clientCardSource =
       File('lib/pages/client_card_page.dart').readAsStringSync();
-  final saveServiceSource = File(
-    'lib/services/personal_member_card_save_service.dart',
-  ).readAsStringSync();
+  final saveServiceSource =
+      File(
+        'lib/services/personal_member_card_save_service.dart',
+      ).readAsStringSync();
   final trainingLogSource =
       File('lib/pages/personal_training_log_page.dart').readAsStringSync();
   final homeSource = File('lib/pages/home_page.dart').readAsStringSync();
-  final scheduleServiceSource = File(
-    'lib/services/home_schedule_firestore_service.dart',
-  ).readAsStringSync();
+  final scheduleServiceSource =
+      File(
+        'lib/services/home_schedule_firestore_service.dart',
+      ).readAsStringSync();
 
   test('신규와 수정 고객카드는 서로 다른 callable 경로를 사용한다', () {
     expect(clientCardSource, contains('.createAndVerify('));
@@ -62,13 +64,12 @@ void main() {
 
   test('일정 삭제는 단일 병렬 preflight와 서버 readback 뒤 완료된다', () {
     expect(homeSource, contains('sourceSnapshotById'));
-    expect(homeSource, contains('Future.wait(sourceDocIds.map'));
+    expect(homeSource, contains('Future.wait('));
+    expect(homeSource, contains('sourceDocIds.map'));
     expect(homeSource, contains('source: Source.server'));
     expect(homeSource, contains('stage=server_delete_verified'));
     expect(homeSource, contains('_queueScheduleDeleteAuxiliarySync'));
-    expect(
-      scheduleServiceSource,
-      contains('await Future.wait(sourceDocIds.map'),
-    );
+    expect(scheduleServiceSource, contains('await Future.wait('));
+    expect(scheduleServiceSource, contains('sourceDocIds.map'));
   });
 }

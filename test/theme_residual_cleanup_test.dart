@@ -14,10 +14,7 @@ void main() {
   test('잔여 UI 의미 토큰은 세 테마의 역할을 분리한다', () {
     expect(MtfThemeTokens.light.aifcUserBubble, AppColors.warmYellow);
     expect(MtfThemeTokens.dark.aifcUserBubble, AppColors.warmYellow);
-    expect(
-      MtfThemeTokens.lululala.aifcUserBubble,
-      AppColors.lululalaPrimary,
-    );
+    expect(MtfThemeTokens.lululala.aifcUserBubble, AppColors.lululalaPrimary);
     expect(
       MtfThemeTokens.light.donationSurface,
       isNot(MtfThemeTokens.dark.donationSurface),
@@ -26,14 +23,8 @@ void main() {
       MtfThemeTokens.light.donationSurface,
       isNot(MtfThemeTokens.lululala.donationSurface),
     );
-    expect(
-      MtfThemeTokens.light.schedulerBorder,
-      AppColors.lightBorder,
-    );
-    expect(
-      MtfThemeTokens.dark.schedulerBorder,
-      AppColors.darkBorder,
-    );
+    expect(MtfThemeTokens.light.schedulerBorder, AppColors.lightBorder);
+    expect(MtfThemeTokens.dark.schedulerBorder, AppColors.darkBorder);
     expect(
       MtfThemeTokens.lululala.schedulerCornerSurface,
       AppColors.lululalaPrimary,
@@ -46,20 +37,20 @@ void main() {
     final myPage = File('lib/pages/my_page.dart').readAsStringSync();
     final trainingLog =
         File('lib/pages/personal_training_log_page.dart').readAsStringSync();
-    final category = File('lib/pages/personal_training_log_category_page.dart')
-        .readAsStringSync();
+    final category =
+        File(
+          'lib/pages/personal_training_log_category_page.dart',
+        ).readAsStringSync();
     final consent =
         File('lib/pages/training_log_consent_page.dart').readAsStringSync();
-    final schedule = File(
-      'lib/widgets/home/schedule/home_weekly_schedule_table.dart',
-    ).readAsStringSync();
+    final schedule =
+        File(
+          'lib/widgets/home/schedule/home_weekly_schedule_table.dart',
+        ).readAsStringSync();
 
     expect(clientList, contains('gradient: gradient'));
     expect(clientList, isNot(contains('color: const Color(0xFF5B4BDB)')));
-    expect(
-      myPage,
-      contains('Theme.of(context).colorScheme.secondary'),
-    );
+    expect(myPage, contains('Theme.of(context).colorScheme.secondary'));
     expect(myPage, contains('context.mtfHeaderGradient'));
     expect(trainingLog, contains('context.mtfHeaderGradient'));
     expect(trainingLog, contains('color: tokens.sheetBackground'));
@@ -71,7 +62,9 @@ void main() {
     );
     expect(consent, contains('systemOverlayStyle: SystemUiOverlayStyle.light'));
     expect(
-        consent, isNot(contains('backgroundColor: const Color(0xFF4F46E5)')));
+      consent,
+      isNot(contains('backgroundColor: const Color(0xFF4F46E5)')),
+    );
     expect(consent, isNot(contains('color: Colors.black54')));
     expect(consent, contains('color: scheme.onSurfaceVariant'));
     expect(schedule, contains('schedulerOuterSurface'));
@@ -84,12 +77,14 @@ void main() {
         File('lib/aifc/core/aifc_chat_bubble.dart').readAsStringSync();
     final chatSheet =
         File('lib/aifc/core/aifc_chat_sheet.dart').readAsStringSync();
-    final quickRegister = File(
-      'lib/widgets/aifc_quick_register_chat_sheet.dart',
-    ).readAsStringSync();
-    final consult = File(
-      'lib/widgets/aifc_consult_checklist_chat_sheet.dart',
-    ).readAsStringSync();
+    final quickRegister =
+        File(
+          'lib/widgets/aifc_quick_register_chat_sheet.dart',
+        ).readAsStringSync();
+    final consult =
+        File(
+          'lib/widgets/aifc_consult_checklist_chat_sheet.dart',
+        ).readAsStringSync();
     final donation =
         File('lib/widgets/premium_banner_widget.dart').readAsStringSync();
 
@@ -105,11 +100,12 @@ void main() {
     expect(donation, contains('tokens.donationProgress'));
   });
 
-  for (final themeEntry in <String, ThemeData>{
-    'light': lightTheme(),
-    'dark': darkTheme(),
-    'lululala': lululalaTheme(),
-  }.entries) {
+  for (final themeEntry
+      in <String, ThemeData>{
+        'light': lightTheme(),
+        'dark': darkTheme(),
+        'lululala': lululalaTheme(),
+      }.entries) {
     testWidgets('${themeEntry.key} AIFC 말풍선과 동의 화면이 렌더링된다', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -117,14 +113,8 @@ void main() {
           home: const Scaffold(
             body: Column(
               children: [
-                AifcChatBubble(
-                  side: AifcBubbleSide.fc,
-                  text: 'FC 안내',
-                ),
-                AifcChatBubble(
-                  side: AifcBubbleSide.user,
-                  text: '사용자 답변',
-                ),
+                AifcChatBubble(side: AifcBubbleSide.fc, text: 'FC 안내'),
+                AifcChatBubble(side: AifcBubbleSide.user, text: '사용자 답변'),
               ],
             ),
           ),
@@ -176,8 +166,9 @@ void main() {
     });
   }
 
-  testWidgets('dark DEV tier fixture panel uses theme contrast',
-      (tester) async {
+  testWidgets('dark DEV tier fixture panel uses theme contrast', (
+    tester,
+  ) async {
     AppEnvironmentConfig.select(AppEnvironment.dev);
     DevTierFixtureController.resetForTesting();
     addTearDown(() {

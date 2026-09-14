@@ -56,12 +56,7 @@ class _PersonalTrainingLogAnatomyPageState
   List<String> _selectedPartIds = <String>[];
   List<AnatomyLogRecord> _records = <AnatomyLogRecord>[];
 
-  static const _stepLabels = <String>[
-    '부위 선택',
-    '기록 입력',
-    '영상·음성',
-    '확인·저장',
-  ];
+  static const _stepLabels = <String>['부위 선택', '기록 입력', '영상·음성', '확인·저장'];
 
   @override
   void initState() {
@@ -111,17 +106,17 @@ class _PersonalTrainingLogAnatomyPageState
       (widget.trainerId ?? FirebaseAuth.instance.currentUser?.uid ?? '').trim();
 
   AnatomyLogSaveContext get _saveContext => AnatomyLogSaveContext(
-        lessonLogId: widget.lessonLogId,
-        trainerId: _trainerId,
-        memberId: (widget.memberId ?? '').trim(),
-        scheduleDocId: (widget.scheduleDocId ?? '').trim(),
-      );
+    lessonLogId: widget.lessonLogId,
+    trainerId: _trainerId,
+    memberId: (widget.memberId ?? '').trim(),
+    scheduleDocId: (widget.scheduleDocId ?? '').trim(),
+  );
 
   bool get _canProceed => switch (_currentStep) {
-        0 => _selectedPartIds.isNotEmpty,
-        1 => _records.isNotEmpty || _hadPersistedRecords,
-        _ => true,
-      };
+    0 => _selectedPartIds.isNotEmpty,
+    1 => _records.isNotEmpty || _hadPersistedRecords,
+    _ => true,
+  };
 
   BodyPart? _partById(String id) {
     for (final part in kBodyParts) {
@@ -180,9 +175,7 @@ class _PersonalTrainingLogAnatomyPageState
     setState(() {
       _records = AnatomyRecordCollection.upsert(
         _records,
-        updated.copyWith(
-          updatedAt: DateTime.now(),
-        ),
+        updated.copyWith(updatedAt: DateTime.now()),
       );
     });
   }
@@ -223,16 +216,17 @@ class _PersonalTrainingLogAnatomyPageState
       _saving = true;
       _saveError = null;
     });
-    final normalized = _records.map((record) {
-      final part = _partById(record.bodyPartId);
-      return record.copyWith(
-        recordedAt: widget.recordedAt,
-        bodyGender: _genderChanged ? _selectedGender : record.bodyGender,
-        bodyView: part?.view ?? record.bodyView,
-        bodySide: _sideChanged ? _selectedSide : record.bodySide,
-        bodyPartLabel: part?.label ?? record.bodyPartLabel,
-      );
-    }).toList();
+    final normalized =
+        _records.map((record) {
+          final part = _partById(record.bodyPartId);
+          return record.copyWith(
+            recordedAt: widget.recordedAt,
+            bodyGender: _genderChanged ? _selectedGender : record.bodyGender,
+            bodyView: part?.view ?? record.bodyView,
+            bodySide: _sideChanged ? _selectedSide : record.bodySide,
+            bodyPartLabel: part?.label ?? record.bodyPartLabel,
+          );
+        }).toList();
 
     try {
       await _service.save(
@@ -244,9 +238,9 @@ class _PersonalTrainingLogAnatomyPageState
         deletedRecordIds: _deletedRecordIds,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('해부학 레슨일지가 저장되었어요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('해부학 레슨일지가 저장되었어요.')));
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
@@ -255,9 +249,9 @@ class _PersonalTrainingLogAnatomyPageState
         _saving = false;
         _saveError = message;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -274,8 +268,8 @@ class _PersonalTrainingLogAnatomyPageState
       AnatomyLogErrorCode.memberMismatch ||
       AnatomyLogErrorCode.scheduleMismatch ||
       AnatomyLogErrorCode.pathLessonLogMismatch ||
-      AnatomyLogErrorCode.immutableIdentityChange =>
-        '레슨일지 연결 정보가 일치하지 않아 저장할 수 없어요.',
+      AnatomyLogErrorCode
+          .immutableIdentityChange => '레슨일지 연결 정보가 일치하지 않아 저장할 수 없어요.',
       AnatomyLogErrorCode.recordNotFound => '기록이 이미 변경되었어요. 화면을 새로 열어 확인해주세요.',
       AnatomyLogErrorCode.permissionDenied => '현재 저장 권한이 없어 처리하지 못했습니다.',
       AnatomyLogErrorCode.unknown =>
@@ -288,9 +282,11 @@ class _PersonalTrainingLogAnatomyPageState
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       appBar: AppBar(
-        title: Text((widget.memberName ?? '').trim().isEmpty
-            ? '해부학 레슨일지'
-            : '${widget.memberName} 님 · 해부학 레슨일지'),
+        title: Text(
+          (widget.memberName ?? '').trim().isEmpty
+              ? '해부학 레슨일지'
+              : '${widget.memberName} 님 · 해부학 레슨일지',
+        ),
         flexibleSpace: const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -300,114 +296,121 @@ class _PersonalTrainingLogAnatomyPageState
         ),
         foregroundColor: Colors.white,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _loadError != null
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _loadError != null
               ? _LoadError(
-                  message: _loadError!,
-                  onRetry: () {
-                    setState(() {
-                      _loading = true;
-                      _loadError = null;
-                    });
-                    _load();
-                  })
+                message: _loadError!,
+                onRetry: () {
+                  setState(() {
+                    _loading = true;
+                    _loadError = null;
+                  });
+                  _load();
+                },
+              )
               : Column(
-                  children: [
+                children: [
+                  Container(
+                    color: const Color(0xFF4F46E5),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+                    child: AnatomyStepIndicator(
+                      currentStep: _currentStep,
+                      totalSteps: _stepLabels.length,
+                      labels: _stepLabels,
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                      child: _stepContent(),
+                    ),
+                  ),
+                  if (_saveError != null)
                     Container(
-                      color: const Color(0xFF4F46E5),
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-                      child: AnatomyStepIndicator(
-                        currentStep: _currentStep,
-                        totalSteps: _stepLabels.length,
-                        labels: _stepLabels,
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFECACA)),
                       ),
-                    ),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-                        child: _stepContent(),
-                      ),
-                    ),
-                    if (_saveError != null)
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFECACA)),
+                      child: Text(
+                        _saveError!,
+                        style: const TextStyle(
+                          color: Color(0xFFB91C1C),
+                          fontWeight: FontWeight.w700,
                         ),
-                        child: Text(
-                          _saveError!,
-                          style: const TextStyle(
-                            color: Color(0xFFB91C1C),
-                            fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
+              ),
+      bottomNavigationBar:
+          _loading || _loadError != null
+              ? null
+              : SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      if (_currentStep > 0) ...[
+                        OutlinedButton(
+                          onPressed: _saving ? null : _goBack,
+                          child: const Text('이전'),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _canProceed && !_saving ? _goNext : null,
+                          child: Text(
+                            _saving
+                                ? '저장 중...'
+                                : _currentStep == _stepLabels.length - 1
+                                ? '저장하기'
+                                : '다음',
                           ),
                         ),
                       ),
-                  ],
-                ),
-      bottomNavigationBar: _loading || _loadError != null
-          ? null
-          : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    if (_currentStep > 0) ...[
-                      OutlinedButton(
-                          onPressed: _saving ? null : _goBack,
-                          child: const Text('이전')),
-                      const SizedBox(width: 10),
                     ],
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _canProceed && !_saving ? _goNext : null,
-                        child: Text(_saving
-                            ? '저장 중...'
-                            : _currentStep == _stepLabels.length - 1
-                                ? '저장하기'
-                                : '다음'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
     );
   }
 
   Widget _stepContent() => switch (_currentStep) {
-        0 => Step1BodyPartSelector(
-            selectedView: _selectedView,
-            selectedPartIds: _selectedPartIds,
-            onViewChanged: (value) => setState(() => _selectedView = value),
-            onPartToggled: _togglePart,
-            selectedGender: _selectedGender,
-            selectedSide: _selectedSide,
-            onGenderChanged: (value) => setState(() {
-              _selectedGender = value;
-              _genderChanged = true;
-            }),
-            onSideChanged: (value) => setState(() {
-              _selectedSide = value;
-              _sideChanged = true;
-            }),
-          ),
-        1 => Step2ExerciseForm(
-            selectedPartIds: _selectedPartIds,
-            records: _records,
-            onAdd: _addRecord,
-            onUpdate: _updateRecord,
-            onRemove: _removeRecord,
-          ),
-        2 => const Step3VideoMemo(),
-        3 =>
-          Step4Confirm(memberName: widget.memberName ?? '', records: _records),
-        _ => const SizedBox.shrink(),
-      };
+    0 => Step1BodyPartSelector(
+      selectedView: _selectedView,
+      selectedPartIds: _selectedPartIds,
+      onViewChanged: (value) => setState(() => _selectedView = value),
+      onPartToggled: _togglePart,
+      selectedGender: _selectedGender,
+      selectedSide: _selectedSide,
+      onGenderChanged:
+          (value) => setState(() {
+            _selectedGender = value;
+            _genderChanged = true;
+          }),
+      onSideChanged:
+          (value) => setState(() {
+            _selectedSide = value;
+            _sideChanged = true;
+          }),
+    ),
+    1 => Step2ExerciseForm(
+      selectedPartIds: _selectedPartIds,
+      records: _records,
+      onAdd: _addRecord,
+      onUpdate: _updateRecord,
+      onRemove: _removeRecord,
+    ),
+    2 => const Step3VideoMemo(),
+    3 => Step4Confirm(memberName: widget.memberName ?? '', records: _records),
+    _ => const SizedBox.shrink(),
+  };
 }
 
 class _LoadError extends StatelessWidget {
@@ -418,13 +421,13 @@ class _LoadError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 10),
+        OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
+      ],
+    ),
+  );
 }

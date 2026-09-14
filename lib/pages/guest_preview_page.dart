@@ -55,7 +55,8 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
   @override
   void initState() {
     super.initState();
-    _repository = widget.scheduleRepository ??
+    _repository =
+        widget.scheduleRepository ??
         GuestScheduleRepository(limit: widget.capabilities.localScheduleLimit);
     _weekController = PageController(initialPage: _initialWeekIndex);
     unawaited(_reload());
@@ -133,12 +134,13 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => _GuestScheduleEditor(
-        service: widget.service,
-        repository: _repository,
-        record: record,
-        initialStartAt: initialStartAt,
-      ),
+      builder:
+          (sheetContext) => _GuestScheduleEditor(
+            service: widget.service,
+            repository: _repository,
+            record: record,
+            initialStartAt: initialStartAt,
+          ),
     );
     await _reload();
   }
@@ -156,35 +158,36 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      builder:
+          (context) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Chip(
+                        label: Text('예시'),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  const Chip(
-                    label: Text('예시'),
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  const SizedBox(height: 14),
+                  Text(body, style: const TextStyle(height: 1.55)),
                 ],
               ),
-              const SizedBox(height: 14),
-              Text(body, style: const TextStyle(height: 1.55)),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -246,27 +249,29 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
                       profileDisplayName: '체험',
                       headerGreetingText: '우리, 같이 시작해볼까요',
                       allowGreetingEdit: false,
-                      onToggleExpanded: () => setState(
-                        () => _headerExpanded = !_headerExpanded,
-                      ),
-                      onQuickMemberTap: () => _showGate(
-                        '함께하면 회원 기록도 안전하게 이어갈 수 있어요.',
-                      ),
-                      onNotificationTap: () => _showGate(
-                        '함께하면 필요한 순간을 놓치지 않게 챙겨드릴게요.',
-                      ),
-                      onTodayTap: () => _showSample(
-                        '오늘 일정',
-                        '오늘의 체험 일정 $_todayCount개를 이 기기에서만 확인하고 있어요.',
-                      ),
-                      onMoreSenseTap: () => _showSample(
-                        'MORE 포커스',
-                        '조금씩 익숙해지면, 회원에게 필요한 관리 포인트도 함께 살펴볼 수 있어요.',
-                      ),
-                      onWeekTap: () => _showSample(
-                        '이번 주 흐름',
-                        '체험 일정 ${_records.length}개가 있어요. 실제 회원 데이터는 불러오지 않았어요.',
-                      ),
+                      onToggleExpanded:
+                          () => setState(
+                            () => _headerExpanded = !_headerExpanded,
+                          ),
+                      onQuickMemberTap:
+                          () => _showGate('함께하면 회원 기록도 안전하게 이어갈 수 있어요.'),
+                      onNotificationTap:
+                          () => _showGate('함께하면 필요한 순간을 놓치지 않게 챙겨드릴게요.'),
+                      onTodayTap:
+                          () => _showSample(
+                            '오늘 일정',
+                            '오늘의 체험 일정 $_todayCount개를 이 기기에서만 확인하고 있어요.',
+                          ),
+                      onMoreSenseTap:
+                          () => _showSample(
+                            'MORE 포커스',
+                            '조금씩 익숙해지면, 회원에게 필요한 관리 포인트도 함께 살펴볼 수 있어요.',
+                          ),
+                      onWeekTap:
+                          () => _showSample(
+                            '이번 주 흐름',
+                            '체험 일정 ${_records.length}개가 있어요. 실제 회원 데이터는 불러오지 않았어요.',
+                          ),
                     ),
                     const SizedBox(height: 10),
                     _GuestTrialNotice(
@@ -284,17 +289,16 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
                     ),
                     const SizedBox(height: 14),
                     _GuestFeatureShortcuts(
-                      onLessonLog: () => _showSample(
-                        '레슨일지',
-                        '스쿼트 자세와 무릎 정렬을 확인한 예시 기록이에요. 앞으로의 레슨 기록도 차근차근 같이 쌓아가요.',
-                      ),
+                      onLessonLog:
+                          () => _showSample(
+                            '레슨일지',
+                            '스쿼트 자세와 무릎 정렬을 확인한 예시 기록이에요. 앞으로의 레슨 기록도 차근차근 같이 쌓아가요.',
+                          ),
                       onInsights: () => _onBottomNav(0),
-                      onContract: () => _showGate(
-                        '함께 시작하면 계약서 작성도 차분하게 도와드릴게요.',
-                      ),
-                      onSignature: () => _showGate(
-                        '계정을 연결하면 서명 기록도 안전하게 이어갈 수 있어요.',
-                      ),
+                      onContract:
+                          () => _showGate('함께 시작하면 계약서 작성도 차분하게 도와드릴게요.'),
+                      onSignature:
+                          () => _showGate('계정을 연결하면 서명 기록도 안전하게 이어갈 수 있어요.'),
                     ),
                     const SizedBox(height: 22),
                     HomeThisWeekScheduleSection(
@@ -315,38 +319,37 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
                       shouldShowScheduleExamples: (_) => false,
                       buildWeekSlice: _weekSlice,
                       buildScheduleExampleSlice: (_) => const {},
-                      onToggleHelp: () => setState(
-                        () => _showScheduleHelp = !_showScheduleHelp,
-                      ),
-                      onDayFilterChanged: (value) =>
-                          setState(() => _dayFilter = value),
-                      onPageChanged: (index) =>
-                          setState(() => _weekPageIndex = index),
-                      onWeekActionMenu: (_) async => _showGate(
-                        '체험 일정은 한 번에 하나씩 차근차근 정리해볼 수 있어요.',
-                      ),
-                      onScheduleMoreMenu: (_) => _showGate(
-                        '지금은 가볍게 둘러보고, 준비되면 같이 시작해요.',
-                      ),
+                      onToggleHelp:
+                          () => setState(
+                            () => _showScheduleHelp = !_showScheduleHelp,
+                          ),
+                      onDayFilterChanged:
+                          (value) => setState(() => _dayFilter = value),
+                      onPageChanged:
+                          (index) => setState(() => _weekPageIndex = index),
+                      onWeekActionMenu:
+                          (_) async =>
+                              _showGate('체험 일정은 한 번에 하나씩 차근차근 정리해볼 수 있어요.'),
+                      onScheduleMoreMenu:
+                          (_) => _showGate('지금은 가볍게 둘러보고, 준비되면 같이 시작해요.'),
                       onHideScheduleExamples: () {},
-                      onCellTap: (offset, day, time, _) => _openEditor(
-                        initialStartAt: _cellDate(offset, day, time),
-                      ),
-                      onTimeHeaderTap: () => _showGate(
-                        '체험 일정 시간은 각 일정에서 편하게 바꿀 수 있어요.',
-                      ),
-                      onTimeHeaderLongPress: () => _showGate(
-                        '함께하면 스케줄표 설정도 차근차근 맞춰드릴게요.',
-                      ),
-                      onTimeRowLongPress: (_) => _showGate(
-                        '체험 일정 시간은 각 일정에서 편하게 바꿀 수 있어요.',
-                      ),
+                      onCellTap:
+                          (offset, day, time, _) => _openEditor(
+                            initialStartAt: _cellDate(offset, day, time),
+                          ),
+                      onTimeHeaderTap:
+                          () => _showGate('체험 일정 시간은 각 일정에서 편하게 바꿀 수 있어요.'),
+                      onTimeHeaderLongPress:
+                          () => _showGate('함께하면 스케줄표 설정도 차근차근 맞춰드릴게요.'),
+                      onTimeRowLongPress:
+                          (_) => _showGate('체험 일정 시간은 각 일정에서 편하게 바꿀 수 있어요.'),
                       onEventTap: (_, session) {
                         final id =
                             (session['guestScheduleId'] ?? '').toString();
-                        final record = _records
-                            .where((item) => item.guestScheduleId == id)
-                            .firstOrNull;
+                        final record =
+                            _records
+                                .where((item) => item.guestScheduleId == id)
+                                .firstOrNull;
                         if (record != null) _openEditor(record: record);
                       },
                     ),
@@ -354,10 +357,11 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _GuestMoreFocusCard(
-                        onTap: () => _showSample(
-                          'MORE 포커스',
-                          '앞으로의 많은 일들을 차근차근 같이 해나가 봐요. 실제 회원 정보 없이 안전한 예시만 보여드리고 있어요.',
-                        ),
+                        onTap:
+                            () => _showSample(
+                              'MORE 포커스',
+                              '앞으로의 많은 일들을 차근차근 같이 해나가 봐요. 실제 회원 정보 없이 안전한 예시만 보여드리고 있어요.',
+                            ),
                       ),
                     ),
                   ],
@@ -373,9 +377,7 @@ class _GuestPreviewPageState extends State<GuestPreviewPage> {
                   primaryColor: _guestPrimaryColor,
                   secondaryColor: _guestSecondaryColor,
                   onChanged: _onBottomNav,
-                  onCenterTap: () => _showGate(
-                    '함께하면 회원 기록도 안전하게 이어갈 수 있어요.',
-                  ),
+                  onCenterTap: () => _showGate('함께하면 회원 기록도 안전하게 이어갈 수 있어요.'),
                 ),
               ),
             ],
@@ -398,35 +400,38 @@ class _GuestTrialNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          key: const Key('guest_local_only_notice'),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Container(
+      key: const Key('guest_local_only_notice'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.phone_android_rounded,
+            size: 17,
+            color: Color(0xFF6D28D9),
           ),
-          child: Row(
-            children: [
-              const Icon(Icons.phone_android_rounded,
-                  size: 17, color: Color(0xFF6D28D9)),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  '체험 중 · 일정은 이 기기에만 저장돼요',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                ),
-              ),
-              TextButton(
-                key: const Key('guest_add_schedule_button'),
-                onPressed: onAddSchedule,
-                child: const Text('일정 추가'),
-              ),
-            ],
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              '체험 중 · 일정은 이 기기에만 저장돼요',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+            ),
           ),
-        ),
-      );
+          TextButton(
+            key: const Key('guest_add_schedule_button'),
+            onPressed: onAddSchedule,
+            child: const Text('일정 추가'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _GuestFeatureShortcuts extends StatelessWidget {
@@ -444,34 +449,34 @@ class _GuestFeatureShortcuts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ActionChip(
-              avatar: const Icon(Icons.note_alt_outlined, size: 18),
-              label: const Text('레슨일지'),
-              onPressed: onLessonLog,
-            ),
-            ActionChip(
-              avatar: const Icon(Icons.insights_rounded, size: 18),
-              label: const Text('인사이트'),
-              onPressed: onInsights,
-            ),
-            ActionChip(
-              avatar: const Icon(Icons.description_outlined, size: 18),
-              label: const Text('계약서'),
-              onPressed: onContract,
-            ),
-            ActionChip(
-              avatar: const Icon(Icons.draw_outlined, size: 18),
-              label: const Text('서명'),
-              onPressed: onSignature,
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ActionChip(
+          avatar: const Icon(Icons.note_alt_outlined, size: 18),
+          label: const Text('레슨일지'),
+          onPressed: onLessonLog,
         ),
-      );
+        ActionChip(
+          avatar: const Icon(Icons.insights_rounded, size: 18),
+          label: const Text('인사이트'),
+          onPressed: onInsights,
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.description_outlined, size: 18),
+          label: const Text('계약서'),
+          onPressed: onContract,
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.draw_outlined, size: 18),
+          label: const Text('서명'),
+          onPressed: onSignature,
+        ),
+      ],
+    ),
+  );
 }
 
 class _GuestMoreFocusCard extends StatelessWidget {
@@ -481,17 +486,17 @@ class _GuestMoreFocusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: ListTile(
-          onTap: onTap,
-          leading: const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)),
-          title: const Text(
-            'MORE 포커스',
-            style: TextStyle(fontWeight: FontWeight.w900),
-          ),
-          subtitle: const Text('함께 성장할 다음 흐름을 예시로 살펴보세요.'),
-          trailing: const Chip(label: Text('체험')),
-        ),
-      );
+    child: ListTile(
+      onTap: onTap,
+      leading: const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)),
+      title: const Text(
+        'MORE 포커스',
+        style: TextStyle(fontWeight: FontWeight.w900),
+      ),
+      subtitle: const Text('함께 성장할 다음 흐름을 예시로 살펴보세요.'),
+      trailing: const Chip(label: Text('체험')),
+    ),
+  );
 }
 
 class _GuestHomeDrawer extends StatelessWidget {
@@ -505,7 +510,7 @@ class _GuestHomeDrawer extends StatelessWidget {
       (
         Icons.person_add_alt_1_rounded,
         '빠른 회원등록',
-        '함께하면 회원 기록도 안전하게 이어갈 수 있어요.'
+        '함께하면 회원 기록도 안전하게 이어갈 수 있어요.',
       ),
       (Icons.description_outlined, '빠른 계약등록', '함께 시작하면 계약서 작성도 차분하게 도와드릴게요.'),
       (Icons.task_alt_rounded, '레슨 확정', '앞으로의 레슨 기록도 차근차근 같이 쌓아가요.'),
@@ -519,8 +524,10 @@ class _GuestHomeDrawer extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           children: [
             const ListTile(
-              title:
-                  Text('MORE', style: TextStyle(fontWeight: FontWeight.w900)),
+              title: Text(
+                'MORE',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               subtitle: Text('모든 동선을 가볍게 체험해보세요.'),
             ),
             for (final item in items)
@@ -675,8 +682,9 @@ class _GuestScheduleEditorState extends State<_GuestScheduleEditor> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: Material(
           color: Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -689,7 +697,9 @@ class _GuestScheduleEditorState extends State<_GuestScheduleEditor> {
                 Text(
                   widget.record == null ? '체험 일정 등록' : '체험 일정 수정',
                   style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w900),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 const Text(
@@ -700,13 +710,20 @@ class _GuestScheduleEditorState extends State<_GuestScheduleEditor> {
                 DropdownButtonFormField<String>(
                   initialValue: _lessonType,
                   decoration: const InputDecoration(labelText: '레슨 종류'),
-                  items: const ['PT', '필라테스', '그룹', '요가']
-                      .map((value) =>
-                          DropdownMenuItem(value: value, child: Text(value)))
-                      .toList(),
-                  onChanged: _saving
-                      ? null
-                      : (value) => setState(() => _lessonType = value ?? 'PT'),
+                  items:
+                      const ['PT', '필라테스', '그룹', '요가']
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
+                          .toList(),
+                  onChanged:
+                      _saving
+                          ? null
+                          : (value) =>
+                              setState(() => _lessonType = value ?? 'PT'),
                 ),
                 TextField(
                   key: const Key('guest_schedule_alias'),
@@ -753,9 +770,10 @@ class _GuestScheduleEditorState extends State<_GuestScheduleEditor> {
                         label: const SizedBox(width: 10),
                         selected: _colorHex == color,
                         avatar: CircleAvatar(backgroundColor: _hexColor(color)),
-                        onSelected: _saving
-                            ? null
-                            : (_) => setState(() => _colorHex = color),
+                        onSelected:
+                            _saving
+                                ? null
+                                : (_) => setState(() => _colorHex = color),
                       ),
                   ],
                 ),
@@ -770,8 +788,10 @@ class _GuestScheduleEditorState extends State<_GuestScheduleEditor> {
                     ),
                     child: const Text(
                       '체험 일정 5개를 모두 사용했어요.\n\n계정을 연결하면 일정과 회원 기록을\n안전하게 저장하고 계속 이어갈 수 있어요.',
-                      style:
-                          TextStyle(height: 1.45, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        height: 1.45,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),

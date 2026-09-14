@@ -19,13 +19,7 @@ class MemberSmartAlarmContextService {
 
     final cleanTrainingLogId = trainingLogId.trim();
 
-    final mergedText = [
-      summary,
-      memo,
-      conditionText,
-      painText,
-      nextLessonHint,
-    ]
+    final mergedText = [summary, memo, conditionText, painText, nextLessonHint]
         .whereType<String>()
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
@@ -57,15 +51,15 @@ class MemberSmartAlarmContextService {
           .collection('members')
           .doc(cleanMemberId)
           .set({
-        'smartAlarmContext': context,
+            'smartAlarmContext': context,
 
-        // NotificationService가 직접 읽을 수도 있게 상위 필드에도 캐시합니다.
-        if (mergedText.isNotEmpty) 'lastLessonLogSummary': mergedText,
-        if (keywords.isNotEmpty) 'lastLessonLogKeywords': keywords,
-        if (hint.isNotEmpty) 'nextLessonReminderHint': hint,
+            // NotificationService가 직접 읽을 수도 있게 상위 필드에도 캐시합니다.
+            if (mergedText.isNotEmpty) 'lastLessonLogSummary': mergedText,
+            if (keywords.isNotEmpty) 'lastLessonLogKeywords': keywords,
+            if (hint.isNotEmpty) 'nextLessonReminderHint': hint,
 
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('회원 스마트 알림 context 저장 실패: $e');
     }
@@ -127,10 +121,14 @@ class MemberSmartAlarmContextService {
     if (keywords.contains('통증') ||
         keywords.contains('부상') ||
         keywords.contains('불편')) {
-      final bodyPart = _firstMatched(
-        keywords,
-        const ['어깨', '허리', '무릎', '목', '손목', '발목'],
-      );
+      final bodyPart = _firstMatched(keywords, const [
+        '어깨',
+        '허리',
+        '무릎',
+        '목',
+        '손목',
+        '발목',
+      ]);
 
       if (bodyPart.isNotEmpty) {
         return '$bodyPart 상태 확인 후 운동 강도를 조절해 주세요.';
@@ -166,10 +164,7 @@ class MemberSmartAlarmContextService {
     return mergedText;
   }
 
-  static String _firstMatched(
-      List<String> source,
-      List<String> candidates,
-      ) {
+  static String _firstMatched(List<String> source, List<String> candidates) {
     for (final candidate in candidates) {
       if (source.contains(candidate)) {
         return candidate;

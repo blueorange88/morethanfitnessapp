@@ -14,11 +14,7 @@ class ShadcnTable extends StatelessWidget {
   final List<ShadcnTableHeader> headers;
   final List<ShadcnTableRow> rows;
 
-  const ShadcnTable({
-    super.key,
-    required this.headers,
-    required this.rows,
-  });
+  const ShadcnTable({super.key, required this.headers, required this.rows});
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +22,7 @@ class ShadcnTable extends StatelessWidget {
 
     return Table(
       columnWidths: {
-        for (int i = 0; i < headers.length; i++) i: const FlexColumnWidth()
+        for (int i = 0; i < headers.length; i++) i: const FlexColumnWidth(),
       },
       border: TableBorder(
         horizontalInside: BorderSide(color: cs.outline.withOpacity(0.3)),
@@ -41,20 +37,18 @@ class ShadcnTable extends StatelessWidget {
                 child: Text(
                   h.label,
                   style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: cs.onSurfaceVariant),
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
-              )
+              ),
           ],
         ),
         for (var row in rows)
           TableRow(
             children: [
               for (var cell in row.cells)
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(cell),
-                )
+                Padding(padding: const EdgeInsets.all(12), child: Text(cell)),
             ],
           ),
       ],

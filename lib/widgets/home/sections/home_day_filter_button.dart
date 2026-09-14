@@ -26,9 +26,7 @@ class HomeDayFilterButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? primaryColor : colors.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? primaryColor : colors.outline,
-          ),
+          border: Border.all(color: isSelected ? primaryColor : colors.outline),
         ),
         child: Text(
           label,

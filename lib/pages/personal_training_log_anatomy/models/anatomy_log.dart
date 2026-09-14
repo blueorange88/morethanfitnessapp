@@ -48,24 +48,24 @@ class AnatomyLogRecord {
   final DateTime updatedAt;
 
   Map<String, dynamic> toFirestore() => <String, dynamic>{
-        'anatomyLogId': anatomyLogId,
-        'trainerId': trainerId,
-        'memberId': memberId,
-        'lessonLogId': lessonLogId,
-        'scheduleDocId': scheduleDocId,
-        'recordedAt': Timestamp.fromDate(recordedAt),
-        'bodyGender': bodyGender.name,
-        'bodyView': bodyView.name,
-        'bodySide': bodySide.name,
-        'bodyPartId': bodyPartId,
-        'bodyPartLabel': bodyPartLabel,
-        'recordType': recordType.name,
-        'exerciseName': exerciseName,
-        'painLevel': painLevel.clamp(0, 10),
-        'memo': memo,
-        'createdAt': Timestamp.fromDate(createdAt),
-        'updatedAt': Timestamp.fromDate(updatedAt),
-      };
+    'anatomyLogId': anatomyLogId,
+    'trainerId': trainerId,
+    'memberId': memberId,
+    'lessonLogId': lessonLogId,
+    'scheduleDocId': scheduleDocId,
+    'recordedAt': Timestamp.fromDate(recordedAt),
+    'bodyGender': bodyGender.name,
+    'bodyView': bodyView.name,
+    'bodySide': bodySide.name,
+    'bodyPartId': bodyPartId,
+    'bodyPartLabel': bodyPartLabel,
+    'recordType': recordType.name,
+    'exerciseName': exerciseName,
+    'painLevel': painLevel.clamp(0, 10),
+    'memo': memo,
+    'createdAt': Timestamp.fromDate(createdAt),
+    'updatedAt': Timestamp.fromDate(updatedAt),
+  };
 
   factory AnatomyLogRecord.fromFirestore(Map<String, dynamic> map) {
     return AnatomyLogRecord(
@@ -80,16 +80,8 @@ class AnatomyLogRecord {
         map['bodyGender'],
         BodyGender.unspecified,
       ),
-      bodyView: _enumByName(
-        BodyView.values,
-        map['bodyView'],
-        BodyView.front,
-      ),
-      bodySide: _enumByName(
-        BodySide.values,
-        map['bodySide'],
-        BodySide.both,
-      ),
+      bodyView: _enumByName(BodyView.values, map['bodyView'], BodyView.front),
+      bodySide: _enumByName(BodySide.values, map['bodySide'], BodySide.both),
       bodyPartId: _string(map['bodyPartId']),
       bodyPartLabel: _string(map['bodyPartLabel']),
       recordType: _enumByName(
@@ -184,9 +176,10 @@ class AnatomyRecordCollection {
     if (raw is! List) return const <AnatomyLogRecord>[];
     return raw
         .whereType<Map>()
-        .map((value) => AnatomyLogRecord.fromFirestore(
-              Map<String, dynamic>.from(value),
-            ))
+        .map(
+          (value) =>
+              AnatomyLogRecord.fromFirestore(Map<String, dynamic>.from(value)),
+        )
         .toList();
   }
 
@@ -224,6 +217,5 @@ class AnatomyRecordCollection {
   static List<AnatomyLogRecord> remove(
     List<AnatomyLogRecord> records,
     String anatomyLogId,
-  ) =>
-      records.where((record) => record.anatomyLogId != anatomyLogId).toList();
+  ) => records.where((record) => record.anatomyLogId != anatomyLogId).toList();
 }

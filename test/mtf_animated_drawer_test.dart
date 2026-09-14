@@ -29,7 +29,7 @@ void main() {
     expect(source, contains('AlwaysStoppedAnimation<double>(1)'));
     expect(source, contains('child: _buildBody()'));
     expect(source, contains('builder: (context, child)'));
-    expect(source, contains('duration: const Duration(milliseconds: 300)'));
+    expect(source, contains('duration: const Duration(milliseconds: 140)'));
     expect(source, contains('MORE WELLNESS 회원관리'));
   });
 
@@ -42,8 +42,9 @@ void main() {
     ('라이트', lightTheme(), AppColors.lightSurface),
     ('다크', darkTheme(), AppColors.darkSurface),
   ]) {
-    testWidgets('${entry.$1} Drawer가 브랜드 surface와 대비 텍스트를 사용한다',
-        (tester) async {
+    testWidgets('${entry.$1} Drawer가 브랜드 surface와 대비 텍스트를 사용한다', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: entry.$2,
@@ -61,14 +62,15 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 600));
 
-      final hasPanelSurface =
-          tester.widgetList<Container>(find.byType(Container)).any((container) {
-        final decoration = container.decoration;
-        return decoration is BoxDecoration && decoration.color == entry.$3;
-      });
+      final hasPanelSurface = tester
+          .widgetList<Container>(find.byType(Container))
+          .any((container) {
+            final decoration = container.decoration;
+            return decoration is BoxDecoration && decoration.color == entry.$3;
+          });
 
       expect(hasPanelSurface, isTrue);
-      expect(find.text('고객카드'), findsOneWidget);
+      expect(find.text('회원리스트'), findsOneWidget);
       expect(find.text('회원 정보 확인 및 관리 지원'), findsOneWidget);
       expect(find.text('레슨 계약서 작성 및 운영 지원'), findsOneWidget);
       expect(find.text('레슨 및 회원 운영 분석 지원'), findsOneWidget);

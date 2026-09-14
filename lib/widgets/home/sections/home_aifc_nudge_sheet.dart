@@ -81,9 +81,7 @@ class HomeAifcNudgeSheet {
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF6B7280),
-                            side: const BorderSide(
-                              color: Color(0xFFE5E7EB),
-                            ),
+                            side: const BorderSide(color: Color(0xFFE5E7EB)),
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
@@ -91,9 +89,7 @@ class HomeAifcNudgeSheet {
                           ),
                           child: Text(
                             secondaryLabel,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                       ),
@@ -113,9 +109,7 @@ class HomeAifcNudgeSheet {
                           ),
                           child: Text(
                             primaryLabel,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),

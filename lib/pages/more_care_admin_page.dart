@@ -46,16 +46,11 @@ class MoreCareAdminPage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF9333EA),
-          ],
+          colors: [Color(0xFF4F46E5), Color(0xFF9333EA)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(28),
-        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Row(
         children: [
@@ -123,9 +118,7 @@ class _MoreCareAdminIntroCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -193,18 +186,12 @@ class _MoreCareAdminComingSoonCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.info_outline_rounded,
-            size: 19,
-            color: Color(0xFF64748B),
-          ),
+          Icon(Icons.info_outline_rounded, size: 19, color: Color(0xFF64748B)),
           SizedBox(width: 10),
           Expanded(
             child: Text(

@@ -18,6 +18,8 @@ class AifcColors {
   static const text = Color(0xFF111827);
   static const textMuted = Color(0xFF7C7ABB);
   static const textHint = Color(0xFFA5A3C8);
+  static const inactiveIcon = Color(0xFF9CA3AF);
+  static const inactiveText = Color(0xFF6B7280);
 
   static const cardBg = Color(0xFFFFFFFF);
   static const cardSoftBg = Color(0xFFF8F7FF);
@@ -68,10 +70,7 @@ class AifcText {
     height: 1.4,
   );
 
-  static const button = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w900,
-  );
+  static const button = TextStyle(fontSize: 14, fontWeight: FontWeight.w900);
 }
 
 class AifcShadow {

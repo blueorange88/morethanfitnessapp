@@ -4,11 +4,7 @@ class ShadcnTabs extends StatefulWidget {
   final List<String> tabs;
   final List<Widget> views;
 
-  const ShadcnTabs({
-    super.key,
-    required this.tabs,
-    required this.views,
-  });
+  const ShadcnTabs({super.key, required this.tabs, required this.views});
 
   @override
   State<ShadcnTabs> createState() => _ShadcnTabsState();
@@ -21,10 +17,7 @@ class _ShadcnTabsState extends State<ShadcnTabs>
   @override
   void initState() {
     super.initState();
-    _controller = TabController(
-      length: widget.tabs.length,
-      vsync: this,
-    );
+    _controller = TabController(length: widget.tabs.length, vsync: this);
   }
 
   @override
@@ -38,15 +31,10 @@ class _ShadcnTabsState extends State<ShadcnTabs>
           indicatorColor: cs.primary,
           labelColor: cs.primary,
           unselectedLabelColor: cs.onSurface.withOpacity(0.6),
-          tabs: [
-            for (var t in widget.tabs) Tab(text: t),
-          ],
+          tabs: [for (var t in widget.tabs) Tab(text: t)],
         ),
         Expanded(
-          child: TabBarView(
-            controller: _controller,
-            children: widget.views,
-          ),
+          child: TabBarView(controller: _controller, children: widget.views),
         ),
       ],
     );

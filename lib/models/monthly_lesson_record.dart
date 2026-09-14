@@ -42,15 +42,15 @@ class MonthlyLessonRecord {
     required Map<String, dynamic> data,
   }) {
     DateTime? date(dynamic value) => switch (value) {
-          Timestamp timestamp => timestamp.toDate(),
-          DateTime dateTime => dateTime,
-          String text => DateTime.tryParse(text),
-          _ => null,
-        };
+      Timestamp timestamp => timestamp.toDate(),
+      DateTime dateTime => dateTime,
+      String text => DateTime.tryParse(text),
+      _ => null,
+    };
     int integer(dynamic value) => switch (value) {
-          num number => number.toInt(),
-          _ => int.tryParse((value ?? '').toString()) ?? 0,
-        };
+      num number => number.toInt(),
+      _ => int.tryParse((value ?? '').toString()) ?? 0,
+    };
 
     final startAt = date(data['startAt']);
     if (startAt == null) {
@@ -83,10 +83,10 @@ class MonthlyLessonRecord {
 
 class MonthlyLessonSummary {
   MonthlyLessonSummary({required List<MonthlyLessonRecord> records})
-      : records = List.unmodifiable(
-          [...records]
-            ..sort((left, right) => left.startAt.compareTo(right.startAt)),
-        );
+    : records = List.unmodifiable(
+        [...records]
+          ..sort((left, right) => left.startAt.compareTo(right.startAt)),
+      );
 
   final List<MonthlyLessonRecord> records;
 
@@ -98,11 +98,12 @@ class MonthlyLessonSummary {
   int get service => _count('service');
   int get noShowDeducted => _count('no_show_deducted');
   int get noShowNotDeducted => _count('no_show_not_deducted');
-  int get actualMemberCount => confirmedRecords
-      .map((record) => record.memberId)
-      .where((id) => id.isNotEmpty)
-      .toSet()
-      .length;
+  int get actualMemberCount =>
+      confirmedRecords
+          .map((record) => record.memberId)
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .length;
 
   int _count(String status) =>
       confirmedRecords.where((record) => record.status == status).length;
@@ -114,13 +115,16 @@ class MonthlyLessonSummary {
     DateTime day, {
     bool includeCancelled = true,
   }) {
-    return records.where((record) {
-      final sameDay = record.startAt.year == day.year &&
-          record.startAt.month == day.month &&
-          record.startAt.day == day.day;
-      return sameDay &&
-          (record.isConfirmed || (includeCancelled && record.isCancelled));
-    }).toList(growable: false);
+    return records
+        .where((record) {
+          final sameDay =
+              record.startAt.year == day.year &&
+              record.startAt.month == day.month &&
+              record.startAt.day == day.day;
+          return sameDay &&
+              (record.isConfirmed || (includeCancelled && record.isCancelled));
+        })
+        .toList(growable: false);
   }
 }
 

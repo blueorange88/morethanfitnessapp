@@ -94,10 +94,7 @@ void main() {
         '오늘도 잘 시작해볼까요,',
       );
       expect(
-        homeHeaderGreetingIncludesNickname(
-          '김트레이너님, 오늘도 힘내요',
-          '김트레이너',
-        ),
+        homeHeaderGreetingIncludesNickname('김트레이너님, 오늘도 힘내요', '김트레이너'),
         isTrue,
       );
     });
@@ -180,14 +177,12 @@ void main() {
 
     test('초기 onboarding과 MyPage 저장은 각각 서버 callable만 사용한다', () {
       final myPageSource = File('lib/pages/my_page.dart').readAsStringSync();
-      final gatewaySource = File(
-        'lib/services/personal_profile_start_reader.dart',
-      ).readAsStringSync();
+      final gatewaySource =
+          File(
+            'lib/services/personal_profile_start_reader.dart',
+          ).readAsStringSync();
 
-      expect(
-        myPageSource,
-        contains('.updateTrainerProfile('),
-      );
+      expect(myPageSource, contains('.updateTrainerProfile('));
       expect(myPageSource, contains('nickname: displayName'));
       expect(myPageSource, contains('realName: name'));
       expect(
@@ -196,10 +191,7 @@ void main() {
       );
       expect(gatewaySource, contains("'completeNicknameOnboarding'"));
       expect(gatewaySource, contains('[MTF_NICKNAME_WRITE]'));
-      expect(
-        myPageSource,
-        isNot(contains(".update({'nickname':")),
-      );
+      expect(myPageSource, isNot(contains(".update({'nickname':")));
     });
   });
 
@@ -211,29 +203,37 @@ void main() {
 
     test('personal은 현재 UID와 personal workspace가 모두 일치해야 한다', () {
       expect(
-          HomeMemberLookupService.matchesPersonalOwner(mine, 'uid-a'), isTrue);
+        HomeMemberLookupService.matchesPersonalOwner(mine, 'uid-a'),
+        isTrue,
+      );
       expect(
-          HomeMemberLookupService.matchesPersonalOwner(mine, 'uid-b'), isFalse);
+        HomeMemberLookupService.matchesPersonalOwner(mine, 'uid-b'),
+        isFalse,
+      );
       expect(
-        HomeMemberLookupService.matchesPersonalOwner(
-          const {'trainerId': 'uid-a', 'workspaceType': 'legacy'},
-          'uid-a',
-        ),
+        HomeMemberLookupService.matchesPersonalOwner(const {
+          'trainerId': 'uid-a',
+          'workspaceType': 'legacy',
+        }, 'uid-a'),
         isFalse,
       );
     });
 
     test('두 최근 회원 UI는 static 전역 members stream을 사용하지 않는다', () {
-      final homeSource = File(
-        'lib/widgets/home/sections/home_recent_clients_section.dart',
-      ).readAsStringSync();
-      final editorSource = File(
-        'lib/widgets/home/lesson_editor/home_recent_members_section.dart',
-      ).readAsStringSync();
+      final homeSource =
+          File(
+            'lib/widgets/home/sections/home_recent_clients_section.dart',
+          ).readAsStringSync();
+      final editorSource =
+          File(
+            'lib/widgets/home/lesson_editor/home_recent_members_section.dart',
+          ).readAsStringSync();
 
       expect(homeSource, contains("where('trainerId', isEqualTo: owner)"));
-      expect(homeSource,
-          contains("where('workspaceType', isEqualTo: 'personal')"));
+      expect(
+        homeSource,
+        contains("where('workspaceType', isEqualTo: 'personal')"),
+      );
       expect(editorSource, contains("where('trainerId', isEqualTo: owner)"));
       expect(editorSource, isNot(contains('static final Stream')));
     });
@@ -241,17 +241,17 @@ void main() {
 
   test('personal MyPage는 displayName이 아니라 canonical nickname을 표시한다', () {
     expect(
-      myPageNicknameFromProfile(
-        const {'displayName': '', 'nickname': '김트레이너'},
-        personalWorkspace: true,
-      ),
+      myPageNicknameFromProfile(const {
+        'displayName': '',
+        'nickname': '김트레이너',
+      }, personalWorkspace: true),
       '김트레이너',
     );
     expect(
-      myPageNicknameFromProfile(
-        const {'displayName': '다른 이름', 'nickname': '김트레이너'},
-        personalWorkspace: true,
-      ),
+      myPageNicknameFromProfile(const {
+        'displayName': '다른 이름',
+        'nickname': '김트레이너',
+      }, personalWorkspace: true),
       '김트레이너',
     );
   });

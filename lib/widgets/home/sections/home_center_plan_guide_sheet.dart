@@ -60,9 +60,8 @@ class HomeCenterPlanGuideSheet {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
         decoration: BoxDecoration(
-          color: highlighted
-              ? const Color(0xFFEEF2FF)
-              : const Color(0xFFF8FAFC),
+          color:
+              highlighted ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: highlighted ? primaryColor : const Color(0xFFE5E7EB),
@@ -75,23 +74,20 @@ class HomeCenterPlanGuideSheet {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                gradient: highlighted
-                    ? LinearGradient(
-                  colors: [
-                    primaryColor,
-                    secondaryColor,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-                    : null,
+                gradient:
+                    highlighted
+                        ? LinearGradient(
+                          colors: [primaryColor, secondaryColor],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                        : null,
                 color: highlighted ? null : Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                border: highlighted
-                    ? null
-                    : Border.all(
-                  color: const Color(0xFFE5E7EB),
-                ),
+                border:
+                    highlighted
+                        ? null
+                        : Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: Icon(
                 icon,
@@ -109,9 +105,10 @@ class HomeCenterPlanGuideSheet {
                       Text(
                         tierName,
                         style: TextStyle(
-                          color: highlighted
-                              ? primaryColor
-                              : const Color(0xFF111827),
+                          color:
+                              highlighted
+                                  ? primaryColor
+                                  : const Color(0xFF111827),
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                         ),
@@ -271,9 +268,7 @@ class HomeCenterPlanGuideSheet {
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFF6B7280),
-                            side: const BorderSide(
-                              color: Color(0xFFE5E7EB),
-                            ),
+                            side: const BorderSide(color: Color(0xFFE5E7EB)),
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
@@ -281,9 +276,7 @@ class HomeCenterPlanGuideSheet {
                           ),
                           child: const Text(
                             '나중에',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                       ),
@@ -304,9 +297,7 @@ class HomeCenterPlanGuideSheet {
                           ),
                           child: Text(
                             ctaLabel(selectedCenterTier),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
                         ),
                       ),

@@ -5,8 +5,9 @@ import '../services/app_environment.dart';
 
 abstract final class DevClientCardViewportController {
   static const supportedWidths = <double>[320, 360, 390, 411];
-  static final ValueNotifier<double?> selectedWidth =
-      ValueNotifier<double?>(null);
+  static final ValueNotifier<double?> selectedWidth = ValueNotifier<double?>(
+    null,
+  );
 
   static bool get isAvailable => kDebugMode && AppEnvironmentConfig.isDev;
 
@@ -23,10 +24,7 @@ abstract final class DevClientCardViewportController {
 }
 
 class DevClientCardViewport extends StatelessWidget {
-  const DevClientCardViewport({
-    required this.child,
-    super.key,
-  });
+  const DevClientCardViewport({required this.child, super.key});
 
   final Widget child;
 
@@ -73,21 +71,23 @@ class DevClientCardViewport extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                     child: PopupMenuButton<double?>(
                       key: const Key('dev_client_card_viewport_selector'),
-                      tooltip: 'DEV 고객카드 폭',
+                      tooltip: 'DEV 회원카드 폭',
                       initialValue: selectedWidth,
                       onSelected: DevClientCardViewportController.select,
-                      itemBuilder: (_) => <PopupMenuEntry<double?>>[
-                        const PopupMenuItem<double?>(
-                          value: null,
-                          child: Text('OFF / 전체 폭'),
-                        ),
-                        for (final width
-                            in DevClientCardViewportController.supportedWidths)
-                          PopupMenuItem<double?>(
-                            value: width,
-                            child: Text('${width.toInt()}dp'),
-                          ),
-                      ],
+                      itemBuilder:
+                          (_) => <PopupMenuEntry<double?>>[
+                            const PopupMenuItem<double?>(
+                              value: null,
+                              child: Text('OFF / 전체 폭'),
+                            ),
+                            for (final width
+                                in DevClientCardViewportController
+                                    .supportedWidths)
+                              PopupMenuItem<double?>(
+                                value: width,
+                                child: Text('${width.toInt()}dp'),
+                              ),
+                          ],
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 9,

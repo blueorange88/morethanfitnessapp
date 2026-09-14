@@ -37,9 +37,10 @@ class PersonalTierProgress {
   bool get displayTeacherInfoCompleted =>
       beginnerMissionEarned || teacherInfoCompleted;
 
-  int get displayCompletedMissionCount => beginnerMissionEarned
-      ? totalMissionCount
-      : completedMissionCount.clamp(0, totalMissionCount);
+  int get displayCompletedMissionCount =>
+      beginnerMissionEarned
+          ? totalMissionCount
+          : completedMissionCount.clamp(0, totalMissionCount);
 
   bool get needsTeacherInfoReview =>
       beginnerMissionEarned && !teacherInfoCompleted;
@@ -64,7 +65,8 @@ class PersonalTierProgress {
         raw is Map ? Map<String, dynamic>.from(raw) : const <String, dynamic>{};
     final scheduleCount = _int(progress['scheduleCount']);
     final scheduleGoal = _int(progress['scheduleGoal'], defaultScheduleGoal);
-    final scheduleComplete = progress['scheduleMissionCompleted'] == true ||
+    final scheduleComplete =
+        progress['scheduleMissionCompleted'] == true ||
         scheduleCount >= scheduleGoal;
     final teacherComplete = progress['teacherInfoCompleted'] == true;
     return PersonalTierProgress(
@@ -73,10 +75,14 @@ class PersonalTierProgress {
       scheduleGoal: scheduleGoal,
       scheduleMissionCompleted: scheduleComplete,
       teacherInfoCompleted: teacherComplete,
-      completedMissionCount: _int(progress['completedMissionCount'],
-          (scheduleComplete ? 1 : 0) + (teacherComplete ? 1 : 0)),
-      totalMissionCount:
-          _int(progress['totalMissionCount'], defaultMissionTotal),
+      completedMissionCount: _int(
+        progress['completedMissionCount'],
+        (scheduleComplete ? 1 : 0) + (teacherComplete ? 1 : 0),
+      ),
+      totalMissionCount: _int(
+        progress['totalMissionCount'],
+        defaultMissionTotal,
+      ),
     );
   }
 

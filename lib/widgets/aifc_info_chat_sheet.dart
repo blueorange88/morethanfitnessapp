@@ -49,17 +49,18 @@ class AifcInfoChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcInfoChatSheet(
-        title: title,
-        message: message,
-        nickname: nickname,
-        items: items,
-        confirmText: confirmText,
-        userConfirmText: userConfirmText,
-        replyText: replyText,
-        icon: icon,
-        accentColor: accentColor,
-      ),
+      builder:
+          (_) => AifcInfoChatSheet(
+            title: title,
+            message: message,
+            nickname: nickname,
+            items: items,
+            confirmText: confirmText,
+            userConfirmText: userConfirmText,
+            replyText: replyText,
+            icon: icon,
+            accentColor: accentColor,
+          ),
     );
   }
 
@@ -149,7 +150,8 @@ class _AifcInfoChatSheetState extends State<AifcInfoChatSheet>
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -246,10 +248,7 @@ class _InfoMessageBlock extends StatelessWidget {
             decoration: BoxDecoration(
               color: AifcColors.cardSoftBg,
               borderRadius: BorderRadius.circular(AifcRadius.button),
-              border: Border.all(
-                color: AifcColors.cardBorder,
-                width: 0.6,
-              ),
+              border: Border.all(color: AifcColors.cardBorder, width: 0.6),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,10 +273,7 @@ class _InfoMessageBlock extends StatelessWidget {
         const SizedBox(height: 10),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: accentColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(AifcRadius.button),
@@ -288,11 +284,7 @@ class _InfoMessageBlock extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color: accentColor,
-              ),
+              Icon(icon, size: 16, color: accentColor),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(

@@ -5162,8 +5162,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 55,
-      maxWidth: 512,
-      maxHeight: 512,
+      maxWidth: 256,
+      maxHeight: 256,
     );
     if (file == null || !mounted) return;
 
@@ -5202,13 +5202,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
     });
 
     try {
-      await FirebaseFirestore.instance
-          .collection('members')
-          .doc(widget.memberId)
-          .set({
-            'photoUrl': FieldValue.delete(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+      if (_isPersonalWorkspace) {
+        await PersonalMemberCardSaveService(
+          uid: widget.personalOwnerUid!.trim(),
+        ).updatePhotoUrlAndVerify(memberId: widget.memberId, photoUrl: null);
+      } else {
+        await FirebaseFirestore.instance
+            .collection('members')
+            .doc(widget.memberId)
+            .set({
+              'photoUrl': FieldValue.delete(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+      }
       if (!mounted) return;
       _showAifcToast('프로필 사진을 삭제했어요.');
     } catch (_) {
@@ -5364,8 +5370,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Future<String?> _uploadProfileIfAny() async {
     if (_profileBytes == null) return null;
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
     final path =
-        'member_profiles/${widget.memberId}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        _isPersonalWorkspace
+            ? 'member_profiles_personal/${widget.personalOwnerUid!.trim()}/'
+                '${widget.memberId}/profile_$timestamp.jpg'
+            : 'member_profiles/${widget.memberId}/profile_$timestamp.jpg';
     final ref = FirebaseStorage.instance.ref(path);
     final meta = SettableMetadata(
       contentType: 'image/jpeg',
@@ -5405,33 +5415,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
   }
 
-  int _membershipPauseAvailableDays({required int remainingDays}) {
+  int? _membershipPauseAvailableDays() {
     final contractMax = _membershipContractMaxPauseDays;
 
     if (!_membershipContractDraftExists ||
         contractMax == null ||
         contractMax <= 0) {
-      return remainingDays;
+      return null;
     }
 
-    final contractRemaining = (contractMax - _membershipPauseUsedDays).clamp(
-      0,
-      contractMax,
-    );
-
-    return math.min(remainingDays, contractRemaining);
+    return (contractMax - _membershipPauseUsedDays).clamp(0, contractMax);
   }
 
   String _membershipPauseLimitGuideText({
     required int remainingDays,
-    required int availableDays,
+    required int? availableDays,
   }) {
     final contractMax = _membershipContractMaxPauseDays;
 
     if (!_membershipContractDraftExists ||
         contractMax == null ||
         contractMax <= 0) {
-      return '현재 남은 회원권 기간은 $remainingDays일이에요.';
+      return '현재 남은 회원권 기간은 $remainingDays일이에요.\n'
+          '정지기간은 이보다 길게 입력해도 괜찮아요.';
     }
 
     return '현재 남은 회원권 기간은 $remainingDays일이고,\n'
@@ -5532,7 +5538,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     required String memberName,
     required int days,
     required int remainingDays,
-    required int maxDays,
+    required int? maxDays,
   }) async {
     final result = await showModalBottomSheet<_MembershipPauseConfirmAction>(
       context: context,
@@ -5673,7 +5679,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<int?> _askMembershipPauseDays({
-    required int maxDays,
+    required int? maxDays,
     required int remainingDays,
     required String memberName,
   }) async {
@@ -5696,11 +5702,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
           final days = _parsePauseDaysInput(value);
 
           if (days == null || days <= 0) {
-            throw Exception('invalid_pause_days');
+            throw const AifcInputValidationException(
+              '저장이 되지 않았어요.\n20 / 20일 / 일주일 / 한달 이렇게 적어주세요.',
+            );
           }
 
-          if (days > maxDays) {
-            throw Exception('pause_days_over_remaining');
+          if (maxDays != null && days > maxDays) {
+            throw AifcInputValidationException(
+              '회원권계약서 기준 정지 가능일(최대 $maxDays일)보다 많아요.\n다시 입력해주세요.',
+            );
           }
 
           selectedDays = days;
@@ -5764,16 +5774,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
         return;
       }
 
-      final availablePauseDays = _membershipPauseAvailableDays(
-        remainingDays: remainingDays,
-      );
+      final availablePauseDays = _membershipPauseAvailableDays();
 
-      if (availablePauseDays <= 0) {
-        _showAifcToast(
-          _membershipContractDraftExists
-              ? '회원권계약서 기준으로 더 이상 정지 가능한 일수가 없어요.'
-              : '정지 가능한 남은 회원권 기간이 없어요.',
-        );
+      if (availablePauseDays != null && availablePauseDays <= 0) {
+        _showAifcToast('회원권계약서 기준으로 더 이상 정지 가능한 일수가 없어요.');
         return;
       }
 
@@ -5787,17 +5791,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
       final pauseDays = selectedPauseDays;
 
-      if (pauseDays > remainingDays) {
-        _showAifcToast('정지기간이 남은 회원권 기간보다 많아요.');
-        return;
-      }
-
-      if (pauseDays > availablePauseDays) {
-        _showAifcToast(
-          _membershipContractDraftExists
-              ? '회원권계약서 기준 정지 가능일보다 많아요.'
-              : '정지 가능한 기간보다 많아요.',
-        );
+      if (availablePauseDays != null && pauseDays > availablePauseDays) {
+        _showAifcToast('회원권계약서 기준 정지 가능일보다 많아요.');
         return;
       }
 
@@ -6752,6 +6747,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 _selectedGroupId == '__ungrouped__' ? null : _selectedGroupId,
             personalTagIds: _selectedPersonalTagIds,
           ),
+          photoUrl: photoUrl,
           trace: trace,
         );
         await _runPostCanonicalSaveTasks();
@@ -6810,6 +6806,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             ),
             personalTagIds: _selectedPersonalTagIds,
           ),
+          photoUrl: photoUrl,
           trace: trace,
         );
         final postSaveSucceeded = await _runPostCanonicalSaveTasks();
@@ -7885,15 +7882,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     await _maybeShowMilestoneNudge();
   }
 
-  static const List<String> _baseLessonTypeOptions = [
-    '미입력',
-    'PT',
-    '필라테스',
-    '요가',
-    '그룹',
-    '줌바',
-    '재활',
-  ];
+  static const List<String> _baseLessonTypeOptions = kBuiltInLessonTypes;
 
   bool get _isLessonTypeLockedByContract {
     return !_lessonsNotRegistered &&
@@ -8487,6 +8476,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     if (!_isClientCardLoaded) return true;
     if (_isPersonalWorkspace && !_canUseSemiProFeatures) return true;
     if (_contractSigned) return true;
+    if (_trainingLogConsentAgreed) return true;
     return false;
   }
 
@@ -11826,13 +11816,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
           leading: BackButton(
             onPressed: () => Navigator.of(context).maybePop(),
           ),
-          title: const Text('고객카드 등록'),
+          title: const Text('회원카드 등록'),
         ),
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              '고객카드 등록은 Amateur부터 사용할 수 있어요.',
+              '회원카드 등록은 Amateur부터 사용할 수 있어요.',
               textAlign: TextAlign.center,
               style: TextStyle(fontWeight: FontWeight.w700),
             ),

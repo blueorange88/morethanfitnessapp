@@ -16,10 +16,7 @@ enum AccountPasswordErrorCode {
 }
 
 class AccountPasswordException implements Exception {
-  const AccountPasswordException(
-    this.code, {
-    this.passwordWasUpdated = false,
-  });
+  const AccountPasswordException(this.code, {this.passwordWasUpdated = false});
 
   final AccountPasswordErrorCode code;
   final bool passwordWasUpdated;
@@ -40,8 +37,8 @@ class FirebaseAccountPasswordGateway implements AccountPasswordGateway {
   FirebaseAccountPasswordGateway({
     FirebaseAuth? auth,
     FirebaseFunctions? functions,
-  })  : _auth = auth,
-        _functions = functions;
+  }) : _auth = auth,
+       _functions = functions;
 
   final FirebaseAuth? _auth;
   final FirebaseFunctions? _functions;
@@ -101,7 +98,7 @@ class FirebaseAccountPasswordGateway implements AccountPasswordGateway {
 
 class AccountPasswordService {
   AccountPasswordService({AccountPasswordGateway? gateway})
-      : _gateway = gateway ?? FirebaseAccountPasswordGateway();
+    : _gateway = gateway ?? FirebaseAccountPasswordGateway();
 
   final AccountPasswordGateway _gateway;
   bool _busy = false;
@@ -130,7 +127,8 @@ class AccountPasswordService {
     }
     if (newPassword.length < 8) {
       throw const AccountPasswordException(
-          AccountPasswordErrorCode.weakPassword);
+        AccountPasswordErrorCode.weakPassword,
+      );
     }
     if (_busy) return;
     _busy = true;
@@ -151,19 +149,15 @@ class AccountPasswordService {
     } on AccountPasswordException {
       rethrow;
     } on FirebaseAuthException catch (error) {
-      throw AccountPasswordException(
-        switch (error.code) {
-          'wrong-password' ||
-          'invalid-credential' ||
-          'user-mismatch' =>
-            AccountPasswordErrorCode.invalidCurrentPassword,
-          'weak-password' => AccountPasswordErrorCode.weakPassword,
-          'too-many-requests' => AccountPasswordErrorCode.tooManyRequests,
-          'network-request-failed' => AccountPasswordErrorCode.network,
-          _ => AccountPasswordErrorCode.unknown,
-        },
-        passwordWasUpdated: passwordUpdated,
-      );
+      throw AccountPasswordException(switch (error.code) {
+        'wrong-password' ||
+        'invalid-credential' ||
+        'user-mismatch' => AccountPasswordErrorCode.invalidCurrentPassword,
+        'weak-password' => AccountPasswordErrorCode.weakPassword,
+        'too-many-requests' => AccountPasswordErrorCode.tooManyRequests,
+        'network-request-failed' => AccountPasswordErrorCode.network,
+        _ => AccountPasswordErrorCode.unknown,
+      }, passwordWasUpdated: passwordUpdated);
     } catch (_) {
       throw AccountPasswordException(
         AccountPasswordErrorCode.unknown,
@@ -180,13 +174,11 @@ class AccountPasswordService {
     try {
       await _gateway.sendPasswordResetEmail();
     } on FirebaseAuthException catch (error) {
-      throw AccountPasswordException(
-        switch (error.code) {
-          'too-many-requests' => AccountPasswordErrorCode.tooManyRequests,
-          'network-request-failed' => AccountPasswordErrorCode.network,
-          _ => AccountPasswordErrorCode.unknown,
-        },
-      );
+      throw AccountPasswordException(switch (error.code) {
+        'too-many-requests' => AccountPasswordErrorCode.tooManyRequests,
+        'network-request-failed' => AccountPasswordErrorCode.network,
+        _ => AccountPasswordErrorCode.unknown,
+      });
     } catch (_) {
       throw const AccountPasswordException(AccountPasswordErrorCode.unknown);
     } finally {

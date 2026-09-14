@@ -181,8 +181,10 @@ class _WidgetSettingsPageState extends ConsumerState<WidgetSettingsPage> {
                                 subtitle: '네이비와 웜 옐로우 브랜드 테마',
                                 selected: appTheme == AppThemeMode.light,
                                 preview: _ThemePreviewFromData(
-                                    theme: kMtfWidgetThemes[
-                                        WidgetThemeType.brandLight]!),
+                                  theme:
+                                      kMtfWidgetThemes[WidgetThemeType
+                                          .brandLight]!,
+                                ),
                                 onTap: () => _setTheme(AppThemeMode.light),
                               ),
                               const _WidgetSettingsDivider(),
@@ -191,8 +193,9 @@ class _WidgetSettingsPageState extends ConsumerState<WidgetSettingsPage> {
                                 subtitle: '네이비 배경과 골드 포인트',
                                 selected: appTheme == AppThemeMode.dark,
                                 preview: _ThemePreviewFromData(
-                                    theme: kMtfWidgetThemes[
-                                        WidgetThemeType.dark]!),
+                                  theme:
+                                      kMtfWidgetThemes[WidgetThemeType.dark]!,
+                                ),
                                 onTap: () => _setTheme(AppThemeMode.dark),
                               ),
                               const _WidgetSettingsDivider(),
@@ -201,8 +204,9 @@ class _WidgetSettingsPageState extends ConsumerState<WidgetSettingsPage> {
                                 subtitle: '기존의 밝고 경쾌한 인디고·퍼플',
                                 selected: appTheme == AppThemeMode.lululala,
                                 preview: _ThemePreviewFromData(
-                                    theme: kMtfWidgetThemes[
-                                        WidgetThemeType.light]!),
+                                  theme:
+                                      kMtfWidgetThemes[WidgetThemeType.light]!,
+                                ),
                                 onTap: () => _setTheme(AppThemeMode.lululala),
                               ),
                             ],
@@ -238,8 +242,9 @@ class _WidgetSettingsPageState extends ConsumerState<WidgetSettingsPage> {
                                 title: '현재 시간 표시',
                                 subtitle: '오늘 요일과 현재 시간 칸을 강조합니다',
                                 trailingText: '사용 중',
-                                onTap: () =>
-                                    _showActionToast('현재 시간 강조가 적용되어 있어요.'),
+                                onTap:
+                                    () =>
+                                        _showActionToast('현재 시간 강조가 적용되어 있어요.'),
                               ),
                             ],
                           ),
@@ -254,8 +259,10 @@ class _WidgetSettingsPageState extends ConsumerState<WidgetSettingsPage> {
                                 title: '전체 스케줄러',
                                 subtitle: '주간 수업일정을 한눈에 보는 큰 위젯',
                                 trailingText: '사용 가능',
-                                onTap: () => _showActionToast(
-                                    '전체 스케줄러 위젯은 홈 화면에서 추가할 수 있어요.'),
+                                onTap:
+                                    () => _showActionToast(
+                                      '전체 스케줄러 위젯은 홈 화면에서 추가할 수 있어요.',
+                                    ),
                               ),
                               const _WidgetSettingsDivider(),
                               _WidgetSettingsMenuTile(
@@ -263,8 +270,10 @@ class _WidgetSettingsPageState extends ConsumerState<WidgetSettingsPage> {
                                 title: '다음 레슨',
                                 subtitle: '다음/다다음 레슨과 메모를 빠르게 확인합니다',
                                 trailingText: '사용 가능',
-                                onTap: () => _showActionToast(
-                                    '다음 레슨 위젯은 홈 화면에서 추가할 수 있어요.'),
+                                onTap:
+                                    () => _showActionToast(
+                                      '다음 레슨 위젯은 홈 화면에서 추가할 수 있어요.',
+                                    ),
                               ),
                               const _WidgetSettingsDivider(),
                               _WidgetSettingsMenuTile(
@@ -314,9 +323,7 @@ String _appThemeLabel(AppThemeMode mode) {
 }
 
 class _WidgetSettingsHeader extends StatelessWidget {
-  const _WidgetSettingsHeader({
-    required this.onBackTap,
-  });
+  const _WidgetSettingsHeader({required this.onBackTap});
 
   final VoidCallback onBackTap;
 
@@ -330,9 +337,7 @@ class _WidgetSettingsHeader extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 18),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(30),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
       child: Column(
         children: [
@@ -350,9 +355,7 @@ class _WidgetSettingsHeader extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.14),
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.20),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.20)),
                     ),
                     child: const Icon(
                       Icons.arrow_back_rounded,
@@ -382,9 +385,7 @@ class _WidgetSettingsHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.16),
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.16)),
             ),
             child: Row(
               children: [
@@ -556,11 +557,7 @@ class _WidgetSettingsMenuTile extends StatelessWidget {
                 color: scheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                icon,
-                size: 20,
-                color: scheme.onSecondaryContainer,
-              ),
+              child: Icon(icon, size: 20, color: scheme.onSecondaryContainer),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -599,10 +596,7 @@ class _WidgetSettingsMenuTile extends StatelessWidget {
                 ),
               )
             else
-              Icon(
-                Icons.chevron_right_rounded,
-                color: scheme.onSurfaceVariant,
-              ),
+              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
           ],
         ),
       ),
@@ -733,9 +727,7 @@ class _ThemePreviewLight extends StatelessWidget {
 }
 
 class _ThemePreviewFromData extends StatelessWidget {
-  const _ThemePreviewFromData({
-    required this.theme,
-  });
+  const _ThemePreviewFromData({required this.theme});
 
   final MtfWidgetThemeData theme;
 
@@ -746,15 +738,16 @@ class _ThemePreviewFromData extends StatelessWidget {
     final headerEnd = widgetColorFromHex(theme.headerEndColor);
     final line = widgetColorFromHex(theme.gridLineColor);
     final rowEven = widgetColorFromHex(theme.rowEvenColor);
-    final block = theme.isDark
-        ? const Color(0xFFE8C97A)
-        : theme.type == WidgetThemeType.pinkperfume
+    final block =
+        theme.isDark
+            ? const Color(0xFFE8C97A)
+            : theme.type == WidgetThemeType.pinkperfume
             ? const Color(0xFFDB2777)
             : theme.type == WidgetThemeType.brownHistory
-                ? const Color(0xFF8B5E34)
-                : theme.type == WidgetThemeType.ttobak
-                    ? const Color(0xFF111827)
-                    : const Color(0xFF4F46E5);
+            ? const Color(0xFF8B5E34)
+            : theme.type == WidgetThemeType.ttobak
+            ? const Color(0xFF111827)
+            : const Color(0xFF4F46E5);
 
     return Container(
       width: 58,
@@ -786,28 +779,33 @@ class _ThemePreviewFromData extends StatelessWidget {
                   child: Column(
                     children: [
                       Expanded(
-                          child: Container(color: rowEven.withOpacity(0.65))),
+                        child: Container(color: rowEven.withOpacity(0.65)),
+                      ),
                       Expanded(child: Container(color: bg)),
                       Expanded(
-                          child: Container(color: rowEven.withOpacity(0.65))),
+                        child: Container(color: rowEven.withOpacity(0.65)),
+                      ),
                     ],
                   ),
                 ),
                 Positioned(
-                    left: 12,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 1, color: line)),
+                  left: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 1, color: line),
+                ),
                 Positioned(
-                    left: 28,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 1, color: line)),
+                  left: 28,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 1, color: line),
+                ),
                 Positioned(
-                    left: 44,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 1, color: line)),
+                  left: 44,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 1, color: line),
+                ),
                 Positioned(
                   left: 16,
                   top: 8,
@@ -879,38 +877,47 @@ class _MiniPreview extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned(
-                    left: 12,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 1, color: line)),
+                  left: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 1, color: line),
+                ),
                 Positioned(
-                    left: 28,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 1, color: line)),
+                  left: 28,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 1, color: line),
+                ),
                 Positioned(
-                    left: 44,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 1, color: line)),
+                  left: 44,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 1, color: line),
+                ),
                 Positioned(
-                    left: 16,
-                    top: 8,
-                    width: 19,
-                    height: 9,
-                    child: Container(
-                        decoration: BoxDecoration(
-                            color: block,
-                            borderRadius: BorderRadius.circular(4)))),
+                  left: 16,
+                  top: 8,
+                  width: 19,
+                  height: 9,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: block,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
                 Positioned(
-                    left: 36,
-                    top: 21,
-                    width: 15,
-                    height: 8,
-                    child: Container(
-                        decoration: BoxDecoration(
-                            color: block.withOpacity(0.75),
-                            borderRadius: BorderRadius.circular(4)))),
+                  left: 36,
+                  top: 21,
+                  width: 15,
+                  height: 8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: block.withOpacity(0.75),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -928,21 +935,20 @@ class _SketchMiniPreviewPainter extends CustomPainter {
     final paper = Paint()..color = const Color(0xFFFDFCF8);
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Offset.zero & size,
-        const Radius.circular(12),
-      ),
+      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(12)),
       paper,
     );
 
-    final line = Paint()
-      ..color = Colors.black87
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1;
+    final line =
+        Paint()
+          ..color = Colors.black87
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.1;
 
-    final block = Paint()
-      ..color = Colors.black.withOpacity(0.13)
-      ..style = PaintingStyle.fill;
+    final block =
+        Paint()
+          ..color = Colors.black.withOpacity(0.13)
+          ..style = PaintingStyle.fill;
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(

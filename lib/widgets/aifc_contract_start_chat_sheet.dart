@@ -6,26 +6,9 @@ import '../aifc/core/aifc_chat_flow.dart';
 import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
 
-const Color _kSheetBg = Color(0xFFF5F4FF);
-const Color _kFcBubBg = Color(0xFFFFFFFF);
-const Color _kFcBubBdr = Color(0xFFE0DEFF);
-const Color _kFcText = Color(0xFF1E1B4B);
-const Color _kPrimary = Color(0xFF4F46E5);
-const Color _kTextMuted = Color(0xFF7C7ABB);
-const Color _kTextHint = Color(0xFFA5A3C8);
-const Color _kCardBdr = Color(0xFFE0DEFF);
+enum AifcContractStartAction { later, startContract, upgradeSemiPro }
 
-enum AifcContractStartAction {
-  later,
-  startContract,
-  upgradeSemiPro,
-}
-
-enum _ContractChatMode {
-  initial,
-  semiProGuide,
-  upgradePrompt,
-}
+enum _ContractChatMode { initial, semiProGuide, upgradePrompt }
 
 class AifcContractStartChatSheet extends StatefulWidget {
   const AifcContractStartChatSheet({
@@ -46,10 +29,11 @@ class AifcContractStartChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcContractStartChatSheet(
-        trainerName: trainerName,
-        canUseContract: canUseContract,
-      ),
+      builder:
+          (_) => AifcContractStartChatSheet(
+            trainerName: trainerName,
+            canUseContract: canUseContract,
+          ),
     );
   }
 
@@ -80,9 +64,10 @@ class _AifcContractStartChatSheetState extends State<AifcContractStartChatSheet>
 
     aifcSetActiveGroup(_ContractChatMode.initial);
 
-    final introText = widget.canUseContract
-        ? '$_safeTrainerName, 계약서 작성을 시작해볼까요?\n회원 정보와 레슨 조건을 제가 차근차근 정리해드릴게요.'
-        : '$_safeTrainerName, 계약서 작성은 Semi-Pro부터 열려 있어요.\n조건을 채우거나 후원으로 바로 열 수 있어요.';
+    final introText =
+        widget.canUseContract
+            ? '$_safeTrainerName, 계약서 작성을 시작해볼까요?\n회원 정보와 레슨 조건을 제가 차근차근 정리해드릴게요.'
+            : '$_safeTrainerName, 계약서 작성은 Semi-Pro부터 열려 있어요.\n조건을 채우거나 후원으로 바로 열 수 있어요.';
 
     aifcAddFcMessage(
       text: introText,
@@ -137,7 +122,7 @@ class _AifcContractStartChatSheetState extends State<AifcContractStartChatSheet>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            '고객카드에 직접 입력한 값보다 서명 완료된 계약서를 더 신뢰도 높은 기준값으로 관리할 수 있어요.',
+            '회원카드에 직접 입력한 값보다 서명 완료된 계약서를 더 신뢰도 높은 기준값으로 관리할 수 있어요.',
             style: TextStyle(
               color: AifcColors.textHint,
               fontSize: 11,
@@ -230,7 +215,8 @@ class _AifcContractStartChatSheetState extends State<AifcContractStartChatSheet>
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -485,15 +471,11 @@ class _InfoRow extends StatelessWidget {
           height: 34,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F7FF),
+            color: AifcColors.cardSoftBg,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kCardBdr, width: 0.5),
+            border: Border.all(color: AifcColors.cardBorder, width: 0.5),
           ),
-          child: Icon(
-            icon,
-            color: _kPrimary,
-            size: 18,
-          ),
+          child: Icon(icon, color: AifcColors.primary, size: 18),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -503,7 +485,7 @@ class _InfoRow extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color: _kFcText,
+                  color: AifcColors.fcText,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w900,
                 ),
@@ -512,7 +494,7 @@ class _InfoRow extends StatelessWidget {
               Text(
                 subtitle,
                 style: const TextStyle(
-                  color: _kTextHint,
+                  color: AifcColors.textHint,
                   fontSize: 11,
                   height: 1.35,
                   fontWeight: FontWeight.w600,

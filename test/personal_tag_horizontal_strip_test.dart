@@ -38,8 +38,9 @@ Widget _testApp({
 void main() {
   for (final width in <double>[320, 360, 384, 411]) {
     for (final count in <int>[1, 5, 10, 20]) {
-      testWidgets('${width.toInt()}dp 태그 $count개에서도 관리 버튼은 고정된다',
-          (tester) async {
+      testWidgets('${width.toInt()}dp 태그 $count개에서도 관리 버튼은 고정된다', (
+        tester,
+      ) async {
         await tester.binding.setSurfaceSize(Size(width, 720));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         await tester.pumpWidget(_testApp(width: width, tagCount: count));
@@ -54,7 +55,9 @@ void main() {
         expect(scroll, findsOneWidget);
         final before = tester.getTopLeft(settings);
         expect(
-            tester.getSize(find.byType(PersonalTagHorizontalStrip)).height, 32);
+          tester.getSize(find.byType(PersonalTagHorizontalStrip)).height,
+          32,
+        );
 
         if (count > 5) {
           await tester.drag(scroll, const Offset(-600, 0));
@@ -78,8 +81,9 @@ void main() {
     MapEntry('dark', darkTheme()),
     MapEntry('lululala', lululalaTheme()),
   ]) {
-    testWidgets('${theme.key} 테마에서 20개 태그 한 줄 strip이 overflow 없이 표시된다',
-        (tester) async {
+    testWidgets('${theme.key} 테마에서 20개 태그 한 줄 strip이 overflow 없이 표시된다', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(320, 720));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(

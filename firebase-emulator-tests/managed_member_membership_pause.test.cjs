@@ -188,17 +188,45 @@ async function main() {
       assert.equal(result.body.error.message, "not_paused");
     });
 
-    await scenario("pausing more days than remaining is rejected", async () => {
-      const result = await callFunction(
-        "updateManagedMemberMembershipPause",
-        owner.idToken,
-        {memberId, action: "pause", pauseDays: 9999},
-      );
-      assert.equal(result.body.error.status, "FAILED_PRECONDITION");
-      assert.equal(result.body.error.message, "pause_days_over_remaining");
-      const snapshot = await getDoc(doc(db, "members", memberId));
-      assert.equal(snapshot.data().membershipStatus, undefined);
-    });
+    await scenario(
+      "pausing more days than remaining membership succeeds when no contract limit exists",
+      async () => {
+        // 남은 회원권 기간은 3일뿐인 별도 fixture.
+        const shortEndDate = new Date(today.getTime());
+        shortEndDate.setUTCDate(shortEndDate.getUTCDate() + 2);
+        const shortEndAt = shortEndDate.toISOString().slice(0, 10);
+
+        const shortMember = await callFunction(
+          "createManagedMember",
+          owner.idToken,
+          memberPayloadWithMembership({
+            index: 2,
+            startAt,
+            endAt: shortEndAt,
+            days: 3,
+          }),
+        );
+        assert.equal(
+          shortMember.status,
+          200,
+          JSON.stringify(shortMember.body),
+        );
+        const shortMemberId = shortMember.body.result.memberId;
+
+        // 계약서 기준 정지 제한이 없으면, 남은 기간(3일)보다 긴 정지(7일)도 허용된다.
+        const result = await callFunction(
+          "updateManagedMemberMembershipPause",
+          owner.idToken,
+          {memberId: shortMemberId, action: "pause", pauseDays: 7},
+        );
+        assert.equal(result.status, 200, JSON.stringify(result.body));
+        assert.equal(result.body.result.pauseDays, 7);
+
+        const snapshot = await getDoc(doc(db, "members", shortMemberId));
+        assert.equal(snapshot.data().membershipStatus, "paused");
+        assert.equal(snapshot.data().membership.pausePlannedDays, 7);
+      },
+    );
 
     await scenario(
       "pause persists status, history, and resume due date",

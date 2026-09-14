@@ -24,16 +24,11 @@ class AifcSnackBar {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
         padding: EdgeInsets.zero,
         content: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 11,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
             color: const Color(0xFF0F1020).withOpacity(0.96),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.08),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.18),
@@ -44,10 +39,7 @@ class AifcSnackBar {
           ),
           child: Row(
             children: [
-              const AifcAvatar(
-                size: 26,
-                isAnimating: false,
-              ),
+              const AifcAvatar(size: 26, isAnimating: false),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

@@ -9,11 +9,7 @@ class LessonTypeItem {
     required this.colorHex,
   });
 
-  LessonTypeItem copyWith({
-    String? id,
-    String? name,
-    String? colorHex,
-  }) {
+  LessonTypeItem copyWith({String? id, String? name, String? colorHex}) {
     return LessonTypeItem(
       id: id ?? this.id,
       name: name ?? this.name,

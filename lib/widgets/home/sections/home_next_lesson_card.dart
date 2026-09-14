@@ -71,19 +71,21 @@ class HomeNextLessonCard extends StatelessWidget {
 
     final bool showLeftLine = (isOngoing || emphasis > 0) && !hideLeftBar;
 
-    final Color leftLineColor = showLeftLine
-        ? primaryColor.withValues(alpha: isOngoing ? 1.0 : 0.82)
-        : Colors.transparent;
+    final Color leftLineColor =
+        showLeftLine
+            ? primaryColor.withValues(alpha: isOngoing ? 1.0 : 0.82)
+            : Colors.transparent;
 
     final double leftLineWidth = showLeftLine ? 4.0 : 0.0;
 
-    final double cardOpacity = forceClear
-        ? 1.0
-        : isOngoing
+    final double cardOpacity =
+        forceClear
+            ? 1.0
+            : isOngoing
             ? 1.0
             : showPriorityStyle
-                ? 0.88
-                : 0.65;
+            ? 0.88
+            : 0.65;
 
     final double iconOpacity = switch (emphasis) {
       3 => 0.20,
@@ -106,13 +108,18 @@ class HomeNextLessonCard extends StatelessWidget {
       _ => const Color(0xFF1E40AF),
     };
 
-    final Color cardColor = isOngoing
-        ? Color.alphaBlend(primaryColor.withValues(alpha: 0.08), colors.surface)
-        : colors.surface;
+    final Color cardColor =
+        isOngoing
+            ? Color.alphaBlend(
+              primaryColor.withValues(alpha: 0.08),
+              colors.surface,
+            )
+            : colors.surface;
 
-    final Color outerBorderColor = showPriorityStyle
-        ? primaryColor.withValues(alpha: isOngoing ? 0.48 : 0.38)
-        : Colors.transparent;
+    final Color outerBorderColor =
+        showPriorityStyle
+            ? primaryColor.withValues(alpha: isOngoing ? 0.48 : 0.38)
+            : Colors.transparent;
 
     final double outerBorderWidth = showPriorityStyle ? 1.1 : 0.0;
 

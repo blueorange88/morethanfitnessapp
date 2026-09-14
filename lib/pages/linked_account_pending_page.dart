@@ -30,9 +30,9 @@ class _LinkedAccountPendingPageState extends State<LinkedAccountPendingPage> {
       await widget.service.signOut();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(appAccountErrorMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(appAccountErrorMessage(error))));
       setState(() => _signingOut = false);
     }
   }

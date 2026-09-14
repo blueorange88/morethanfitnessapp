@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class ShadcnProgress extends StatelessWidget {
   final double value; // 0.0 ~ 1.0
 
-  const ShadcnProgress({
-    super.key,
-    required this.value,
-  });
+  const ShadcnProgress({super.key, required this.value});
 
   @override
   Widget build(BuildContext context) {

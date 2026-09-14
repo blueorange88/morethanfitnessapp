@@ -6,12 +6,10 @@ import 'package:mtf_app/services/app_tier_access_service.dart';
 
 void main() {
   test('Android launcher 이름은 prod와 dev flavor resource로 분리된다', () {
-    final prod = File(
-      'android/app/src/prod/res/values/strings.xml',
-    ).readAsStringSync();
-    final dev = File(
-      'android/app/src/dev/res/values/strings.xml',
-    ).readAsStringSync();
+    final prod =
+        File('android/app/src/prod/res/values/strings.xml').readAsStringSync();
+    final dev =
+        File('android/app/src/dev/res/values/strings.xml').readAsStringSync();
 
     expect(prod, contains('<string name="app_name">모어댄</string>'));
     expect(dev, contains('<string name="app_name">모어댄 DEV</string>'));
@@ -19,18 +17,19 @@ void main() {
   });
 
   test('personal schedules 범위 query 복합 인덱스가 정의돼 있다', () {
-    final json = jsonDecode(
-      File('firestore.indexes.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    final json =
+        jsonDecode(File('firestore.indexes.json').readAsStringSync())
+            as Map<String, dynamic>;
     final indexes = (json['indexes'] as List).cast<Map<String, dynamic>>();
 
     final schedules = indexes.singleWhere(
       (index) => index['collectionGroup'] == 'schedules',
     );
-    final fields = (schedules['fields'] as List)
-        .cast<Map<String, dynamic>>()
-        .map((field) => field['fieldPath'])
-        .toList();
+    final fields =
+        (schedules['fields'] as List)
+            .cast<Map<String, dynamic>>()
+            .map((field) => field['fieldPath'])
+            .toList();
 
     expect(fields, ['trainerId', 'workspaceType', 'startAt']);
     expect(schedules['queryScope'], 'COLLECTION');
@@ -60,13 +59,16 @@ void main() {
     final notifications =
         File('lib/services/notification_service.dart').readAsStringSync();
 
-    expect(home,
-        contains('Future<AppTierAccessSnapshot> _loadCurrentTierAccess()'));
+    expect(
+      home,
+      contains('Future<AppTierAccessSnapshot> _loadCurrentTierAccess()'),
+    );
     expect(home, contains('personalOwnerUid: _isPersonalWorkspace'));
     expect(home, contains('onError: (Object error, StackTrace stackTrace)'));
     expect(
       notifications,
-      contains('AppTierAccessService.loadPersonalTrainerAccess(uid: ownerUid)'),
+      contains('AppTierAccessService.loadPersonalTrainerAccess('),
     );
+    expect(notifications, contains('uid: ownerUid'));
   });
 }

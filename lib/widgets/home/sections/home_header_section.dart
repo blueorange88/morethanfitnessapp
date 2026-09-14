@@ -158,9 +158,7 @@ class HomeHeaderSection extends StatelessWidget {
   }
 
   // ignore: unused_element
-  _HomeHeaderGreetingCopy _buildHomeHeaderGreeting(
-    Map<String, dynamic>? data,
-  ) {
+  _HomeHeaderGreetingCopy _buildHomeHeaderGreeting(Map<String, dynamic>? data) {
     final hour = DateTime.now().hour;
     final label = _trainerHeaderNameFromData(data).trim();
     if (label.isEmpty) {
@@ -237,15 +235,13 @@ class HomeHeaderSection extends StatelessWidget {
     }
   }
 
-  String _pickExpandedHeaderMessage(
-    List<String> messages, {
-    int salt = 0,
-  }) {
+  String _pickExpandedHeaderMessage(List<String> messages, {int salt = 0}) {
     if (messages.isEmpty) return '';
 
     final now = DateTime.now();
 
-    final seed = now.year +
+    final seed =
+        now.year +
         now.month +
         now.day +
         (now.hour ~/ 2) +
@@ -260,104 +256,77 @@ class HomeHeaderSection extends StatelessWidget {
   String _buildExpandedHeaderSupportNotice() {
     if (moreSenseCount > 0) {
       if (todayCount >= 9) {
-        return _pickExpandedHeaderMessage(
-          [
-            '오늘은 바쁜 날이에요. MORE 센스 $moreSenseCount개는 제가 먼저 접어둘게요.',
-            '레슨 흐름이 묵직한 날이에요. 놓치기 쉬운 관리 포인트 $moreSenseCount개만 챙겨볼까요?',
-            '오늘 일정이 꽉 찼어요. MORE 센스 $moreSenseCount개는 필요할 때 바로 열어볼 수 있어요.',
-          ],
-          salt: 90,
-        );
+        return _pickExpandedHeaderMessage([
+          '오늘은 바쁜 날이에요. MORE 센스 $moreSenseCount개는 제가 먼저 접어둘게요.',
+          '레슨 흐름이 묵직한 날이에요. 놓치기 쉬운 관리 포인트 $moreSenseCount개만 챙겨볼까요?',
+          '오늘 일정이 꽉 찼어요. MORE 센스 $moreSenseCount개는 필요할 때 바로 열어볼 수 있어요.',
+        ], salt: 90);
       }
 
       if (todayCount == 0) {
-        return _pickExpandedHeaderMessage(
-          [
-            '레슨은 없지만 MORE 센스 $moreSenseCount개가 있어요. 시간 괜찮을 때만 가볍게 봐도 좋아요.',
-            '오늘은 여유 있는 날이에요. MORE 센스 $moreSenseCount개만 슬쩍 훑어볼까요?',
-            '쉬는 날엔 무리하지 말고, 관리 포인트 $moreSenseCount개만 가볍게 확인해도 좋아요.',
-            '평온한 하루 보내고 계신가요? 잠깐 시간 나면 MORE 센스도 한 번 둘러보세요.',
-          ],
-          salt: 20,
-        );
+        return _pickExpandedHeaderMessage([
+          '레슨은 없지만 MORE 센스 $moreSenseCount개가 있어요. 시간 괜찮을 때만 가볍게 봐도 좋아요.',
+          '오늘은 여유 있는 날이에요. MORE 센스 $moreSenseCount개만 슬쩍 훑어볼까요?',
+          '쉬는 날엔 무리하지 말고, 관리 포인트 $moreSenseCount개만 가볍게 확인해도 좋아요.',
+          '평온한 하루 보내고 계신가요? 잠깐 시간 나면 MORE 센스도 한 번 둘러보세요.',
+        ], salt: 20);
       }
 
       if (todayCount <= 4) {
-        return _pickExpandedHeaderMessage(
-          [
-            '오늘 레슨 흐름은 여유 있어요. MORE 센스 $moreSenseCount개까지 챙기기 좋은 날이에요.',
-            '레슨 사이에 볼 만한 관리 포인트 $moreSenseCount개가 있어요.',
-            '오늘은 회원님 한 분 한 분 보기 좋은 날이에요. MORE 센스 $moreSenseCount개도 같이 볼까요?',
-          ],
-          salt: 40,
-        );
+        return _pickExpandedHeaderMessage([
+          '오늘 레슨 흐름은 여유 있어요. MORE 센스 $moreSenseCount개까지 챙기기 좋은 날이에요.',
+          '레슨 사이에 볼 만한 관리 포인트 $moreSenseCount개가 있어요.',
+          '오늘은 회원님 한 분 한 분 보기 좋은 날이에요. MORE 센스 $moreSenseCount개도 같이 볼까요?',
+        ], salt: 40);
       }
 
-      return _pickExpandedHeaderMessage(
-        [
-          '오늘 챙기면 좋은 MORE 센스 $moreSenseCount개가 있어요.',
-          '놓치기 쉬운 회원 관리 포인트 $moreSenseCount개를 모아뒀어요.',
-          '레슨 흐름 보면서 MORE 센스 $moreSenseCount개도 같이 챙겨볼게요.',
-          '작은 관심이 필요한 회원님 $moreSenseCount명이 있어요.',
-        ],
-        salt: 60,
-      );
+      return _pickExpandedHeaderMessage([
+        '오늘 챙기면 좋은 MORE 센스 $moreSenseCount개가 있어요.',
+        '놓치기 쉬운 회원 관리 포인트 $moreSenseCount개를 모아뒀어요.',
+        '레슨 흐름 보면서 MORE 센스 $moreSenseCount개도 같이 챙겨볼게요.',
+        '작은 관심이 필요한 회원님 $moreSenseCount명이 있어요.',
+      ], salt: 60);
     }
 
     if (weekCount == 0) {
-      return _pickExpandedHeaderMessage(
-        [
-          '아직 이번 주 레슨이 없어요. 첫 레슨 하나부터 가볍게 시작해볼까요?',
-          '이번 주 시간표가 깨끗해요. 빈 칸을 누르면 바로 시작할 수 있어요.',
-          '첫 일정만 넣어도 모어댄이 흐름을 같이 챙겨볼게요.',
-        ],
-        salt: 10,
-      );
+      return _pickExpandedHeaderMessage([
+        '아직 이번 주 레슨이 없어요. 첫 레슨 하나부터 가볍게 시작해볼까요?',
+        '이번 주 시간표가 깨끗해요. 빈 칸을 누르면 바로 시작할 수 있어요.',
+        '첫 일정만 넣어도 모어댄이 흐름을 같이 챙겨볼게요.',
+      ], salt: 10);
     }
 
     if (todayCount == 0) {
-      return _pickExpandedHeaderMessage(
-        [
-          '오늘은 쉬는 날인가 봐요. 무리하지 말고 평온한 하루 보내세요.',
-          '오늘은 여유롭게 일상에서 살짝 벗어나 볼까요?',
-          '힐링하는 하루 보내고 계신가요? 오늘은 천천히 가도 괜찮아요.',
-          '좋은 하루 보내고 계신가요? 레슨 없는 날엔 컨디션도 챙겨주세요.',
-          '오늘도 힘나는 하루 보내세요. 다시 달릴 체력도 이런 날 비축하는 거죠.',
-        ],
-        salt: 30,
-      );
+      return _pickExpandedHeaderMessage([
+        '오늘은 쉬는 날인가 봐요. 무리하지 말고 평온한 하루 보내세요.',
+        '오늘은 여유롭게 일상에서 살짝 벗어나 볼까요?',
+        '힐링하는 하루 보내고 계신가요? 오늘은 천천히 가도 괜찮아요.',
+        '좋은 하루 보내고 계신가요? 레슨 없는 날엔 컨디션도 챙겨주세요.',
+        '오늘도 힘나는 하루 보내세요. 다시 달릴 체력도 이런 날 비축하는 거죠.',
+      ], salt: 30);
     }
 
     if (todayCount <= 2) {
-      return _pickExpandedHeaderMessage(
-        [
-          '오늘은 한 명 한 명 깊게 보기 좋은 스케줄이에요.',
-          '레슨 $todayCount개, 디테일 챙기기 좋은 날이에요.',
-          '오늘은 속도보다 깊이로 가기 좋은 하루예요.',
-        ],
-        salt: 50,
-      );
+      return _pickExpandedHeaderMessage([
+        '오늘은 한 명 한 명 깊게 보기 좋은 스케줄이에요.',
+        '레슨 $todayCount개, 디테일 챙기기 좋은 날이에요.',
+        '오늘은 속도보다 깊이로 가기 좋은 하루예요.',
+      ], salt: 50);
     }
 
     if (todayCount <= 6) {
-      return _pickExpandedHeaderMessage(
-        [
-          '오늘 레슨 $todayCount개, 무리 없이 레슨 리듬 타기 좋은 날이에요.',
-          '레슨 흐름이 적당해요. 중간중간 체크포인트도 같이 볼게요.',
-          '오늘은 꽉 차진 않았지만 충분히 일하는 맛 나는 날이에요.',
-        ],
-        salt: 70,
-      );
+      return _pickExpandedHeaderMessage([
+        '오늘 레슨 $todayCount개, 무리 없이 레슨 리듬 타기 좋은 날이에요.',
+        '레슨 흐름이 적당해요. 중간중간 체크포인트도 같이 볼게요.',
+        '오늘은 꽉 차진 않았지만 충분히 일하는 맛 나는 날이에요.',
+      ], salt: 70);
     }
 
-    return _pickExpandedHeaderMessage(
-      [
-        '오늘 레슨 $todayCount개, 딱 일하는 맛 나는 스케줄이에요.',
-        '꽤 꽉 찬 하루예요. 레슨 사이 흐름을 같이 챙겨볼게요.',
-        '오늘은 트레이너다운 하루네요. 순서와 페이스만 잘 잡아볼까요?',
-      ],
-      salt: 80,
-    );
+    return _pickExpandedHeaderMessage([
+      '오늘 레슨 $todayCount개, 딱 일하는 맛 나는 스케줄이에요.',
+      '꽤 꽉 찬 하루예요. 레슨 사이 흐름을 같이 챙겨볼게요.',
+      '오늘은 트레이너다운 하루네요. 순서와 페이스만 잘 잡아볼까요?',
+    ], salt: 80);
   }
 
   String _trainerShortNameFromData(Map<String, dynamic>? data) {
@@ -387,9 +356,10 @@ class HomeHeaderSection extends StatelessWidget {
     _ensureHomeHeaderCustomGreetingLoaded(greetingScopeKey);
 
     final topInset = MediaQuery.of(context).padding.top;
-    final noticeText = aiFcHeaderNotice.trim().isEmpty
-        ? '오늘도 모어댄이 옆에서 흐름을 같이 챙겨볼게요.'
-        : aiFcHeaderNotice.trim();
+    final noticeText =
+        aiFcHeaderNotice.trim().isEmpty
+            ? '오늘도 모어댄이 옆에서 흐름을 같이 챙겨볼게요.'
+            : aiFcHeaderNotice.trim();
 
     return MtfHeaderNeonOverlay(
       isExpanded: isExpanded,
@@ -407,10 +377,7 @@ class HomeHeaderSection extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              primaryColor,
-              secondaryColor,
-            ],
+            colors: [primaryColor, secondaryColor],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -427,26 +394,30 @@ class HomeHeaderSection extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child:
-                        StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                      stream: loadProfileFromFirestore
-                          ? FirebaseFirestore.instance
-                              .collection('trainer_profile')
-                              .doc('me')
-                              .snapshots()
-                          : null,
+                    child: StreamBuilder<
+                      DocumentSnapshot<Map<String, dynamic>>
+                    >(
+                      stream:
+                          loadProfileFromFirestore
+                              ? FirebaseFirestore.instance
+                                  .collection('trainer_profile')
+                                  .doc('me')
+                                  .snapshots()
+                              : null,
                       builder: (context, snapshot) {
-                        final data = loadProfileFromFirestore
-                            ? snapshot.data?.data()
-                            : <String, dynamic>{
-                                'displayName': profileDisplayName ?? '',
-                              };
+                        final data =
+                            loadProfileFromFirestore
+                                ? snapshot.data?.data()
+                                : <String, dynamic>{
+                                  'displayName': profileDisplayName ?? '',
+                                };
 
                         final shortName = _trainerShortNameFromData(data);
                         final nickname = _trainerHeaderNameFromData(data);
-                        final greetingText = nickname.trim().isEmpty
-                            ? '안녕하세요'
-                            : homeGreetingTextForHour(DateTime.now().hour);
+                        final greetingText =
+                            nickname.trim().isEmpty
+                                ? '안녕하세요'
+                                : homeGreetingTextForHour(DateTime.now().hour);
                         final nicknameLabel = homeHeaderNicknameLabel(nickname);
 
                         return Row(
@@ -482,8 +453,8 @@ class HomeHeaderSection extends StatelessWidget {
                                   ValueListenableBuilder<String?>(
                                     valueListenable:
                                         _homeHeaderGreetingNotifier(
-                                      greetingScopeKey,
-                                    ),
+                                          greetingScopeKey,
+                                        ),
                                     builder: (context, customGreeting, _) {
                                       final customText =
                                           customGreeting?.trim() ?? '';
@@ -493,31 +464,33 @@ class HomeHeaderSection extends StatelessWidget {
                                           fixedGreeting.isNotEmpty
                                               ? fixedGreeting
                                               : customText.isNotEmpty
-                                                  ? customText
-                                                  : greetingText;
+                                              ? customText
+                                              : greetingText;
                                       final completeFixedGreeting =
                                           (fixedGreeting.isNotEmpty ||
-                                                  customText.isNotEmpty) &&
-                                              homeHeaderGreetingIncludesNickname(
+                                              customText.isNotEmpty) &&
+                                          homeHeaderGreetingIncludesNickname(
+                                            displayText,
+                                            nickname,
+                                          );
+                                      final firstLine =
+                                          completeFixedGreeting
+                                              ? displayText
+                                              : homeHeaderFirstLine(
                                                 displayText,
                                                 nickname,
                                               );
-                                      final firstLine = completeFixedGreeting
-                                          ? displayText
-                                          : homeHeaderFirstLine(
-                                              displayText,
-                                              nickname,
-                                            );
 
                                       return GestureDetector(
-                                        onLongPress: allowGreetingEdit
-                                            ? () {
-                                                _openHomeHeaderGreetingEditSheet(
-                                                  context: context,
-                                                  currentText: displayText,
-                                                );
-                                              }
-                                            : null,
+                                        onLongPress:
+                                            allowGreetingEdit
+                                                ? () {
+                                                  _openHomeHeaderGreetingEditSheet(
+                                                    context: context,
+                                                    currentText: displayText,
+                                                  );
+                                                }
+                                                : null,
                                         behavior: HitTestBehavior.opaque,
                                         child: Column(
                                           crossAxisAlignment:
@@ -578,9 +551,10 @@ class HomeHeaderSection extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       HomeCircleIconButton(
-                        icon: notificationsOn
-                            ? Icons.notifications_active_outlined
-                            : Icons.notifications_none_rounded,
+                        icon:
+                            notificationsOn
+                                ? Icons.notifications_active_outlined
+                                : Icons.notifications_none_rounded,
                         onTap: onNotificationTap,
                       ),
                       const SizedBox(width: 6),
@@ -754,9 +728,7 @@ class HomeHeaderSection extends StatelessWidget {
 }
 
 class _HomeHeaderGreetingCopy {
-  const _HomeHeaderGreetingCopy({
-    required this.title,
-  });
+  const _HomeHeaderGreetingCopy({required this.title});
 
   final String title;
 }

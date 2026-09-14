@@ -20,10 +20,7 @@ void main() {
       isCanonicalTrainerProfileComplete({...valid, 'realName': 'ㄱㄱ'}),
       isFalse,
     );
-    expect(
-      isCanonicalTrainerProfileComplete({...valid, 'phone': ''}),
-      isTrue,
-    );
+    expect(isCanonicalTrainerProfileComplete({...valid, 'phone': ''}), isTrue);
   });
 
   test('센터와 개인샵은 직책이 필수이며 이미 유효한 값은 완료된다', () {
@@ -68,43 +65,35 @@ void main() {
   });
 
   test('소속별 입력 순서가 센터 계열과 프리랜서를 구분한다', () {
-    expect(
-      trainerProfileAffiliationFieldOrder('center'),
-      ['centerName', 'centerLocation', 'jobTitle', 'primaryActivity'],
-    );
-    expect(
-      trainerProfileAffiliationFieldOrder('personal_shop'),
-      ['centerName', 'centerLocation', 'jobTitle', 'primaryActivity'],
-    );
-    expect(
-      trainerProfileAffiliationFieldOrder('freelancer'),
-      ['jobTitle', 'primaryActivity', 'optionalCenter'],
-    );
+    expect(trainerProfileAffiliationFieldOrder('center'), [
+      'centerName',
+      'centerLocation',
+      'jobTitle',
+      'primaryActivity',
+    ]);
+    expect(trainerProfileAffiliationFieldOrder('personal_shop'), [
+      'centerName',
+      'centerLocation',
+      'jobTitle',
+      'primaryActivity',
+    ]);
+    expect(trainerProfileAffiliationFieldOrder('freelancer'), [
+      'jobTitle',
+      'primaryActivity',
+      'optionalCenter',
+    ]);
   });
 
   test('활동 지역은 기존 단일값 호환과 최대 3곳·중복·형식을 검증한다', () {
     expect(
-      normalizeTrainerActivityRegions(
-        null,
-        legacyActivityRegion: '서울특별시 강남구',
-      ),
+      normalizeTrainerActivityRegions(null, legacyActivityRegion: '서울특별시 강남구'),
       ['서울특별시 강남구'],
     );
     expect(
-      areTrainerActivityRegionsValid([
-        '서울특별시 강남구',
-        '서울특별시 송파구',
-        '경기도 성남시',
-      ]),
+      areTrainerActivityRegionsValid(['서울특별시 강남구', '서울특별시 송파구', '경기도 성남시']),
       isTrue,
     );
-    expect(
-      areTrainerActivityRegionsValid([
-        '서울특별시 강남구',
-        '서울특별시 강남구',
-      ]),
-      isFalse,
-    );
+    expect(areTrainerActivityRegionsValid(['서울특별시 강남구', '서울특별시 강남구']), isFalse);
     expect(
       areTrainerActivityRegionsValid([
         '서울특별시 강남구',

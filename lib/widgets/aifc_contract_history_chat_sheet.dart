@@ -6,10 +6,7 @@ import '../aifc/core/aifc_chat_flow.dart';
 import '../aifc/core/aifc_sheet_frame.dart';
 import '../aifc/core/aifc_theme.dart';
 
-enum AifcContractHistoryAction {
-  close,
-  openContract,
-}
+enum AifcContractHistoryAction { close, openContract }
 
 class AifcContractHistorySheetItem {
   const AifcContractHistorySheetItem({
@@ -44,10 +41,11 @@ class AifcContractHistoryChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcContractHistoryChatSheet(
-        memberName: memberName,
-        items: items,
-      ),
+      builder:
+          (_) => AifcContractHistoryChatSheet(
+            memberName: memberName,
+            items: items,
+          ),
     );
   }
 
@@ -58,7 +56,8 @@ class AifcContractHistoryChatSheet extends StatefulWidget {
 
 class _AifcContractHistoryChatSheetState
     extends State<AifcContractHistoryChatSheet>
-    with TickerProviderStateMixin,
+    with
+        TickerProviderStateMixin,
         AifcChatFlowMixin<AifcContractHistoryChatSheet> {
   static const _groupInitial = 'contract_history_initial';
   static const _groupAction = 'contract_history_action';
@@ -75,7 +74,8 @@ class _AifcContractHistoryChatSheetState
     aifcSetActiveGroup(_groupInitial);
 
     aifcAddFcMessage(
-      text: '$_memberName 님의 계약 이력을 확인해볼게요.\n'
+      text:
+          '$_memberName 님의 계약 이력을 확인해볼게요.\n'
           '현재 적용 계약과 이전 계약 흐름을 한 번에 볼 수 있어요.',
       groupKey: _groupInitial,
       child: _ContractHistoryPanel(
@@ -123,7 +123,8 @@ class _AifcContractHistoryChatSheetState
                 for (int i = 0; i < aifcMessages.length; i++)
                   AifcAnimatedChatMessage(
                     controller: aifcMessageAnimations[i],
-                    dimmed: aifcMessages[i].groupKey != null &&
+                    dimmed:
+                        aifcMessages[i].groupKey != null &&
                         aifcActiveGroupKey != null &&
                         aifcMessages[i].groupKey != aifcActiveGroupKey,
                     child: Padding(
@@ -197,7 +198,7 @@ class _ContractHistoryPanel extends StatelessWidget {
             ),
             child: const Text(
               '아직 표시할 계약 이력이 없어요.\n'
-                  '레슨계약서를 작성하면 현재 계약과 지난 계약을 이곳에서 확인할 수 있어요.',
+              '레슨계약서를 작성하면 현재 계약과 지난 계약을 이곳에서 확인할 수 있어요.',
               style: TextStyle(
                 color: AifcColors.textMuted,
                 fontSize: 12,
@@ -220,9 +221,7 @@ class _ContractHistoryPanel extends StatelessWidget {
 }
 
 class _ContractHistoryTile extends StatelessWidget {
-  const _ContractHistoryTile({
-    required this.item,
-  });
+  const _ContractHistoryTile({required this.item});
 
   final AifcContractHistorySheetItem item;
 
@@ -235,14 +234,16 @@ class _ContractHistoryTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: item.isCurrent
-            ? AifcColors.primary.withOpacity(0.06)
-            : AifcColors.cardSoftBg,
+        color:
+            item.isCurrent
+                ? AifcColors.primary.withOpacity(0.06)
+                : AifcColors.cardSoftBg,
         borderRadius: BorderRadius.circular(AifcRadius.button),
         border: Border.all(
-          color: item.isCurrent
-              ? AifcColors.primary.withOpacity(0.18)
-              : AifcColors.cardBorder,
+          color:
+              item.isCurrent
+                  ? AifcColors.primary.withOpacity(0.18)
+                  : AifcColors.cardBorder,
         ),
       ),
       child: Row(
@@ -331,18 +332,11 @@ class _ContractHistoryActionButton extends StatelessWidget {
       child: FilledButton.icon(
         onPressed: onTap,
         icon: Icon(icon, size: 18),
-        label: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
         style: FilledButton.styleFrom(
           backgroundColor: AifcColors.primary,
           foregroundColor: Colors.white,
-          textStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-          ),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AifcRadius.button),
           ),

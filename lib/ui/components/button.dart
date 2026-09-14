@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 enum ButtonVariant { solid, outline, ghost, destructive }
+
 enum ButtonSize { sm, md, lg }
 
 class ShadcnButton extends StatelessWidget {

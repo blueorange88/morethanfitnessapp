@@ -7,17 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/aifc_confirm_chat_sheet.dart';
 import 'app_environment.dart';
 
-enum InbodyCameraPermission {
-  granted,
-  denied,
-  permanentlyDenied,
-  restricted,
-}
+enum InbodyCameraPermission { granted, denied, permanentlyDenied, restricted }
 
-String inbodyCameraPreNoticeKey({
-  required String uid,
-  String? projectId,
-}) =>
+String inbodyCameraPreNoticeKey({required String uid, String? projectId}) =>
     AppEnvironmentConfig.personalPreferenceKey(
       uid: uid,
       featureKey: 'inbody_camera_pre_notice_v1',
@@ -27,8 +19,9 @@ String inbodyCameraPreNoticeKey({
 class InbodyCameraPermissionService {
   const InbodyCameraPermissionService();
 
-  static const MethodChannel _channel =
-      MethodChannel('com.example.mtf_app/camera_permission');
+  static const MethodChannel _channel = MethodChannel(
+    'com.example.mtf_app/camera_permission',
+  );
 
   Future<InbodyCameraPermission> check() => _invoke('check');
 
@@ -63,7 +56,8 @@ Future<bool> prepareInbodyCameraUse(BuildContext context) async {
     final useCamera = await AifcConfirmChatSheet.show(
       context: context,
       title: '인바디 결과를 읽으려면 카메라 사용 권한이 필요해요.',
-      message: '촬영한 이미지는 기기에서 글자를 인식하는 데 사용해요. '
+      message:
+          '촬영한 이미지는 기기에서 글자를 인식하는 데 사용해요. '
           '검토 화면에서 “인바디 이미지도 저장”을 선택한 경우에만 회원카드 보관용으로 업로드돼요.',
       confirmText: '카메라 사용하기',
       cancelText: '나중에',

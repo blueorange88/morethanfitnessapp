@@ -113,9 +113,7 @@ class HomeRowMinuteSettingsSheet {
                           decoration: BoxDecoration(
                             color: tokens.cardSurface,
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: tokens.cardBorder,
-                            ),
+                            border: Border.all(color: tokens.cardBorder),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.035),
@@ -128,59 +126,73 @@ class HomeRowMinuteSettingsSheet {
                             alignment: WrapAlignment.center,
                             spacing: 8,
                             runSpacing: 8,
-                            children: validMinutes.map((minute) {
-                              final selected = selectedMinute == minute;
+                            children:
+                                validMinutes.map((minute) {
+                                  final selected = selectedMinute == minute;
 
-                              return GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  setModalState(() {
-                                    selectedMinute = minute;
-                                  });
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 150),
-                                  curve: Curves.easeOut,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 15,
-                                    vertical: 9,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? tokens.gradeSheetAccent
-                                        : tokens.cardSurface,
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: selected
-                                          ? tokens.scheduleSelectedBorder
-                                          : tokens.cardBorder,
-                                      width: selected ? 1.2 : 0.9,
+                                  return GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setModalState(() {
+                                        selectedMinute = minute;
+                                      });
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 150,
+                                      ),
+                                      curve: Curves.easeOut,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 15,
+                                        vertical: 9,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            selected
+                                                ? tokens.gradeSheetAccent
+                                                : tokens.cardSurface,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color:
+                                              selected
+                                                  ? tokens
+                                                      .scheduleSelectedBorder
+                                                  : tokens.cardBorder,
+                                          width: selected ? 1.2 : 0.9,
+                                        ),
+                                        boxShadow:
+                                            selected
+                                                ? [
+                                                  BoxShadow(
+                                                    color: primaryColor
+                                                        .withOpacity(0.22),
+                                                    blurRadius: 10,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ]
+                                                : null,
+                                      ),
+                                      child: Text(
+                                        '${minute.toString().padLeft(2, '0')}분',
+                                        style: TextStyle(
+                                          color:
+                                              selected
+                                                  ? theme
+                                                      .colorScheme
+                                                      .onSecondary
+                                                  : theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
                                     ),
-                                    boxShadow: selected
-                                        ? [
-                                            BoxShadow(
-                                              color: primaryColor
-                                                  .withOpacity(0.22),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Text(
-                                    '${minute.toString().padLeft(2, '0')}분',
-                                    style: TextStyle(
-                                      color: selected
-                                          ? theme.colorScheme.onSecondary
-                                          : theme.colorScheme.onSurfaceVariant,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                                  );
+                                }).toList(),
                           ),
                         ),
                         const SizedBox(height: 13),
@@ -191,11 +203,10 @@ class HomeRowMinuteSettingsSheet {
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor:
                                       theme.colorScheme.onSurfaceVariant,
-                                  side: BorderSide(
-                                    color: tokens.cardBorder,
+                                  side: BorderSide(color: tokens.cardBorder),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
                                   ),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 13),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -248,8 +259,9 @@ class HomeRowMinuteSettingsSheet {
                                   ),
                                   onPressed: () {
                                     HapticFeedback.mediumImpact();
-                                    Navigator.of(sheetContext)
-                                        .pop(selectedMinute);
+                                    Navigator.of(
+                                      sheetContext,
+                                    ).pop(selectedMinute);
                                   },
                                   child: Text(
                                     '$hourLabel 줄에 적용',

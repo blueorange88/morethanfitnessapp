@@ -30,17 +30,11 @@ class HomeHeaderStatCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.12),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
           ),
           child: Row(
             children: [
-              Icon(
-                icon,
-                color: Colors.white,
-                size: 18,
-              ),
+              Icon(icon, color: Colors.white, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(

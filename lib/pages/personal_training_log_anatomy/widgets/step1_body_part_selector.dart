@@ -32,42 +32,46 @@ class Step1BodyPartSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('바디 기준',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
+        const Text(
+          '바디 기준',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: BodyGender.values.map((value) {
-            final labels = {
-              BodyGender.male: '남성',
-              BodyGender.female: '여성',
-              BodyGender.unspecified: '미지정',
-            };
-            return ChoiceChip(
-              label: Text(labels[value]!),
-              selected: selectedGender == value,
-              onSelected: (_) => onGenderChanged(value),
-            );
-          }).toList(),
+          children:
+              BodyGender.values.map((value) {
+                final labels = {
+                  BodyGender.male: '남성',
+                  BodyGender.female: '여성',
+                  BodyGender.unspecified: '미지정',
+                };
+                return ChoiceChip(
+                  label: Text(labels[value]!),
+                  selected: selectedGender == value,
+                  onSelected: (_) => onGenderChanged(value),
+                );
+              }).toList(),
         ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: BodySide.values.map((value) {
-            final labels = {
-              BodySide.left: '왼쪽',
-              BodySide.right: '오른쪽',
-              BodySide.center: '중앙',
-              BodySide.both: '양측',
-            };
-            return ChoiceChip(
-              label: Text(labels[value]!),
-              selected: selectedSide == value,
-              onSelected: (_) => onSideChanged(value),
-            );
-          }).toList(),
+          children:
+              BodySide.values.map((value) {
+                final labels = {
+                  BodySide.left: '왼쪽',
+                  BodySide.right: '오른쪽',
+                  BodySide.center: '중앙',
+                  BodySide.both: '양측',
+                };
+                return ChoiceChip(
+                  label: Text(labels[value]!),
+                  selected: selectedSide == value,
+                  onSelected: (_) => onSideChanged(value),
+                );
+              }).toList(),
         ),
         const SizedBox(height: 20),
         // 앞면 / 뒷면 토글
@@ -119,14 +123,15 @@ class Step1BodyPartSelector extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: visibleParts.map((part) {
-            final isSelected = selectedPartIds.contains(part.id);
-            return _PartChip(
-              label: part.label,
-              isSelected: isSelected,
-              onTap: () => onPartToggled(part.id),
-            );
-          }).toList(),
+          children:
+              visibleParts.map((part) {
+                final isSelected = selectedPartIds.contains(part.id);
+                return _PartChip(
+                  label: part.label,
+                  isSelected: isSelected,
+                  onTap: () => onPartToggled(part.id),
+                );
+              }).toList(),
         ),
         const SizedBox(height: 16),
 
@@ -186,10 +191,11 @@ class Step1BodyPartSelector extends StatelessWidget {
   }
 
   String _selectedLabels() {
-    final selected = kBodyParts
-        .where((p) => selectedPartIds.contains(p.id))
-        .map((p) => p.label)
-        .toList();
+    final selected =
+        kBodyParts
+            .where((p) => selectedPartIds.contains(p.id))
+            .map((p) => p.label)
+            .toList();
     return '선택된 부위: ${selected.join(' · ')}';
   }
 }
@@ -259,9 +265,10 @@ class _BodySilhouette extends StatelessWidget {
               color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF4F46E5)
-                    : const Color(0xFFD1D5DB),
+                color:
+                    isSelected
+                        ? const Color(0xFF4F46E5)
+                        : const Color(0xFFD1D5DB),
               ),
               boxShadow: [
                 BoxShadow(
@@ -332,15 +339,16 @@ class _ViewToggleChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : [],
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -348,9 +356,10 @@ class _ViewToggleChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected
-                    ? const Color(0xFF4F46E5)
-                    : const Color(0xFF9CA3AF),
+                color:
+                    isSelected
+                        ? const Color(0xFF4F46E5)
+                        : const Color(0xFF9CA3AF),
               ),
               const SizedBox(width: 6),
               Text(
@@ -358,9 +367,10 @@ class _ViewToggleChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: isSelected
-                      ? const Color(0xFF4F46E5)
-                      : const Color(0xFF9CA3AF),
+                  color:
+                      isSelected
+                          ? const Color(0xFF4F46E5)
+                          : const Color(0xFF9CA3AF),
                 ),
               ),
             ],

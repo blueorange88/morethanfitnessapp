@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -47,13 +51,16 @@ class MembershipContractPage extends StatefulWidget {
 
 class _MembershipContractPageState extends State<MembershipContractPage> {
   late final TextEditingController _productNameC;
+  late final TextEditingController _priceC;
   late final TextEditingController _maxPauseDaysC;
   late final TextEditingController _pauseRuleMemoC;
   late final TextEditingController _refundRuleMemoC;
   late final TextEditingController _transferRuleMemoC;
+  late final TextEditingController _usageNoticeC;
   late final TextEditingController _extraMemoC;
 
   bool _isSaving = false;
+  bool _isGeneratingPdf = false;
   bool _isDraftLoaded = false;
   bool _draftExists = false;
 
@@ -86,12 +93,9 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
 
     final suggestedPauseDays = _suggestedMaxPauseDays();
 
-    _productNameC = TextEditingController(
-      text: _defaultProductName(),
-    );
-    _maxPauseDaysC = TextEditingController(
-      text: suggestedPauseDays.toString(),
-    );
+    _productNameC = TextEditingController(text: _defaultProductName());
+    _priceC = TextEditingController();
+    _maxPauseDaysC = TextEditingController(text: suggestedPauseDays.toString());
     _pauseRuleMemoC = TextEditingController(
       text:
           '회원권 정지는 계약 기간 내 최대 ${suggestedPauseDays}일까지 가능하며, 정지 기간만큼 종료일을 연장할 수 있습니다.',
@@ -101,6 +105,12 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
     );
     _transferRuleMemoC = TextEditingController(
       text: '회원권 양도는 담당 강사 확인 후 가능 여부를 결정합니다.',
+    );
+    _usageNoticeC = TextEditingController(
+      text:
+          '- 회원권 기간 내 시설/레슨 이용 규정을 준수해주세요.\n'
+          '- 건강 상태에 따라 무리한 운동은 피하고, 이상 증상 시 즉시 강사에게 알려주세요.\n'
+          '- 예약/노쇼 기준은 센터 운영 정책을 따릅니다.',
     );
 
     _signatureNameC.text = widget.memberName.trim();
@@ -116,10 +126,12 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
   @override
   void dispose() {
     _productNameC.dispose();
+    _priceC.dispose();
     _maxPauseDaysC.dispose();
     _pauseRuleMemoC.dispose();
     _refundRuleMemoC.dispose();
     _transferRuleMemoC.dispose();
+    _usageNoticeC.dispose();
     _extraMemoC.dispose();
     _signatureNameC.dispose();
     super.dispose();
@@ -181,12 +193,13 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
 
   Future<void> _loadDraftFromFirestore() async {
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(widget.memberId)
-          .collection('membership_contracts')
-          .doc('current')
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(widget.memberId)
+              .collection('membership_contracts')
+              .doc('current')
+              .get();
 
       if (!mounted) return;
 
@@ -218,20 +231,17 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
         _draftExists = true;
         _isDraftLoaded = true;
 
-        _productNameC.text = textValue(
-          'productName',
-          _productNameC.text,
-        );
+        _productNameC.text = textValue('productName', _productNameC.text);
+        _priceC.text = textValue('price', _priceC.text);
 
-        _maxPauseDaysC.text = intValue(
-          'maxPauseDays',
-          int.tryParse(_maxPauseDaysC.text.trim()) ?? _suggestedMaxPauseDays(),
-        ).toString();
+        _maxPauseDaysC.text =
+            intValue(
+              'maxPauseDays',
+              int.tryParse(_maxPauseDaysC.text.trim()) ??
+                  _suggestedMaxPauseDays(),
+            ).toString();
 
-        _pauseRuleMemoC.text = textValue(
-          'pauseRuleMemo',
-          _pauseRuleMemoC.text,
-        );
+        _pauseRuleMemoC.text = textValue('pauseRuleMemo', _pauseRuleMemoC.text);
 
         _refundRuleMemoC.text = textValue(
           'refundRuleMemo',
@@ -243,20 +253,16 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
           _transferRuleMemoC.text,
         );
 
-        _extraMemoC.text = textValue(
-          'extraMemo',
-          _extraMemoC.text,
-        );
+        _usageNoticeC.text = textValue('usageNotice', _usageNoticeC.text);
+        _extraMemoC.text = textValue('extraMemo', _extraMemoC.text);
 
-        _isSigned = (data['status'] ?? '').toString() == 'signed' ||
+        _isSigned =
+            (data['status'] ?? '').toString() == 'signed' ||
             data['signedAt'] != null;
 
         _signedAt = _dateFromAny(data['signedAt']);
 
-        _signatureNameC.text = textValue(
-          'signedByName',
-          _signatureNameC.text,
-        );
+        _signatureNameC.text = textValue('signedByName', _signatureNameC.text);
         final loadedSignatureUrl =
             (data['signatureImageUrl'] ?? '').toString().trim();
 
@@ -308,30 +314,34 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
           .collection('membership_contracts')
           .doc('current')
           .set({
-        'memberId': memberId,
-        'memberName': _safeMemberName(),
-        'trainerName': _safeTrainerName(),
-        'productName': _productNameC.text.trim(),
-        'lessonType': widget.lessonType.trim(),
-        'totalSessions': widget.totalSessions,
-        'remainingSessions': widget.remainingSessions,
-        'membershipStartAt': widget.membershipStartAt == null
-            ? null
-            : Timestamp.fromDate(widget.membershipStartAt!),
-        'membershipEndAt': widget.membershipEndAt == null
-            ? null
-            : Timestamp.fromDate(widget.membershipEndAt!),
-        'membershipDays': _membershipDays(),
-        'maxPauseDays': maxPauseDays,
-        'pauseRuleMemo': _pauseRuleMemoC.text.trim(),
-        'refundRuleMemo': _refundRuleMemoC.text.trim(),
-        'transferRuleMemo': _transferRuleMemoC.text.trim(),
-        'extraMemo': _extraMemoC.text.trim(),
-        'status': 'draft',
-        'source': 'client_card_membership_contract',
-        if (!_draftExists) 'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'memberId': memberId,
+            'memberName': _safeMemberName(),
+            'trainerName': _safeTrainerName(),
+            'productName': _productNameC.text.trim(),
+            'price': _priceC.text.trim(),
+            'lessonType': widget.lessonType.trim(),
+            'totalSessions': widget.totalSessions,
+            'remainingSessions': widget.remainingSessions,
+            'membershipStartAt':
+                widget.membershipStartAt == null
+                    ? null
+                    : Timestamp.fromDate(widget.membershipStartAt!),
+            'membershipEndAt':
+                widget.membershipEndAt == null
+                    ? null
+                    : Timestamp.fromDate(widget.membershipEndAt!),
+            'membershipDays': _membershipDays(),
+            'maxPauseDays': maxPauseDays,
+            'pauseRuleMemo': _pauseRuleMemoC.text.trim(),
+            'refundRuleMemo': _refundRuleMemoC.text.trim(),
+            'transferRuleMemo': _transferRuleMemoC.text.trim(),
+            'usageNotice': _usageNoticeC.text.trim(),
+            'extraMemo': _extraMemoC.text.trim(),
+            'status': 'draft',
+            'source': 'client_card_membership_contract',
+            if (!_draftExists) 'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       await FirebaseFirestore.instance.collection('members').doc(memberId).set({
         'membershipContractDraftExists': true,
@@ -395,8 +405,9 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
   Future<Uint8List> _captureMembershipContractImage() async {
     await WidgetsBinding.instance.endOfFrame;
 
-    final boundary = _contractCaptureKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+    final boundary =
+        _contractCaptureKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
 
     if (boundary == null) {
       throw Exception('contract_capture_boundary_not_found');
@@ -404,9 +415,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
 
     final image = await boundary.toImage(pixelRatio: 2.0);
 
-    final byteData = await image.toByteData(
-      format: ui.ImageByteFormat.png,
-    );
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
     final bytes = byteData?.buffer.asUint8List();
 
@@ -423,21 +432,21 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
     final signedName = _signatureNameC.text.trim();
 
     if (signedName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('고객님 이름을 입력해주세요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원님 이름을 입력해주세요.')));
       return;
     }
     final signatureBytes = await Navigator.of(context).push<Uint8List>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => _MembershipSignaturePadPage(
-          memberName: widget.memberName.trim().isEmpty
-              ? '회원'
-              : widget.memberName.trim(),
-        ),
+        builder:
+            (_) => _MembershipSignaturePadPage(
+              memberName:
+                  widget.memberName.trim().isEmpty
+                      ? '회원'
+                      : widget.memberName.trim(),
+            ),
       ),
     );
 
@@ -548,8 +557,9 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
       final maxPauseDays =
           int.tryParse(_maxPauseDaysC.text.trim()) ?? _suggestedMaxPauseDays();
 
-      final signatureImageUrl =
-          await _uploadMembershipSignature(signatureBytes);
+      final signatureImageUrl = await _uploadMembershipSignature(
+        signatureBytes,
+      );
 
       final contractRef = FirebaseFirestore.instance
           .collection('members')
@@ -565,12 +575,14 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
         'lessonType': widget.lessonType.trim(),
         'totalSessions': widget.totalSessions,
         'remainingSessions': widget.remainingSessions,
-        'membershipStartAt': widget.membershipStartAt == null
-            ? null
-            : Timestamp.fromDate(widget.membershipStartAt!),
-        'membershipEndAt': widget.membershipEndAt == null
-            ? null
-            : Timestamp.fromDate(widget.membershipEndAt!),
+        'membershipStartAt':
+            widget.membershipStartAt == null
+                ? null
+                : Timestamp.fromDate(widget.membershipStartAt!),
+        'membershipEndAt':
+            widget.membershipEndAt == null
+                ? null
+                : Timestamp.fromDate(widget.membershipEndAt!),
         'membershipDays': _membershipDays(),
         'maxPauseDays': maxPauseDays,
         'pauseRuleMemo': _pauseRuleMemoC.text.trim(),
@@ -591,17 +603,17 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
           .collection('members')
           .doc(widget.memberId)
           .set({
-        'membershipContractDraftExists': true,
-        'membershipContractStatus': 'signed',
-        'membershipContractSignedAt': Timestamp.fromDate(now),
-        'membershipContractSignedByName': signedName,
-        'membershipContractSignatureImageUrl': signatureImageUrl,
-        'membership.maxPauseDaysFromContract': maxPauseDays,
-        'membership.contractStatus': 'signed',
-        'membership.contractSignedAt': Timestamp.fromDate(now),
-        'membership.contractSignatureImageUrl': signatureImageUrl,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'membershipContractDraftExists': true,
+            'membershipContractStatus': 'signed',
+            'membershipContractSignedAt': Timestamp.fromDate(now),
+            'membershipContractSignedByName': signedName,
+            'membershipContractSignatureImageUrl': signatureImageUrl,
+            'membership.maxPauseDaysFromContract': maxPauseDays,
+            'membership.contractStatus': 'signed',
+            'membership.contractSignedAt': Timestamp.fromDate(now),
+            'membership.contractSignatureImageUrl': signatureImageUrl,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -613,11 +625,9 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
         _signatureImageUrl = signatureImageUrl;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('회원권계약서 서명을 완료했어요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원권계약서 서명을 완료했어요.')));
 
       Navigator.pop(context, true);
     } catch (_) {
@@ -628,9 +638,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('회원권계약서 서명을 저장하지 못했어요. 다시 시도해주세요.'),
-        ),
+        const SnackBar(content: Text('회원권계약서 서명을 저장하지 못했어요. 다시 시도해주세요.')),
       );
     }
   }
@@ -640,9 +648,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
 
     if (!_isSigned) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('서명 완료 후 계약서 이미지를 보관할 수 있어요.'),
-        ),
+        const SnackBar(content: Text('서명 완료 후 계약서 이미지를 보관할 수 있어요.')),
       );
       return;
     }
@@ -683,7 +689,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                   const SizedBox(height: 8),
                   const Text(
                     '현재 화면의 회원권계약서 내용을 이미지로 저장해둘게요.\n'
-                    '나중에 PDF 보관 기능을 붙이면 이 이미지도 함께 활용할 수 있어요.',
+                    'PDF로 저장하거나 전송하려면 아래 "PDF로 저장·전송" 버튼을 이용해주세요.',
                     style: TextStyle(
                       fontSize: 12.5,
                       height: 1.45,
@@ -756,24 +762,24 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
           .collection('membership_contracts')
           .doc('current')
           .set({
-        'contractImageUrl': imageUrl,
-        'archiveImageUrl': imageUrl,
-        'contractImageArchivedAt': Timestamp.fromDate(archivedAt),
-        'archivedAt': Timestamp.fromDate(archivedAt),
-        'archiveType': 'image_png',
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'contractImageUrl': imageUrl,
+            'archiveImageUrl': imageUrl,
+            'contractImageArchivedAt': Timestamp.fromDate(archivedAt),
+            'archivedAt': Timestamp.fromDate(archivedAt),
+            'archiveType': 'image_png',
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       await FirebaseFirestore.instance
           .collection('members')
           .doc(widget.memberId)
           .set({
-        'membershipContractImageUrl': imageUrl,
-        'membershipContractArchivedAt': Timestamp.fromDate(archivedAt),
-        'membership.contractImageUrl': imageUrl,
-        'membership.contractArchivedAt': Timestamp.fromDate(archivedAt),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'membershipContractImageUrl': imageUrl,
+            'membershipContractArchivedAt': Timestamp.fromDate(archivedAt),
+            'membership.contractImageUrl': imageUrl,
+            'membership.contractArchivedAt': Timestamp.fromDate(archivedAt),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -783,11 +789,9 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
         _isArchivingImage = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('회원권계약서 이미지를 보관했어요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('회원권계약서 이미지를 보관했어요.')));
     } catch (_) {
       if (!mounted) return;
 
@@ -796,10 +800,167 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('계약서 이미지를 보관하지 못했어요. 다시 시도해주세요.'),
+        const SnackBar(content: Text('계약서 이미지를 보관하지 못했어요. 다시 시도해주세요.')),
+      );
+    }
+  }
+
+  String get _contractPdfFileName {
+    final safeName = _safeMemberName().replaceAll(
+      RegExp(r'[\\/:*?"<>|]'),
+      '_',
+    );
+    return '${safeName}_회원권계약서.pdf';
+  }
+
+  Future<Uint8List?> _signatureImageBytes() async {
+    final url = _signatureImageUrl;
+    if (url == null || url.trim().isEmpty) return null;
+
+    try {
+      return await FirebaseStorage.instance.refFromURL(url).getData();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Uint8List> _buildMembershipContractPdfBytes() async {
+    final fontData = await rootBundle.load(
+      'assets/fonts/NotoSansKR-VariableFont_wght.ttf',
+    );
+    final font = pw.Font.ttf(fontData);
+    final signatureBytes = await _signatureImageBytes();
+
+    final doc = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: font));
+
+    pw.TextStyle textStyle({
+      double size = 9.5,
+      PdfColor color = PdfColors.grey800,
+      pw.FontWeight weight = pw.FontWeight.normal,
+    }) {
+      return pw.TextStyle(fontSize: size, color: color, fontWeight: weight);
+    }
+
+    pw.Widget sectionTitle(String text) {
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
+        child: pw.Text(
+          text,
+          style: textStyle(
+            size: 12,
+            color: PdfColors.grey900,
+            weight: pw.FontWeight.bold,
+          ),
         ),
       );
+    }
+
+    pw.Widget bodyText(String text) {
+      return pw.Text(text, style: textStyle());
+    }
+
+    pw.Widget infoRow(String label, String value) {
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 3),
+        child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.SizedBox(
+              width: 70,
+              child: pw.Text(label, style: textStyle(color: PdfColors.grey600)),
+            ),
+            pw.Expanded(child: pw.Text(value, style: textStyle())),
+          ],
+        ),
+      );
+    }
+
+    final maxPauseDays =
+        int.tryParse(_maxPauseDaysC.text.trim()) ?? _suggestedMaxPauseDays();
+    final priceText = _priceC.text.trim();
+    final membershipDays = _membershipDays();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build:
+            (context) => [
+              pw.Text(
+                '회원권계약서',
+                style: textStyle(
+                  size: 18,
+                  color: PdfColors.grey900,
+                  weight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 12),
+              infoRow('회원명', _safeMemberName()),
+              infoRow('담당 강사', _safeTrainerName()),
+              infoRow('상품명', _productNameC.text.trim()),
+              if (priceText.isNotEmpty) infoRow('결제 금액', '₩$priceText'),
+              infoRow(
+                '회원권 기간',
+                '${_dateText(widget.membershipStartAt)} ~ ${_dateText(widget.membershipEndAt)}'
+                '${membershipDays == null ? '' : ' ($membershipDays일)'}',
+              ),
+              infoRow(
+                '레슨',
+                '총 ${widget.totalSessions}회 / 잔여 ${widget.remainingSessions}회',
+              ),
+              infoRow('최대 정지 가능일', '$maxPauseDays일'),
+              sectionTitle('회원권 정지 / 재개 조건'),
+              bodyText(_pauseRuleMemoC.text.trim()),
+              sectionTitle('환불 조건'),
+              bodyText(_refundRuleMemoC.text.trim()),
+              sectionTitle('양도 조건'),
+              bodyText(_transferRuleMemoC.text.trim()),
+              if (_extraMemoC.text.trim().isNotEmpty) ...[
+                sectionTitle('추가 특약'),
+                bodyText(_extraMemoC.text.trim()),
+              ],
+              sectionTitle('이용 시 주의사항'),
+              bodyText(_usageNoticeC.text.trim()),
+              sectionTitle('회원 동의 / 서명'),
+              bodyText(
+                _isSigned
+                    ? '서명자: ${_signatureNameC.text.trim()}'
+                    '${_signedAt == null ? '' : ' (${_dateText(_signedAt)} 서명 완료)'}'
+                    : '서명 전',
+              ),
+              if (signatureBytes != null) ...[
+                pw.SizedBox(height: 8),
+                pw.Image(pw.MemoryImage(signatureBytes), height: 80),
+              ],
+            ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  Future<void> _exportPdf() async {
+    if (_isGeneratingPdf) return;
+
+    setState(() {
+      _isGeneratingPdf = true;
+    });
+
+    try {
+      final bytes = await _buildMembershipContractPdfBytes();
+      if (!mounted) return;
+      await Printing.sharePdf(bytes: bytes, filename: _contractPdfFileName);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF 생성에 실패했어요. 다시 시도해주세요.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingPdf = false;
+        });
+      }
     }
   }
 
@@ -807,20 +968,22 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   InputDecoration _inputDecoration(
     String label, {
     String? hint,
     String? suffixText,
+    String? prefixText,
   }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
       suffixText: suffixText,
+      prefixText: prefixText,
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
@@ -859,9 +1022,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
         elevation: 0,
         title: const Text(
           '회원권계약서',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
       bottomNavigationBar: SafeArea(
@@ -870,22 +1031,21 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
           decoration: BoxDecoration(
             color: tokens.cardSurface,
-            border: Border(
-              top: BorderSide(color: tokens.cardBorder),
-            ),
+            border: Border(top: BorderSide(color: tokens.cardBorder)),
           ),
           child: FilledButton.icon(
             onPressed: _isSaving ? null : _saveDraft,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 17,
-                    height: 17,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.save_outlined),
+            icon:
+                _isSaving
+                    ? const SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                    : const Icon(Icons.save_outlined),
             label: Text(_isSaving ? '저장 중' : '초안 저장'),
             style: FilledButton.styleFrom(
               backgroundColor: scheme.secondary,
@@ -927,9 +1087,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                         ),
                         _InfoRow(
                           label: '총 기간',
-                          value: membershipDays == null
-                              ? '-'
-                              : '${membershipDays}일',
+                          value:
+                              membershipDays == null
+                                  ? '-'
+                                  : '${membershipDays}일',
                         ),
                         _InfoRow(
                           label: '레슨',
@@ -938,9 +1099,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                         ),
                         _InfoRow(
                           label: '레슨 형태',
-                          value: widget.lessonType.trim().isEmpty
-                              ? '-'
-                              : widget.lessonType.trim(),
+                          value:
+                              widget.lessonType.trim().isEmpty
+                                  ? '-'
+                                  : widget.lessonType.trim(),
                         ),
                         _InfoRow(
                           label: '현재 상태',
@@ -953,7 +1115,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                   _SectionCard(
                     icon: Icons.edit_document,
                     title: '계약 기본 정보',
-                    subtitle: '나중에 서명 화면과 PDF 보관으로 이어질 영역이에요.',
+                    subtitle: '금액과 정지 가능일처럼 계약서에 남을 핵심 정보예요.',
                     child: Column(
                       children: [
                         TextField(
@@ -963,6 +1125,17 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                             hint: '예: 3개월 PT 회원권',
                           ),
                           onChanged: (_) => setState(() {}),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _priceC,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [_MembershipMoneyInputFormatter()],
+                          decoration: _inputDecoration(
+                            '결제 금액',
+                            hint: '예: 900,000',
+                            prefixText: '₩ ',
+                          ),
                         ),
                         const SizedBox(height: 10),
                         TextField(
@@ -985,9 +1158,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                       controller: _pauseRuleMemoC,
                       minLines: 3,
                       maxLines: 5,
-                      decoration: _inputDecoration(
-                        '정지 / 재개 조건',
-                      ),
+                      decoration: _inputDecoration('정지 / 재개 조건'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1024,6 +1195,18 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  _SectionCard(
+                    icon: Icons.info_outline_rounded,
+                    title: '이용 시 주의사항',
+                    subtitle: '회원이 계약 전에 꼭 확인해야 하는 내용이에요.',
+                    child: TextField(
+                      controller: _usageNoticeC,
+                      minLines: 3,
+                      maxLines: 8,
+                      decoration: _inputDecoration('이용 시 주의사항'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _signatureSection(),
                 ],
               ),
@@ -1039,9 +1222,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
   }
 
   Widget _signatureSection() {
-    final signedText = _signedAt == null
-        ? '서명 전'
-        : '서명 완료 · ${DateFormat('yyyy-MM-dd').format(_signedAt!)}';
+    final signedText =
+        _signedAt == null
+            ? '서명 전'
+            : '서명 완료 · ${DateFormat('yyyy-MM-dd').format(_signedAt!)}';
 
     return _SectionCard(
       icon: Icons.draw_outlined,
@@ -1073,9 +1257,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFE5E7EB),
-                ),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1125,9 +1307,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                   _isSigned ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _isSigned
-                    ? const Color(0xFFBBF7D0)
-                    : const Color(0xFFFDE68A),
+                color:
+                    _isSigned
+                        ? const Color(0xFFBBF7D0)
+                        : const Color(0xFFFDE68A),
               ),
             ),
             child: Text(
@@ -1138,9 +1321,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                 fontSize: 11.5,
                 height: 1.4,
                 fontWeight: FontWeight.w700,
-                color: _isSigned
-                    ? const Color(0xFF166534)
-                    : const Color(0xFF92400E),
+                color:
+                    _isSigned
+                        ? const Color(0xFF166534)
+                        : const Color(0xFF92400E),
               ),
             ),
           ),
@@ -1149,16 +1333,17 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: _isSigned || _isSigning ? null : _completeSignature,
-              icon: _isSigning
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.verified_outlined),
+              icon:
+                  _isSigning
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : const Icon(Icons.verified_outlined),
               label: Text(_isSigned ? '서명 완료됨' : '서명 완료 처리'),
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.secondary,
@@ -1178,9 +1363,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
   }
 
   Widget _archiveSection() {
-    final archivedText = _contractImageArchivedAt == null
-        ? '보관 전'
-        : '보관 완료 · ${DateFormat('yyyy-MM-dd').format(_contractImageArchivedAt!)}';
+    final archivedText =
+        _contractImageArchivedAt == null
+            ? '보관 전'
+            : '보관 완료 · ${DateFormat('yyyy-MM-dd').format(_contractImageArchivedAt!)}';
 
     return _SectionCard(
       icon: Icons.image_outlined,
@@ -1197,9 +1383,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFE5E7EB),
-                ),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1250,9 +1434,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                   _isSigned ? const Color(0xFFF8FAFC) : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _isSigned
-                    ? const Color(0xFFE5E7EB)
-                    : const Color(0xFFFDE68A),
+                color:
+                    _isSigned
+                        ? const Color(0xFFE5E7EB)
+                        : const Color(0xFFFDE68A),
               ),
             ),
             child: Text(
@@ -1263,9 +1448,10 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
                 fontSize: 11.5,
                 height: 1.4,
                 fontWeight: FontWeight.w700,
-                color: _isSigned
-                    ? kMembershipContractMuted
-                    : const Color(0xFF92400E),
+                color:
+                    _isSigned
+                        ? kMembershipContractMuted
+                        : const Color(0xFF92400E),
               ),
             ),
           ),
@@ -1273,18 +1459,18 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: !_isSigned || _isArchivingImage
-                  ? null
-                  : _archiveContractImage,
-              icon: _isArchivingImage
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.cloud_upload_outlined),
+              onPressed:
+                  !_isSigned || _isArchivingImage
+                      ? null
+                      : _archiveContractImage,
+              icon:
+                  _isArchivingImage
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Icon(Icons.cloud_upload_outlined),
               label: Text(
                 _contractImageUrl == null ? '계약서 이미지 보관' : '계약서 이미지 다시 보관',
               ),
@@ -1300,6 +1486,33 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
               ),
             ),
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isGeneratingPdf ? null : _exportPdf,
+              icon:
+                  _isGeneratingPdf
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : const Icon(Icons.picture_as_pdf_outlined),
+              label: Text(_isGeneratingPdf ? 'PDF 만드는 중' : 'PDF로 저장·전송'),
+              style: FilledButton.styleFrom(
+                backgroundColor: kMembershipContractPrimary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(0, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1307,10 +1520,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
 }
 
 class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({
-    required this.memberName,
-    required this.trainerName,
-  });
+  const _HeaderCard({required this.memberName, required this.trainerName});
 
   final String memberName;
   final String trainerName;
@@ -1339,14 +1549,9 @@ class _HeaderCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.16),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.16),
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.16)),
             ),
-            child: const Icon(
-              Icons.assignment_outlined,
-              color: Colors.white,
-            ),
+            child: const Icon(Icons.assignment_outlined, color: Colors.white),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1425,11 +1630,7 @@ class _SectionCard extends StatelessWidget {
                   color: kMembershipContractPrimary.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(
-                  icon,
-                  color: kMembershipContractPrimary,
-                  size: 20,
-                ),
+                child: Icon(icon, color: kMembershipContractPrimary, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1449,8 +1650,9 @@ class _SectionCard extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: TextStyle(
-                          color: tokens.contractDocumentText
-                              .withValues(alpha: 0.68),
+                          color: tokens.contractDocumentText.withValues(
+                            alpha: 0.68,
+                          ),
                           fontSize: 11.5,
                           height: 1.35,
                           fontWeight: FontWeight.w700,
@@ -1471,10 +1673,7 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -1527,9 +1726,7 @@ class _NoticeCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFBEB),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFFDE68A),
-        ),
+        border: Border.all(color: const Color(0xFFFDE68A)),
       ),
       child: const Text(
         '지금 단계는 회원권계약서 초안입니다.\n'
@@ -1546,9 +1743,7 @@ class _NoticeCard extends StatelessWidget {
 }
 
 class _MembershipSignaturePadPage extends StatefulWidget {
-  const _MembershipSignaturePadPage({
-    required this.memberName,
-  });
+  const _MembershipSignaturePadPage({required this.memberName});
 
   final String memberName;
 
@@ -1574,26 +1769,23 @@ class _MembershipSignaturePadPageState
 
   Future<void> _save() async {
     if (!_hasSignature) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('서명을 먼저 입력해주세요.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('서명을 먼저 입력해주세요.')));
       return;
     }
 
     try {
-      final boundary = _signatureKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _signatureKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
 
       if (boundary == null) {
         throw Exception('signature_boundary_not_found');
       }
 
       final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
       final bytes = byteData?.buffer.asUint8List();
 
@@ -1608,9 +1800,7 @@ class _MembershipSignaturePadPageState
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('서명을 저장하지 못했어요. 다시 시도해주세요.'),
-        ),
+        const SnackBar(content: Text('서명을 저장하지 못했어요. 다시 시도해주세요.')),
       );
     }
   }
@@ -1630,9 +1820,7 @@ class _MembershipSignaturePadPageState
         elevation: 0,
         title: const Text(
           '회원권계약서 서명',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
           TextButton(
@@ -1640,9 +1828,7 @@ class _MembershipSignaturePadPageState
             style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text(
               '지우기',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
         ],
@@ -1653,11 +1839,7 @@ class _MembershipSignaturePadPageState
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
           decoration: BoxDecoration(
             color: tokens.cardSurface,
-            border: Border(
-              top: BorderSide(
-                color: tokens.cardBorder,
-              ),
-            ),
+            border: Border(top: BorderSide(color: tokens.cardBorder)),
           ),
           child: Row(
             children: [
@@ -1672,9 +1854,7 @@ class _MembershipSignaturePadPageState
                   ),
                   child: const Text(
                     '취소',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
               ),
@@ -1692,9 +1872,7 @@ class _MembershipSignaturePadPageState
                   ),
                   child: const Text(
                     '서명 저장',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
               ),
@@ -1710,9 +1888,7 @@ class _MembershipSignaturePadPageState
             decoration: BoxDecoration(
               color: const Color(0xFFF5F3FF),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: const Color(0xFFE9D5FF),
-              ),
+              border: Border.all(color: const Color(0xFFE9D5FF)),
             ),
             child: Text(
               '${widget.memberName} 님이 회원권계약서 내용을 확인했다면 아래 칸에 직접 서명해주세요.',
@@ -1756,9 +1932,7 @@ class _MembershipSignaturePadPageState
                   });
                 },
                 child: CustomPaint(
-                  painter: _MembershipSignaturePainter(
-                    points: _points,
-                  ),
+                  painter: _MembershipSignaturePainter(points: _points),
                   child: Stack(
                     children: [
                       if (!_hasSignature)
@@ -1817,19 +1991,18 @@ class _MembershipSignaturePadPageState
 }
 
 class _MembershipSignaturePainter extends CustomPainter {
-  const _MembershipSignaturePainter({
-    required this.points,
-  });
+  const _MembershipSignaturePainter({required this.points});
 
   final List<Offset?> points;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF111827)
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final paint =
+        Paint()
+          ..color = const Color(0xFF111827)
+          ..strokeWidth = 3.0
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
     for (int i = 0; i < points.length - 1; i++) {
       final current = points[i];
@@ -1844,5 +2017,38 @@ class _MembershipSignaturePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MembershipSignaturePainter oldDelegate) {
     return oldDelegate.points != points;
+  }
+}
+
+class _MembershipMoneyInputFormatter extends TextInputFormatter {
+  const _MembershipMoneyInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+    final formatted = _formatWithComma(digits);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  static String _formatWithComma(String digits) {
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      final indexFromEnd = digits.length - i;
+      buffer.write(digits[i]);
+      if (indexFromEnd > 1 && indexFromEnd % 3 == 1) buffer.write(',');
+    }
+    return buffer.toString();
   }
 }

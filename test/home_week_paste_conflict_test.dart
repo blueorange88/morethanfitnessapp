@@ -18,9 +18,11 @@ void main() {
     return HomeWeekPasteCandidate(
       sourceIndex: index,
       day: '월',
-      time: '${hour.toString().padLeft(2, '0')}:'
+      time:
+          '${hour.toString().padLeft(2, '0')}:'
           '${minute.toString().padLeft(2, '0')}',
-      endTime: '${endAt.hour.toString().padLeft(2, '0')}:'
+      endTime:
+          '${endAt.hour.toString().padLeft(2, '0')}:'
           '${endAt.minute.toString().padLeft(2, '0')}',
       startAt: startAt,
       endAt: endAt,
@@ -38,9 +40,11 @@ void main() {
     return HomeWeekPasteExistingSchedule(
       docId: id,
       day: '월',
-      time: '${hour.toString().padLeft(2, '0')}:'
+      time:
+          '${hour.toString().padLeft(2, '0')}:'
           '${minute.toString().padLeft(2, '0')}',
-      endTime: '${endAt.hour.toString().padLeft(2, '0')}:'
+      endTime:
+          '${endAt.hour.toString().padLeft(2, '0')}:'
           '${endAt.minute.toString().padLeft(2, '0')}',
       startAt: startAt,
       endAt: endAt,
@@ -63,8 +67,10 @@ void main() {
 
     for (final conflictCount in [1, 2, 3]) {
       test('$conflictCount개 충돌은 후보 $conflictCount개만 제외한다', () {
-        final candidates =
-            List.generate(5, (index) => candidate(index, 9 + index));
+        final candidates = List.generate(
+          5,
+          (index) => candidate(index, 9 + index),
+        );
         final existingSchedules = List.generate(
           conflictCount,
           (index) => existing('existing-$index', 9 + index),
@@ -96,14 +102,8 @@ void main() {
 
     test('13:20~14:10과 양쪽에서 겹치는 두 후보를 모두 제외한다', () {
       final plan = HomeWeekPasteConflictService.classify(
-        candidates: [
-          candidate(0, 13),
-          candidate(1, 14),
-          candidate(2, 15),
-        ],
-        existingSchedules: [
-          existing('existing', 13, minute: 20),
-        ],
+        candidates: [candidate(0, 13), candidate(1, 14), candidate(2, 15)],
+        existingSchedules: [existing('existing', 13, minute: 20)],
       );
 
       expect(plan.conflictingSourceIndexes, {0, 1});
@@ -184,23 +184,24 @@ void main() {
         MaterialApp(
           theme: theme,
           home: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: FilledButton(
-                  onPressed: () async {
-                    final result = await HomeWeekPasteOverwriteSheet.show(
-                      context: context,
-                      targetLabel: '다음 주',
-                      conflictCount: conflictCount,
-                      pasteableCount: pasteableCount,
-                      primaryColor: Theme.of(context).colorScheme.primary,
-                    );
-                    onResult(result);
-                  },
-                  child: const Text('열기'),
+            builder:
+                (context) => Scaffold(
+                  body: Center(
+                    child: FilledButton(
+                      onPressed: () async {
+                        final result = await HomeWeekPasteOverwriteSheet.show(
+                          context: context,
+                          targetLabel: '다음 주',
+                          conflictCount: conflictCount,
+                          pasteableCount: pasteableCount,
+                          primaryColor: Theme.of(context).colorScheme.primary,
+                        );
+                        onResult(result);
+                      },
+                      child: const Text('열기'),
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ),
         ),
       );
@@ -208,13 +209,13 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    for (final entry in <String, ThemeData>{
-      'light': lightTheme(),
-      'dark': darkTheme(),
-      'lululala': lululalaTheme(),
-    }.entries) {
-      testWidgets('${entry.key}에서 부분 충돌 문구와 동적 버튼을 렌더링한다',
-          (tester) async {
+    for (final entry
+        in <String, ThemeData>{
+          'light': lightTheme(),
+          'dark': darkTheme(),
+          'lululala': lululalaTheme(),
+        }.entries) {
+      testWidgets('${entry.key}에서 부분 충돌 문구와 동적 버튼을 렌더링한다', (tester) async {
         bool? result;
         await pumpPrompt(
           tester,
@@ -263,7 +264,10 @@ void main() {
 
       expect(find.text('붙여넣을 수 있는 일정이 없어요'), findsOneWidget);
       expect(find.text('2개 일정이 모두 기존 일정과 겹쳐요.'), findsOneWidget);
-      expect(find.byKey(const Key('week_paste_conflict_confirm')), findsNothing);
+      expect(
+        find.byKey(const Key('week_paste_conflict_confirm')),
+        findsNothing,
+      );
       await tester.tap(find.byKey(const Key('week_paste_conflict_ack')));
       await tester.pumpAndSettle();
       expect(result, isFalse);
@@ -277,10 +281,42 @@ void main() {
     final pasteSource = source.substring(start, end);
 
     expect(pasteSource, contains('pasteableSourceIndexes'));
-    expect(pasteSource, contains('commitScheduleWrites'));
+    expect(pasteSource, contains('commitScheduleCopyWrites'));
     expect(pasteSource, isNot(contains('deleteSchedules')));
     expect(pasteSource, isNot(contains('deleteDocIds:')));
-    expect(source, contains("where('trainerId', isEqualTo: _personalOwnerUid)"));
+    expect(
+      source,
+      contains("where('trainerId', isEqualTo: _personalOwnerUid)"),
+    );
     expect(source, contains("where('workspaceType', isEqualTo: 'personal')"));
+  });
+
+  test('Home 붙여넣기는 분할 실패 시 성공으로 표시하지 않고 재시도를 안내한다', () {
+    final source = File('lib/pages/home_page.dart').readAsStringSync();
+    final start = source.indexOf('Future<void> _pasteWeekSchedules');
+    final end = source.indexOf('Future<void> _deleteAllSchedulesInWeek', start);
+    final pasteSource = source.substring(start, end);
+
+    expect(pasteSource, contains('HomeScheduleCopyCommitException'));
+    expect(pasteSource, contains('committedWriteCount'));
+    expect(pasteSource, contains('다시 붙여넣어 주세요'));
+    expect(pasteSource, contains('다시 시도해 주세요'));
+  });
+
+  test('일정 mutation 로그는 문서 ID 원문 대신 존재 여부와 건수만 기록한다', () {
+    final homeSource = File('lib/pages/home_page.dart').readAsStringSync();
+    final serviceSource =
+        File(
+          'lib/services/home_schedule_firestore_service.dart',
+        ).readAsStringSync();
+
+    expect(serviceSource, contains('sourceCount=\${sourceDocIds.length}'));
+    expect(serviceSource, contains('targetCount=\${targetDocIds.length}'));
+    expect(serviceSource, isNot(contains('sourceDocIds=\${sourceDocIds.join')));
+    expect(serviceSource, isNot(contains('targetDocIds=\${targetDocIds.join')));
+    expect(serviceSource, isNot(contains('sourceDocId=\$sourceDocId')));
+    expect(homeSource, isNot(contains('sourceDocIds=\${sourceDocIds.join')));
+    expect(homeSource, isNot(contains('actualSourceDocId=\$cleanDocId')));
+    expect(homeSource, isNot(contains('snapshotId=\${snap.id}')));
   });
 }

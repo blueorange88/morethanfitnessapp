@@ -23,11 +23,11 @@ class _CategoryExerciseGroup {
     Map<String, int>? repCounts,
     Map<String, int>? assistCounts,
     Map<String, String>? noteByExercise,
-  })  : exercises = exercises ?? [],
-        setCounts = setCounts ?? {},
-        repCounts = repCounts ?? {},
-        assistCounts = assistCounts ?? {},
-        noteByExercise = noteByExercise ?? {};
+  }) : exercises = exercises ?? [],
+       setCounts = setCounts ?? {},
+       repCounts = repCounts ?? {},
+       assistCounts = assistCounts ?? {},
+       noteByExercise = noteByExercise ?? {};
 }
 
 class PersonalTrainingLogCategoryPage extends StatefulWidget {
@@ -317,9 +317,10 @@ class _PersonalTrainingLogCategoryPageState
       }
     }
 
-    final modifier = _titleModifier.isNotEmpty
-        ? _titleModifier
-        : goals.isNotEmpty
+    final modifier =
+        _titleModifier.isNotEmpty
+            ? _titleModifier
+            : goals.isNotEmpty
             ? goals.first
             : '';
 
@@ -345,17 +346,19 @@ class _PersonalTrainingLogCategoryPageState
   }
 
   String _buildAutoSummaryFromMemo() {
-    final lines = _memoC.text
-        .split('\n')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final lines =
+        _memoC.text
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     if (lines.isEmpty) return '';
 
-    final cleaned = lines
-        .map((e) => e.startsWith('- ') ? e.substring(2).trim() : e)
-        .toList();
+    final cleaned =
+        lines
+            .map((e) => e.startsWith('- ') ? e.substring(2).trim() : e)
+            .toList();
 
     if (cleaned.length == 1) return cleaned.first;
     return '${cleaned.first} 외 ${cleaned.length - 1}개 진행';
@@ -476,7 +479,11 @@ class _PersonalTrainingLogCategoryPageState
   }
 
   void _changeAssistCount(
-      String main, String part, String exercise, int delta) {
+    String main,
+    String part,
+    String exercise,
+    int delta,
+  ) {
     final group = _findGroup(main, part);
     if (group == null) return;
 
@@ -572,24 +579,18 @@ class _PersonalTrainingLogCategoryPageState
 
   Widget _buildBlueHeader() {
     final sessionLabel = (widget.initialSessionLabel ?? '').trim();
-    final title = sessionLabel.isEmpty
-        ? '$_memberName 님 수업일지'
-        : '$_memberName 님 $sessionLabel 수업일지';
+    final title =
+        sessionLabel.isEmpty
+            ? '$_memberName 님 수업일지'
+            : '$_memberName 님 $sessionLabel 수업일지';
     final gradient = context.mtfHeaderGradient;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(
-        top: 14,
-        left: 16,
-        right: 16,
-        bottom: 18,
-      ),
+      padding: const EdgeInsets.only(top: 14, left: 16, right: 16, bottom: 18),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -610,11 +611,7 @@ class _PersonalTrainingLogCategoryPageState
                 child: const SizedBox(
                   width: 42,
                   height: 42,
-                  child: Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 28,
-                  ),
+                  child: Icon(Icons.arrow_back, color: Colors.white, size: 28),
                 ),
               ),
               const SizedBox(width: 6),
@@ -638,9 +635,7 @@ class _PersonalTrainingLogCategoryPageState
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.18),
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.18)),
                 ),
                 child: const Icon(
                   Icons.grid_view_rounded,
@@ -655,10 +650,7 @@ class _PersonalTrainingLogCategoryPageState
     );
   }
 
-  Widget _section({
-    required String title,
-    required Widget child,
-  }) {
+  Widget _section({required String title, required Widget child}) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
@@ -753,37 +745,44 @@ class _PersonalTrainingLogCategoryPageState
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: options.map((value) {
-        final selected = selectedValue == value;
-        return InkWell(
-          onTap: () => onChanged(value),
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected
-                  ? colorScheme.secondaryContainer
-                  : _themeTokens.trainingLogSetRow,
+      children:
+          options.map((value) {
+            final selected = selectedValue == value;
+            return InkWell(
+              onTap: () => onChanged(value),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFF4F46E5)
-                    : _themeTokens.trainingLogSetDivider,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      selected
+                          ? colorScheme.secondaryContainer
+                          : _themeTokens.trainingLogSetRow,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color:
+                        selected
+                            ? const Color(0xFF4F46E5)
+                            : _themeTokens.trainingLogSetDivider,
+                  ),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        selected
+                            ? colorScheme.onSecondaryContainer
+                            : colorScheme.onSurface,
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-                color: selected
-                    ? colorScheme.onSecondaryContainer
-                    : colorScheme.onSurface,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
@@ -796,37 +795,44 @@ class _PersonalTrainingLogCategoryPageState
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: options.map((value) {
-        final selected = selectedValues.contains(value);
-        return InkWell(
-          onTap: () => onToggle(value),
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected
-                  ? colorScheme.secondaryContainer
-                  : _themeTokens.trainingLogSetRow,
+      children:
+          options.map((value) {
+            final selected = selectedValues.contains(value);
+            return InkWell(
+              onTap: () => onToggle(value),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFF4F46E5)
-                    : _themeTokens.trainingLogSetDivider,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      selected
+                          ? colorScheme.secondaryContainer
+                          : _themeTokens.trainingLogSetRow,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color:
+                        selected
+                            ? const Color(0xFF4F46E5)
+                            : _themeTokens.trainingLogSetDivider,
+                  ),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        selected
+                            ? colorScheme.onSecondaryContainer
+                            : colorScheme.onSurface,
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-                color: selected
-                    ? colorScheme.onSecondaryContainer
-                    : colorScheme.onSurface,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
@@ -835,26 +841,27 @@ class _PersonalTrainingLogCategoryPageState
 
     final result = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('특이사항 추가'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '예: 어지러움 / 컨디션 저하 / 생리통',
-            border: OutlineInputBorder(),
+      builder:
+          (_) => AlertDialog(
+            title: const Text('특이사항 추가'),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: '예: 어지러움 / 컨디션 저하 / 생리통',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                child: const Text('추가'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('추가'),
-          ),
-        ],
-      ),
     );
 
     controller.dispose();
@@ -928,15 +935,16 @@ class _PersonalTrainingLogCategoryPageState
 
   void _save() {
     final title = _titleC.text.trim();
-    final name = (widget.initialName ?? '').trim().isEmpty
-        ? '회원 미지정'
-        : (widget.initialName ?? '').trim();
+    final name =
+        (widget.initialName ?? '').trim().isEmpty
+            ? '회원 미지정'
+            : (widget.initialName ?? '').trim();
     final memo = _memoC.text.trim();
 
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('수업일지 제목을 입력해주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('수업일지 제목을 입력해주세요.')));
       return;
     }
 
@@ -1021,8 +1029,9 @@ class _PersonalTrainingLogCategoryPageState
                         _buildCollapsibleSection(
                           title: '시작 전 체크',
                           expanded: _preExpanded,
-                          onToggle: () =>
-                              setState(() => _preExpanded = !_preExpanded),
+                          onToggle:
+                              () =>
+                                  setState(() => _preExpanded = !_preExpanded),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1037,8 +1046,8 @@ class _PersonalTrainingLogCategoryPageState
                               _singleSelect(
                                 options: const ['좋음', '보통', '나쁨'],
                                 selectedValue: _preCondition,
-                                onChanged: (v) =>
-                                    setState(() => _preCondition = v),
+                                onChanged:
+                                    (v) => setState(() => _preCondition = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -1107,8 +1116,8 @@ class _PersonalTrainingLogCategoryPageState
                               _singleSelect(
                                 options: const ['안 함', '조금 함', '충분히 함'],
                                 selectedValue: _preStretching,
-                                onChanged: (v) =>
-                                    setState(() => _preStretching = v),
+                                onChanged:
+                                    (v) => setState(() => _preStretching = v),
                               ),
                             ],
                           ),
@@ -1117,9 +1126,10 @@ class _PersonalTrainingLogCategoryPageState
                         _buildCollapsibleSection(
                           title: '카테고리형 작성',
                           expanded: _categoryExpanded,
-                          onToggle: () => setState(
-                            () => _categoryExpanded = !_categoryExpanded,
-                          ),
+                          onToggle:
+                              () => setState(
+                                () => _categoryExpanded = !_categoryExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1144,19 +1154,21 @@ class _PersonalTrainingLogCategoryPageState
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
-                                children: _mainCategories.map((item) {
-                                  final selected = _currentCategoryMain == item;
-                                  return ChoiceChip(
-                                    label: Text(item),
-                                    selected: selected,
-                                    onSelected: (_) {
-                                      setState(() {
-                                        _currentCategoryMain = item;
-                                        _currentCategoryPart = '';
-                                      });
-                                    },
-                                  );
-                                }).toList(),
+                                children:
+                                    _mainCategories.map((item) {
+                                      final selected =
+                                          _currentCategoryMain == item;
+                                      return ChoiceChip(
+                                        label: Text(item),
+                                        selected: selected,
+                                        onSelected: (_) {
+                                          setState(() {
+                                            _currentCategoryMain = item;
+                                            _currentCategoryPart = '';
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
                               ),
                               if (_currentCategoryMain.isNotEmpty) ...[
                                 const SizedBox(height: 16),
@@ -1175,18 +1187,19 @@ class _PersonalTrainingLogCategoryPageState
                                       (_partCategories[_currentCategoryMain] ??
                                               [])
                                           .map((item) {
-                                    final selected =
-                                        _currentCategoryPart == item;
-                                    return ChoiceChip(
-                                      label: Text(item),
-                                      selected: selected,
-                                      onSelected: (_) {
-                                        setState(() {
-                                          _currentCategoryPart = item;
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
+                                            final selected =
+                                                _currentCategoryPart == item;
+                                            return ChoiceChip(
+                                              label: Text(item),
+                                              selected: selected,
+                                              onSelected: (_) {
+                                                setState(() {
+                                                  _currentCategoryPart = item;
+                                                });
+                                              },
+                                            );
+                                          })
+                                          .toList(),
                                 ),
                               ],
                               if (_currentCategoryPart.isNotEmpty) ...[
@@ -1208,34 +1221,43 @@ class _PersonalTrainingLogCategoryPageState
                                             TextEditingController();
                                         final result = await showDialog<String>(
                                           context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text('운동 추가'),
-                                            content: TextField(
-                                              controller: controller,
-                                              decoration: const InputDecoration(
-                                                hintText: '예: 데드 버그 / 힙힌지',
-                                                border: OutlineInputBorder(),
-                                              ),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context),
-                                                child: const Text('취소'),
-                                              ),
-                                              FilledButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  controller.text.trim(),
+                                          builder:
+                                              (_) => AlertDialog(
+                                                title: const Text('운동 추가'),
+                                                content: TextField(
+                                                  controller: controller,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        hintText:
+                                                            '예: 데드 버그 / 힙힌지',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
                                                 ),
-                                                child: const Text('추가'),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed:
+                                                        () => Navigator.pop(
+                                                          context,
+                                                        ),
+                                                    child: const Text('취소'),
+                                                  ),
+                                                  FilledButton(
+                                                    onPressed:
+                                                        () => Navigator.pop(
+                                                          context,
+                                                          controller.text
+                                                              .trim(),
+                                                        ),
+                                                    child: const Text('추가'),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
                                         );
 
                                         if (result == null ||
-                                            result.trim().isEmpty) return;
+                                            result.trim().isEmpty)
+                                          return;
 
                                         final part = _currentCategoryPart;
                                         final list = _CategoryExerciseMemory
@@ -1247,8 +1269,10 @@ class _PersonalTrainingLogCategoryPageState
                                           });
                                         }
                                       },
-                                      icon: const Icon(Icons.add_rounded,
-                                          size: 16),
+                                      icon: const Icon(
+                                        Icons.add_rounded,
+                                        size: 16,
+                                      ),
                                       label: const Text('운동추가'),
                                     ),
                                   ],
@@ -1257,25 +1281,26 @@ class _PersonalTrainingLogCategoryPageState
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: [
-                                    ...(_exerciseCategories[
-                                            _currentCategoryPart] ??
-                                        []),
-                                    ...(_CategoryExerciseMemory
-                                                .customExercisesByPart[
-                                            _currentCategoryPart] ??
-                                        []),
-                                  ].map((item) {
-                                    final selected = _currentGroup?.exercises
-                                            .contains(item) ??
-                                        false;
-                                    return FilterChip(
-                                      label: Text(item),
-                                      selected: selected,
-                                      onSelected: (_) =>
-                                          _toggleExerciseChip(item),
-                                    );
-                                  }).toList(),
+                                  children:
+                                      [
+                                        ...(_exerciseCategories[_currentCategoryPart] ??
+                                            []),
+                                        ...(_CategoryExerciseMemory
+                                                .customExercisesByPart[_currentCategoryPart] ??
+                                            []),
+                                      ].map((item) {
+                                        final selected =
+                                            _currentGroup?.exercises.contains(
+                                              item,
+                                            ) ??
+                                            false;
+                                        return FilterChip(
+                                          label: Text(item),
+                                          selected: selected,
+                                          onSelected:
+                                              (_) => _toggleExerciseChip(item),
+                                        );
+                                      }).toList(),
                                 ),
                               ],
                               if (_categoryGroups.isNotEmpty) ...[
@@ -1289,168 +1314,294 @@ class _PersonalTrainingLogCategoryPageState
                                 ),
                                 const SizedBox(height: 8),
                                 Column(
-                                  children: _categoryGroups.map((group) {
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 10),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: _themeTokens.trainingLogSetRow,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: _themeTokens
-                                              .trainingLogSetDivider,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  '${group.main} > ${group.part}',
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
-                                                ),
-                                              ),
-                                              IconButton(
-                                                onPressed: () => _removeGroup(
-                                                  group.main,
-                                                  group.part,
-                                                ),
-                                                icon: const Icon(
-                                                  Icons.delete_outline,
-                                                ),
-                                              ),
-                                            ],
+                                  children:
+                                      _categoryGroups.map((group) {
+                                        return Container(
+                                          margin: const EdgeInsets.only(
+                                            bottom: 10,
                                           ),
-                                          const SizedBox(height: 8),
-                                          Column(
-                                            children: group.exercises.map((
-                                              exercise,
-                                            ) {
-                                              final sets =
-                                                  group.setCounts[exercise] ??
-                                                      3;
-                                              final reps =
-                                                  group.repCounts[exercise] ??
-                                                      12;
-                                              final assists = group
-                                                      .assistCounts[exercise] ??
-                                                  0;
-                                              final note = group.noteByExercise[
-                                                      exercise] ??
-                                                  '';
-                                              final memoKey =
-                                                  '${group.main}|${group.part}|$exercise';
-                                              final memoOpen =
-                                                  _memoOpen[memoKey] ?? false;
-
-                                              return Container(
-                                                margin: const EdgeInsets.only(
-                                                    bottom: 8),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: _themeTokens
-                                                      .trainingLogSurface,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  border: Border.all(
-                                                    color: _themeTokens
-                                                        .trainingLogSetDivider,
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                _themeTokens.trainingLogSetRow,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  _themeTokens
+                                                      .trainingLogSetDivider,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      '${group.main} > ${group.part}',
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: Text(
-                                                            exercise,
-                                                            maxLines: 1,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                            style:
-                                                                const TextStyle(
-                                                              fontSize: 12.5,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w800,
+                                                  IconButton(
+                                                    onPressed:
+                                                        () => _removeGroup(
+                                                          group.main,
+                                                          group.part,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons.delete_outline,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Column(
+                                                children:
+                                                    group.exercises.map((
+                                                      exercise,
+                                                    ) {
+                                                      final sets =
+                                                          group
+                                                              .setCounts[exercise] ??
+                                                          3;
+                                                      final reps =
+                                                          group
+                                                              .repCounts[exercise] ??
+                                                          12;
+                                                      final assists =
+                                                          group
+                                                              .assistCounts[exercise] ??
+                                                          0;
+                                                      final note =
+                                                          group
+                                                              .noteByExercise[exercise] ??
+                                                          '';
+                                                      final memoKey =
+                                                          '${group.main}|${group.part}|$exercise';
+                                                      final memoOpen =
+                                                          _memoOpen[memoKey] ??
+                                                          false;
+
+                                                      return Container(
+                                                        margin:
+                                                            const EdgeInsets.only(
+                                                              bottom: 8,
                                                             ),
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 8,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color:
+                                                              _themeTokens
+                                                                  .trainingLogSurface,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                          border: Border.all(
+                                                            color:
+                                                                _themeTokens
+                                                                    .trainingLogSetDivider,
                                                           ),
                                                         ),
-                                                        const SizedBox(
-                                                            width: 6),
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  horizontal: 8,
-                                                                  vertical: 6),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: assists == 0
-                                                                ? colorScheme
-                                                                    .surfaceContainerHighest
-                                                                : const Color(
-                                                                    0xFFFEE2E2),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        999),
-                                                            border: Border.all(
-                                                              color: assists ==
-                                                                      0
-                                                                  ? _themeTokens
-                                                                      .trainingLogSetDivider
-                                                                  : const Color(
-                                                                      0xFFFECACA),
-                                                            ),
-                                                          ),
-                                                          child: assists == 0
-                                                              ? InkWell(
-                                                                  onTap: () =>
-                                                                      _changeAssistCount(
-                                                                    group.main,
-                                                                    group.part,
-                                                                    exercise,
-                                                                    1,
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              999),
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            Row(
+                                                              children: [
+                                                                Expanded(
                                                                   child: Text(
-                                                                    '서포트',
-                                                                    style:
-                                                                        TextStyle(
+                                                                    exercise,
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                    style: const TextStyle(
                                                                       fontSize:
-                                                                          11,
+                                                                          12.5,
                                                                       fontWeight:
                                                                           FontWeight
                                                                               .w800,
-                                                                      color: colorScheme
-                                                                          .onSurfaceVariant,
                                                                     ),
                                                                   ),
-                                                                )
-                                                              : Row(
-                                                                  mainAxisSize:
-                                                                      MainAxisSize
-                                                                          .min,
-                                                                  children: [
-                                                                    InkWell(
-                                                                      onTap: () =>
-                                                                          _changeAssistCount(
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 6,
+                                                                ),
+                                                                Container(
+                                                                  padding:
+                                                                      const EdgeInsets.symmetric(
+                                                                        horizontal:
+                                                                            8,
+                                                                        vertical:
+                                                                            6,
+                                                                      ),
+                                                                  decoration: BoxDecoration(
+                                                                    color:
+                                                                        assists ==
+                                                                                0
+                                                                            ? colorScheme.surfaceContainerHighest
+                                                                            : const Color(
+                                                                              0xFFFEE2E2,
+                                                                            ),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          999,
+                                                                        ),
+                                                                    border: Border.all(
+                                                                      color:
+                                                                          assists ==
+                                                                                  0
+                                                                              ? _themeTokens.trainingLogSetDivider
+                                                                              : const Color(
+                                                                                0xFFFECACA,
+                                                                              ),
+                                                                    ),
+                                                                  ),
+                                                                  child:
+                                                                      assists ==
+                                                                              0
+                                                                          ? InkWell(
+                                                                            onTap:
+                                                                                () => _changeAssistCount(
+                                                                                  group.main,
+                                                                                  group.part,
+                                                                                  exercise,
+                                                                                  1,
+                                                                                ),
+                                                                            borderRadius: BorderRadius.circular(
+                                                                              999,
+                                                                            ),
+                                                                            child: Text(
+                                                                              '서포트',
+                                                                              style: TextStyle(
+                                                                                fontSize:
+                                                                                    11,
+                                                                                fontWeight:
+                                                                                    FontWeight.w800,
+                                                                                color:
+                                                                                    colorScheme.onSurfaceVariant,
+                                                                              ),
+                                                                            ),
+                                                                          )
+                                                                          : Row(
+                                                                            mainAxisSize:
+                                                                                MainAxisSize.min,
+                                                                            children: [
+                                                                              InkWell(
+                                                                                onTap:
+                                                                                    () => _changeAssistCount(
+                                                                                      group.main,
+                                                                                      group.part,
+                                                                                      exercise,
+                                                                                      -1,
+                                                                                    ),
+                                                                                child: const Padding(
+                                                                                  padding: EdgeInsets.symmetric(
+                                                                                    horizontal:
+                                                                                        4,
+                                                                                  ),
+                                                                                  child: Icon(
+                                                                                    Icons.remove,
+                                                                                    size:
+                                                                                        14,
+                                                                                    color: Color(
+                                                                                      0xFFB91C1C,
+                                                                                    ),
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                              Text(
+                                                                                '서포트 $assists회',
+                                                                                style: const TextStyle(
+                                                                                  fontSize:
+                                                                                      11,
+                                                                                  fontWeight:
+                                                                                      FontWeight.w800,
+                                                                                  color: Color(
+                                                                                    0xFFB91C1C,
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                              InkWell(
+                                                                                onTap:
+                                                                                    () => _changeAssistCount(
+                                                                                      group.main,
+                                                                                      group.part,
+                                                                                      exercise,
+                                                                                      1,
+                                                                                    ),
+                                                                                child: const Padding(
+                                                                                  padding: EdgeInsets.symmetric(
+                                                                                    horizontal:
+                                                                                        4,
+                                                                                  ),
+                                                                                  child: Icon(
+                                                                                    Icons.add,
+                                                                                    size:
+                                                                                        14,
+                                                                                    color: Color(
+                                                                                      0xFFB91C1C,
+                                                                                    ),
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                          ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 4,
+                                                                ),
+                                                                IconButton(
+                                                                  visualDensity:
+                                                                      VisualDensity
+                                                                          .compact,
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .zero,
+                                                                  constraints:
+                                                                      const BoxConstraints(
+                                                                        minWidth:
+                                                                            30,
+                                                                        minHeight:
+                                                                            30,
+                                                                      ),
+                                                                  onPressed:
+                                                                      () => _removeExercise(
+                                                                        group
+                                                                            .main,
+                                                                        group
+                                                                            .part,
+                                                                        exercise,
+                                                                      ),
+                                                                  icon: const Icon(
+                                                                    Icons.close,
+                                                                    size: 18,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(
+                                                              height: 6,
+                                                            ),
+                                                            Row(
+                                                              children: [
+                                                                _miniCounter(
+                                                                  label: '세트',
+                                                                  value: sets,
+                                                                  onMinus:
+                                                                      () => _changeSetCount(
                                                                         group
                                                                             .main,
                                                                         group
@@ -1458,36 +1609,8 @@ class _PersonalTrainingLogCategoryPageState
                                                                         exercise,
                                                                         -1,
                                                                       ),
-                                                                      child:
-                                                                          const Padding(
-                                                                        padding:
-                                                                            EdgeInsets.symmetric(horizontal: 4),
-                                                                        child:
-                                                                            Icon(
-                                                                          Icons
-                                                                              .remove,
-                                                                          size:
-                                                                              14,
-                                                                          color:
-                                                                              Color(0xFFB91C1C),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    Text(
-                                                                      '서포트 $assists회',
-                                                                      style:
-                                                                          const TextStyle(
-                                                                        fontSize:
-                                                                            11,
-                                                                        fontWeight:
-                                                                            FontWeight.w800,
-                                                                        color: Color(
-                                                                            0xFFB91C1C),
-                                                                      ),
-                                                                    ),
-                                                                    InkWell(
-                                                                      onTap: () =>
-                                                                          _changeAssistCount(
+                                                                  onPlus:
+                                                                      () => _changeSetCount(
                                                                         group
                                                                             .main,
                                                                         group
@@ -1495,149 +1618,95 @@ class _PersonalTrainingLogCategoryPageState
                                                                         exercise,
                                                                         1,
                                                                       ),
-                                                                      child:
-                                                                          const Padding(
-                                                                        padding:
-                                                                            EdgeInsets.symmetric(horizontal: 4),
-                                                                        child:
-                                                                            Icon(
-                                                                          Icons
-                                                                              .add,
-                                                                          size:
-                                                                              14,
-                                                                          color:
-                                                                              Color(0xFFB91C1C),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                  ],
                                                                 ),
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 4),
-                                                        IconButton(
-                                                          visualDensity:
-                                                              VisualDensity
-                                                                  .compact,
-                                                          padding:
-                                                              EdgeInsets.zero,
-                                                          constraints:
-                                                              const BoxConstraints(
-                                                            minWidth: 30,
-                                                            minHeight: 30,
-                                                          ),
-                                                          onPressed: () =>
-                                                              _removeExercise(
-                                                            group.main,
-                                                            group.part,
-                                                            exercise,
-                                                          ),
-                                                          icon: const Icon(
-                                                              Icons.close,
-                                                              size: 18),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 6),
-                                                    Row(
-                                                      children: [
-                                                        _miniCounter(
-                                                          label: '세트',
-                                                          value: sets,
-                                                          onMinus: () =>
-                                                              _changeSetCount(
-                                                            group.main,
-                                                            group.part,
-                                                            exercise,
-                                                            -1,
-                                                          ),
-                                                          onPlus: () =>
-                                                              _changeSetCount(
-                                                            group.main,
-                                                            group.part,
-                                                            exercise,
-                                                            1,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        _miniCounter(
-                                                          label: '횟수',
-                                                          value: reps,
-                                                          onMinus: () =>
-                                                              _changeRepCount(
-                                                            group.main,
-                                                            group.part,
-                                                            exercise,
-                                                            -1,
-                                                          ),
-                                                          onPlus: () =>
-                                                              _changeRepCount(
-                                                            group.main,
-                                                            group.part,
-                                                            exercise,
-                                                            1,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        ActionChip(
-                                                          label: Text(
-                                                            note.trim().isEmpty
-                                                                ? '메모'
-                                                                : '메모 있음',
-                                                            style:
-                                                                const TextStyle(
-                                                              fontSize: 11,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
+                                                                const SizedBox(
+                                                                  width: 8,
+                                                                ),
+                                                                _miniCounter(
+                                                                  label: '횟수',
+                                                                  value: reps,
+                                                                  onMinus:
+                                                                      () => _changeRepCount(
+                                                                        group
+                                                                            .main,
+                                                                        group
+                                                                            .part,
+                                                                        exercise,
+                                                                        -1,
+                                                                      ),
+                                                                  onPlus:
+                                                                      () => _changeRepCount(
+                                                                        group
+                                                                            .main,
+                                                                        group
+                                                                            .part,
+                                                                        exercise,
+                                                                        1,
+                                                                      ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 8,
+                                                                ),
+                                                                ActionChip(
+                                                                  label: Text(
+                                                                    note.trim().isEmpty
+                                                                        ? '메모'
+                                                                        : '메모 있음',
+                                                                    style: const TextStyle(
+                                                                      fontSize:
+                                                                          11,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w700,
+                                                                    ),
+                                                                  ),
+                                                                  onPressed: () {
+                                                                    setState(() {
+                                                                      _memoOpen[memoKey] =
+                                                                          !memoOpen;
+                                                                    });
+                                                                  },
+                                                                ),
+                                                              ],
                                                             ),
-                                                          ),
-                                                          onPressed: () {
-                                                            setState(() {
-                                                              _memoOpen[
-                                                                      memoKey] =
-                                                                  !memoOpen;
-                                                            });
-                                                          },
+                                                            if (memoOpen) ...[
+                                                              const SizedBox(
+                                                                height: 8,
+                                                              ),
+                                                              TextField(
+                                                                controller:
+                                                                    TextEditingController(
+                                                                      text:
+                                                                          group
+                                                                              .noteByExercise[exercise] ??
+                                                                          '',
+                                                                    ),
+                                                                maxLines: 1,
+                                                                decoration: const InputDecoration(
+                                                                  hintText:
+                                                                      '예: 허리 뜨지 않게 / 오른쪽 복압 더 신경쓰기',
+                                                                  border:
+                                                                      OutlineInputBorder(),
+                                                                  isDense: true,
+                                                                ),
+                                                                onChanged: (
+                                                                  value,
+                                                                ) {
+                                                                  group.noteByExercise[exercise] =
+                                                                      value;
+                                                                  _syncCategoryDraftToFields();
+                                                                },
+                                                              ),
+                                                            ],
+                                                          ],
                                                         ),
-                                                      ],
-                                                    ),
-                                                    if (memoOpen) ...[
-                                                      const SizedBox(height: 8),
-                                                      TextField(
-                                                        controller:
-                                                            TextEditingController(
-                                                          text: group.noteByExercise[
-                                                                  exercise] ??
-                                                              '',
-                                                        ),
-                                                        maxLines: 1,
-                                                        decoration:
-                                                            const InputDecoration(
-                                                          hintText:
-                                                              '예: 허리 뜨지 않게 / 오른쪽 복압 더 신경쓰기',
-                                                          border:
-                                                              OutlineInputBorder(),
-                                                          isDense: true,
-                                                        ),
-                                                        onChanged: (value) {
-                                                          group.noteByExercise[
-                                                              exercise] = value;
-                                                          _syncCategoryDraftToFields();
-                                                        },
-                                                      ),
-                                                    ],
-                                                  ],
-                                                ),
-                                              );
-                                            }).toList(),
+                                                      );
+                                                    }).toList(),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
+                                        );
+                                      }).toList(),
                                 ),
                                 const SizedBox(height: 14),
                                 Container(
@@ -1722,22 +1791,25 @@ class _PersonalTrainingLogCategoryPageState
                                       Wrap(
                                         spacing: 8,
                                         runSpacing: 8,
-                                        children: [
-                                          '교정',
-                                          '통증관리',
-                                          '근력',
-                                          '가동성',
-                                          '체형'
-                                        ].map((modifier) {
-                                          final selected =
-                                              _titleModifier == modifier;
-                                          return ChoiceChip(
-                                            label: Text(modifier),
-                                            selected: selected,
-                                            onSelected: (_) =>
-                                                _applyTitleModifier(modifier),
-                                          );
-                                        }).toList(),
+                                        children:
+                                            [
+                                              '교정',
+                                              '통증관리',
+                                              '근력',
+                                              '가동성',
+                                              '체형',
+                                            ].map((modifier) {
+                                              final selected =
+                                                  _titleModifier == modifier;
+                                              return ChoiceChip(
+                                                label: Text(modifier),
+                                                selected: selected,
+                                                onSelected:
+                                                    (_) => _applyTitleModifier(
+                                                      modifier,
+                                                    ),
+                                              );
+                                            }).toList(),
                                       ),
                                     ],
                                   ),
@@ -1750,8 +1822,10 @@ class _PersonalTrainingLogCategoryPageState
                         _buildCollapsibleSection(
                           title: '수업 중 체크',
                           expanded: _duringExpanded,
-                          onToggle: () => setState(
-                              () => _duringExpanded = !_duringExpanded),
+                          onToggle:
+                              () => setState(
+                                () => _duringExpanded = !_duringExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1766,8 +1840,8 @@ class _PersonalTrainingLogCategoryPageState
                               _singleSelect(
                                 options: const ['집중 잘됨', '보통', '낮음'],
                                 selectedValue: _focusResponse,
-                                onChanged: (v) =>
-                                    setState(() => _focusResponse = v),
+                                onChanged:
+                                    (v) => setState(() => _focusResponse = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -1781,8 +1855,9 @@ class _PersonalTrainingLogCategoryPageState
                               _singleSelect(
                                 options: const ['인지 잘됨', '보통', '어려움'],
                                 selectedValue: _cognitiveResponse,
-                                onChanged: (v) =>
-                                    setState(() => _cognitiveResponse = v),
+                                onChanged:
+                                    (v) =>
+                                        setState(() => _cognitiveResponse = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -1798,11 +1873,13 @@ class _PersonalTrainingLogCategoryPageState
                                   '수행 좋음',
                                   '보통',
                                   '어려움',
-                                  '통증으로 제한'
+                                  '통증으로 제한',
                                 ],
                                 selectedValue: _performanceResponse,
-                                onChanged: (v) =>
-                                    setState(() => _performanceResponse = v),
+                                onChanged:
+                                    (v) => setState(
+                                      () => _performanceResponse = v,
+                                    ),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -1847,8 +1924,10 @@ class _PersonalTrainingLogCategoryPageState
                         _buildCollapsibleSection(
                           title: '종료 후 체크',
                           expanded: _postExpanded,
-                          onToggle: () =>
-                              setState(() => _postExpanded = !_postExpanded),
+                          onToggle:
+                              () => setState(
+                                () => _postExpanded = !_postExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1863,8 +1942,8 @@ class _PersonalTrainingLogCategoryPageState
                               _singleSelect(
                                 options: const ['없음', '감소', '유지', '증가'],
                                 selectedValue: _postPainChange,
-                                onChanged: (v) =>
-                                    setState(() => _postPainChange = v),
+                                onChanged:
+                                    (v) => setState(() => _postPainChange = v),
                               ),
                               if (_postPainChange == '감소' ||
                                   _postPainChange == '유지' ||
@@ -1894,8 +1973,8 @@ class _PersonalTrainingLogCategoryPageState
                               _singleSelect(
                                 options: const ['낮음', '보통', '좋음'],
                                 selectedValue: _postPerformance,
-                                onChanged: (v) =>
-                                    setState(() => _postPerformance = v),
+                                onChanged:
+                                    (v) => setState(() => _postPerformance = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -1909,8 +1988,8 @@ class _PersonalTrainingLogCategoryPageState
                               _singleSelect(
                                 options: const ['유지', '진도업', '통증재체크', '숙제확인'],
                                 selectedValue: _postNextAction,
-                                onChanged: (v) =>
-                                    setState(() => _postNextAction = v),
+                                onChanged:
+                                    (v) => setState(() => _postNextAction = v),
                               ),
                               const SizedBox(height: 14),
                               const Text(
@@ -1927,11 +2006,11 @@ class _PersonalTrainingLogCategoryPageState
                                   '스트레칭',
                                   '복습운동',
                                   '걷기',
-                                  '영상확인'
+                                  '영상확인',
                                 ],
                                 selectedValue: _postHomework,
-                                onChanged: (v) =>
-                                    setState(() => _postHomework = v),
+                                onChanged:
+                                    (v) => setState(() => _postHomework = v),
                               ),
                             ],
                           ),
@@ -1940,9 +2019,10 @@ class _PersonalTrainingLogCategoryPageState
                         _buildCollapsibleSection(
                           title: '내부 메모',
                           expanded: _internalExpanded,
-                          onToggle: () => setState(
-                            () => _internalExpanded = !_internalExpanded,
-                          ),
+                          onToggle:
+                              () => setState(
+                                () => _internalExpanded = !_internalExpanded,
+                              ),
                           child: TextField(
                             controller: _internalMemoC,
                             maxLines: 4,
@@ -1958,8 +2038,10 @@ class _PersonalTrainingLogCategoryPageState
                         _buildCollapsibleSection(
                           title: '회원 공개 메모',
                           expanded: _publicExpanded,
-                          onToggle: () => setState(
-                              () => _publicExpanded = !_publicExpanded),
+                          onToggle:
+                              () => setState(
+                                () => _publicExpanded = !_publicExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1980,8 +2062,10 @@ class _PersonalTrainingLogCategoryPageState
                                         _applyAutoSummary(force: true);
                                       });
                                     },
-                                    icon: const Icon(Icons.auto_awesome,
-                                        size: 16),
+                                    icon: const Icon(
+                                      Icons.auto_awesome,
+                                      size: 16,
+                                    ),
                                     label: const Text('자동 요약'),
                                   ),
                                 ],
@@ -2004,9 +2088,10 @@ class _PersonalTrainingLogCategoryPageState
                         _buildCollapsibleSection(
                           title: '수업 체크사항',
                           expanded: _lessonEtcExpanded,
-                          onToggle: () => setState(
-                            () => _lessonEtcExpanded = !_lessonEtcExpanded,
-                          ),
+                          onToggle:
+                              () => setState(
+                                () => _lessonEtcExpanded = !_lessonEtcExpanded,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -2021,80 +2106,100 @@ class _PersonalTrainingLogCategoryPageState
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
-                                children: _issueChipOptions.map((chip) {
-                                  final selected =
-                                      _selectedIssueChips.contains(chip);
-                                  return InkWell(
-                                    onTap: () {
-                                      setState(() {
-                                        if (selected) {
-                                          _selectedIssueChips.remove(chip);
-                                        } else {
-                                          _selectedIssueChips.add(chip);
-                                        }
-                                      });
-                                    },
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: selected
-                                            ? colorScheme.secondaryContainer
-                                            : _themeTokens.trainingLogSetRow,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: selected
-                                              ? const Color(0xFF4F46E5)
-                                              : _themeTokens
-                                                  .trainingLogSetDivider,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        chip,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: selected
-                                              ? colorScheme.onSecondaryContainer
-                                              : colorScheme.onSurface,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList()
-                                  ..add(
-                                    InkWell(
-                                      onTap: _addCustomIssueChip,
-                                      borderRadius: BorderRadius.circular(999),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _themeTokens.trainingLogSetRow,
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                          border: Border.all(
-                                            color: _themeTokens
-                                                .trainingLogSetDivider,
+                                children:
+                                    _issueChipOptions.map((chip) {
+                                        final selected = _selectedIssueChips
+                                            .contains(chip);
+                                        return InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              if (selected) {
+                                                _selectedIssueChips.remove(
+                                                  chip,
+                                                );
+                                              } else {
+                                                _selectedIssueChips.add(chip);
+                                              }
+                                            });
+                                          },
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  selected
+                                                      ? colorScheme
+                                                          .secondaryContainer
+                                                      : _themeTokens
+                                                          .trainingLogSetRow,
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                color:
+                                                    selected
+                                                        ? const Color(
+                                                          0xFF4F46E5,
+                                                        )
+                                                        : _themeTokens
+                                                            .trainingLogSetDivider,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              chip,
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w800,
+                                                color:
+                                                    selected
+                                                        ? colorScheme
+                                                            .onSecondaryContainer
+                                                        : colorScheme.onSurface,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList()
+                                      ..add(
+                                        InkWell(
+                                          onTap: _addCustomIssueChip,
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  _themeTokens
+                                                      .trainingLogSetRow,
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                color:
+                                                    _themeTokens
+                                                        .trainingLogSetDivider,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              '+ 추가',
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w800,
+                                                color:
+                                                    colorScheme
+                                                        .onSurfaceVariant,
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                        child: Text(
-                                          '+ 추가',
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
                                       ),
-                                    ),
-                                  ),
                               ),
                               const SizedBox(height: 16),
                               const Text(
@@ -2110,42 +2215,53 @@ class _PersonalTrainingLogCategoryPageState
                                 runSpacing: 8,
                                 children:
                                     ['없음', '완료', '일부', '미수행'].map((value) {
-                                  final selected = _homeworkStatus == value;
-                                  return InkWell(
-                                    onTap: () =>
-                                        setState(() => _homeworkStatus = value),
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: selected
-                                            ? colorScheme.secondaryContainer
-                                            : _themeTokens.trainingLogSetRow,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: selected
-                                              ? const Color(0xFF4F46E5)
-                                              : _themeTokens
-                                                  .trainingLogSetDivider,
+                                      final selected = _homeworkStatus == value;
+                                      return InkWell(
+                                        onTap:
+                                            () => setState(
+                                              () => _homeworkStatus = value,
+                                            ),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
                                         ),
-                                      ),
-                                      child: Text(
-                                        value,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: selected
-                                              ? colorScheme.onSecondaryContainer
-                                              : colorScheme.onSurface,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                selected
+                                                    ? colorScheme
+                                                        .secondaryContainer
+                                                    : _themeTokens
+                                                        .trainingLogSetRow,
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  selected
+                                                      ? const Color(0xFF4F46E5)
+                                                      : _themeTokens
+                                                          .trainingLogSetDivider,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            value,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w800,
+                                              color:
+                                                  selected
+                                                      ? colorScheme
+                                                          .onSecondaryContainer
+                                                      : colorScheme.onSurface,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                                      );
+                                    }).toList(),
                               ),
                               const SizedBox(height: 16),
                               TextField(

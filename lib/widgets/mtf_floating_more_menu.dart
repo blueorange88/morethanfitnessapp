@@ -92,10 +92,12 @@ class _MtfFloatingMoreMenuButtonState<T>
     Overlay.of(context, rootOverlay: true).insert(_entry!);
     final route = ModalRoute.of(context);
     if (route != null) {
-      _historyEntry = LocalHistoryEntry(onRemove: () {
-        _historyEntry = null;
-        _removeOverlay();
-      });
+      _historyEntry = LocalHistoryEntry(
+        onRemove: () {
+          _historyEntry = null;
+          _removeOverlay();
+        },
+      );
       route.addLocalHistoryEntry(_historyEntry!);
     }
   }
@@ -129,17 +131,10 @@ class _MtfFloatingMoreMenuButtonState<T>
       child: IconButton(
         tooltip: widget.tooltip,
         padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
-        ),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         visualDensity: VisualDensity.compact,
         onPressed: _openMenu,
-        icon: Icon(
-          widget.icon,
-          color: widget.iconColor,
-          size: widget.iconSize,
-        ),
+        icon: Icon(widget.icon, color: widget.iconColor, size: widget.iconSize),
       ),
     );
   }
@@ -180,10 +175,7 @@ class _MtfMoreMenuOverlayState<T> extends State<_MtfMoreMenuOverlay<T>>
       duration: const Duration(milliseconds: 260),
     );
 
-    _anim = CurvedAnimation(
-      parent: _ctrl,
-      curve: Curves.easeOutCubic,
-    );
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
 
     _ctrl.forward(from: 0);
   }
@@ -200,11 +192,7 @@ class _MtfMoreMenuOverlayState<T> extends State<_MtfMoreMenuOverlay<T>>
 
     return CurvedAnimation(
       parent: _ctrl,
-      curve: Interval(
-        start,
-        end,
-        curve: Curves.easeOutCubic,
-      ),
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
     );
   }
 
@@ -281,10 +269,7 @@ class _MtfMoreMenuCard<T> extends StatelessWidget {
             decoration: BoxDecoration(
               color: tokens.navigationSheetBackground,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: tokens.cardBorder,
-                width: 0.8,
-              ),
+              border: Border.all(color: tokens.cardBorder, width: 0.8),
               boxShadow: [
                 BoxShadow(
                   color: scheme.shadow.withOpacity(0.20),
@@ -336,10 +321,7 @@ class _MtfMoreMenuCard<T> extends StatelessWidget {
 }
 
 class _MtfMoreMenuTile<T> extends StatelessWidget {
-  const _MtfMoreMenuTile({
-    required this.item,
-    required this.onSelected,
-  });
+  const _MtfMoreMenuTile({required this.item, required this.onSelected});
 
   final MtfMoreMenuItem<T> item;
   final ValueChanged<T> onSelected;
@@ -348,9 +330,10 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
-    final Color accent = item.isDanger
-        ? const Color(0xFFDC2626)
-        : item.isSelected
+    final Color accent =
+        item.isDanger
+            ? const Color(0xFFDC2626)
+            : item.isSelected
             ? scheme.onSecondaryContainer
             : scheme.primary;
 
@@ -358,14 +341,12 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
       onTap: () => onSelected(item.value),
       borderRadius: BorderRadius.circular(13),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 7,
-          vertical: 7,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
         decoration: BoxDecoration(
-          color: item.isSelected
-              ? tokens.navigationSelectedBackground
-              : Colors.transparent,
+          color:
+              item.isSelected
+                  ? tokens.navigationSelectedBackground
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(13),
         ),
         child: Row(
@@ -376,16 +357,9 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
               decoration: BoxDecoration(
                 color: tokens.cardSurface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: tokens.cardBorder,
-                  width: 0.6,
-                ),
+                border: Border.all(color: tokens.cardBorder, width: 0.6),
               ),
-              child: Icon(
-                item.icon,
-                size: 16,
-                color: accent,
-              ),
+              child: Icon(item.icon, size: 16, color: accent),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -398,9 +372,10 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: item.isDanger
-                          ? const Color(0xFFB91C1C)
-                          : scheme.onSurface,
+                      color:
+                          item.isDanger
+                              ? const Color(0xFFB91C1C)
+                              : scheme.onSurface,
                       fontSize: 12.7,
                       fontWeight:
                           item.isSelected ? FontWeight.w900 : FontWeight.w800,
@@ -444,9 +419,7 @@ class _MtfMoreMenuTile<T> extends StatelessWidget {
 }
 
 class _MtfMoreNeonPainter extends CustomPainter {
-  const _MtfMoreNeonPainter({
-    required this.progress,
-  });
+  const _MtfMoreNeonPainter({required this.progress});
 
   final double progress;
 
@@ -465,13 +438,14 @@ class _MtfMoreNeonPainter extends CustomPainter {
     final double alpha = p < 0.10 ? p / 0.10 : 1.0;
 
     // 오른쪽 상단 → 왼쪽 상단 → 왼쪽 하단 → 하단 오른쪽
-    final fullPath = Path()
-      ..moveTo(w - inset, inset)
-      ..lineTo(radius, inset)
-      ..quadraticBezierTo(inset, inset, inset, radius)
-      ..lineTo(inset, h - radius)
-      ..quadraticBezierTo(inset, h - inset, radius, h - inset)
-      ..lineTo(w - inset, h - inset);
+    final fullPath =
+        Path()
+          ..moveTo(w - inset, inset)
+          ..lineTo(radius, inset)
+          ..quadraticBezierTo(inset, inset, inset, radius)
+          ..lineTo(inset, h - radius)
+          ..quadraticBezierTo(inset, h - inset, radius, h - inset)
+          ..lineTo(w - inset, h - inset);
 
     final metrics = fullPath.computeMetrics().toList();
     if (metrics.isEmpty) return;
@@ -490,10 +464,7 @@ class _MtfMoreNeonPainter extends CustomPainter {
       if (remaining <= 0) break;
 
       final segmentLength = math.min(remaining, metric.length);
-      extractedPath.addPath(
-        metric.extractPath(0, segmentLength),
-        Offset.zero,
-      );
+      extractedPath.addPath(metric.extractPath(0, segmentLength), Offset.zero);
 
       remaining -= segmentLength;
     }

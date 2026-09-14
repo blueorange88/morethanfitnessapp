@@ -36,10 +36,7 @@ class AifcPageScaffold extends StatelessWidget {
             Text(title, style: AifcText.title),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
-              Text(
-                subtitle!,
-                style: AifcText.caption,
-              ),
+              Text(subtitle!, style: AifcText.caption),
             ],
           ],
         ),

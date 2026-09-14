@@ -21,10 +21,11 @@ void main() {
     await expectLater(
       PersonalStartDiagnostics.run<void>(
         PersonalStartStage.bootstrapAnonymousBeginnerProfile,
-        () async => throw AppAccountException(
-          AppAccountErrorCode.unknown,
-          cause: functionsError,
-        ),
+        () async =>
+            throw AppAccountException(
+              AppAccountErrorCode.unknown,
+              cause: functionsError,
+            ),
       ),
       throwsA(isA<PersonalStartException>()),
     );

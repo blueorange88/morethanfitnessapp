@@ -104,14 +104,16 @@ class LessonConfirmationService {
       final memberSnap = await tx.get(memberRef);
       final memberData = memberSnap.data() ?? <String, dynamic>{};
 
-      final sessions = memberData['sessions'] is Map
-          ? Map<String, dynamic>.from(memberData['sessions'] as Map)
-          : <String, dynamic>{};
+      final sessions =
+          memberData['sessions'] is Map
+              ? Map<String, dynamic>.from(memberData['sessions'] as Map)
+              : <String, dynamic>{};
 
       final lessonTypeFromMember =
           (memberData['lessonType'] ?? request.lessonType).toString().trim();
 
-      final lessonNotRegistered = sessions['notRegistered'] == true ||
+      final lessonNotRegistered =
+          sessions['notRegistered'] == true ||
           lessonTypeFromMember.isEmpty ||
           lessonTypeFromMember == '미입력';
 
@@ -120,9 +122,10 @@ class LessonConfirmationService {
         return;
       }
 
-      final lessonSync = memberData['lessonSync'] is Map
-          ? Map<String, dynamic>.from(memberData['lessonSync'] as Map)
-          : <String, dynamic>{};
+      final lessonSync =
+          memberData['lessonSync'] is Map
+              ? Map<String, dynamic>.from(memberData['lessonSync'] as Map)
+              : <String, dynamic>{};
 
       final contractId = (lessonSync['contractId'] ?? '').toString().trim();
 
@@ -131,13 +134,15 @@ class LessonConfirmationService {
               ? 'contract'
               : 'manual';
 
-      final rawRemain = memberData['remainSessions'] ??
+      final rawRemain =
+          memberData['remainSessions'] ??
           memberData['remainingSessions'] ??
           sessions['remain'] ??
           memberData['remainingPt'] ??
           memberData['ptRemaining'];
 
-      final rawTotal = memberData['totalSessions'] ??
+      final rawTotal =
+          memberData['totalSessions'] ??
           sessions['total'] ??
           memberData['sessionTotal'];
 
@@ -196,116 +201,116 @@ class LessonConfirmationService {
       if (cleanStatus == 'no_show_deducted') {
         memberUpdate['noShowDeductedCount'] = FieldValue.increment(1);
         memberUpdate['sessions.noShowDeductedCount'] = FieldValue.increment(1);
-        memberUpdate['lessonStats.noShowDeductedCount'] =
-            FieldValue.increment(1);
+        memberUpdate['lessonStats.noShowDeductedCount'] = FieldValue.increment(
+          1,
+        );
       } else if (cleanStatus == 'no_show_not_deducted') {
         memberUpdate['noShowUndeductedCount'] = FieldValue.increment(1);
-        memberUpdate['sessions.noShowUndeductedCount'] =
-            FieldValue.increment(1);
+        memberUpdate['sessions.noShowUndeductedCount'] = FieldValue.increment(
+          1,
+        );
         memberUpdate['lessonStats.noShowUndeductedCount'] =
             FieldValue.increment(1);
       } else if (cleanStatus == 'service') {
         memberUpdate['serviceSessionCount'] = FieldValue.increment(1);
         memberUpdate['sessions.serviceSessionCount'] = FieldValue.increment(1);
-        memberUpdate['lessonStats.serviceSessionCount'] =
-            FieldValue.increment(1);
+        memberUpdate['lessonStats.serviceSessionCount'] = FieldValue.increment(
+          1,
+        );
       } else if (cleanStatus == 'completed') {
         memberUpdate['lessonStats.completedCount'] = FieldValue.increment(1);
       }
 
       tx.set(memberRef, memberUpdate, SetOptions(merge: true));
 
-      tx.set(
-          logRef,
-          {
-            'id': cleanTrainingLogId,
-            'memberId': cleanMemberId,
-            'memberName': request.memberName.trim().isEmpty
+      tx.set(logRef, {
+        'id': cleanTrainingLogId,
+        'memberId': cleanMemberId,
+        'memberName':
+            request.memberName.trim().isEmpty
                 ? '회원'
                 : request.memberName.trim(),
-            'memberNameSnapshot': request.memberName.trim().isEmpty
+        'memberNameSnapshot':
+            request.memberName.trim().isEmpty
                 ? '회원'
                 : request.memberName.trim(),
-            if (request.memberPhone.trim().isNotEmpty)
-              'memberPhone': _normalizePhone(request.memberPhone),
-            'scheduleDocId': cleanScheduleDocId,
-            'source': 'trainer_schedule_confirm',
-            'quickSignedOnly': true,
-            'isQuickSignLog': true,
-            'inputMethod': 'quick_sign',
-            'title': '레슨확정',
-            'logTitle': '레슨확정',
-            'type': request.lessonType,
-            'lessonType': request.lessonType,
-            'sessionStatus': cleanStatus,
-            'status': cleanStatus,
-            'sessionStatusLabel': _confirmStatusLabel(cleanStatus),
-            'startAt': Timestamp.fromDate(request.startAt),
-            'endAt': Timestamp.fromDate(request.endAt),
-            'date': DateFormat('yyyy-MM-dd').format(request.startAt),
-            'time':
-                '${request.startAt.hour.toString().padLeft(2, '0')}:${request.startAt.minute.toString().padLeft(2, '0')}',
-            'trainerSigned': true,
-            'trainerSignature': {
-              'type': 'confirm_button',
-              'value': '레슨확정',
-              'signedAt': FieldValue.serverTimestamp(),
-              'signedBy': 'trainer_app',
-            },
-            'memberSigned': false,
-            'waitingTrainerConfirm': false,
-            'confirmedByTrainer': true,
-            'confirmedAt': FieldValue.serverTimestamp(),
-            'confirmMethod': 'trainer_confirmed',
-            'trainerConfirmed': true,
-            'basis': basis,
-            'contractId': contractId.isEmpty ? null : contractId,
-            'deductionKey': cleanTrainingLogId,
-            'remainBeforeDeduct': currentRemain,
-            'remainAfterDeduct': nextRemain,
-            'sessionSnapshotTotal': currentTotal,
-            'sessionSnapshotRemainBefore': currentRemain,
-            'sessionSnapshotRemainAfter': nextRemain,
-            'sessionSnapshotDoneBefore': currentDone,
-            'sessionSnapshotDoneAfter': nextDone,
-            'sessionSnapshotLessonNumber': nextDone,
-            'sessionSnapshotLabel': '$nextDone/$currentTotal',
-            'locked': true,
-            'deductionTarget': shouldDeduct,
-            'deductionApplied': actuallyDeducted,
-            'deductionSkippedReason': shouldDeduct && !actuallyDeducted
+        if (request.memberPhone.trim().isNotEmpty)
+          'memberPhone': _normalizePhone(request.memberPhone),
+        'scheduleDocId': cleanScheduleDocId,
+        'source': 'trainer_schedule_confirm',
+        'quickSignedOnly': true,
+        'isQuickSignLog': true,
+        'inputMethod': 'quick_sign',
+        'title': '레슨확정',
+        'logTitle': '레슨확정',
+        'type': request.lessonType,
+        'lessonType': request.lessonType,
+        'sessionStatus': cleanStatus,
+        'status': cleanStatus,
+        'sessionStatusLabel': _confirmStatusLabel(cleanStatus),
+        'startAt': Timestamp.fromDate(request.startAt),
+        'endAt': Timestamp.fromDate(request.endAt),
+        'date': DateFormat('yyyy-MM-dd').format(request.startAt),
+        'time':
+            '${request.startAt.hour.toString().padLeft(2, '0')}:${request.startAt.minute.toString().padLeft(2, '0')}',
+        'trainerSigned': true,
+        'trainerSignature': {
+          'type': 'confirm_button',
+          'value': '레슨확정',
+          'signedAt': FieldValue.serverTimestamp(),
+          'signedBy': 'trainer_app',
+        },
+        'memberSigned': false,
+        'waitingTrainerConfirm': false,
+        'confirmedByTrainer': true,
+        'confirmedAt': FieldValue.serverTimestamp(),
+        'confirmMethod': 'trainer_confirmed',
+        'trainerConfirmed': true,
+        'basis': basis,
+        'contractId': contractId.isEmpty ? null : contractId,
+        'deductionKey': cleanTrainingLogId,
+        'remainBeforeDeduct': currentRemain,
+        'remainAfterDeduct': nextRemain,
+        'sessionSnapshotTotal': currentTotal,
+        'sessionSnapshotRemainBefore': currentRemain,
+        'sessionSnapshotRemainAfter': nextRemain,
+        'sessionSnapshotDoneBefore': currentDone,
+        'sessionSnapshotDoneAfter': nextDone,
+        'sessionSnapshotLessonNumber': nextDone,
+        'sessionSnapshotLabel': '$nextDone/$currentTotal',
+        'locked': true,
+        'deductionTarget': shouldDeduct,
+        'deductionApplied': actuallyDeducted,
+        'deductionSkippedReason':
+            shouldDeduct && !actuallyDeducted
                 ? 'no_remaining_sessions'
                 : (!shouldDeduct ? 'not_deduction_mode' : null),
-            'lessonConfirmed': true,
-            'updatedAt': FieldValue.serverTimestamp(),
-            if (!logSnap.exists) 'createdAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true));
+        'lessonConfirmed': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+        if (!logSnap.exists) 'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (actuallyDeducted) {
-        final ledgerRef =
-            memberRef.collection('lesson_ledger').doc(cleanTrainingLogId);
+        final ledgerRef = memberRef
+            .collection('lesson_ledger')
+            .doc(cleanTrainingLogId);
 
-        tx.set(
-          ledgerRef,
-          {
-            'type': 'deduct',
-            'source': 'home_quick_sign',
-            'confirmMethod': 'trainer_confirmed',
-            'scheduleId': cleanScheduleDocId,
-            'logId': cleanTrainingLogId,
-            'contractId': contractId.isEmpty ? null : contractId,
-            'basis': basis,
-            'lessonType': request.lessonType,
-            'deltaRemain': currentRemain > 0 ? -1 : 0,
-            'deductedSessions': currentRemain > 0 ? 1 : 0,
-            'remainBefore': currentRemain,
-            'remainAfter': nextRemain,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        tx.set(ledgerRef, {
+          'type': 'deduct',
+          'source': 'home_quick_sign',
+          'confirmMethod': 'trainer_confirmed',
+          'scheduleId': cleanScheduleDocId,
+          'logId': cleanTrainingLogId,
+          'contractId': contractId.isEmpty ? null : contractId,
+          'basis': basis,
+          'lessonType': request.lessonType,
+          'deltaRemain': currentRemain > 0 ? -1 : 0,
+          'deductedSessions': currentRemain > 0 ? 1 : 0,
+          'remainBefore': currentRemain,
+          'remainAfter': nextRemain,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       final scheduleUpdate = <String, dynamic>{
@@ -347,11 +352,7 @@ class LessonConfirmationService {
           break;
       }
 
-      tx.set(
-        scheduleRef,
-        scheduleUpdate,
-        SetOptions(merge: true),
-      );
+      tx.set(scheduleRef, scheduleUpdate, SetOptions(merge: true));
     });
 
     if (alreadyConfirmed) {
@@ -386,11 +387,12 @@ class LessonConfirmationService {
     final cleanLogId = trainingLogId.trim();
     if (cleanLogId.isEmpty) return;
 
-    final snapshot = await _db
-        .collection('sign_requests')
-        .where('trainingLogId', isEqualTo: cleanLogId)
-        .limit(20)
-        .get();
+    final snapshot =
+        await _db
+            .collection('sign_requests')
+            .where('trainingLogId', isEqualTo: cleanLogId)
+            .limit(20)
+            .get();
 
     if (snapshot.docs.isEmpty) return;
 
@@ -401,15 +403,11 @@ class LessonConfirmationService {
 
       if (data['used'] == true) continue;
 
-      batch.set(
-        doc.reference,
-        {
-          'used': true,
-          'status': 'cancelled_by_confirmed_lesson',
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(doc.reference, {
+        'used': true,
+        'status': 'cancelled_by_confirmed_lesson',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     }
 
     await batch.commit();

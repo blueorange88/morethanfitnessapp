@@ -324,6 +324,71 @@ void main() {
     expect(google.calls, 1);
     await _cancel(tester);
   });
+
+  testWidgets('이미 다른 프로필에 연결된 Google 계정은 전환 버튼으로 그 계정으로 바꿀 수 있다', (
+    tester,
+  ) async {
+    const before = AppAccountUser(
+      uid: 'anon-uid',
+      email: '',
+      emailVerified: false,
+      isAnonymous: true,
+      providerIds: [],
+    );
+    const existing = AppAccountUser(
+      uid: 'existing-owner-uid',
+      email: 'owner@example.com',
+      emailVerified: true,
+      isAnonymous: false,
+      providerIds: ['google.com'],
+    );
+    final gateway = _FakeAccountGateway(initialUser: before);
+    final google = _FakeGoogleGateway(
+      linkError: const AppAccountException(
+        AppAccountErrorCode.credentialAlreadyInUse,
+      ),
+      switchResult: existing,
+    );
+    AppAccountUser? result;
+    final service = _service(gateway, googleGateway: google);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: lightTheme(),
+        home: Builder(
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  key: const Key('open_account_dialog'),
+                  onPressed: () async {
+                    result = await AccountConnectionDialog.show(
+                      context: context,
+                      accountService: service,
+                      expectedUid: before.uid,
+                    );
+                  },
+                  child: const Text('open'),
+                ),
+              ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('open_account_dialog')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('link_google_account')));
+    await tester.pumpAndSettle();
+
+    expect(google.calls, 1);
+    expect(find.byKey(const Key('switch_google_account')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('switch_google_account')));
+    await tester.pumpAndSettle();
+
+    expect(google.switchCalls, 1);
+    expect(result?.uid, existing.uid);
+    expect(result?.hasProvider('google.com'), isTrue);
+    expect(find.byKey(const Key('account_connection_dialog')), findsNothing);
+  });
 }
 
 AppAccountService _service(
@@ -483,15 +548,25 @@ class _FakeAccountGateway
 }
 
 class _FakeGoogleGateway implements AppGoogleIdentityGateway {
-  _FakeGoogleGateway({this.result});
+  _FakeGoogleGateway({this.result, this.linkError, this.switchResult});
 
   final AppAccountUser? result;
+  final Object? linkError;
+  final AppAccountUser? switchResult;
   int calls = 0;
+  int switchCalls = 0;
 
   @override
   Future<AppAccountUser?> linkWithGoogleCredential() async {
     calls++;
+    if (linkError != null) throw linkError!;
     return result;
+  }
+
+  @override
+  Future<AppAccountUser?> signInWithGoogleCredential() async {
+    switchCalls++;
+    return switchResult;
   }
 }
 

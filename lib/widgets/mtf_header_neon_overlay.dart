@@ -56,25 +56,13 @@ class _MtfHeaderNeonOverlayState extends State<MtfHeaderNeonOverlay>
   void initState() {
     super.initState();
 
-    _drawCtrl = AnimationController(
-      vsync: this,
-      duration: widget.drawDuration,
-    );
+    _drawCtrl = AnimationController(vsync: this, duration: widget.drawDuration);
 
-    _fadeCtrl = AnimationController(
-      vsync: this,
-      duration: widget.fadeDuration,
-    );
+    _fadeCtrl = AnimationController(vsync: this, duration: widget.fadeDuration);
 
-    _drawAnim = CurvedAnimation(
-      parent: _drawCtrl,
-      curve: Curves.easeOutCubic,
-    );
+    _drawAnim = CurvedAnimation(parent: _drawCtrl, curve: Curves.easeOutCubic);
 
-    _fadeAnim = CurvedAnimation(
-      parent: _fadeCtrl,
-      curve: Curves.easeOutCubic,
-    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
 
     if (widget.isExpanded) {
       // 처음부터 펼쳐진 상태라면 네온은 숨김
@@ -220,13 +208,14 @@ class _MtfHeaderNeonPainter extends CustomPainter {
     final double radius = math.max(0, bottomRadius - inset);
 
     // 양끝을 너무 위로 올리지 않고, 하단 라운드에 더 붙게 보정
-    final fullPath = Path()
-      ..moveTo(inset - 4, h - radius - 4) // 왼쪽 끝 — 위 바깥 대각
-      ..lineTo(inset, h - radius)
-      ..quadraticBezierTo(inset, h - inset, radius, h - inset)
-      ..lineTo(w - radius, h - inset)
-      ..quadraticBezierTo(w - inset, h - inset, w - inset, h - radius)
-      ..lineTo(w - inset + 4, h - radius - 4); // 오른쪽 끝 — 위 바깥 대각
+    final fullPath =
+        Path()
+          ..moveTo(inset - 4, h - radius - 4) // 왼쪽 끝 — 위 바깥 대각
+          ..lineTo(inset, h - radius)
+          ..quadraticBezierTo(inset, h - inset, radius, h - inset)
+          ..lineTo(w - radius, h - inset)
+          ..quadraticBezierTo(w - inset, h - inset, w - inset, h - radius)
+          ..lineTo(w - inset + 4, h - radius - 4); // 오른쪽 끝 — 위 바깥 대각
 
     final metrics = fullPath.computeMetrics().toList();
     if (metrics.isEmpty) return;

@@ -23,11 +23,11 @@ class ShadcnInput extends StatelessWidget {
         hintText: hint,
         filled: true,
         fillColor: cs.surface,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
         ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
           borderSide: BorderSide(color: cs.primary, width: 2),

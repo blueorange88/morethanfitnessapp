@@ -15,8 +15,9 @@ void main() {
     expect(membershipExpiryLabel(-30), '만료');
   });
 
-  testWidgets('320·360·384·411dp에서 긴 회원명과 회원권 label이 overflow 없이 표시된다',
-      (tester) async {
+  testWidgets('320·360·384·411dp에서 긴 회원명과 회원권 label이 overflow 없이 표시된다', (
+    tester,
+  ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final today = DateTime.now();
     final member = Member(

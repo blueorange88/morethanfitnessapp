@@ -27,9 +27,10 @@ class HomeLessonFooterActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final lockedGuideText = isCustomerSignedConfirmedLesson
-        ? '고객서명이 들어간 레슨확정은 임의로 확정취소 할 수 없어요.'
-        : isContractLinkedConfirmedLesson
+    final lockedGuideText =
+        isCustomerSignedConfirmedLesson
+            ? '회원서명이 들어간 레슨확정은 임의로 확정취소 할 수 없어요.'
+            : isContractLinkedConfirmedLesson
             ? '계약서와 연결된 레슨확정은 홈에서 임의로 수정하거나 삭제할 수 없어요.'
             : '확정된 레슨은 일정을 수정하거나 삭제할 수 없어요.';
 
@@ -87,9 +88,7 @@ class HomeLessonFooterActions extends StatelessWidget {
                 ),
                 child: const Text(
                   '닫기',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
             ),
@@ -106,10 +105,7 @@ class HomeLessonFooterActions extends StatelessWidget {
             onPressed: isBusy ? null : onCancel,
             style: TextButton.styleFrom(
               foregroundColor: colors.onSurfaceVariant,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 11,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             ),
             child: const Text(
               '취소',
@@ -119,17 +115,19 @@ class HomeLessonFooterActions extends StatelessWidget {
           const Spacer(),
           if (isEditMode) ...[
             OutlinedButton.icon(
-              onPressed: isBusy
-                  ? null
-                  : () async {
-                      await onDelete();
-                    },
-              icon: isBusy && isDeleting
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.delete_outline_rounded, size: 16),
+              onPressed:
+                  isBusy
+                      ? null
+                      : () async {
+                        await onDelete();
+                      },
+              icon:
+                  isBusy && isDeleting
+                      ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Icon(Icons.delete_outline_rounded, size: 16),
               label: Text(
                 isBusy && isDeleting ? '삭제 중…' : '삭제',
                 style: const TextStyle(fontWeight: FontWeight.w600),
@@ -149,32 +147,28 @@ class HomeLessonFooterActions extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           ElevatedButton.icon(
-            onPressed: isBusy
-                ? null
-                : () async {
-                    await onSave();
-                  },
-            icon: isBusy && !isDeleting
-                ? SizedBox.square(
-                    dimension: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colors.onSecondary,
-                    ),
-                  )
-                : const Icon(Icons.check_rounded, size: 16),
+            onPressed:
+                isBusy
+                    ? null
+                    : () async {
+                      await onSave();
+                    },
+            icon:
+                isBusy && !isDeleting
+                    ? SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colors.onSecondary,
+                      ),
+                    )
+                    : const Icon(Icons.check_rounded, size: 16),
             label: Text(
               isBusy && !isDeleting ? '저장 중…' : '저장',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),

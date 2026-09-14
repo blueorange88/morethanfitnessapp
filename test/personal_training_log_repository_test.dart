@@ -56,8 +56,9 @@ void main() {
   });
 
   test('다른 trainer 회원 연결은 거부한다', () async {
-    final value = harness()
-      ..source.members['member-b'] = _member('member-b', 'trainer-b');
+    final value =
+        harness()
+          ..source.members['member-b'] = _member('member-b', 'trainer-b');
     await expectLater(
       value.repository.createDraft(draft(memberId: 'member-b')),
       throwsA(isA<PersonalTrainingLogException>()),
@@ -66,12 +67,13 @@ void main() {
   });
 
   test('다른 trainer 일정 연결은 거부한다', () async {
-    final value = harness()
-      ..source.schedules['schedule-b'] = _schedule(
-        'schedule-b',
-        'trainer-b',
-        'member-a',
-      );
+    final value =
+        harness()
+          ..source.schedules['schedule-b'] = _schedule(
+            'schedule-b',
+            'trainer-b',
+            'member-a',
+          );
     await expectLater(
       value.repository.createDraft(draft(scheduleId: 'schedule-b')),
       throwsA(isA<PersonalTrainingLogException>()),
@@ -79,12 +81,13 @@ void main() {
   });
 
   test('일정의 연결 회원이 다르면 거부한다', () async {
-    final value = harness()
-      ..source.schedules['schedule-a'] = _schedule(
-        'schedule-a',
-        'trainer-a',
-        'member-other',
-      );
+    final value =
+        harness()
+          ..source.schedules['schedule-a'] = _schedule(
+            'schedule-a',
+            'trainer-a',
+            'member-other',
+          );
     await expectLater(
       value.repository.createDraft(draft(scheduleId: 'schedule-a')),
       throwsA(isA<PersonalTrainingLogException>()),
@@ -102,8 +105,9 @@ void main() {
   });
 
   test('자동저장에서 member identity 변경을 거부한다', () async {
-    final value = harness()
-      ..source.members['member-c'] = _member('member-c', 'trainer-a');
+    final value =
+        harness()
+          ..source.members['member-c'] = _member('member-c', 'trainer-a');
     final id = await value.repository.createDraft(draft());
     await expectLater(
       value.repository.autosave(id, draft(memberId: 'member-c')),
@@ -156,13 +160,14 @@ void main() {
       memberId: 'member-a',
       start: start,
     );
-    final records = await value.repository
-        .watchMemberRange(
-          memberId: 'member-a',
-          start: DateTime(2026, 7, 20),
-          endExclusive: DateTime(2026, 7, 21),
-        )
-        .first;
+    final records =
+        await value.repository
+            .watchMemberRange(
+              memberId: 'member-a',
+              start: DateTime(2026, 7, 20),
+              endExclusive: DateTime(2026, 7, 21),
+            )
+            .first;
     expect(records.map((record) => record.lessonLogId), [id]);
   });
 
@@ -177,18 +182,18 @@ void main() {
 }
 
 Map<String, dynamic> _member(String id, String uid) => {
-      'memberId': id,
-      'trainerId': uid,
-      'workspaceType': 'personal',
-      'managementState': 'active',
-    };
+  'memberId': id,
+  'trainerId': uid,
+  'workspaceType': 'personal',
+  'managementState': 'active',
+};
 
 Map<String, dynamic> _schedule(String id, String uid, String memberId) => {
-      'scheduleId': id,
-      'trainerId': uid,
-      'workspaceType': 'personal',
-      'memberId': memberId,
-    };
+  'scheduleId': id,
+  'trainerId': uid,
+  'workspaceType': 'personal',
+  'memberId': memberId,
+};
 
 PersonalTrainingLogRecord _record({
   required String id,
@@ -274,10 +279,7 @@ class _MemoryLogDataSource implements PersonalTrainingLogDataSource {
       records[lessonLogId];
 
   @override
-  Future<void> createLog(
-    String lessonLogId,
-    Map<String, dynamic> data,
-  ) async {
+  Future<void> createLog(String lessonLogId, Map<String, dynamic> data) async {
     records[lessonLogId] = _record(
       id: lessonLogId,
       uid: data['trainerId'] as String,
@@ -303,9 +305,10 @@ class _MemoryLogDataSource implements PersonalTrainingLogDataSource {
       status: current.status,
       source: current.source,
       memo: changes['memo'] as String? ?? current.memo,
-      scheduleId: changes['scheduleDocId'] is String
-          ? changes['scheduleDocId'] as String
-          : current.scheduleDocId,
+      scheduleId:
+          changes['scheduleDocId'] is String
+              ? changes['scheduleDocId'] as String
+              : current.scheduleDocId,
     );
   }
 

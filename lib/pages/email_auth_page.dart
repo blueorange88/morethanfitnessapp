@@ -40,21 +40,22 @@ class _EmailAuthPageState extends State<EmailAuthPage> {
           password: _passwordController.text,
         );
         if (!mounted) return;
-        final message = result.verificationEmailSent
-            ? '계정이 연결됐어요. 이메일 인증 안내도 보냈습니다.'
-            : '계정은 연결됐지만 인증 메일은 보내지 못했어요. 나중에 다시 요청해주세요.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        final message =
+            result.verificationEmailSent
+                ? '계정이 연결됐어요. 이메일 인증 안내도 보냈습니다.'
+                : '계정은 연결됐지만 인증 메일은 보내지 못했어요. 나중에 다시 요청해주세요.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } else {
         await widget.service.signInWithEmail(
           email: _emailController.text,
           password: _passwordController.text,
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('계정으로 연결했어요.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('계정으로 연결했어요.')));
       }
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
@@ -74,9 +75,9 @@ class _EmailAuthPageState extends State<EmailAuthPage> {
     try {
       await widget.service.sendPasswordReset(_emailController.text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('비밀번호 재설정 메일을 보냈어요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('비밀번호 재설정 메일을 보냈어요.')));
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = appAccountErrorMessage(error));
@@ -149,9 +150,10 @@ class _EmailAuthPageState extends State<EmailAuthPage> {
                         helperText: _registerMode ? '6자 이상 입력해주세요.' : null,
                         prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: IconButton(
-                          onPressed: _busy
-                              ? null
-                              : () => setState(
+                          onPressed:
+                              _busy
+                                  ? null
+                                  : () => setState(
                                     () => _obscurePassword = !_obscurePassword,
                                   ),
                           icon: Icon(
@@ -195,9 +197,10 @@ class _EmailAuthPageState extends State<EmailAuthPage> {
                     const Divider(height: 28),
                     TextButton(
                       key: const Key('account_mode_toggle'),
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() {
+                      onPressed:
+                          _busy
+                              ? null
+                              : () => setState(() {
                                 _registerMode = !_registerMode;
                                 _errorMessage = null;
                               }),

@@ -9,10 +9,7 @@ const Color kMemberSignBgColor = Color(0xFFF3F4F6);
 class MemberSignatureWebPage extends StatefulWidget {
   final String token;
 
-  const MemberSignatureWebPage({
-    super.key,
-    required this.token,
-  });
+  const MemberSignatureWebPage({super.key, required this.token});
 
   @override
   State<MemberSignatureWebPage> createState() => _MemberSignatureWebPageState();
@@ -130,10 +127,11 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     }
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('sign_requests')
-          .doc(_cleanToken)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('sign_requests')
+              .doc(_cleanToken)
+              .get();
 
       final data = snap.data();
 
@@ -192,19 +190,22 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     if (cleanMemberId.isEmpty) return;
 
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('members')
-          .doc(cleanMemberId)
-          .get();
+      final snap =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(cleanMemberId)
+              .get();
 
       final data = snap.data();
       if (data == null) return;
 
-      final sessions = data['sessions'] is Map
-          ? Map<String, dynamic>.from(data['sessions'] as Map)
-          : <String, dynamic>{};
+      final sessions =
+          data['sessions'] is Map
+              ? Map<String, dynamic>.from(data['sessions'] as Map)
+              : <String, dynamic>{};
 
-      final remainRaw = data['remainSessions'] ??
+      final remainRaw =
+          data['remainSessions'] ??
           data['remainingSessions'] ??
           sessions['remain'] ??
           data['remainingPt'] ??
@@ -215,17 +216,20 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
 
       final doneRaw = data['doneSessions'] ?? sessions['done'];
 
-      final remain = remainRaw is num
-          ? remainRaw.toInt()
-          : int.tryParse((remainRaw ?? '').toString());
+      final remain =
+          remainRaw is num
+              ? remainRaw.toInt()
+              : int.tryParse((remainRaw ?? '').toString());
 
-      final total = totalRaw is num
-          ? totalRaw.toInt()
-          : int.tryParse((totalRaw ?? '').toString());
+      final total =
+          totalRaw is num
+              ? totalRaw.toInt()
+              : int.tryParse((totalRaw ?? '').toString());
 
-      final done = doneRaw is num
-          ? doneRaw.toInt()
-          : int.tryParse((doneRaw ?? '').toString());
+      final done =
+          doneRaw is num
+              ? doneRaw.toInt()
+              : int.tryParse((doneRaw ?? '').toString());
 
       if (!mounted) return;
 
@@ -255,11 +259,12 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     }
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('training_logs')
-          .where('memberId', isEqualTo: cleanMemberId)
-          .where('memberSigned', isEqualTo: true)
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('training_logs')
+              .where('memberId', isEqualTo: cleanMemberId)
+              .where('memberSigned', isEqualTo: true)
+              .get();
 
       final rawItems = <Map<String, dynamic>>[];
 
@@ -269,7 +274,8 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         final memberSignature = data['memberSignature'];
         if (memberSignature is! Map) continue;
 
-        final signedAt = _dateFromAny(memberSignature['signedAt']) ??
+        final signedAt =
+            _dateFromAny(memberSignature['signedAt']) ??
             _dateFromAny(data['signedAt']) ??
             _dateFromAny(data['startAt']);
 
@@ -383,10 +389,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     return points.map((point) {
       if (point == null) return null;
 
-      return {
-        'x': point.dx,
-        'y': point.dy,
-      };
+      return {'x': point.dx, 'y': point.dy};
     }).toList();
   }
 
@@ -422,8 +425,9 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     });
 
     final now = DateTime.now();
-    final requestRef =
-        FirebaseFirestore.instance.collection('sign_requests').doc(token);
+    final requestRef = FirebaseFirestore.instance
+        .collection('sign_requests')
+        .doc(token);
     final logRef = FirebaseFirestore.instance
         .collection('training_logs')
         .doc(trainingLogId);
@@ -475,22 +479,19 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         final trainerSigned = logData['trainerSigned'] == true;
         final existingMemberSigned = logData['memberSigned'] == true;
 
-        final sessionStatus = (logData['sessionStatus'] ??
-                requestData['sessionStatus'] ??
-                'completed')
-            .toString();
+        final sessionStatus =
+            (logData['sessionStatus'] ??
+                    requestData['sessionStatus'] ??
+                    'completed')
+                .toString();
 
-        transaction.set(
-          requestRef,
-          {
-            'status': 'signed',
-            'used': true,
-            'signedAt': Timestamp.fromDate(now),
-            'memberSignature': signaturePayload,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        transaction.set(requestRef, {
+          'status': 'signed',
+          'used': true,
+          'signedAt': Timestamp.fromDate(now),
+          'memberSignature': signaturePayload,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
 
         final baseLogPayload = <String, dynamic>{
           'id': trainingLogId,
@@ -509,9 +510,10 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           'type': (requestData['lessonType'] ?? 'PT').toString(),
           'lessonType': (requestData['lessonType'] ?? 'PT').toString(),
           'sessionStatus': sessionStatus,
-          'sessionStatusLabel': sessionStatus == 'completed'
-              ? '출석완료'
-              : (requestData['sessionStatusLabel'] ?? '').toString(),
+          'sessionStatusLabel':
+              sessionStatus == 'completed'
+                  ? '출석완료'
+                  : (requestData['sessionStatusLabel'] ?? '').toString(),
           'startAt': requestData['startAt'],
           'endAt': requestData['endAt'],
           'date': _dateTextFromAny(requestData['startAt']),
@@ -529,11 +531,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         baseLogPayload['memberSignedAt'] = Timestamp.fromDate(now);
         baseLogPayload['waitingTrainerConfirm'] = true;
 
-        transaction.set(
-          logRef,
-          baseLogPayload,
-          SetOptions(merge: true),
-        );
+        transaction.set(logRef, baseLogPayload, SetOptions(merge: true));
       });
 
       if (!mounted) return;
@@ -619,18 +617,18 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
       await FirebaseFirestore.instance
           .collection('re_registration_requests')
           .add({
-        'memberId': memberId,
-        'memberName': memberName.isEmpty ? '회원' : memberName,
-        if ((data['memberPhone'] ?? '').toString().trim().isNotEmpty)
-          'memberPhone': data['memberPhone'],
-        'totalSessions': _safeTotalSessions,
-        'remainingSessions': _safeRemainingSessions,
-        'doneSessions': _safeDoneSessions,
-        'status': 'requested',
-        'source': 'member_signature_web',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+            'memberId': memberId,
+            'memberName': memberName.isEmpty ? '회원' : memberName,
+            if ((data['memberPhone'] ?? '').toString().trim().isNotEmpty)
+              'memberPhone': data['memberPhone'],
+            'totalSessions': _safeTotalSessions,
+            'remainingSessions': _safeRemainingSessions,
+            'doneSessions': _safeDoneSessions,
+            'status': 'requested',
+            'source': 'member_signature_web',
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
       if (!mounted) return;
 
@@ -661,16 +659,11 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
   Widget _buildLoading() {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      body: const Center(child: CircularProgressIndicator()),
     );
   }
 
-  Widget _buildInvalid({
-    required String title,
-    required String body,
-  }) {
+  Widget _buildInvalid({required String title, required String body}) {
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
     return Scaffold(
@@ -732,9 +725,10 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
     final done = _safeDoneSessions;
     final remain = _safeRemainingSessions;
 
-    final summaryText = total > 0
-        ? '$lessonType 총 ${total}회 중 ${done}회 진행'
-        : '$lessonType 레슨 진행 중';
+    final summaryText =
+        total > 0
+            ? '$lessonType 총 ${total}회 중 ${done}회 진행'
+            : '$lessonType 레슨 진행 중';
 
     final remainText = total > 0 ? '잔여 ${remain}회' : '회차정보 확인 중';
 
@@ -746,9 +740,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
       padding: EdgeInsets.fromLTRB(20, topInset + 10, 20, 18),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -778,9 +770,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.14),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.16),
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.16)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -940,18 +930,19 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           },
           child: CustomPaint(
             painter: _MemberWebSignaturePainter(_signaturePoints),
-            child: _hasSignature
-                ? const SizedBox.expand()
-                : const Center(
-                    child: Text(
-                      '여기에 손서명해주세요',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF9CA3AF),
-                        fontWeight: FontWeight.w700,
+            child:
+                _hasSignature
+                    ? const SizedBox.expand()
+                    : const Center(
+                      child: Text(
+                        '여기에 손서명해주세요',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9CA3AF),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
           ),
         ),
       ),
@@ -969,9 +960,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
       decoration: BoxDecoration(
         color: _remainingSoftColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: _remainingAccentColor.withOpacity(0.22),
-        ),
+        border: Border.all(color: _remainingAccentColor.withOpacity(0.22)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.035),
@@ -1021,9 +1010,10 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: _reRegistrationRequested
-                  ? null
-                  : _requestReRegistrationConsult,
+              onPressed:
+                  _reRegistrationRequested
+                      ? null
+                      : _requestReRegistrationConsult,
               style: FilledButton.styleFrom(
                 backgroundColor: _remainingAccentColor,
                 foregroundColor: Colors.white,
@@ -1090,11 +1080,7 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
         ),
         child: const Row(
           children: [
-            Icon(
-              Icons.history_rounded,
-              size: 18,
-              color: Color(0xFF9CA3AF),
-            ),
+            Icon(Icons.history_rounded, size: 18, color: Color(0xFF9CA3AF)),
             SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -1261,22 +1247,20 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
             borderRadius: BorderRadius.circular(18),
           ),
         ),
-        child: _submitting
-            ? const SizedBox(
-                width: 19,
-                height: 19,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
+        child:
+            _submitting
+                ? const SizedBox(
+                  width: 19,
+                  height: 19,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                : const Text(
+                  '서명 제출하기',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
                 ),
-              )
-            : const Text(
-                '서명 제출하기',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
       ),
     );
   }
@@ -1316,9 +1300,10 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: SingleChildScrollView(
-              physics: _isSigning
-                  ? const NeverScrollableScrollPhysics()
-                  : const BouncingScrollPhysics(),
+              physics:
+                  _isSigning
+                      ? const NeverScrollableScrollPhysics()
+                      : const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(0, 0, 0, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1357,14 +1342,15 @@ class _MemberSignatureWebPageState extends State<MemberSignatureWebPage> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
-                            onPressed: _signaturePoints.isEmpty
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _signaturePoints.clear();
-                                      _isSigning = false;
-                                    });
-                                  },
+                            onPressed:
+                                _signaturePoints.isEmpty
+                                    ? null
+                                    : () {
+                                      setState(() {
+                                        _signaturePoints.clear();
+                                        _isSigning = false;
+                                      });
+                                    },
                             child: const Text(
                               '지우기',
                               style: TextStyle(fontWeight: FontWeight.w800),
@@ -1412,11 +1398,12 @@ class _MemberWebSignaturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF111827)
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 3.0;
+    final paint =
+        Paint()
+          ..color = const Color(0xFF111827)
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..strokeWidth = 3.0;
 
     for (int i = 0; i < points.length - 1; i++) {
       final current = points[i];

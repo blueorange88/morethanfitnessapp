@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 class ShadcnDrawer {
   static Future<T?> show<T>(
-      BuildContext context, {
-        required Widget child,
-        Duration duration = const Duration(milliseconds: 250),
-        Alignment alignment = Alignment.centerRight,
-        double width = 320,
-      }) {
+    BuildContext context, {
+    required Widget child,
+    Duration duration = const Duration(milliseconds: 250),
+    Alignment alignment = Alignment.centerRight,
+    double width = 320,
+  }) {
     return showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -20,11 +20,10 @@ class ShadcnDrawer {
             alignment: alignment,
             child: Material(
               color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
-              child: SizedBox(
-                width: width,
-                child: child,
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(16),
               ),
+              child: SizedBox(width: width, child: child),
             ),
           ),
         );

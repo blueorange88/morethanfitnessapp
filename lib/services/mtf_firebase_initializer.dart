@@ -53,9 +53,7 @@ abstract final class MtfFirebaseInitializer {
     return null;
   }
 
-  static Future<FirebaseApp> _initializeDefaultApp(
-    AppEnvironment environment,
-  ) {
+  static Future<FirebaseApp> _initializeDefaultApp(AppEnvironment environment) {
     final FirebaseOptions? options;
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       // Connect to the native [DEFAULT] app configured by the Android flavor.

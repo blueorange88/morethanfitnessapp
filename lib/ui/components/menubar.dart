@@ -9,10 +9,7 @@ class ShadcnMenuBarItem {
 class ShadcnMenuBar extends StatelessWidget {
   final List<ShadcnMenuBarItem> items;
 
-  const ShadcnMenuBar({
-    super.key,
-    required this.items,
-  });
+  const ShadcnMenuBar({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -22,16 +19,16 @@ class ShadcnMenuBar extends StatelessWidget {
           PopupMenuButton(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(item.label,
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              child: Text(
+                item.label,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
             ),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: Text(item.label),
-                onTap: item.onTap,
-              )
-            ],
-          )
+            itemBuilder:
+                (context) => [
+                  PopupMenuItem(child: Text(item.label), onTap: item.onTap),
+                ],
+          ),
       ],
     );
   }

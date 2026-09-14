@@ -50,15 +50,16 @@ class AifcTierGuideChatSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AifcTierGuideChatSheet(
-        trainerName: trainerName,
-        currentTierName: currentTierName,
-        nextTierName: nextTierName,
-        memberCount: memberCount,
-        lessonCount: lessonCount,
-        hasProduct: hasProduct,
-        trainerInfoDone: trainerInfoDone,
-      ),
+      builder:
+          (_) => AifcTierGuideChatSheet(
+            trainerName: trainerName,
+            currentTierName: currentTierName,
+            nextTierName: nextTierName,
+            memberCount: memberCount,
+            lessonCount: lessonCount,
+            hasProduct: hasProduct,
+            trainerInfoDone: trainerInfoDone,
+          ),
     );
   }
 
@@ -84,7 +85,8 @@ class _AifcTierGuideChatSheetState extends State<AifcTierGuideChatSheet>
     aifcSetActiveGroup('initial');
 
     aifcAddFcMessage(
-      text: '$_name, 지금 등급은 ${widget.currentTierName}예요.\n'
+      text:
+          '$_name, 지금 등급은 ${widget.currentTierName}예요.\n'
           '등급은 결제 여부보다 선생님의 활용 흐름을 보여주는 단계예요.',
       groupKey: 'initial',
     );
@@ -126,19 +128,21 @@ class _AifcTierGuideChatSheetState extends State<AifcTierGuideChatSheet>
     switch (action) {
       case AifcTierGuideAction.sponsor:
         userText = '후원 안내 볼게요';
-        fcReply = '좋아요. 후원 안내로 연결할게요.\n'
+        fcReply =
+            '좋아요. 후원 안내로 연결할게요.\n'
             '후원은 기능을 바로 열고, 모어댄 개발을 응원하는 방식이에요.';
         break;
 
       case AifcTierGuideAction.goFillInfo:
         userText = '내 정보 채울게요';
-        fcReply = '좋아요. 마이페이지의 AI FC 안내 정보를 채워주세요.\n'
+        fcReply =
+            '좋아요. 마이페이지의 AI FC 안내 정보를 채워주세요.\n'
             '이름, 연락처, 레슨 분야, 센터명이 있으면 관리 흐름이 더 자연스러워져요.';
         break;
 
       case AifcTierGuideAction.goAddMember:
         userText = '회원 추가할게요';
-        fcReply = '좋아요. 고객카드에 회원을 쌓아가면 다음 등급 조건도 자연스럽게 채워져요.';
+        fcReply = '좋아요. 회원카드에 회원을 쌓아가면 다음 등급 조건도 자연스럽게 채워져요.';
         break;
 
       case AifcTierGuideAction.goAddProduct:
@@ -171,8 +175,8 @@ class _AifcTierGuideChatSheetState extends State<AifcTierGuideChatSheet>
             '스케줄과 내 정보를 조금만 채우면 Amateur로 올라갈 수 있어요.';
 
       case 'Amateur':
-        return 'Amateur는 고객카드와 AI FC의 기능을 통해 회원관리와 레슨일정 관리가 더 쉬어지는 단계예요.\n'
-            '고객카드가 쌓이면 Semi-Pro 흐름으로 넘어갈 수 있어요.';
+        return 'Amateur는 회원카드와 AI FC의 기능을 통해 회원관리와 레슨일정 관리가 더 쉬어지는 단계예요.\n'
+            '회원카드가 쌓이면 Semi-Pro 흐름으로 넘어갈 수 있어요.';
 
       case 'Semi-Pro':
         return 'Semi-Pro부터는 계약서 작성과 전자서명으로 조금 더 정확하고, 체계적으로 관리 할 수 있는  단계예요.\n'
@@ -220,7 +224,8 @@ class _AifcTierGuideChatSheetState extends State<AifcTierGuideChatSheet>
                   for (int i = 0; i < aifcMessages.length; i++)
                     AifcAnimatedChatMessage(
                       controller: aifcMessageAnimations[i],
-                      dimmed: aifcMessages[i].groupKey != null &&
+                      dimmed:
+                          aifcMessages[i].groupKey != null &&
                           aifcActiveGroupKey != null &&
                           aifcMessages[i].groupKey != aifcActiveGroupKey,
                       child: Padding(
@@ -256,16 +261,17 @@ class _AifcTierGuideChatSheetState extends State<AifcTierGuideChatSheet>
                     duration: const Duration(milliseconds: 240),
                     switchInCurve: Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.025, 0),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    ),
+                    transitionBuilder:
+                        (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.025, 0),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        ),
                     child: _TierDetailCard(
                       key: ValueKey(_selectedTierName),
                       tierName: _selectedTierName,
@@ -345,12 +351,9 @@ class _CurrentTierSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F7FF),
+        color: AifcColors.cardSoftBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFE0DEFF),
-          width: 0.5,
-        ),
+        border: Border.all(color: AifcColors.cardBorder, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,7 +372,7 @@ class _CurrentTierSummaryCard extends StatelessWidget {
                       ? 'Amateur 승급 조건 · $completedCount / 2 완료'
                       : '현재 $currentTierName · 다음 $nextTierName',
                   style: const TextStyle(
-                    color: Color(0xFF1E1B4B),
+                    color: AifcColors.fcText,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w900,
                   ),
@@ -387,9 +390,10 @@ class _CurrentTierSummaryCard extends StatelessWidget {
                     item.done
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked_rounded,
-                    color: item.done
-                        ? AifcColors.primary
-                        : const Color(0xFFD1D5DB),
+                    color:
+                        item.done
+                            ? AifcColors.primary
+                            : AifcColors.inactiveIcon,
                     size: 15,
                   ),
                   const SizedBox(width: 7),
@@ -401,7 +405,7 @@ class _CurrentTierSummaryCard extends StatelessWidget {
                           item.label,
                           softWrap: true,
                           style: const TextStyle(
-                            color: Color(0xFF6B7280),
+                            color: AifcColors.inactiveText,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -410,9 +414,10 @@ class _CurrentTierSummaryCard extends StatelessWidget {
                         Text(
                           item.value,
                           style: TextStyle(
-                            color: item.done
-                                ? AifcColors.primary
-                                : const Color(0xFF9CA3AF),
+                            color:
+                                item.done
+                                    ? AifcColors.primary
+                                    : AifcColors.inactiveIcon,
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                           ),
@@ -465,53 +470,61 @@ class _TierSelectCard extends StatelessWidget {
     return Wrap(
       spacing: 7,
       runSpacing: 7,
-      children: _tiers.map((tier) {
-        final active = tier == selectedTierName;
+      children:
+          _tiers.map((tier) {
+            final active = tier == selectedTierName;
 
-        return GestureDetector(
-          onTap: () => onSelected(tier),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-            decoration: BoxDecoration(
-              color:
-                  active ? AifcColors.primary.withOpacity(0.08) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: active
-                    ? AifcColors.primary.withOpacity(0.28)
-                    : const Color(0xFFE0DEFF),
-                width: active ? 1.1 : 0.6,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  active
-                      ? Icons.radio_button_checked_rounded
-                      : Icons.radio_button_unchecked_rounded,
-                  color: active ? AifcColors.primary : const Color(0xFFB8B6DA),
-                  size: 17,
+            return GestureDetector(
+              onTap: () => onSelected(tier),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 9,
                 ),
-                const SizedBox(width: 9),
-                Flexible(
-                  child: Text(
-                    tier,
-                    softWrap: true,
-                    style: TextStyle(
-                      color:
-                          active ? AifcColors.primary : const Color(0xFF1E1B4B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                    ),
+                decoration: BoxDecoration(
+                  color:
+                      active
+                          ? AifcColors.primary.withOpacity(0.08)
+                          : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color:
+                        active
+                            ? AifcColors.primary.withOpacity(0.28)
+                            : AifcColors.cardBorder,
+                    width: active ? 1.1 : 0.6,
                   ),
                 ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      active
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color:
+                          active ? AifcColors.primary : AifcColors.inactiveIcon,
+                      size: 17,
+                    ),
+                    const SizedBox(width: 9),
+                    Flexible(
+                      child: Text(
+                        tier,
+                        softWrap: true,
+                        style: TextStyle(
+                          color:
+                              active ? AifcColors.primary : AifcColors.fcText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
     );
   }
 }
@@ -559,12 +572,9 @@ class _TierDetailCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F7FF),
+            color: AifcColors.cardSoftBg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: const Color(0xFFE0DEFF),
-              width: 0.5,
-            ),
+            border: Border.all(color: AifcColors.cardBorder, width: 0.5),
           ),
           child: Column(
             children: [
@@ -582,7 +592,7 @@ class _TierDetailCard extends StatelessWidget {
                     child: Text(
                       isCurrent ? '$tierName · 현재 단계' : tierName,
                       style: const TextStyle(
-                        color: Color(0xFF1E1B4B),
+                        color: AifcColors.fcText,
                         fontSize: 13,
                         fontWeight: FontWeight.w900,
                       ),
@@ -591,14 +601,16 @@ class _TierDetailCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              ...rows.map((row) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _InfoRow(
-                      icon: row.icon,
-                      title: row.title,
-                      subtitle: row.subtitle,
-                    ),
-                  )),
+              ...rows.map(
+                (row) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _InfoRow(
+                    icon: row.icon,
+                    title: row.title,
+                    subtitle: row.subtitle,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -628,8 +640,8 @@ class _TierDetailCard extends StatelessWidget {
         return const [
           _TierFeatureRow(
             icon: Icons.credit_card_outlined,
-            title: '고객카드와 회원관리',
-            subtitle: '회원 정보를 고객카드에서 체계적으로 관리할 수 있어요.',
+            title: '회원카드와 회원관리',
+            subtitle: '회원 정보를 회원카드에서 체계적으로 관리할 수 있어요.',
           ),
           _TierFeatureRow(
             icon: Icons.history_rounded,
@@ -752,10 +764,8 @@ class _TierDetailCard extends StatelessWidget {
 
     return buttons
         .map(
-          (button) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: button,
-          ),
+          (button) =>
+              Padding(padding: const EdgeInsets.only(bottom: 8), child: button),
         )
         .toList();
   }
@@ -795,14 +805,16 @@ class _TierActionButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          color: outlined
-              ? tokens.drawerSelectedBackground
-              : tokens.gradeSheetAccent,
+          color:
+              outlined
+                  ? tokens.drawerSelectedBackground
+                  : tokens.gradeSheetAccent,
           borderRadius: BorderRadius.circular(AifcRadius.button),
           border: Border.all(
-            color: outlined
-                ? tokens.gradeSheetAccent.withOpacity(0.5)
-                : tokens.gradeSheetAccent,
+            color:
+                outlined
+                    ? tokens.gradeSheetAccent.withOpacity(0.5)
+                    : tokens.gradeSheetAccent,
             width: 0.8,
           ),
         ),
@@ -810,9 +822,10 @@ class _TierActionButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: outlined
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.onSecondary,
+            color:
+                outlined
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.onSecondary,
             fontSize: 13,
             fontWeight: FontWeight.w900,
           ),
@@ -842,18 +855,11 @@ class _InfoRow extends StatelessWidget {
           height: 34,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F7FF),
+            color: AifcColors.cardSoftBg,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFE0DEFF),
-              width: 0.5,
-            ),
+            border: Border.all(color: AifcColors.cardBorder, width: 0.5),
           ),
-          child: Icon(
-            icon,
-            color: AifcColors.primary,
-            size: 18,
-          ),
+          child: Icon(icon, color: AifcColors.primary, size: 18),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -863,7 +869,7 @@ class _InfoRow extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color: Color(0xFF1E1B4B),
+                  color: AifcColors.fcText,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w900,
                 ),

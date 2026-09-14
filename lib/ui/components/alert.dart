@@ -42,14 +42,13 @@ class ShadcnAlert extends StatelessWidget {
         children: [
           Text(
             title,
-            style:
-            TextStyle(fontWeight: FontWeight.bold, color: _foreground(cs)),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _foreground(cs),
+            ),
           ),
           const SizedBox(height: 6),
-          Text(
-            description,
-            style: TextStyle(color: _foreground(cs)),
-          ),
+          Text(description, style: TextStyle(color: _foreground(cs))),
         ],
       ),
     );

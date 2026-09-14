@@ -133,7 +133,10 @@ class _BinderCardState extends State<BinderCard> with TickerProviderStateMixin {
             );
           },
           transitionsBuilder: (_, anim, __, child) {
-            final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+            final curved = CurvedAnimation(
+              parent: anim,
+              curve: Curves.easeOutCubic,
+            );
             return FadeTransition(opacity: curved, child: child);
           },
         ),
@@ -174,9 +177,10 @@ class _BinderCardState extends State<BinderCard> with TickerProviderStateMixin {
     return LayoutBuilder(
       builder: (context, constraints) {
         // ✅ 중요: PageView 안에서 또 작게 줄이지 말기(겹쳐짐이 살아야 함)
-        final maxW = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
+        final maxW =
+            constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
 
         final w = (maxW * 0.98).clamp(240.0, 420.0);
         final coverH = (w * 1.414).clamp(320.0, 520.0);
@@ -196,7 +200,10 @@ class _BinderCardState extends State<BinderCard> with TickerProviderStateMixin {
                 if (box == null) return;
                 final local = box.globalToLocal(d.globalPosition);
                 final s = box.size;
-                _pressNorm = Offset((local.dx / s.width) - 0.5, (local.dy / s.height) - 0.5);
+                _pressNorm = Offset(
+                  (local.dx / s.width) - 0.5,
+                  (local.dy / s.height) - 0.5,
+                );
                 _pressCtrl.forward();
               },
               onTapUp: (_) => _pressCtrl.reverse(),
@@ -221,11 +228,12 @@ class _BinderCardState extends State<BinderCard> with TickerProviderStateMixin {
 
                   final openCorner = 0.20 * liftT;
 
-                  final mtx = Matrix4.identity()
-                    ..setEntry(3, 2, 0.0019)
-                    ..rotateX(tiltX)
-                    ..rotateY(hinge)
-                    ..rotateZ(tiltZ);
+                  final mtx =
+                      Matrix4.identity()
+                        ..setEntry(3, 2, 0.0019)
+                        ..rotateX(tiltX)
+                        ..rotateY(hinge)
+                        ..rotateZ(tiltZ);
 
                   return Transform.translate(
                     offset: Offset(0, liftY),
@@ -342,7 +350,10 @@ class _StackedBinderVisual extends StatelessWidget {
             child: _IndexTab(
               label: name,
               danger: member.isExpired || lowRemain,
-              badge: member.isExpired ? '만료' : (lowRemain ? '잔여 ${member.remainingSessions}회' : null),
+              badge:
+                  member.isExpired
+                      ? '만료'
+                      : (lowRemain ? '잔여 ${member.remainingSessions}회' : null),
             ),
           ),
 
@@ -378,7 +389,10 @@ class _StackedBinderVisual extends StatelessWidget {
             child: Opacity(
               opacity: (1 - lifted * 0.7).clamp(0.0, 1.0),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(.70),
                   borderRadius: BorderRadius.circular(12),
@@ -439,10 +453,7 @@ class _PaperBundle extends StatelessWidget {
           alignment: Alignment.topLeft,
           child: Hero(
             tag: heroTag,
-            child: _PaperCardMini(
-              width: width * 0.90,
-              height: coverH * 0.86,
-            ),
+            child: _PaperCardMini(width: width * 0.90, height: coverH * 0.86),
           ),
         ),
       ),
@@ -452,10 +463,7 @@ class _PaperBundle extends StatelessWidget {
 
 /* 작은 종이(겹침용) */
 class _PaperCardMini extends StatelessWidget {
-  const _PaperCardMini({
-    required this.width,
-    required this.height,
-  });
+  const _PaperCardMini({required this.width, required this.height});
 
   final double width;
   final double height;
@@ -531,7 +539,7 @@ class _PaperCardMini extends StatelessWidget {
                       const SizedBox(height: 10),
                       ...List.generate(
                         9,
-                            (i) => Padding(
+                        (i) => Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Container(
                             height: 6,
@@ -613,10 +621,17 @@ class _IndexTab extends StatelessWidget {
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(999),
+              ),
               child: Text(
                 badge!,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: fg,
+                ),
               ),
             ),
           ],
@@ -738,19 +753,18 @@ class _FrontBinderCover extends StatelessWidget {
 
             // ✅ (추가) 하단 오른쪽 슬롯: 드래그 핸들
             if (bottomRightAction != null)
-              Positioned(
-                right: 10,
-                bottom: 12,
-                child: bottomRightAction!,
-              ),
+              Positioned(right: 10, bottom: 12, child: bottomRightAction!),
             if (member.isExpired || member.memberStatus == '휴면' || lowRemain)
               Positioned(
                 right: 10,
                 top: 10,
                 child: _StatusPill(
-                  text: member.isExpired
-                      ? '만료'
-                      : (member.memberStatus == '휴면' ? '휴강' : '잔여 ${member.remainingSessions}회'),
+                  text:
+                      member.isExpired
+                          ? '만료'
+                          : (member.memberStatus == '휴면'
+                              ? '휴강'
+                              : '잔여 ${member.remainingSessions}회'),
                   danger: member.isExpired || lowRemain,
                 ),
               ),
@@ -780,7 +794,8 @@ class _CornerClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(covariant _CornerClipper oldClipper) => oldClipper.openCorner != openCorner;
+  bool shouldReclip(covariant _CornerClipper oldClipper) =>
+      oldClipper.openCorner != openCorner;
 }
 
 class _Spine extends StatelessWidget {
@@ -807,7 +822,11 @@ class _Spine extends StatelessWidget {
         quarterTurns: 3,
         child: Text(
           title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 11,
+          ),
           overflow: TextOverflow.ellipsis,
         ),
       ),
@@ -824,7 +843,12 @@ class _FrontSummary extends StatelessWidget {
     final fmt = DateFormat('yy.MM.dd');
 
     final dday = _dday(member.expireAt);
-    final ddayText = dday == null ? '-' : (dday == 0 ? 'D-DAY' : (dday > 0 ? 'D-$dday' : 'D+${dday.abs()}'));
+    final ddayText =
+        dday == null
+            ? '-'
+            : (dday == 0
+                ? 'D-DAY'
+                : (dday > 0 ? 'D-$dday' : 'D+${dday.abs()}'));
 
     final total = member.totalSessions;
     final remain = member.remainingSessions;
@@ -845,7 +869,10 @@ class _FrontSummary extends StatelessWidget {
               Expanded(
                 child: Text(
                   member.name ?? member.id,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -854,9 +881,15 @@ class _FrontSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          _InfoRow('만료일', member.expireAt != null ? fmt.format(member.expireAt!) : '-'),
+          _InfoRow(
+            '만료일',
+            member.expireAt != null ? fmt.format(member.expireAt!) : '-',
+          ),
           _InfoRow('D-day', ddayText),
-          _InfoRow('최근', member.lastLogAt != null ? fmt.format(member.lastLogAt!) : '-'),
+          _InfoRow(
+            '최근',
+            member.lastLogAt != null ? fmt.format(member.lastLogAt!) : '-',
+          ),
         ],
       ),
     );
@@ -893,7 +926,9 @@ class _BinderPaperOverlayPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
-            Positioned.fill(child: Container(color: Colors.black.withOpacity(0.22))),
+            Positioned.fill(
+              child: Container(color: Colors.black.withOpacity(0.22)),
+            ),
             Center(
               child: GestureDetector(
                 onTap: () {},
@@ -975,18 +1010,27 @@ class _PaperDetailCard extends StatelessWidget {
                     color: const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.description_outlined, color: _kPrimary),
+                  child: const Icon(
+                    Icons.description_outlined,
+                    color: _kPrimary,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     member.name ?? member.id,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                IconButton(onPressed: onClose, icon: const Icon(Icons.close_rounded)),
+                IconButton(
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close_rounded),
+                ),
               ],
             ),
           ),
@@ -1011,7 +1055,10 @@ class _PaperDetailCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             '총 $total회\n잔여 $remain회',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
@@ -1028,11 +1075,22 @@ class _PaperDetailCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('고객 정보', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
+                        const Text(
+                          '회원 정보',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         const SizedBox(height: 10),
                         _InfoRow('이름', member.name ?? member.id),
                         _InfoRow('전화', member.phone ?? '-'),
-                        _InfoRow('만료일', member.expireAt != null ? fmt.format(member.expireAt!) : '-'),
+                        _InfoRow(
+                          '만료일',
+                          member.expireAt != null
+                              ? fmt.format(member.expireAt!)
+                              : '-',
+                        ),
                       ],
                     ),
                   ),
@@ -1048,7 +1106,7 @@ class _PaperDetailCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   _BigActionButton(
                     icon: Icons.edit_outlined,
-                    label: '고객 정보 수정',
+                    label: '회원 정보 수정',
                     onTap: () async {
                       onClose();
                       await onOpenEdit();
@@ -1108,7 +1166,15 @@ class _BigActionButton extends StatelessWidget {
           children: [
             Icon(icon, color: _kPrimary),
             const SizedBox(width: 10),
-            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13))),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13,
+                ),
+              ),
+            ),
             const Icon(Icons.chevron_right_rounded, color: Colors.black45),
           ],
         ),
@@ -1137,7 +1203,10 @@ class _StatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: bd),
       ),
-      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg)),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg),
+      ),
     );
   }
 }
@@ -1166,12 +1235,17 @@ Gradient _coverGradient({
     );
   }
 
-  final base = (gender == Gender.female)
-      ? const [Color(0xFFFFEEF7), Color(0xFFFFD7EA), Color(0xFFFFB8D8)]
-      : const [Color(0xFFEEF2FF), Color(0xFFDDE7FF), Color(0xFFBFD3FF)];
+  final base =
+      (gender == Gender.female)
+          ? const [Color(0xFFFFEEF7), Color(0xFFFFD7EA), Color(0xFFFFB8D8)]
+          : const [Color(0xFFEEF2FF), Color(0xFFDDE7FF), Color(0xFFBFD3FF)];
 
   if (!lowRemain) {
-    return LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: base);
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: base,
+    );
   }
 
   const warnA = Color(0xFFFFE4E6);
@@ -1216,9 +1290,21 @@ class _InfoRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: 64, child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12))),
+          SizedBox(
+            width: 64,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+            ),
+          ),
           const SizedBox(width: 8),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -1236,8 +1322,14 @@ class _Ring extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        CustomPaint(painter: _RingPainter(progress: progress, color: cs.primary), child: const SizedBox(width: 52, height: 52)),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+        CustomPaint(
+          painter: _RingPainter(progress: progress, color: cs.primary),
+          child: const SizedBox(width: 52, height: 52),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+        ),
       ],
     );
   }
@@ -1253,21 +1345,38 @@ class _RingPainter extends CustomPainter {
     final w = size.width;
     const stroke = 7.0;
 
-    final bg = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..color = Colors.grey.shade300;
+    final bg =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..color = Colors.grey.shade300;
 
-    final fg = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = stroke
-      ..shader = SweepGradient(colors: [color, color.withOpacity(.85)]).createShader(Offset.zero & size);
+    final fg =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = stroke
+          ..shader = SweepGradient(
+            colors: [color, color.withOpacity(.85)],
+          ).createShader(Offset.zero & size);
 
-    canvas.drawArc(Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke), -math.pi / 2, math.pi * 2, false, bg);
-    canvas.drawArc(Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke), -math.pi / 2, math.pi * 2 * progress, false, fg);
+    canvas.drawArc(
+      Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke),
+      -math.pi / 2,
+      math.pi * 2,
+      false,
+      bg,
+    );
+    canvas.drawArc(
+      Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke),
+      -math.pi / 2,
+      math.pi * 2 * progress,
+      false,
+      fg,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _RingPainter old) => old.progress != progress || old.color != color;
+  bool shouldRepaint(covariant _RingPainter old) =>
+      old.progress != progress || old.color != color;
 }

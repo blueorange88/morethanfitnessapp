@@ -34,10 +34,14 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _rangeStart = DateTime(now.year, now.month, now.day)
-        .subtract(const Duration(days: 28));
+    _rangeStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 28));
     _rangeEnd = _rangeStart.add(const Duration(days: 126));
-    _repository = widget.repository ??
+    _repository =
+        widget.repository ??
         PersonalScheduleRepository(
           uid: widget.uid,
           dataSource: FirebasePersonalScheduleDataSource(),
@@ -82,16 +86,20 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
 
   Future<void> _copyCurrentWeek(List<PersonalScheduleRecord> schedules) async {
     final now = DateTime.now();
-    final monday = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: now.weekday - 1));
+    final monday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
     final end = monday.add(const Duration(days: 7));
-    final current = schedules
-        .where(
-          (schedule) =>
-              !schedule.startAt.isBefore(monday) &&
-              schedule.startAt.isBefore(end),
-        )
-        .toList();
+    final current =
+        schedules
+            .where(
+              (schedule) =>
+                  !schedule.startAt.isBefore(monday) &&
+                  schedule.startAt.isBefore(end),
+            )
+            .toList();
     if (current.isEmpty) return;
     try {
       await _repository.copyToWeek(
@@ -118,16 +126,17 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
     }
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => PersonalTrainingLogWorkspacePage(
-          uid: widget.uid,
-          memberId: memberId,
-          memberName: schedule.name,
-          scheduleDocId: schedule.scheduleId,
-          initialStartAt: schedule.startAt,
-          initialEndAt: schedule.endAt,
-          initialLessonType: schedule.type,
-          initialSource: 'home_quick_sign',
-        ),
+        builder:
+            (_) => PersonalTrainingLogWorkspacePage(
+              uid: widget.uid,
+              memberId: memberId,
+              memberName: schedule.name,
+              scheduleDocId: schedule.scheduleId,
+              initialStartAt: schedule.startAt,
+              initialEndAt: schedule.endAt,
+              initialLessonType: schedule.type,
+              initialSource: 'home_quick_sign',
+            ),
       ),
     );
   }
@@ -211,7 +220,8 @@ class _PersonalSchedulePageState extends State<PersonalSchedulePage> {
 
   String _date(DateTime value) => '${value.month}.${value.day}';
 
-  String _time(DateTime value) => '${value.hour.toString().padLeft(2, '0')}:'
+  String _time(DateTime value) =>
+      '${value.hour.toString().padLeft(2, '0')}:'
       '${value.minute.toString().padLeft(2, '0')}';
 }
 
@@ -244,9 +254,10 @@ class _PersonalScheduleEditorState extends State<_PersonalScheduleEditor> {
       initial.hour,
       initial.minute < 30 ? 0 : 30,
     );
-    _durationMinutes = widget.record == null
-        ? 50
-        : widget.record!.endAt.difference(widget.record!.startAt).inMinutes;
+    _durationMinutes =
+        widget.record == null
+            ? 50
+            : widget.record!.endAt.difference(widget.record!.startAt).inMinutes;
     _nameController = TextEditingController(text: widget.record?.name ?? '');
     _typeController = TextEditingController(text: widget.record?.type ?? 'PT');
   }
@@ -303,8 +314,9 @@ class _PersonalScheduleEditorState extends State<_PersonalScheduleEditor> {
       for (var index = 0; index < count; index++)
         PersonalScheduleDraft(
           startAt: _startAt.add(Duration(days: index * 7)),
-          endAt: _startAt
-              .add(Duration(days: index * 7, minutes: _durationMinutes)),
+          endAt: _startAt.add(
+            Duration(days: index * 7, minutes: _durationMinutes),
+          ),
           name: name,
           type: type,
           memberId: widget.record?.memberId,
@@ -342,14 +354,16 @@ class _PersonalScheduleEditorState extends State<_PersonalScheduleEditor> {
                   child: TextButton(
                     onPressed: _pickDate,
                     child: Text(
-                        '${_startAt.year}.${_startAt.month}.${_startAt.day}'),
+                      '${_startAt.year}.${_startAt.month}.${_startAt.day}',
+                    ),
                   ),
                 ),
                 Expanded(
                   child: TextButton(
                     onPressed: _pickTime,
-                    child:
-                        Text(TimeOfDay.fromDateTime(_startAt).format(context)),
+                    child: Text(
+                      TimeOfDay.fromDateTime(_startAt).format(context),
+                    ),
                   ),
                 ),
               ],
@@ -357,24 +371,26 @@ class _PersonalScheduleEditorState extends State<_PersonalScheduleEditor> {
             DropdownButtonFormField<int>(
               initialValue: _durationMinutes,
               decoration: const InputDecoration(labelText: '레슨 시간'),
-              items: const [30, 40, 50, 60, 90]
-                  .map(
-                    (minutes) => DropdownMenuItem(
-                      value: minutes,
-                      child: Text('$minutes분'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) =>
-                  setState(() => _durationMinutes = value ?? 50),
+              items:
+                  const [30, 40, 50, 60, 90]
+                      .map(
+                        (minutes) => DropdownMenuItem(
+                          value: minutes,
+                          child: Text('$minutes분'),
+                        ),
+                      )
+                      .toList(),
+              onChanged:
+                  (value) => setState(() => _durationMinutes = value ?? 50),
             ),
             if (widget.record == null)
               CheckboxListTile(
                 key: const Key('personal_schedule_repeat'),
                 contentPadding: EdgeInsets.zero,
                 value: _repeatNextTwoWeeks,
-                onChanged: (value) =>
-                    setState(() => _repeatNextTwoWeeks = value == true),
+                onChanged:
+                    (value) =>
+                        setState(() => _repeatNextTwoWeeks = value == true),
                 title: const Text('같은 요일로 3주 등록'),
               ),
             const Text(

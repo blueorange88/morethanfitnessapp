@@ -21,9 +21,9 @@ class SharedPreferencesPersonalMyPageNudgeStore
   const SharedPreferencesPersonalMyPageNudgeStore();
 
   String _storageKey(String uid) => AppEnvironmentConfig.personalPreferenceKey(
-        uid: uid,
-        featureKey: 'personal_my_page_last_nudge',
-      );
+    uid: uid,
+    featureKey: 'personal_my_page_last_nudge',
+  );
 
   @override
   Future<String?> readLastKey(String uid) async {
@@ -46,9 +46,11 @@ PersonalProfileNudgeKey? selectNextPersonalProfileNudge({
   final lastIndex = PersonalProfileNudgeKey.values.indexWhere(
     (value) => value.name == lastKey,
   );
-  for (var offset = 1;
-      offset <= PersonalProfileNudgeKey.values.length;
-      offset++) {
+  for (
+    var offset = 1;
+    offset <= PersonalProfileNudgeKey.values.length;
+    offset++
+  ) {
     final index = (lastIndex + offset) % PersonalProfileNudgeKey.values.length;
     final candidate = PersonalProfileNudgeKey.values[index];
     if (missing.contains(candidate)) return candidate;
@@ -74,7 +76,8 @@ String personalProfileNudgeMessage(
           '관리 기능을 더 알맞게 안내해드릴게요.',
     PersonalProfileNudgeKey.displayName =>
       '선생님을 어떤 이름으로 소개하면 좋을까요?\n명함과 향후 프로필에서도 사용할 수 있어요.',
-    PersonalProfileNudgeKey.phone => '연락처를 등록해두면\n계정 확인과 향후 회원·센터 연결을\n'
-        '더 안전하게 준비할 수 있어요.',
+    PersonalProfileNudgeKey.phone =>
+      '연락처를 등록해두면\n계정 확인과 향후 회원·센터 연결을\n'
+          '더 안전하게 준비할 수 있어요.',
   };
 }

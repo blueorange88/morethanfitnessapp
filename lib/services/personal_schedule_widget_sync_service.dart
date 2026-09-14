@@ -12,10 +12,7 @@ abstract interface class PersonalScheduleWidgetGateway {
 
   Future<void> clear();
 
-  Future<void> sync(
-    String uid,
-    List<PersonalScheduleRecord> schedules,
-  );
+  Future<void> sync(String uid, List<PersonalScheduleRecord> schedules);
 }
 
 class PersonalScheduleWidgetSyncService {
@@ -62,33 +59,33 @@ class HomeWidgetPersonalScheduleGateway
   Future<void> clear() => MtfHomeWidgetService.clearPersonalScheduleData();
 
   @override
-  Future<void> sync(
-    String uid,
-    List<PersonalScheduleRecord> schedules,
-  ) async {
+  Future<void> sync(String uid, List<PersonalScheduleRecord> schedules) async {
     final now = DateTime.now();
     final timeSlots = [
       for (var hour = 6; hour < 22; hour++)
         '${hour.toString().padLeft(2, '0')}:00',
     ];
     List<String> rows(int offset) => HomeWidgetGridMapper.buildWeekRows(
-          weekOffset: offset,
-          timeSlots: timeSlots,
-          visibleDays: _days,
-          currentTime: now,
-        );
+      weekOffset: offset,
+      timeSlots: timeSlots,
+      visibleDays: _days,
+      currentTime: now,
+    );
     List<String> blocks(int offset) {
-      final items = schedules.map((schedule) {
-        return HomeWidgetBlockItem(
-          startAt: schedule.startAt,
-          endAt: schedule.endAt,
-          day: _days[schedule.startAt.weekday - 1],
-          name: schedule.name,
-          type: schedule.type,
-          colorHex:
-              schedule.typeColorHex.isEmpty ? '#7C3AED' : schedule.typeColorHex,
-        );
-      }).toList();
+      final items =
+          schedules.map((schedule) {
+            return HomeWidgetBlockItem(
+              startAt: schedule.startAt,
+              endAt: schedule.endAt,
+              day: _days[schedule.startAt.weekday - 1],
+              name: schedule.name,
+              type: schedule.type,
+              colorHex:
+                  schedule.typeColorHex.isEmpty
+                      ? '#7C3AED'
+                      : schedule.typeColorHex,
+            );
+          }).toList();
       return HomeWidgetBlockMapper.buildBlocks(
         weekOffset: offset,
         currentTime: now,
@@ -122,19 +119,20 @@ class HomeWidgetPersonalScheduleGateway
         days1: _days,
         blocks1: blocks(1),
         currentMarkerRatio1: null,
-        lessons: schedules.map((schedule) {
-          return HomeWidgetPreviewLesson(
-            startAt: schedule.startAt,
-            endAt: schedule.endAt,
-            memberName: schedule.name,
-            lessonType: schedule.type,
-            memo: schedule.memo,
-            ownerUid: schedule.trainerId,
-            workspaceType: schedule.workspaceType,
-            remainingSessions: schedule.remainingSessions,
-            status: schedule.status,
-          );
-        }).toList(),
+        lessons:
+            schedules.map((schedule) {
+              return HomeWidgetPreviewLesson(
+                startAt: schedule.startAt,
+                endAt: schedule.endAt,
+                memberName: schedule.name,
+                lessonType: schedule.type,
+                memo: schedule.memo,
+                ownerUid: schedule.trainerId,
+                workspaceType: schedule.workspaceType,
+                remainingSessions: schedule.remainingSessions,
+                status: schedule.status,
+              );
+            }).toList(),
         personalOwnerUid: uid,
         environment: AppEnvironmentConfig.environmentName,
         projectId: AppEnvironmentConfig.firebaseProjectId,
@@ -144,9 +142,11 @@ class HomeWidgetPersonalScheduleGateway
   }
 
   String _weekHeader(DateTime now, int offset) {
-    final monday = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: now.weekday - 1))
-        .add(Duration(days: offset * 7));
+    final monday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1)).add(Duration(days: offset * 7));
     final sunday = monday.add(const Duration(days: 6));
     return '${monday.month}.${monday.day} - ${sunday.month}.${sunday.day}';
   }

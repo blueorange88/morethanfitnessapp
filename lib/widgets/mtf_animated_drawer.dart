@@ -163,12 +163,9 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
 
     _neonCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 140),
     );
-    _neonAnim = CurvedAnimation(
-      parent: _neonCtrl,
-      curve: Curves.easeOutCubic,
-    );
+    _neonAnim = CurvedAnimation(parent: _neonCtrl, curve: Curves.easeOutCubic);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startSequence();
@@ -232,9 +229,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
           topLeft: Radius.circular(26),
           bottomLeft: Radius.circular(26),
         ),
-        border: Border(
-          left: BorderSide(color: tokens.cardBorder, width: 0.8),
-        ),
+        border: Border(left: BorderSide(color: tokens.cardBorder, width: 0.8)),
         boxShadow: [
           // 왼쪽으로 깊게 떨어지는 메인 그림자
           BoxShadow(
@@ -290,7 +285,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                     _buildMenuItem(
                       index: 2,
                       icon: Icons.people_outline_rounded,
-                      label: '고객카드',
+                      label: '회원리스트',
                       sub: '회원 정보 확인 및 관리 지원',
                       onTap: () {
                         Navigator.of(context).pop();
@@ -448,12 +443,14 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color:
-                                    tokens.gradeSheetAccent.withOpacity(0.16),
+                                color: tokens.gradeSheetAccent.withOpacity(
+                                  0.16,
+                                ),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color:
-                                      tokens.gradeSheetAccent.withOpacity(0.36),
+                                  color: tokens.gradeSheetAccent.withOpacity(
+                                    0.36,
+                                  ),
                                   width: 0.5,
                                 ),
                               ),
@@ -470,8 +467,9 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                             Text(
                               '회원 ${widget.memberCount}명',
                               style: TextStyle(
-                                color: theme.colorScheme.onPrimary
-                                    .withOpacity(0.72),
+                                color: theme.colorScheme.onPrimary.withOpacity(
+                                  0.72,
+                                ),
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -530,10 +528,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                   decoration: BoxDecoration(
                     color: tokens.cardSurface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: tokens.cardBorder,
-                      width: 0.5,
-                    ),
+                    border: Border.all(color: tokens.cardBorder, width: 0.5),
                   ),
                   child: Icon(icon, color: theme.colorScheme.primary, size: 17),
                 ),
@@ -648,9 +643,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: List.generate(5, (i) {
-                      return _WaveBar(
-                        index: i,
-                      );
+                      return _WaveBar(index: i);
                     }),
                   ),
                 ),
@@ -801,9 +794,10 @@ class _WaveBarState extends State<_WaveBar>
       if (mounted) _ctrl.repeat(reverse: true);
     });
 
-    _anim = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _anim = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -920,10 +914,7 @@ class _GlitchMenuTileState extends State<_GlitchMenuTile>
                   // 스캔라인 효과로 "미완성" 느낌
                   color: tokens.cardSurface.withOpacity(0.72),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: tokens.cardBorder,
-                    width: 0.5,
-                  ),
+                  border: Border.all(color: tokens.cardBorder, width: 0.5),
                 ),
                 child: Icon(
                   widget.icon,
@@ -954,8 +945,9 @@ class _GlitchMenuTileState extends State<_GlitchMenuTile>
                             vertical: 1,
                           ),
                           decoration: BoxDecoration(
-                            color: tokens.drawerSelectedBackground
-                                .withOpacity(0.24),
+                            color: tokens.drawerSelectedBackground.withOpacity(
+                              0.24,
+                            ),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
                               color: tokens.cardBorder,
@@ -1034,13 +1026,14 @@ class _LNeonPainter extends CustomPainter {
 
     // 오른쪽 상단 → 왼쪽 상단 → 왼쪽 하단 → 하단 오른쪽
     // 오른쪽은 radius가 없는 엣지라서 w - inset에서 시작/종료
-    final fullPath = Path()
-      ..moveTo(w - inset, inset)
-      ..lineTo(radius, inset)
-      ..quadraticBezierTo(inset, inset, inset, radius)
-      ..lineTo(inset, h - radius)
-      ..quadraticBezierTo(inset, h - inset, radius, h - inset)
-      ..lineTo(w - inset, h - inset);
+    final fullPath =
+        Path()
+          ..moveTo(w - inset, inset)
+          ..lineTo(radius, inset)
+          ..quadraticBezierTo(inset, inset, inset, radius)
+          ..lineTo(inset, h - radius)
+          ..quadraticBezierTo(inset, h - inset, radius, h - inset)
+          ..lineTo(w - inset, h - inset);
 
     final metrics = fullPath.computeMetrics().toList();
     if (metrics.isEmpty) return;
@@ -1059,10 +1052,7 @@ class _LNeonPainter extends CustomPainter {
       if (remaining <= 0) break;
 
       final segmentLength = math.min(remaining, metric.length);
-      extractedPath.addPath(
-        metric.extractPath(0, segmentLength),
-        Offset.zero,
-      );
+      extractedPath.addPath(metric.extractPath(0, segmentLength), Offset.zero);
 
       remaining -= segmentLength;
     }
@@ -1071,12 +1061,7 @@ class _LNeonPainter extends CustomPainter {
     final shader = LinearGradient(
       begin: Alignment.topRight,
       end: Alignment.bottomRight,
-      colors: [
-        startColor,
-        midColor.withOpacity(0.90),
-        midColor,
-        endColor,
-      ],
+      colors: [startColor, midColor.withOpacity(0.90), midColor, endColor],
       stops: const [0.0, 0.32, 0.68, 1.0],
     ).createShader(Rect.fromLTWH(0, 0, w, h));
 
