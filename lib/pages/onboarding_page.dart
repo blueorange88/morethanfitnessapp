@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../aifc/core/aifc_nickname.dart';
+import '../theme/app_colors.dart';
 
 import 'home_page.dart';
 
@@ -199,15 +200,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(24, 30, 24, 26),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [kOnboardingPrimary, kOnboardingPrimary2],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppColors.deepNavy,
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: kOnboardingPrimary.withOpacity(0.25),
+                    color: AppColors.deepNavy.withOpacity(0.25),
                     blurRadius: 24,
                     offset: const Offset(0, 12),
                   ),
