@@ -56,6 +56,50 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993248877411:android:f6b555e39ba282b9bcd156",
+        "android_client_info": {
+          "package_name": "com.morethanfitness.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "993248877411-ujks61i1hu5lami0hokmp0fpjqffofls.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.morethanfitness.app",
+            "certificate_hash": "a91789307f7b301f803f09632de5e115b8db16e4"
+          }
+        },
+        {
+          "client_id": "993248877411-j69ltusov1a8idsvdqkuejeqjgvvmgqq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1xUukUI0Yqs1TJDzys4qwA_HL0O8xksc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "993248877411-j69ltusov1a8idsvdqkuejeqjgvvmgqq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "993248877411-vcjueu4879f48537peb8hu6afidgr2uh.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.mtfApp"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

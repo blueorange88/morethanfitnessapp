@@ -9,10 +9,10 @@ import 'package:mtf_app/widgets/app_environment_banner.dart';
 void main() {
   test('prod와 dev Android packageName을 분리한다', () {
     AppEnvironmentConfig.select(AppEnvironment.prod);
-    expect(AppEnvironmentConfig.packageName, 'com.example.mtf_app');
+    expect(AppEnvironmentConfig.packageName, 'com.morethanfitness.app');
 
     AppEnvironmentConfig.select(AppEnvironment.dev);
-    expect(AppEnvironmentConfig.packageName, 'com.example.mtf_app.dev');
+    expect(AppEnvironmentConfig.packageName, 'com.morethanfitness.app.dev');
   });
 
   test('개발 작업공간은 정확한 DEV Debug identity에서만 허용한다', () {

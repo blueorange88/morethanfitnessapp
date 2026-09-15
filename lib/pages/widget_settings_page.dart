@@ -45,13 +45,13 @@ class _WidgetSettingsPageState extends ConsumerState<WidgetSettingsPage> {
     await HomeWidget.updateWidget(
       name: 'MtfScheduleWidgetReceiver',
       androidName: 'MtfScheduleWidgetReceiver',
-      qualifiedAndroidName: 'com.example.mtf_app.MtfScheduleWidgetReceiver',
+      qualifiedAndroidName: 'com.morethanfitness.app.MtfScheduleWidgetReceiver',
     );
 
     await HomeWidget.updateWidget(
       name: 'MtfNextLessonWidgetReceiver',
       androidName: 'MtfNextLessonWidgetReceiver',
-      qualifiedAndroidName: 'com.example.mtf_app.MtfNextLessonWidgetReceiver',
+      qualifiedAndroidName: 'com.morethanfitness.app.MtfNextLessonWidgetReceiver',
     );
   }
 

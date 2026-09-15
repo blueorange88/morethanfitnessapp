@@ -1,4 +1,4 @@
-package com.example.mtf_app
+package com.morethanfitness.app
 
 import android.content.Context
 import android.content.pm.ApplicationInfo

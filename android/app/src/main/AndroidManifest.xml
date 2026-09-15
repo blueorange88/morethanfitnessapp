@@ -69,8 +69,8 @@
             android:name=".MtfWidgetWeekRolloverReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.mtf_app.action.WEEK_ROLLOVER" />
-                <action android:name="com.example.mtf_app.action.WIDGET_TIME_REFRESH" />
+                <action android:name="com.morethanfitness.app.action.WEEK_ROLLOVER" />
+                <action android:name="com.morethanfitness.app.action.WIDGET_TIME_REFRESH" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.DATE_CHANGED" />

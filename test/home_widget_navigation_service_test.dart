@@ -6,7 +6,7 @@ import 'package:mtf_app/services/home_widget_navigation_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('com.example.mtf_app/widget_navigation');
+  const channel = MethodChannel('com.morethanfitness.app/widget_navigation');
 
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -75,27 +75,27 @@ void main() {
   test('모든 위젯은 runtime package의 explicit MainActivity를 연다', () {
     final todaySource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfTodayLessonRollupWidget.kt',
         ).readAsStringSync();
     final nextSource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfNextLessonWidget.kt',
         ).readAsStringSync();
     final weeklySource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfScheduleWidget.kt',
         ).readAsStringSync();
     final factorySource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfWidgetIntentFactory.kt',
         ).readAsStringSync();
     final activitySource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/MainActivity.kt',
+          'android/app/src/main/kotlin/com/morethanfitness/app/MainActivity.kt',
         ).readAsStringSync();
     expect(todaySource, contains('MtfWidgetIntentFactory.openToday'));
     expect(nextSource, contains('MtfWidgetIntentFactory.openNextLesson'));
@@ -156,7 +156,7 @@ void main() {
         File('android/app/src/dev/res/values/strings.xml').readAsStringSync();
     final factorySource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfWidgetIntentFactory.kt',
         ).readAsStringSync();
     expect(
@@ -176,7 +176,7 @@ void main() {
     expect(factorySource, contains('R.string.mtf_widget_dev_badge'));
     final todaySource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfTodayLessonRollupWidget.kt',
         ).readAsStringSync();
     expect(todaySource, contains('private fun DevBanner'));
@@ -189,7 +189,7 @@ void main() {
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
     final receiverSource =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfWidgetWeekRolloverReceiver.kt',
         ).readAsStringSync();
     final notificationSource =
@@ -209,7 +209,7 @@ void main() {
   test('오늘 위젯 Android parser는 schema v2 revision과 서울 날짜를 사용한다', () {
     final source =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfTodayLessonRollupWidget.kt',
         ).readAsStringSync();
     expect(source, contains('root.optInt("schemaVersion", 1)'));
@@ -224,7 +224,7 @@ void main() {
   test('오늘 위젯 하단 일정은 중첩 Column으로 Glance 최상위 10개 제한을 넘지 않는다', () {
     final source =
         File(
-          'android/app/src/main/kotlin/com/example/mtf_app/'
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfTodayLessonRollupWidget.kt',
         ).readAsStringSync();
     expect(

@@ -6,8 +6,8 @@ enum AppEnvironment { dev, prod }
 abstract final class AppEnvironmentConfig {
   static const productionFirebaseProjectId = 'more-than-fitness-f6adb';
   static const developmentFirebaseProjectId = 'more-than-fitness-dev-mft';
-  static const productionPackageName = 'com.example.mtf_app';
-  static const developmentPackageName = 'com.example.mtf_app.dev';
+  static const productionPackageName = 'com.morethanfitness.app';
+  static const developmentPackageName = 'com.morethanfitness.app.dev';
   static AppEnvironment _current = AppEnvironment.prod;
   static String _firebaseProjectId = '';
   static String _firebaseAppId = '';

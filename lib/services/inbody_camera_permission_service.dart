@@ -20,7 +20,7 @@ class InbodyCameraPermissionService {
   const InbodyCameraPermissionService();
 
   static const MethodChannel _channel = MethodChannel(
-    'com.example.mtf_app/camera_permission',
+    'com.morethanfitness.app/camera_permission',
   );
 
   Future<InbodyCameraPermission> check() => _invoke('check');

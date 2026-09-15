@@ -32,7 +32,7 @@ if (useLegacyLocalProdSigning && isBundleBuild) {
 }
 
 android {
-    namespace = "com.example.mtf_app"
+    namespace = "com.morethanfitness.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -51,7 +51,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.mtf_app"
+        applicationId = "com.morethanfitness.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

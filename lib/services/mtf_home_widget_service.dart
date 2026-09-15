@@ -9,7 +9,7 @@ class MtfHomeWidgetService {
   static const String _widgetName = 'MtfScheduleWidgetReceiver';
   static const String _androidName = 'MtfScheduleWidgetReceiver';
   static const String _qualifiedAndroidName =
-      'com.example.mtf_app.MtfScheduleWidgetReceiver';
+      'com.morethanfitness.app.MtfScheduleWidgetReceiver';
 
   static const String keyActiveOffset = 'mtf_widget_active_offset';
   static const String keyPersonalOwnerUid = 'mtf_widget_personal_owner_uid';
@@ -208,20 +208,20 @@ class MtfHomeWidgetService {
     await HomeWidget.updateWidget(
       name: 'MtfScheduleWidgetReceiver',
       androidName: 'MtfScheduleWidgetReceiver',
-      qualifiedAndroidName: 'com.example.mtf_app.MtfScheduleWidgetReceiver',
+      qualifiedAndroidName: 'com.morethanfitness.app.MtfScheduleWidgetReceiver',
     );
 
     await HomeWidget.updateWidget(
       name: 'MtfNextLessonWidgetReceiver',
       androidName: 'MtfNextLessonWidgetReceiver',
-      qualifiedAndroidName: 'com.example.mtf_app.MtfNextLessonWidgetReceiver',
+      qualifiedAndroidName: 'com.morethanfitness.app.MtfNextLessonWidgetReceiver',
     );
 
     await HomeWidget.updateWidget(
       name: 'MtfTodayLessonRollupWidgetReceiver',
       androidName: 'MtfTodayLessonRollupWidgetReceiver',
       qualifiedAndroidName:
-          'com.example.mtf_app.MtfTodayLessonRollupWidgetReceiver',
+          'com.morethanfitness.app.MtfTodayLessonRollupWidgetReceiver',
     );
   }
 
@@ -231,7 +231,7 @@ class MtfHomeWidgetService {
       name: 'MtfTodayLessonRollupWidgetReceiver',
       androidName: 'MtfTodayLessonRollupWidgetReceiver',
       qualifiedAndroidName:
-          'com.example.mtf_app.MtfTodayLessonRollupWidgetReceiver',
+          'com.morethanfitness.app.MtfTodayLessonRollupWidgetReceiver',
     );
   }
 
@@ -566,7 +566,7 @@ class MtfHomeWidgetService {
     await HomeWidget.updateWidget(
       name: 'MtfNextLessonWidgetReceiver',
       androidName: 'MtfNextLessonWidgetReceiver',
-      qualifiedAndroidName: 'com.example.mtf_app.MtfNextLessonWidgetReceiver',
+      qualifiedAndroidName: 'com.morethanfitness.app.MtfNextLessonWidgetReceiver',
     );
   }
 
@@ -738,6 +738,6 @@ class HomeWidgetPluginStorage implements MtfHomeWidgetStorage {
     name: 'MtfTodayLessonRollupWidgetReceiver',
     androidName: 'MtfTodayLessonRollupWidgetReceiver',
     qualifiedAndroidName:
-        'com.example.mtf_app.MtfTodayLessonRollupWidgetReceiver',
+        'com.morethanfitness.app.MtfTodayLessonRollupWidgetReceiver',
   );
 }

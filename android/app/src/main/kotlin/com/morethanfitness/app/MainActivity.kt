@@ -1,4 +1,4 @@
-package com.example.mtf_app
+package com.morethanfitness.app
 
 import android.Manifest
 import android.content.Intent
@@ -15,7 +15,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val cameraPermissionChannel = "com.example.mtf_app/camera_permission"
+    private val cameraPermissionChannel = "com.morethanfitness.app/camera_permission"
     private val cameraPermissionRequestCode = 4102
     private var pendingCameraPermissionResult: MethodChannel.Result? = null
     private var pendingWidgetAction: String? = null
@@ -267,6 +267,6 @@ class MainActivity : FlutterActivity() {
         private const val TAG_DAILY_WIDGET_DEEPLINK = "MTF_DAILY_WIDGET_DEEPLINK"
         private const val TAG_DAILY_WIDGET_ACTIVITY = "MTF_DAILY_WIDGET_ACTIVITY"
         private const val WIDGET_NAVIGATION_CHANNEL =
-            "com.example.mtf_app/widget_navigation"
+            "com.morethanfitness.app/widget_navigation"
     }
 }

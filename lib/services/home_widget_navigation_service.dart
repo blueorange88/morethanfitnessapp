@@ -5,7 +5,7 @@ class HomeWidgetNavigationService {
   HomeWidgetNavigationService._();
 
   static const MethodChannel _channel = MethodChannel(
-    'com.example.mtf_app/widget_navigation',
+    'com.morethanfitness.app/widget_navigation',
   );
 
   static Future<void> start(

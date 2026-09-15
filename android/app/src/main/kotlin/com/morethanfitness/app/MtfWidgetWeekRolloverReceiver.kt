@@ -1,4 +1,4 @@
-package com.example.mtf_app
+package com.morethanfitness.app
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -70,10 +70,10 @@ class MtfWidgetWeekRolloverReceiver : BroadcastReceiver() {
 
     companion object {
         private const val ACTION_WEEK_ROLLOVER =
-            "com.example.mtf_app.action.WEEK_ROLLOVER"
+            "com.morethanfitness.app.action.WEEK_ROLLOVER"
 
         private const val ACTION_WIDGET_TIME_REFRESH =
-            "com.example.mtf_app.action.WIDGET_TIME_REFRESH"
+            "com.morethanfitness.app.action.WIDGET_TIME_REFRESH"
 
         private const val REQUEST_CODE_WEEK_ROLLOVER = 880401
         private const val REQUEST_CODE_TIME_REFRESH = 880402
