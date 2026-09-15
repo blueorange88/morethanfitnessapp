@@ -1,7 +1,7 @@
 name: mtf_app
 description: A new Flutter project.
 publish_to: 'none'
-version: 1.0.5+23
+version: 1.0.5+24
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
