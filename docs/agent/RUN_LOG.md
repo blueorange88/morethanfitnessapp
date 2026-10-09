@@ -3109,3 +3109,80 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 사용자가 PROD 회원권 정지 실기기 미검증 상태(Semi-Pro tier 계정 부재)를 알고도 "지금 바로 PROD 배포"를 명시적으로 선택해, `npx firebase deploy --only functions --project more-than-fitness-f6adb --non-interactive`로 PROD Cloud Functions를 배포했다. DEV와 동일한 소스이며 lint/build 통과, 전체 함수(신규 `updateManagedMemberMembershipPause` 포함) 생성/갱신 성공. Artifact Registry cleanup policy 미설정 경고만 있었고(과금 정책 안내일 뿐 기능과 무관) 배포 자체는 완전히 성공했다.
 - 이번 배포는 Cloud Functions(백엔드)에만 해당하며, `updatePersonalTrainerProfile`의 `intro` allowlist 추가는 기존 클라이언트가 그 필드를 보내지 않으므로 하위호환이다. 신규 `updateManagedMemberMembershipPause`도 기존 PROD 앱이 아직 호출하지 않는 추가 함수라 기존 동작에 영향이 없다. 다만 **PROD Play Store에 실제 배포된 앱은 아직 이번 클라이언트 수정(intro 저장, 새 pause callable 호출)을 포함하지 않으므로, 실사용자가 개선을 체감하려면 별도의 앱 버전 릴리즈(versionCode, AAB, Play Console 업로드)가 필요**하다 — 이번 작업에서는 수행하지 않았다.
 - Firestore Rules 변경, PROD 실회원 데이터 write, migration, Play Console 작업, AAB 생성, commit, push는 이번 작업에서 0건이다.
+
+## 2026-10-08 회원 이름 변경 시 스케줄 미동기화 원인 확인 및 DEV 배포
+
+- 사용자가 "고객카드 이름을 바꿔도 연결된 레슨일정 이름이 안 바뀐다"고 보고했다. 코드 확인 결과 버그가 아니라 미배포 상태였다: `functions/src/managed_members.ts`의 `syncManagedMemberNameToSchedules()`(trainerId+workspaceType+memberId로 schedules를 조회해 `name` 필드를 batch update)와 `updateManagedMemberHandler`의 호출부, 클라이언트 쪽 `PersonalMemberCardSaveService.updateAndVerify()`의 `scheduleNameSyncSucceeded` 검증 로직까지 전부 이미 완성돼 있었다. 다만 이 코드가 들어있는 커밋(`abf7bd6`, 체크포인트)이 지난 9월 8일 마지막 functions 배포 이후에 합류된 거라, 실제 서버에는 아직 반영되지 않은 상태였다. 동기화 실패는 catch에서 조용히 `scheduleNameSyncSucceeded: false`로만 떨어지고 클라이언트도 이를 에러로 취급하지 않아 사용자에게는 아무 알림 없이 조용히 실패했다.
+- 코드 수정은 하지 않았다 — 이미 존재하는 로직을 배포만 했다.
+- `functions/` `npm run build`·`npm run lint` 통과 후, 사용자 승인 하에 `npx firebase deploy --only functions --project more-than-fitness-dev-mft --non-interactive`로 DEV Cloud Functions를 배포했다. `updateManagedMember` 포함 전체 함수 업데이트 성공. Artifact Registry cleanup policy 미설정 경고만 있었다(과금 안내, 기능 무관).
+- 실기기 최종 검증(회원 이름 변경 후 연결된 스케줄 이름이 실제로 바뀌는지)은 아직 하지 않았다 — 사용자 테스트 필요.
+- PROD 배포, Firestore Rules 변경, 코드 수정, commit, push는 이번 작업에서 0건이다. PROD 배포는 DEV 검증 후 별도 승인 필요.
+
+## 2026-10-09 회원카드 등록 tier gate 제거
+
+- 원인: 회원카드 등록이 Beginner에서 막혀 있었다. 클라이언트는 `AppTierFeatureKey.customerCardCreate`(`requiredRank: 1`)로 Home 최근 회원 CTA·전체 등록·회원관리 신규 등록·회원카드 직접 진입을 막았고, 서버 `createManagedMember`도 `tierRank < 1`이면 `amateur_required`로 거부했다.
+- 수정: `app_tier_access_service.dart`의 `customerCardCreate.requiredRank`를 0으로 낮추고 설명 문구를 교체했다. `functions/src/managed_members.ts`에서 `amateur_required` 검사와 미사용 `tierRank` import를 제거했다. Beginner 승급 안내(`aifc_upgrade_chat_sheet.dart`)의 "회원카드 기능이 열려요" 문구는 실제로 Amateur에서 열리는 회원 그룹 기준으로 바꿨다.
+- 유지한 제한: 누적 10명 이후 계정 연결·선생님 정보 완료 요구, 회원 그룹(Amateur)·태그(Semi-Pro) 제한.
+- 테스트: `personal_feature_gate_test.dart`를 모든 등급 허용으로 바꿨고, Emulator `managed_members_limit.test.cjs`의 Beginner 거부 시나리오를 "Beginner 생성 허용(created:true, tier Beginner)"으로 바꿨다. 전체 Flutter 782개, member Emulator 78개, personal taxonomy Emulator 25개 통과. `functions` build·lint 통과. Emulator는 PATH에 없는 Java 대신 Android Studio JBR(JDK 21)을 해당 명령에만 PATH로 지정해 실행했다.
+- 미작업: DEV·PROD Functions 배포, 앱 빌드·설치, commit, push는 수행하지 않았다. 서버 배포 전에는 기존 서버가 여전히 `amateur_required`를 반환하므로 실기기 확인이 불가능하다.
+- 개인정보 동의 조사: `TrainingLogConsentPage`는 회원 등록 시가 아니라 회원별 레슨일지를 처음 열 때 한 번 받는다(서명 계약서가 있으면 생략). 동의 정책 변경은 AGENTS.md상 사람 승인이 필요해 코드는 바꾸지 않았다.
+
+## 2026-10-09 레슨일지 개인정보 동의 우회 제거와 신규 회원카드 동의 안내
+
+- 원인 1: `resolvePersonalTrainingLogMemberAccess()`가 서명 계약서(`contractSigned`, `contractSignedAt`, `lessonSync.contractId`)가 있으면 동의 없이 레슨일지를 허용했다. 계약서 코드에는 개인정보·건강정보 동의 문구가 없고 `contract_page.dart`도 "개인정보동의는 레슨일지를 열 때 별도로 받을 수 있어요"라고 안내해, 건강 메모가 들어가는 레슨일지가 동의 없이 열릴 수 있었다(개인정보 보호법 제23조 민감정보 별도 동의).
+- 원인 2: 저장 전 신규 회원카드(Personal·`!_isEditMode`)에서 동의서를 열면 아직 `members` 문서가 없어 `updateManagedMemberConsent`가 실패하고 "동의를 저장하지 못했어요"만 보였다.
+- 수정: 가드는 `trainingLogConsentAgreed == true`일 때만 허용한다. 회원카드 상단 동의 카드는 계약서 서명 회원에도 동의 전까지 표시하고 문구를 "레슨일지를 사용하기 전에 회원의 동의가 필요해요"로 바꿨다. 신규 회원카드에서 동의서를 누르면 저장을 시도하지 않고 필수 항목 안내 토스트와 첫 누락 필드 스크롤, 또는 "회원카드를 먼저 저장하면…" 안내를 보인다. 저장 실패 문구는 "동의서를 저장하지 못했어요. 잠시 후 다시 시도해주세요."로 통일했다.
+- 계약서에 동의 문구를 넣는 대안은 법률 문구 확정이 필요해 하지 않았다.
+- 테스트: 가드 단위 테스트를 "계약서는 동의를 대신하지 않는다"로 바꾸고, 신규 카드 가드·`_hideTopActionCards`·실패 문구 검증을 추가했다. 전체 Flutter 통과.
+- 남은 위험: 동의서 한 장이 일반정보와 건강정보를 함께 다룬다(제23조는 별도 동의 요구). 서버(`finalizePersonalTrainingLog`)는 동의를 검사하지 않아 클라이언트 가드만 있다. 이미 계약서로만 레슨일지를 쓰던 회원은 다음 진입 때 동의서를 한 번 받는다.
+- 미작업: 빌드·설치, 배포, commit, push.
+
+## 2026-10-09 홈 헤더 "잔여 레슨이 적어요" 오탐 수정
+
+- 원인: `home_page.dart`의 `_homeMoreSenseContexts()`가 `remain >= 0 && remain <= 5`만 보고 `lowSessions` 센스를 만들어, 레슨을 등록하지 않은 회원(총 0회·잔여 0회)도 "잔여 레슨이 적어요"로 표시됐다. 같은 파일의 다른 판정은 `total > 0`을 함께 확인했다.
+- 수정: `sessions.notRegistered`·`lessonsNotRegistered`가 아니고 `total > 0`인 회원에게만 `lowSessions`를 만든다. `home_header_message_engine_test.dart`에 조건 회귀 테스트를 추가했다. 전체 Flutter 통과.
+- 조사만 함(미수정): 레슨계약서 서명 후 회원카드 병합(`_registerClientCardFromContract`)은 계약서 값이 우선하지만, 기존 회원의 잔여 횟수를 계약 총횟수로 덮고 `membership.reregisterCount`·`sessions` 사용 카운터를 0으로 되돌린다. 또 `contract_page.dart`가 `contracts`·`contractCounters`·`members`에 클라이언트로 직접 쓰는데 `firestore.rules`는 이 컬렉션 쓰기를 legacy admin에게만 허용해, Personal 작업공간에서는 저장·병합이 막힐 가능성이 있다(정적 분석, 실기기 미확인).
+
+## 2026-10-09 회원카드 등록 개방 후속 수정 — 그룹 없음 payload의 amateur_required
+
+- 증상: DEV 실기기에서 Beginner가 회원카드를 저장하면 `createManagedMember`가 `AMATEUR_REQUIRED`(failed-precondition)로 실패했다. 클라이언트 gate 로그는 `customerCardCreate ... result=allow`였다.
+- 원인: 앱은 저장할 때 항상 `personalGroupId: null`(그룹 없음)을 보내는데, 서버 `validatePersonalMemberTaxonomyAssignments()`는 `groupProvided`만으로 Amateur를 요구했다. 앞선 Emulator 테스트는 group 필드 없이 호출해 이 경로를 놓쳤다.
+- 수정: 실제 그룹(`groupId != null`)을 지정할 때만 Amateur를 요구한다. 태그는 기존대로 Semi-Pro. Emulator에 "그룹 없음 payload 허용", "실제 그룹 지정은 여전히 Amateur 필요" 시나리오를 추가했고 개수 검사를 80으로 갱신했다. member Emulator 80개, taxonomy Emulator 25개 통과, functions build·lint 통과.
+- DEV Functions 재배포(`createManagedMember`, `updateManagedMember` 포함) 완료. PROD 배포, commit, push는 하지 않았다.
+- 참고: Beginner·Amateur에서 동의서 배너가 안 보이는 것은 기존 설계다(`_hideTopActionCards`가 Semi-Pro 미만 Personal에서 숨김, 레슨일지가 Semi-Pro 기능이기 때문).
+
+## 2026-10-09 회원카드 동의서 배너를 모든 등급에서 표시
+
+- 원인: `_hideTopActionCards`가 Personal에서 Semi-Pro 미만이면 동의서 카드를 숨겼다. 그런데 회원카드의 "인바디 / 건강정보" 섹션은 모든 등급에서 쓸 수 있어, Beginner·Amateur는 건강정보를 입력해도 동의를 받을 곳이 눈에 띄지 않았다(개인정보 보호법 제23조 민감정보 별도 동의). `updateManagedMemberConsent` 서버 함수는 등급을 검사하지 않아 저장에는 문제가 없다.
+- 수정: 동의서 카드를 등급과 무관하게 동의 전까지 표시하고 문구를 "레슨일지·건강정보 입력 전 회원의 동의가 필요해요"로 바꿨다. 테스트에 `_canUseSemiProFeatures` 미포함 검사를 추가했다. 전체 Flutter 783개 통과. DEV Debug APK를 빌드해 Galaxy `R3CX40M6EEM`에 `adb install -r`로 설치했다.
+- 남은 위험: 동의 전에도 건강정보 섹션 입력은 막지 않는다(입력 흐름 변경이라 별도 결정 필요). PROD 배포, commit, push는 하지 않았다.
+
+## 2026-10-09 신규 회원카드 동의서를 저장 전에 받아두고 저장 직후 반영
+
+- 문제: 저장 전 신규 회원카드에는 서버 회원 문서가 없어 동의서를 눌러도 저장할 수 없었고, 동의서 배너가 화면 맨 위에 있어 필수 항목을 채우기 전에도 보였다.
+- 수정: Personal 신규 회원카드에서는 동의서를 서버에 저장하지 않고 화면 상태(`_consentPendingPersist`)로만 받아둔다. 회원 저장(`createAndVerify`) 성공 직후 `PersonalMemberConsentService.update(memberId: result.memberId)`로 반영하고, 실패하면 "회원은 저장했지만 동의서를 저장하지 못했어요"를 안내한다(저장된 회원카드에는 동의 전까지 배너가 남는다). 동의서 배너는 신규 회원카드에서 필수 항목을 모두 채운 뒤 `회원 정보`와 `회원 현황` 섹션 사이에 표시한다. 저장된 회원(수정 모드)은 기존처럼 상단 배너와 즉시 저장이다. 동의서가 저장을 막지는 않는다.
+- 정정: 같은 날 앞선 기록의 "홈 헤더 회귀 테스트 추가"는 `python` 편집이 적용되지 않아(Windows 스토어 stub) 실제로는 들어가지 않았다. 이번에 Edit로 `home_header_message_engine_test.dart`에 추가했다. 이후 일괄 편집은 Node 또는 Edit만 사용한다.
+- 테스트: 신규 카드 pending·저장 직후 반영·배너 위치를 소스 기준으로 검증하는 테스트를 추가했다. 전체 Flutter 785개 통과. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+- 미작업: 레슨/멤버십·건강정보 섹션 자동 접힘·펼침(미정), 건강정보 입력 잠금, PROD 배포, commit, push.
+
+## 2026-10-09 신규 회원카드 섹션 순차 열림
+
+- 요구: 신규 회원카드에서 `레슨 / 멤버십`, `인바디 / 건강정보`를 접어두고, 앞 단계를 작성하면 다음 섹션이 열리기만 한다. 직접 닫은 섹션은 계속 닫혀 있고, 기존 위·아래 펼침 버튼은 그대로 쓴다.
+- 구현: `_updateProgressiveSections()`가 신규(`!_isEditMode`)에서만 동작한다. `회원 현황`에서 레슨 형태를 `미입력`이 아닌 값으로 고르면 `레슨 / 멤버십`을, 레슨 총 횟수가 1 이상이거나 멤버십 시작일을 입력하면 `인바디 / 건강정보`를 한 번 연다(`*_SectionAutoOpened`). 섹션을 사용자가 펼치거나 닫으면(`onExpansionChanged`) `*_SectionTouched`가 켜져 이후 자동으로 열지 않는다. 두 섹션은 key와 `initiallyExpanded`로 열림 상태를 반영해, 화면 밖이라 아직 만들어지지 않은 섹션에도 안전하다. 수정 모드는 기존대로 모두 접힌 채 시작한다.
+- 판단: `회원 현황`은 기본값이 대부분이라 "레슨 형태 선택"을 작성 신호로, `레슨 / 멤버십`은 "레슨 횟수 또는 멤버십 시작일 입력"을 작성 신호로 삼았다.
+- 테스트: 소스 기준 회귀 테스트 추가, 전체 Flutter 786개 통과. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+- 미작업: PROD 배포, commit, push.
+
+## 2026-10-09 회원 현황 첫 줄을 담당 강사 + 회원 등급으로 변경
+
+- 요구: `회원 현황` 첫 줄의 `회원 상태` 드롭다운 자리에 `담당 강사`를 두고, `소속 그룹` 위의 전체 폭 `담당 강사` 칸은 없앤다.
+- 수정: `_memberSetupSection()` 첫 줄을 `[담당 강사 | 회원 등급]`으로 바꾸고 아래 전체 폭 칸과 간격을 제거했다. 같은 `_trainerC` 컨트롤러를 쓰므로 저장 필드(`trainer`)는 그대로다. 줄어든 높이만큼 `clientCardMemberSetupPageHeight` 기본값을 68씩 낮췄다(348→280, 392→324, 462→394; Personal 태그 +120은 유지). 높이 테스트 기대값도 같이 갱신했다.
+- 영향: 카드 안에서 `회원 상태`를 직접 고르는 UI가 사라졌다. Personal은 원래 이 값을 서버에 보내지 않았고(`managementState`가 기준), 헤더 표시는 기존 `_memberStatus` 값을 그대로 쓴다. 기존 legacy 워크스페이스는 카드에서 상태를 바꿀 수 없게 되므로 확인이 필요하다.
+- 검증: `flutter analyze` 오류 0(기존 info/warning만 남음), 전체 Flutter 786개 통과, DEV Debug APK 빌드 후 Galaxy `R3CX40M6EEM` 설치 완료. 실기기에서 화면 높이(남는 여백·잘림)는 아직 눈으로 확인하지 못했다.
+- 미작업: PROD 배포, commit, push.
+
+## 2026-10-09 PROD Functions 배포 및 릴리스 AAB 빌드
+
+- 사용자 승인("폰에서 확인했고 prod 배포하자") 후 `npx firebase deploy --only functions --project more-than-fitness-f6adb` 실행. 전 함수 update 성공(`createManagedMember`, `updateManagedMember`, `updateManagedMemberConsent` 등). 마지막 "cleanup policy" 오류는 기존과 같은 무해한 메시지다. Rules·Firestore 데이터·인덱스는 건드리지 않았다.
+- `pubspec.yaml` 버전 1.0.5+24 → 1.0.5+25, `flutter build appbundle --flavor prod -t lib/main_prod.dart --release --no-pub` 성공(75.6MB, `build/app/outputs/bundle/prodRelease/app-prod-release.aab`).
+- 미작업: Play Console 업로드(사용자), commit, push.

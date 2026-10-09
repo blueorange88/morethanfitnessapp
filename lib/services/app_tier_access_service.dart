@@ -514,9 +514,9 @@ class AppTierAccessService {
       case AppTierFeatureKey.customerCardCreate:
         return const AppTierFeatureInfo(
           feature: AppTierFeatureKey.customerCardCreate,
-          requiredRank: 1,
+          requiredRank: 0,
           title: '회원카드 등록',
-          description: '레슨 일정 10개와 선생님 정보 입력을 완료하면 사용할 수 있어요.',
+          description: '회원카드 등록은 모든 등급에서 사용할 수 있어요.',
           shortBenefit: '회원별 회원카드 관리',
           highlightTier: 'amateur',
         );

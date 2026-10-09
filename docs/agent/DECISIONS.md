@@ -15,3 +15,9 @@
 - `personalOwnerUid`가 없는 관리자 claim workspace와 Debug legacy 우회는 기존 `trainer_profile/me` 및 legacy 컬렉션 접근을 유지한다. legacy 데이터를 personal UID에 귀속하거나 backfill하지 않는다.
 - Beginner, 유효 회원 0명, 누적 회원 0명은 시작 목적지를 바꾸는 조건이 아니다. 준비 화면과 닉네임 온보딩을 마치면 동일한 실제 `HomePage`로 진입한다.
 - 홈 햄버거 메뉴는 별도 personal 마이페이지가 아니라 기존 `lib/pages/my_page.dart`의 `MyPage(personalOwnerUid: currentUid)`를 연다. 기존 명함 UI를 유지하면서 personal 프로필 경로만 UID 범위로 연결한다.
+# 2026-10-09 — 회원카드 등록 tier gate 제거 (코드와 문서 불일치 정리)
+
+- `prompts/12_linked_beginner_members_limit.md`의 확정 정책은 "Linked Beginner는 관리 중 실제 회원 최대 10명"이었으나, 이후 코드가 `AppTierFeatureKey.customerCardCreate`를 Amateur(레슨 일정 10개 + 선생님 정보 입력)로 막고 서버 `createManagedMember`도 Beginner를 `amateur_required`로 거부하고 있었다. 코드 동작이 문서와 달랐다.
+- 사용자 결정으로 문서의 원래 정책에 맞춰 회원카드 등록은 모든 등급에서 허용한다. 클라이언트 `customerCardCreate.requiredRank`를 0으로, 서버 `amateur_required` 검사를 제거했다.
+- 유지: 누적 유효 회원 10명 이후에는 계정 연결과 선생님 정보 완료가 필요하다(`enforceBeyondBeginnerThreshold`). 회원 그룹은 Amateur, 태그는 Semi-Pro 제한을 그대로 둔다.
+- 남은 불일치: `aifc_tier_guide_chat_sheet.dart`의 "Amateur는 회원카드와 …" 등 등급 소개 문구는 아직 회원카드를 Amateur 기능처럼 설명한다. 등급별 가치 문구는 제품 결정이 필요해 이번에 바꾸지 않았다.

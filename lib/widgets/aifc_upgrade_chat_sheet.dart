@@ -77,7 +77,7 @@ class _AifcUpgradeChatSheetState extends State<AifcUpgradeChatSheet>
   String get _nextTierFeature {
     switch (_tier) {
       case AppTier.beginner:
-        return '회원카드 기능이 열려요';
+        return '회원 그룹 기능이 열려요';
       case AppTier.amateur:
         return '계약서 작성 기능이 열려요';
       case AppTier.semiPro:
@@ -90,7 +90,7 @@ class _AifcUpgradeChatSheetState extends State<AifcUpgradeChatSheet>
   String get _mainMessage {
     switch (_tier) {
       case AppTier.beginner:
-        return '$_name 회원카드를 열면 회원 관리가 훨씬 체계적으로 돼요.\n\n'
+        return '$_name 회원을 그룹으로 나누면 회원 관리가 훨씬 체계적으로 돼요.\n\n'
             'Amateur까지 두 가지만 채우면 돼요.';
       case AppTier.amateur:
         return '$_name 계약서로 레슨을 더 단단하게 관리할 수 있어요.\n\n'

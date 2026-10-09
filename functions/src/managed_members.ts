@@ -6,7 +6,6 @@ import {
   evaluateEarnedTier,
   hasLinkedProvider,
   isTrainerProfileComplete,
-  tierRank,
 } from "./tier_qualification.js";
 import {
   applyPersonalMemberTaxonomyUpdate,
@@ -508,12 +507,6 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         }
         if (!duplicateSnapshot.empty) {
           throw new functions.https.HttpsError("already-exists", "duplicate_member");
-        }
-        if (tierRank(profile.tier) < 1) {
-          throw new functions.https.HttpsError(
-            "failed-precondition",
-            "amateur_required",
-          );
         }
         enforceBeyondBeginnerThreshold(profile);
         await validatePersonalMemberTaxonomyAssignments({

@@ -1,8 +1,24 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/utils/home_header_message_engine.dart';
 
 void main() {
   final now = DateTime(2026, 7, 20, 10, 0);
+
+  test('잔여 레슨 부족 센스는 레슨이 등록된 회원에게만 만든다', () {
+    final source = File('lib/pages/home_page.dart').readAsStringSync();
+
+    expect(
+      RegExp(
+        r'lessonsRegistered &&\s*total > 0 &&\s*remain != null &&'
+        r'[\s\S]*?HomeMoreSenseKind\.lowSessions',
+      ).hasMatch(source),
+      isTrue,
+    );
+    expect(source, contains("sessions['notRegistered'] != true"));
+    expect(source, contains("data['lessonsNotRegistered'] != true"));
+  });
 
   test('시간대 인사는 nickname에 님을 한 번만 붙인다', () {
     expect(

@@ -127,7 +127,7 @@ void main() {
         isLessonTypeLockedByContract: false,
         isLegacyCurrentLessonType: true,
       ),
-      462,
+      394,
     );
     expect(
       clientCardMemberSetupPageHeight(
@@ -135,7 +135,7 @@ void main() {
         isLessonTypeLockedByContract: false,
         isLegacyCurrentLessonType: false,
       ),
-      392,
+      324,
     );
     expect(
       clientCardMemberSetupPageHeight(
@@ -143,7 +143,7 @@ void main() {
         isLessonTypeLockedByContract: false,
         isLegacyCurrentLessonType: false,
       ),
-      348,
+      280,
     );
   });
 
@@ -155,7 +155,7 @@ void main() {
         isLegacyCurrentLessonType: false,
         includesPersonalTaxonomy: true,
       ),
-      468,
+      400,
     );
     expect(
       clientCardMemberSetupPageHeight(
@@ -164,7 +164,7 @@ void main() {
         isLegacyCurrentLessonType: false,
         includesPersonalTaxonomy: true,
       ),
-      512,
+      444,
     );
     expect(
       clientCardMemberSetupPageHeight(
@@ -173,7 +173,7 @@ void main() {
         isLegacyCurrentLessonType: true,
         includesPersonalTaxonomy: true,
       ),
-      582,
+      514,
     );
   });
 
@@ -226,6 +226,7 @@ void main() {
       find.byKey(const Key('training_log_consent_save_error')),
       findsOneWidget,
     );
+    expect(find.text('동의서를 저장하지 못했어요. 잠시 후 다시 시도해주세요.'), findsOneWidget);
     expect(find.text('동의하고 계속하기'), findsOneWidget);
   });
 
@@ -732,5 +733,29 @@ void main() {
     );
     expect(updateCall, greaterThanOrEqualTo(0));
     expect(updateCall, lessThan(directWrite));
+  });
+
+  test('신규 회원카드는 앞 섹션 작성 시 다음 섹션을 한 번 열기만 하고 사용자가 만진 섹션은 건드리지 않는다', () {
+    final source = File('lib/pages/client_card_page.dart').readAsStringSync();
+
+    final updateBlock =
+        RegExp(
+          r'void _updateProgressiveSections\(\) \{[\s\S]*?\n  \}',
+        ).firstMatch(source)!.group(0)!;
+    expect(updateBlock, contains('if (_isEditMode) return;'));
+    expect(updateBlock, contains('!_lessonSectionTouched'));
+    expect(updateBlock, contains('!_healthSectionTouched'));
+    expect(updateBlock, isNot(contains('= false')));
+
+    expect(source, contains('initiallyExpanded: _lessonSectionAutoOpened'));
+    expect(source, contains('initiallyExpanded: _healthSectionAutoOpened'));
+    expect(
+      source,
+      contains('onExpansionChanged: (_) => _lessonSectionTouched = true'),
+    );
+    expect(
+      source,
+      contains('onExpansionChanged: (_) => _healthSectionTouched = true'),
+    );
   });
 }

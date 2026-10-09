@@ -28,15 +28,7 @@ PersonalTrainingLogMemberAccess resolvePersonalTrainingLogMemberAccess({
     return PersonalTrainingLogMemberAccess.denied;
   }
 
-  final lessonSync =
-      data['lessonSync'] is Map
-          ? Map<String, dynamic>.from(data['lessonSync'] as Map)
-          : const <String, dynamic>{};
-  final hasSignedContract =
-      data['contractSigned'] == true ||
-      data['contractSignedAt'] != null ||
-      (lessonSync['contractId'] ?? '').toString().trim().isNotEmpty;
-  if (hasSignedContract || data['trainingLogConsentAgreed'] == true) {
+  if (data['trainingLogConsentAgreed'] == true) {
     return PersonalTrainingLogMemberAccess.allowed;
   }
   return PersonalTrainingLogMemberAccess.consentRequired;

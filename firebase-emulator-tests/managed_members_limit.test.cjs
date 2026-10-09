@@ -230,8 +230,25 @@ async function main() {
     });
     const beginnerMemberUser = await signUpAnonymous();
     await bootstrapAnonymous(beginnerMemberUser);
-    await scenario("Beginner customer card create is rejected", async () => {
+    await scenario("Beginner customer card create is allowed", async () => {
       const result = await create(beginnerMemberUser, 900);
+      assert.equal(result.body.error, undefined);
+      assert.equal(result.body.result.created, true);
+      assert.equal(result.body.result.tier, "Beginner");
+    });
+    await scenario("Beginner create with no group assignment is allowed", async () => {
+      const result = await callFunction("createManagedMember", beginnerMemberUser.idToken, {
+        ...memberPayload(901),
+        personalGroupId: null,
+      });
+      assert.equal(result.body.error, undefined);
+      assert.equal(result.body.result.created, true);
+    });
+    await scenario("Beginner create with a real group still requires Amateur", async () => {
+      const result = await callFunction("createManagedMember", beginnerMemberUser.idToken, {
+        ...memberPayload(902),
+        personalGroupId: `pg_${"a".repeat(32)}`,
+      });
       assert.equal(result.body.error.message, "amateur_required");
     });
 
@@ -1541,8 +1558,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 78);
-    process.stdout.write("All 78 anonymous member and tier scenarios passed.\n");
+    assert.equal(passed, 80);
+    process.stdout.write("All 80 anonymous member and tier scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

@@ -25,15 +25,8 @@ void main() {
     }
   });
 
-  test('고객카드 신규 등록은 Amateur 이상만 허용한다', () {
-    expect(
-      AppTierAccessService.canUseFeature(
-        access(0),
-        AppTierFeatureKey.customerCardCreate,
-      ),
-      isFalse,
-    );
-    for (var rank = 1; rank <= 5; rank++) {
+  test('회원카드 신규 등록은 Beginner를 포함한 모든 등급에서 허용한다', () {
+    for (var rank = 0; rank <= 5; rank++) {
       expect(
         AppTierAccessService.canUseFeature(
           access(rank),

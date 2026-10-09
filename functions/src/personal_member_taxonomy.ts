@@ -452,7 +452,7 @@ export async function validatePersonalMemberTaxonomyAssignments(args: {
 }): Promise<void> {
   const {transaction, db, uid, tier, assignments} = args;
   if (assignments.groupProvided) {
-    if (tierRank(tier) < 1) {
+    if (assignments.groupId != null && tierRank(tier) < 1) {
       throw new functions.https.HttpsError(
         "failed-precondition",
         "amateur_required",

@@ -42,7 +42,7 @@ void main() {
     }
   });
 
-  test('계약서 없는 미동의 회원만 동의가 필요하다', () {
+  test('미동의 회원은 동의가 필요하고 동의한 회원은 허용한다', () {
     expect(
       resolvePersonalTrainingLogMemberAccess(
         ownerUid: 'owner',
@@ -63,7 +63,7 @@ void main() {
     );
   });
 
-  test('서명 계약의 canonical 표현은 별도 동의 없이 허용한다', () {
+  test('서명된 계약서는 건강정보 동의를 대신하지 않는다', () {
     for (final data in <Map<String, dynamic>>[
       member(contractSigned: true),
       member(contractSignedAt: DateTime(2026, 7, 26)),
@@ -76,9 +76,55 @@ void main() {
           memberExists: true,
           memberData: data,
         ),
-        PersonalTrainingLogMemberAccess.allowed,
+        PersonalTrainingLogMemberAccess.consentRequired,
       );
     }
+    expect(
+      resolvePersonalTrainingLogMemberAccess(
+        ownerUid: 'owner',
+        memberId: 'member',
+        memberExists: true,
+        memberData: member(contractSigned: true, consentAgreed: true),
+      ),
+      PersonalTrainingLogMemberAccess.allowed,
+    );
+  });
+
+  test('저장 전 신규 회원카드는 동의를 먼저 받아두고 회원 저장 직후 서버에 반영한다', () {
+    final source = File('lib/pages/client_card_page.dart').readAsStringSync();
+
+    final openBlock =
+        RegExp(
+          r'Future<void> _openTrainingLogConsent\(\) async \{\s*'
+          r'if \(_isPersonalWorkspace && !_isEditMode\) \{[\s\S]*?return;\s*\}',
+        ).firstMatch(source)!.group(0)!;
+    expect(openBlock, contains('_consentPendingPersist = true'));
+    expect(openBlock, isNot(contains('_persistTrainingLogConsent')));
+
+    expect(
+      RegExp(
+        r'\.createAndVerify\([\s\S]*?\);\s*'
+        r'var consentSaveFailed = false;\s*'
+        r'if \(_consentPendingPersist\) \{[\s\S]*?'
+        r'\.update\(memberId: result\.memberId, agreed: true\)',
+      ).hasMatch(source),
+      isTrue,
+    );
+  });
+
+  test('신규 회원카드 동의서 배너는 필수 항목을 채운 뒤 회원 정보와 회원 현황 사이에 둔다', () {
+    final source = File('lib/pages/client_card_page.dart').readAsStringSync();
+
+    expect(source, contains('bool get _usesInlineConsentCard'));
+    expect(
+      RegExp(
+        r'_basicInfoSection\(\),[\s\S]*?'
+        r'_usesInlineConsentCard &&[\s\S]*?'
+        r'_missingRequiredFields\(\)\.isEmpty\)[\s\S]*?'
+        r'_trainingLogConsentCard\(\),[\s\S]*?_memberSetupSection\(\)',
+      ).hasMatch(source),
+      isTrue,
+    );
   });
 
   test('Personal mutation 진입점은 공통 동의 guard를 사용한다', () {
@@ -215,13 +261,13 @@ void main() {
   test('동의 완료 후 고객카드 완료 표시만 유지하고 초기화는 숨긴다', () {
     final source = File('lib/pages/client_card_page.dart').readAsStringSync();
 
-    expect(
-      RegExp(
-        r'bool get _hideTopActionCards \{[\s\S]*?'
-        r'if \(_contractSigned\) return true;[\s\S]*?return false;',
-      ).hasMatch(source),
-      isTrue,
-    );
+    final hideBlock =
+        RegExp(
+          r'bool get _hideTopActionCards \{[\s\S]*?\n  \}',
+        ).firstMatch(source)!.group(0)!;
+    expect(hideBlock, contains('if (_trainingLogConsentAgreed) return true;'));
+    expect(hideBlock, isNot(contains('_contractSigned')));
+    expect(hideBlock, isNot(contains('_canUseSemiProFeatures')));
     expect(
       source,
       contains("if (_trainingLogConsentAgreed) return '개인정보동의 완료';"),

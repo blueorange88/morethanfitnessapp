@@ -4994,7 +4994,18 @@ class _HomePageState extends State<HomePage>
         data['ptRemaining'];
     final remain =
         rawRemain is num ? rawRemain.toInt() : int.tryParse('$rawRemain');
-    if (remain != null && remain >= 0 && remain <= 5) {
+    final rawTotal =
+        data['totalSessions'] ?? sessions['total'] ?? data['sessionTotal'];
+    final total =
+        rawTotal is num ? rawTotal.toInt() : (int.tryParse('$rawTotal') ?? 0);
+    final lessonsRegistered =
+        sessions['notRegistered'] != true &&
+        data['lessonsNotRegistered'] != true;
+    if (lessonsRegistered &&
+        total > 0 &&
+        remain != null &&
+        remain >= 0 &&
+        remain <= 5) {
       result.add(
         HomeMoreSenseContext(
           key: 'low:$memberId:$remain',

@@ -123,10 +123,10 @@ double clientCardMemberSetupPageHeight({
 }) {
   final baseHeight =
       isLegacyCurrentLessonType
-          ? 462.0
+          ? 394.0
           : isCustomLessonTypeSelected || isLessonTypeLockedByContract
-          ? 392.0
-          : 348.0;
+          ? 324.0
+          : 280.0;
   return baseHeight + (includesPersonalTaxonomy ? 120 : 0);
 }
 
@@ -2319,6 +2319,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
   bool _confirmTalkEnabled = false;
 
   bool _trainingLogConsentAgreed = false;
+  bool _consentPendingPersist = false;
+  bool _lessonSectionAutoOpened = false;
+  bool _healthSectionAutoOpened = false;
+  bool _lessonSectionTouched = false;
+  bool _healthSectionTouched = false;
   DateTime? _trainingLogConsentAgreedAt;
 
   bool _isHeaderExpanded = false;
@@ -6294,6 +6299,24 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Future<void> _openTrainingLogConsent() async {
+    if (_isPersonalWorkspace && !_isEditMode) {
+      final captured = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const TrainingLogConsentPage()),
+      );
+      if (!mounted) return;
+      if (captured == true) {
+        setState(() {
+          _trainingLogConsentAgreed = true;
+          _trainingLogConsentAgreedAt = DateTime.now();
+          _consentPendingPersist = true;
+        });
+        _showAifcToast('동의서를 받았어요. 회원 저장 시 함께 저장돼요.');
+      } else if (captured == false) {
+        _showAifcToast('개인정보 동의가 취소되었어요.');
+      }
+      return;
+    }
+
     final agreed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder:
@@ -6316,7 +6339,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         }
       } catch (_) {
         if (mounted) {
-          _showAifcToast('개인정보 동의를 저장하지 못했어요. 다시 시도해주세요.');
+          _showAifcToast('동의서를 저장하지 못했어요. 잠시 후 다시 시도해주세요.');
         }
       }
     } else if (agreed == false) {
@@ -6344,9 +6367,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       if (!await _guardTierFeature(AppTierFeatureKey.trainingLog)) return;
     }
 
-    if (!_isPersonalWorkspace &&
-        !_contractSigned &&
-        !_trainingLogConsentAgreed) {
+    if (!_isPersonalWorkspace && !_trainingLogConsentAgreed) {
       final agreed = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           builder:
@@ -6372,7 +6393,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         }
       } catch (_) {
         if (mounted) {
-          _showAifcToast('개인정보 동의를 저장하지 못했어요. 다시 시도해주세요.');
+          _showAifcToast('동의서를 저장하지 못했어요. 잠시 후 다시 시도해주세요.');
         }
         return;
       }
@@ -6750,12 +6771,28 @@ class _ClientCardPageState extends State<ClientCardPage> {
           photoUrl: photoUrl,
           trace: trace,
         );
+        var consentSaveFailed = false;
+        if (_consentPendingPersist) {
+          try {
+            await PersonalMemberConsentService(
+              uid: widget.personalOwnerUid!.trim(),
+            ).update(memberId: result.memberId, agreed: true);
+          } catch (_) {
+            consentSaveFailed = true;
+          }
+        }
         await _runPostCanonicalSaveTasks();
         if (!mounted) return;
         if (Navigator.canPop(context)) {
           Navigator.of(context).pop();
         }
         if (!mounted) return;
+        if (consentSaveFailed) {
+          _showAifcToast(
+            '회원은 저장했지만 동의서를 저장하지 못했어요. 회원카드에서 다시 눌러주세요.',
+            duration: const Duration(milliseconds: 3200),
+          );
+        }
         trace.record(
           PersonalMemberSaveTraceStage.uiSuccess,
           PersonalMemberSaveTraceStatus.ok,
@@ -6982,6 +7019,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       _isHeaderExpanded = false;
       _trainingLogConsentAgreed = false;
       _trainingLogConsentAgreedAt = null;
+      _consentPendingPersist = false;
       _autoMilestoneEnabled = true;
       _ddayFollowUpEnabled = true;
       _membershipPauseUsedDays = 0;
@@ -8472,10 +8510,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return '개인정보동의 필요';
   }
 
+  bool get _usesInlineConsentCard => _isPersonalWorkspace && !_isEditMode;
+
   bool get _hideTopActionCards {
     if (!_isClientCardLoaded) return true;
-    if (_isPersonalWorkspace && !_canUseSemiProFeatures) return true;
-    if (_contractSigned) return true;
     if (_trainingLogConsentAgreed) return true;
     return false;
   }
@@ -8773,7 +8811,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     const SizedBox(height: 4),
                     Text(
                       _trainingLogConsentAgreedAt == null
-                          ? '레슨계약서 없이 레슨일지를 사용하는 경우 필요해요'
+                          ? '레슨일지·건강정보 입력 전 회원의 동의가 필요해요'
                           : '동의일 ${DateFormat('yyyy-MM-dd').format(_trainingLogConsentAgreedAt!)}',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -9079,28 +9117,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _memberStatus,
-                              decoration: _inputDecoration('회원 상태'),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: '활성',
-                                  child: Text('활성'),
-                                ),
-                                DropdownMenuItem(
-                                  value: '휴면',
-                                  child: Text('휴면'),
-                                ),
-                                DropdownMenuItem(
-                                  value: '만료',
-                                  child: Text('만료'),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                setState(() {
-                                  _memberStatus = v ?? '활성';
-                                });
-                              },
+                            child: TextFormField(
+                              controller: _trainerC,
+                              decoration: _inputDecoration(
+                                '담당 강사',
+                                hint: '예: 김팀장',
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -9255,14 +9277,6 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _trainerC,
-                        decoration: _inputDecoration(
-                          '담당 강사',
-                          hint: '예: 김팀장 / 민수쌤',
-                        ),
-                      ),
                       const SizedBox(height: 12),
                       if (_isPersonalWorkspace)
                         InkWell(
@@ -9534,10 +9548,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return KeyedSubtree(
       key: _lessonMembershipSectionKey,
       child: _ExpandableSectionCard(
+        key: ValueKey('lesson_section_$_lessonSectionAutoOpened'),
         icon: Icons.inventory_2_outlined,
         title: '레슨 / 멤버십',
         subtitle: '레슨 등록 과 멤버십 등록을 체크합니다',
-        initiallyExpanded: !_isEditMode,
+        initiallyExpanded: _lessonSectionAutoOpened,
+        onExpansionChanged: (_) => _lessonSectionTouched = true,
         child: Column(
           children: [
             Container(
@@ -10695,10 +10711,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final bmi = _calcBmi();
 
     return _ExpandableSectionCard(
+      key: ValueKey('health_section_$_healthSectionAutoOpened'),
       icon: Icons.monitor_heart_outlined,
       title: '인바디 / 건강정보',
       subtitle: '인바디 결과와 신체의 건강 입력을 입력합니다',
-      initiallyExpanded: !_isEditMode,
+      initiallyExpanded: _healthSectionAutoOpened,
+      onExpansionChanged: (_) => _healthSectionTouched = true,
       child: Column(
         children: [
           _buildBodyHealthPagerHeader(),
@@ -11802,6 +11820,26 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return DevClientCardViewport(child: _buildClientCardContent(context));
   }
 
+  void _updateProgressiveSections() {
+    if (_isEditMode) return;
+
+    final lessonTypeChosen =
+        _lessonType.trim().isNotEmpty && _lessonType.trim() != '미입력';
+    if (!_lessonSectionAutoOpened &&
+        !_lessonSectionTouched &&
+        lessonTypeChosen) {
+      _lessonSectionAutoOpened = true;
+    }
+
+    final lessonStepDone =
+        (!_lessonsNotRegistered &&
+            (int.tryParse(_totalSessionsC.text.trim()) ?? 0) > 0) ||
+        (!_membershipNotRegistered && _passStart != null);
+    if (!_healthSectionAutoOpened && !_healthSectionTouched && lessonStepDone) {
+      _healthSectionAutoOpened = true;
+    }
+  }
+
   Widget _buildClientCardContent(BuildContext context) {
     if (!_newCardAccessResolved) {
       return Scaffold(
@@ -11830,6 +11868,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         ),
       );
     }
+    _updateProgressiveSections();
     final gradeTheme = _gradeTheme();
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
@@ -11940,7 +11979,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 100),
                 children: [
-                  if (!_hideTopActionCards) ...[
+                  if (!_hideTopActionCards && !_usesInlineConsentCard) ...[
                     _trainingLogConsentCard(),
                     const SizedBox(height: 8),
                   ],
@@ -11949,6 +11988,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     const SizedBox(height: 8),
                   _basicInfoSection(),
                   const SizedBox(height: 8),
+                  if (_usesInlineConsentCard &&
+                      _isClientCardLoaded &&
+                      _missingRequiredFields().isEmpty) ...[
+                    _trainingLogConsentCard(),
+                    const SizedBox(height: 8),
+                  ],
                   _memberSetupSection(),
                   const SizedBox(height: 8),
                   _lessonMembershipSection(),
@@ -12901,6 +12946,7 @@ class _SectionCard extends StatelessWidget {
 
 class _ExpandableSectionCard extends StatelessWidget {
   const _ExpandableSectionCard({
+    super.key,
     required this.icon,
     required this.title,
     required this.child,
@@ -12908,6 +12954,7 @@ class _ExpandableSectionCard extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.initiallyExpanded = false,
+    this.onExpansionChanged,
   });
 
   final IconData icon;
@@ -12917,6 +12964,7 @@ class _ExpandableSectionCard extends StatelessWidget {
   final ExpansibleController? controller;
   final Widget? trailing;
   final bool initiallyExpanded;
+  final ValueChanged<bool>? onExpansionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -12948,6 +12996,7 @@ class _ExpandableSectionCard extends StatelessWidget {
         child: ExpansionTile(
           controller: controller,
           initiallyExpanded: initiallyExpanded,
+          onExpansionChanged: onExpansionChanged,
           maintainState: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),

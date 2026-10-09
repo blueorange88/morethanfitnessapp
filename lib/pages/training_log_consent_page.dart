@@ -35,7 +35,7 @@ class _TrainingLogConsentPageState extends State<TrainingLogConsentPage> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveError = '동의를 저장하지 못했어요. 입력 상태를 유지했으니 다시 시도해주세요.';
+        _saveError = '동의서를 저장하지 못했어요. 잠시 후 다시 시도해주세요.';
       });
     }
   }
