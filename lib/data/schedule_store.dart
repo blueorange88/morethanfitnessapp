@@ -5,7 +5,7 @@ import '../models/lesson.dart';
 class ScheduleStore {
   static String keyForWeek(int wo) => 'scheduleData_$wo';
   static String keyMinute(String hh) => 'minute-$hh'; // e.g. "minute-06"
-  static const keyRange = 'scheduleRange';            // {"start":6,"end":21}
+  static const keyRange = 'scheduleRange'; // {"start":6,"end":21}
 
   Future<List<Lesson>> loadWeek(int weekOffset) async {
     final prefs = await SharedPreferences.getInstance();
@@ -44,8 +44,12 @@ class ScheduleStore {
     if (raw == null) return (start: 6, end: 21);
     try {
       final m = raw.contains('"') ? raw : '{"start":6,"end":21}';
-      final start = int.parse(RegExp(r'"start":\s*(\d+)').firstMatch(raw)!.group(1)!);
-      final end = int.parse(RegExp(r'"end":\s*(\d+)').firstMatch(raw)!.group(1)!);
+      final start = int.parse(
+        RegExp(r'"start":\s*(\d+)').firstMatch(raw)!.group(1)!,
+      );
+      final end = int.parse(
+        RegExp(r'"end":\s*(\d+)').firstMatch(raw)!.group(1)!,
+      );
       return (start: start, end: end);
     } catch (_) {
       return (start: 6, end: 21);

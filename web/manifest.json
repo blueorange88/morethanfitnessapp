@@ -1,11 +1,11 @@
 {
-    "name": "mtf_app",
-    "short_name": "mtf_app",
+    "name": "모어댄",
+    "short_name": "모어댄",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "MORE THAN, 모어댄",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
