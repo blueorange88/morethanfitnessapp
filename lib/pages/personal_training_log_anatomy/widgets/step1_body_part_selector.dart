@@ -1,84 +1,137 @@
 import 'package:flutter/material.dart';
 import '../models/anatomy_log.dart';
+import '../models/body_map_data.dart';
 import '../models/body_part.dart';
+import '../models/exercise_muscles.dart';
+import 'anatomy_record_sheet.dart';
+import 'body_map_canvas.dart';
 
-class Step1BodyPartSelector extends StatelessWidget {
+/// 1단계: 바디맵에서 부위를 눌러 기록한다. 기록한 부위는 그림에 칠해지고,
+/// 아래에 부위별 기록 목록이 쌓인다.
+class Step1BodyPartSelector extends StatefulWidget {
   const Step1BodyPartSelector({
     super.key,
     required this.selectedView,
-    required this.selectedPartIds,
+    required this.records,
+    required this.partSides,
     required this.onViewChanged,
-    required this.onPartToggled,
+    required this.onPartChipTapped,
+    required this.onMapTapped,
+    required this.onRecordTapped,
     required this.selectedGender,
-    required this.selectedSide,
     required this.onGenderChanged,
-    required this.onSideChanged,
+    required this.singleSide,
+    required this.onSingleSideChanged,
+    this.showGenderChips = true,
   });
 
   final BodyView selectedView;
-  final List<String> selectedPartIds;
+  final List<AnatomyLogRecord> records;
+
+  /// 기록이 있는 부위 id → 좌우(그림에 칠할 상태).
+  final Map<String, BodySide> partSides;
+
   final ValueChanged<BodyView> onViewChanged;
-  final ValueChanged<String> onPartToggled;
+
+  /// 부위 목록(칩)에서 부위를 골랐을 때.
+  final ValueChanged<String> onPartChipTapped;
+
+  /// 바디맵을 눌렀을 때(구역·구역 밖의 몸·기존 점).
+  final ValueChanged<AnatomyMapTap> onMapTapped;
+
+  /// 기록 목록의 한 줄을 눌렀을 때(수정).
+  final ValueChanged<AnatomyLogRecord> onRecordTapped;
   final BodyGender selectedGender;
-  final BodySide selectedSide;
   final ValueChanged<BodyGender> onGenderChanged;
-  final ValueChanged<BodySide> onSideChanged;
+
+  /// true 면 한쪽씩 선택, false 면 좌우를 함께 선택.
+  final bool singleSide;
+  final ValueChanged<bool> onSingleSideChanged;
+
+  /// 회원카드에서 성별을 알면 false(고르지 않고 그 몸으로 보여준다).
+  final bool showGenderChips;
+
+  @override
+  State<Step1BodyPartSelector> createState() => _Step1BodyPartSelectorState();
+}
+
+class _Step1BodyPartSelectorState extends State<Step1BodyPartSelector> {
+  late final Future<BodyMapData> _mapFuture = BodyMapData.load();
 
   @override
   Widget build(BuildContext context) {
-    final visibleParts =
-        kBodyParts.where((p) => p.view == selectedView).toList();
+    final colors = Theme.of(context).colorScheme;
+    final visibleParts = kBodyParts.where(
+      (p) => !p.legacy && p.visibleIn(widget.selectedView),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '바디 기준',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children:
-              BodyGender.values.map((value) {
-                final labels = {
-                  BodyGender.male: '남성',
-                  BodyGender.female: '여성',
-                  BodyGender.unspecified: '미지정',
-                };
-                return ChoiceChip(
-                  label: Text(labels[value]!),
-                  selected: selectedGender == value,
-                  onSelected: (_) => onGenderChanged(value),
-                );
-              }).toList(),
+        if (widget.showGenderChips) ...[
+          const Text(
+            '바디 기준',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children:
+                BodyGender.values.map((value) {
+                  final labels = {
+                    BodyGender.male: '남성',
+                    BodyGender.female: '여성',
+                    BodyGender.unspecified: '미지정',
+                  };
+                  return ChoiceChip(
+                    label: Text(labels[value]!),
+                    selected: widget.selectedGender == value,
+                    onSelected: (_) => widget.onGenderChanged(value),
+                  );
+                }).toList(),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '회원카드에 성별이 없어 직접 골라요. 미지정은 남성 몸으로 보여줘요.',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          children: [
+            const Text(
+              '좌우 선택',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(width: 12),
+            ChoiceChip(
+              key: const ValueKey<String>('side_mode_both'),
+              label: const Text('양쪽 함께'),
+              selected: !widget.singleSide,
+              visualDensity: VisualDensity.compact,
+              onSelected: (_) => widget.onSingleSideChanged(false),
+            ),
+            const SizedBox(width: 6),
+            ChoiceChip(
+              key: const ValueKey<String>('side_mode_single'),
+              label: const Text('한쪽씩'),
+              selected: widget.singleSide,
+              visualDensity: VisualDensity.compact,
+              onSelected: (_) => widget.onSingleSideChanged(true),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children:
-              BodySide.values.map((value) {
-                final labels = {
-                  BodySide.left: '왼쪽',
-                  BodySide.right: '오른쪽',
-                  BodySide.center: '중앙',
-                  BodySide.both: '양측',
-                };
-                return ChoiceChip(
-                  label: Text(labels[value]!),
-                  selected: selectedSide == value,
-                  onSelected: (_) => onSideChanged(value),
-                );
-              }).toList(),
-        ),
-        const SizedBox(height: 20),
         // 앞면 / 뒷면 토글
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
+            color: colors.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
@@ -86,232 +139,258 @@ class Step1BodyPartSelector extends StatelessWidget {
               _ViewToggleChip(
                 label: '앞면',
                 icon: Icons.person_outline_rounded,
-                isSelected: selectedView == BodyView.front,
-                onTap: () => onViewChanged(BodyView.front),
+                isSelected: widget.selectedView == BodyView.front,
+                onTap: () => widget.onViewChanged(BodyView.front),
               ),
               const SizedBox(width: 4),
               _ViewToggleChip(
                 label: '뒷면',
                 icon: Icons.person_rounded,
-                isSelected: selectedView == BodyView.back,
-                onTap: () => onViewChanged(BodyView.back),
+                isSelected: widget.selectedView == BodyView.back,
+                onTap: () => widget.onViewChanged(BodyView.back),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
 
-        // 바디 실루엣 + 부위 표시
-        _BodySilhouette(
-          view: selectedView,
-          selectedPartIds: selectedPartIds,
-          onPartToggled: onPartToggled,
-          parts: visibleParts,
-        ),
-        const SizedBox(height: 20),
-
-        // 부위 칩 선택
-        const Text(
-          '부위 선택',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-            color: Colors.black87,
-          ),
+        // 바디맵
+        FutureBuilder<BodyMapData>(
+          future: _mapFuture,
+          builder: (context, snapshot) {
+            final data = snapshot.data;
+            if (data == null) {
+              return Container(
+                height: 220,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: colors.outline),
+                ),
+                child:
+                    snapshot.hasError
+                        ? Text(
+                          '바디 그림을 불러오지 못했어요. 아래 부위 목록에서 선택해주세요.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        )
+                        : const CircularProgressIndicator(),
+              );
+            }
+            return BodyMapCanvas(
+              scene: data.sceneFor(widget.selectedGender, widget.selectedView),
+              viewBox: data.viewBox,
+              records: widget.records,
+              onTapped: widget.onMapTapped,
+            );
+          },
         ),
         const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children:
-              visibleParts.map((part) {
-                final isSelected = selectedPartIds.contains(part.id);
-                return _PartChip(
-                  label: part.label,
-                  isSelected: isSelected,
-                  onTap: () => onPartToggled(part.id),
-                );
-              }).toList(),
+        const BodyMapLegend(),
+        const SizedBox(height: 8),
+        Text(
+          '부위를 누르면 기록할 수 있어요. 통증·주의·가동성은 누른 자리에 점으로 남아요.',
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: colors.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 16),
 
-        // 선택된 부위 요약
-        if (selectedPartIds.isNotEmpty) ...[
+        // 기록 목록
+        _RecordList(records: widget.records, onTap: widget.onRecordTapped),
+
+        // 그림에서 누르기 어려운 부위를 위한 목록
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            key: const ValueKey<String>('part_list_tile'),
+            tilePadding: EdgeInsets.zero,
+            title: const Text(
+              '부위 목록에서 선택',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+            ),
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            expandedAlignment: Alignment.centerLeft,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final part in visibleParts)
+                    _PartChip(
+                      label: part.label,
+                      isSelected: widget.partSides.containsKey(part.id),
+                      onTap: () => widget.onPartChipTapped(part.id),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecordList extends StatelessWidget {
+  const _RecordList({required this.records, required this.onTap});
+
+  final List<AnatomyLogRecord> records;
+  final ValueChanged<AnatomyLogRecord> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    if (records.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: colors.outline),
+        ),
+        child: Text(
+          '아직 기록이 없어요. 부위를 눌러 오늘 한 운동을 기록해보세요.',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: colors.onSurfaceVariant,
+            height: 1.4,
+          ),
+        ),
+      );
+    }
+
+    // 부위(+좌우)별로 묶어 처음 나온 순서대로 보여준다.
+    final groups = <String, List<AnatomyLogRecord>>{};
+    for (final record in records) {
+      groups
+          .putIfAbsent('${record.bodyPartId}|${record.bodySide.name}', () => [])
+          .add(record);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '기록 ${records.length}개',
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 8),
+        for (final entry in groups.entries)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFEEF2FF),
+              color: colors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFC7D2FE)),
+              border: Border.all(color: colors.outline),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.check_circle_rounded,
-                  size: 16,
-                  color: Color(0xFF4F46E5),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 2),
                   child: Text(
-                    _selectedLabels(),
+                    '${entry.value.first.bodyPartLabel}'
+                    '${bodySideSuffix(entry.value.first.bodySide)}',
                     style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF3730A3),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
+                for (final record in entry.value) ...[
+                  InkWell(
+                    key: ValueKey<String>('record_${record.anatomyLogId}'),
+                    onTap: () => onTap(record),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            anatomyRecordTypeIcon(record.recordType),
+                            size: 16,
+                            color: anatomyRecordTypeColor(
+                              record.recordType,
+                              colors,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _title(record),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            _detail(record),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  record.recordType == AnatomyRecordType.pain
+                                      ? colors.error
+                                      : colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (record.relatedPartIds.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(38, 0, 14, 6),
+                      child: Text(
+                        '함께 쓴 부위 · ${bodyPartLabels(record.relatedPartIds).join(' · ')}',
+                        key: ValueKey<String>('related_${record.anatomyLogId}'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 4),
               ],
             ),
           ),
-        ] else ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: const Text(
-              '오늘 레슨할 부위를 선택해주세요. 여러 부위 동시 선택 가능해요.',
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: Colors.black45,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
 
-  String _selectedLabels() {
-    final selected =
-        kBodyParts
-            .where((p) => selectedPartIds.contains(p.id))
-            .map((p) => p.label)
-            .toList();
-    return '선택된 부위: ${selected.join(' · ')}';
-  }
-}
-
-// 바디 실루엣 (SVG 대신 시각적 레이아웃으로 부위 배치)
-class _BodySilhouette extends StatelessWidget {
-  const _BodySilhouette({
-    required this.view,
-    required this.selectedPartIds,
-    required this.onPartToggled,
-    required this.parts,
-  });
-
-  final BodyView view;
-  final List<String> selectedPartIds;
-  final ValueChanged<String> onPartToggled;
-  final List<BodyPart> parts;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 300,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // 실루엣 배경
-          const Opacity(
-            opacity: 0.06,
-            child: Icon(
-              Icons.accessibility_new_rounded,
-              size: 220,
-              color: Color(0xFF4F46E5),
-            ),
-          ),
-          // 부위 버튼 오버레이
-          ..._buildPartButtons(context),
-        ],
-      ),
-    );
+  static String _title(AnatomyLogRecord record) {
+    if (record.exerciseName.isNotEmpty) return record.exerciseName;
+    return anatomyRecordTypeLabel(record.recordType);
   }
 
-  List<Widget> _buildPartButtons(BuildContext context) {
-    // 앞면 / 뒷면에 따라 부위 위치 정의
-    final positions = view == BodyView.front ? _frontPositions : _backPositions;
-
-    return parts.map((part) {
-      final pos = positions[part.id];
-      if (pos == null) return const SizedBox.shrink();
-
-      final isSelected = selectedPartIds.contains(part.id);
-
-      return Positioned(
-        left: pos.dx,
-        top: pos.dy,
-        child: GestureDetector(
-          onTap: () => onPartToggled(part.id),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color:
-                    isSelected
-                        ? const Color(0xFF4F46E5)
-                        : const Color(0xFFD1D5DB),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Text(
-              part.label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: isSelected ? Colors.white : Colors.black87,
-              ),
-            ),
-          ),
-        ),
-      );
-    }).toList();
+  static String _detail(AnatomyLogRecord record) {
+    if (record.recordType == AnatomyRecordType.pain) {
+      return '${record.painLevel} / 10';
+    }
+    if (record.recordType == AnatomyRecordType.mobility &&
+        record.mobilityResult != null) {
+      return switch (record.mobilityResult!) {
+        MobilityResult.normal => '○ 정상',
+        MobilityResult.mild => '△ 보상',
+        MobilityResult.severe => '× 제한',
+      };
+    }
+    if (record.sets.isNotEmpty) return anatomySetsSummary(record.sets);
+    return record.memo;
   }
-
-  // 앞면 부위 위치 (300px 높이 기준)
-  static const Map<String, Offset> _frontPositions = {
-    'chest': Offset(110, 60),
-    'shoulder': Offset(30, 55),
-    'biceps': Offset(18, 100),
-    'abs': Offset(110, 120),
-    'quad': Offset(85, 190),
-    'adductor': Offset(130, 195),
-  };
-
-  // 뒷면 부위 위치
-  static const Map<String, Offset> _backPositions = {
-    'trapezius': Offset(100, 45),
-    'lat': Offset(35, 90),
-    'triceps': Offset(15, 100),
-    'lower_back': Offset(100, 135),
-    'glute': Offset(95, 185),
-    'hamstring': Offset(85, 225),
-    'calf': Offset(110, 265),
-  };
 }
 
 class _ViewToggleChip extends StatelessWidget {
@@ -329,6 +408,9 @@ class _ViewToggleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final foreground =
+        isSelected ? colors.primary : colors.onSurface.withValues(alpha: 0.5);
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -337,7 +419,7 @@ class _ViewToggleChip extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
+            color: isSelected ? colors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             boxShadow:
                 isSelected
@@ -353,24 +435,14 @@ class _ViewToggleChip extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color:
-                    isSelected
-                        ? const Color(0xFF4F46E5)
-                        : const Color(0xFF9CA3AF),
-              ),
+              Icon(icon, size: 16, color: foreground),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color:
-                      isSelected
-                          ? const Color(0xFF4F46E5)
-                          : const Color(0xFF9CA3AF),
+                  color: foreground,
                 ),
               ),
             ],
@@ -394,6 +466,7 @@ class _PartChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
@@ -401,26 +474,18 @@ class _PartChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
+          color: isSelected ? colors.primary : colors.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color:
-                isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE5E7EB),
+            color: isSelected ? colors.primary : colors.outline,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? colors.onPrimary : colors.onSurface,
           ),
         ),
       ),

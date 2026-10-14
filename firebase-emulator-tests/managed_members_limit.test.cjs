@@ -1229,6 +1229,316 @@ async function main() {
         ["그룹레슨", "발레핏", "자이로토닉"],
       );
     });
+    await scenario("custom exercises are normalized and replaced as a whole", async () => {
+      const saved = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {customExercises: {"하체": ["  힙   힌지 ", "데드 버그"], "목/어깨": ["월슬라이드"], "코어": []}},
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      let profile = await profileData(env, owner.localId);
+      assert.deepEqual(profile.customExercises, {
+        "하체": ["힙 힌지", "데드 버그"],
+        "목/어깨": ["월슬라이드"],
+      });
+      const replaced = await callFunction(
+        "updatePersonalTrainerProfile",
+        owner.idToken,
+        {customExercises: {"하체": ["힙 힌지"]}},
+      );
+      assert.equal(replaced.status, 200, JSON.stringify(replaced.body));
+      profile = await profileData(env, owner.localId);
+      assert.deepEqual(profile.customExercises, {"하체": ["힙 힌지"]});
+    });
+    await scenario("invalid custom exercises are rejected", async () => {
+      const invalidPayloads = [
+        ["하체"],
+        {"하체": "힙 힌지"},
+        {"하체": ["힙 힌지", "힙  힌지"]},
+        {"하체": ["가".repeat(41)]},
+        {"하체": Array.from({length: 31}, (_, index) => "운동" + index)},
+        {"": ["힙 힌지"]},
+      ];
+      for (const payload of invalidPayloads) {
+        const result = await callFunction(
+          "updatePersonalTrainerProfile",
+          owner.idToken,
+          {customExercises: payload},
+        );
+        assert.equal(
+          result.body.error.status,
+          "INVALID_ARGUMENT",
+          JSON.stringify(payload),
+        );
+      }
+    });
+    const healthSample = {
+      inbodyNotProvided: false,
+      diseaseHistory: "허리 디스크",
+      medicineHistory: "없음",
+      inbody: {
+        heightCm: 168.5,
+        weightKg: 62.3,
+        bodyFatPct: 24.1,
+        skeletalMuscleKg: 24.8,
+        bodyFatKg: 15,
+        bmi: 21.9,
+      },
+      inbodyMeasuredAt: "2026-10-01",
+      femaleCondition: {
+        enabled: true,
+        lastStartAt: "2026-09-20",
+        cycleDays: 30,
+        memo: "주기 규칙적",
+      },
+    };
+    await scenario("member health is saved on update and replaced as a whole", async () => {
+      const saved = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, health: healthSample},
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const data = (await getDoc(doc(admin.firestore(), "members", firstId))).data();
+        assert.equal(data.health.diseaseHistory, "허리 디스크");
+        assert.equal(data.health.inbody.heightCm, 168.5);
+        assert.equal(data.health.inbody.bmi, 21.9);
+        assert.equal(data.health.inbodyMeasuredAt.toDate().toISOString().slice(0, 10), "2026-10-01");
+        assert.equal(data.health.femaleCondition.enabled, true);
+        assert.equal(data.health.femaleCondition.cycleDays, 30);
+        assert.equal(data.name !== undefined, true);
+      });
+      const replaced = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, health: {inbodyNotProvided: true, inbody: null, diseaseHistory: ""}},
+      );
+      assert.equal(replaced.status, 200, JSON.stringify(replaced.body));
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const data = (await getDoc(doc(admin.firestore(), "members", firstId))).data();
+        assert.equal(data.health.inbodyNotProvided, true);
+        assert.equal(data.health.inbody, null);
+        assert.equal(data.health.diseaseHistory, "");
+        assert.equal(data.health.medicineHistory, undefined);
+        assert.equal(data.health.femaleCondition, undefined);
+      });
+    });
+    await scenario("update without health keeps the stored health", async () => {
+      const updated = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, note: "건강정보 없이 수정"},
+      );
+      assert.equal(updated.status, 200, JSON.stringify(updated.body));
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const data = (await getDoc(doc(admin.firestore(), "members", firstId))).data();
+        assert.equal(data.note, "건강정보 없이 수정");
+        assert.equal(data.health.inbodyNotProvided, true);
+      });
+    });
+    await scenario("invalid member health is rejected", async () => {
+      const invalidPayloads = [
+        {unknownKey: 1},
+        {inbody: {heightCm: -1}},
+        {inbody: {weightKg: 9999}},
+        {inbody: {bodyFatPct: "24"}},
+        {inbody: {secret: 1}},
+        {diseaseHistory: "가".repeat(501)},
+        {inbodyNotProvided: "yes"},
+        {inbodyMeasuredAt: "2026-13-40"},
+        {femaleCondition: {cycleDays: 5}},
+        {femaleCondition: {enabled: "yes"}},
+        "text",
+      ];
+      for (const health of invalidPayloads) {
+        const result = await callFunction(
+          "updateManagedMember",
+          owner.idToken,
+          {memberId: firstId, health},
+        );
+        assert.equal(
+          result.body.error.status,
+          "INVALID_ARGUMENT",
+          JSON.stringify(health),
+        );
+      }
+    });
+    await scenario("another trainer cannot write health to the owner member", async () => {
+      const result = await callFunction(
+        "updateManagedMember",
+        deleteOwner.idToken,
+        {memberId: firstId, health: healthSample},
+      );
+      assert.equal(result.body.error.status, "PERMISSION_DENIED");
+    });
+    await scenario("member create stores the health payload", async () => {
+      const created = await callFunction(
+        "createManagedMember",
+        legacyOwner.idToken,
+        {...memberPayload(777, "010"), health: healthSample},
+      );
+      assert.equal(created.status, 200, JSON.stringify(created.body));
+      await env.withSecurityRulesDisabled(async (admin) => {
+        const data = (
+          await getDoc(doc(admin.firestore(), "members", created.body.result.memberId))
+        ).data();
+        assert.equal(data.health.inbody.weightKg, 62.3);
+        assert.equal(data.health.diseaseHistory, "허리 디스크");
+      });
+    });
+    const readHealth = async (memberId) => {
+      let data;
+      await env.withSecurityRulesDisabled(async (admin) => {
+        data = (await getDoc(doc(admin.firestore(), "members", memberId))).data();
+      });
+      return data.health;
+    };
+    const dateOf = (timestamp) => timestamp.toDate().toISOString().slice(0, 10);
+    await scenario("inbody record updates the latest values and history", async () => {
+      const recorded = await callFunction(
+        "recordManagedMemberInbody",
+        owner.idToken,
+        {
+          memberId: firstId,
+          measuredAt: "2025-10-01",
+          heightCm: 170,
+          weightKg: 65,
+          bodyFatPct: 24.5,
+          skeletalMuscleKg: 25.1,
+          bodyFatKg: 15.9,
+          source: "scan",
+          memberConfirmed: true,
+        },
+      );
+      assert.equal(recorded.status, 200, JSON.stringify(recorded.body));
+      assert.equal(recorded.body.result.historyCount, 1);
+      const health = await readHealth(firstId);
+      assert.equal(health.inbodyNotProvided, false);
+      assert.equal(health.inbody.heightCm, 170);
+      assert.equal(health.inbody.bmi, 22.49);
+      assert.equal(dateOf(health.inbodyMeasuredAt), "2025-10-01");
+      assert.equal(health.inbodyHistory.length, 1);
+      assert.equal(health.inbodyHistory[0].source, "scan");
+      assert.equal(health.inbodyHistory[0].memberConfirmed, true);
+      assert.equal(health.inbodyHistory[0].bmi, 22.49);
+    });
+    await scenario("a later partial record keeps earlier values and sorts the history", async () => {
+      const recorded = await callFunction(
+        "recordManagedMemberInbody",
+        owner.idToken,
+        {memberId: firstId, measuredAt: "2025-11-01", weightKg: 63.4},
+      );
+      assert.equal(recorded.status, 200, JSON.stringify(recorded.body));
+      const health = await readHealth(firstId);
+      assert.equal(health.inbody.heightCm, 170);
+      assert.equal(health.inbody.weightKg, 63.4);
+      assert.equal(health.inbody.bodyFatPct, 24.5);
+      assert.equal(health.inbody.bmi, 21.94);
+      assert.equal(dateOf(health.inbodyMeasuredAt), "2025-11-01");
+      assert.deepEqual(
+        health.inbodyHistory.map((item) => dateOf(item.measuredAt)),
+        ["2025-10-01", "2025-11-01"],
+      );
+      assert.equal(health.inbodyHistory[1].source, "manual");
+      assert.equal(health.inbodyHistory[1].bmi, 21.94);
+    });
+    await scenario("recording the same date again replaces that entry", async () => {
+      const recorded = await callFunction(
+        "recordManagedMemberInbody",
+        owner.idToken,
+        {memberId: firstId, measuredAt: "2025-10-01", weightKg: 64.2},
+      );
+      assert.equal(recorded.status, 200, JSON.stringify(recorded.body));
+      assert.equal(recorded.body.result.historyCount, 2);
+      const health = await readHealth(firstId);
+      const first = health.inbodyHistory.find(
+        (item) => dateOf(item.measuredAt) === "2025-10-01",
+      );
+      assert.equal(first.weightKg, 64.2);
+      assert.equal(first.skeletalMuscleKg, undefined);
+    });
+    await scenario("card health replace keeps the inbody history", async () => {
+      const saved = await callFunction(
+        "updateManagedMember",
+        owner.idToken,
+        {memberId: firstId, health: {diseaseHistory: "카드에서 수정"}},
+      );
+      assert.equal(saved.status, 200, JSON.stringify(saved.body));
+      const health = await readHealth(firstId);
+      assert.equal(health.diseaseHistory, "카드에서 수정");
+      assert.equal(health.inbody, undefined);
+      assert.equal(health.inbodyHistory.length, 2);
+    });
+    await scenario("invalid inbody records are rejected", async () => {
+      const base = {memberId: firstId, measuredAt: "2025-12-01", weightKg: 60};
+      const invalidPayloads = [
+        {memberId: firstId, weightKg: 60},
+        {...base, measuredAt: "2999-01-01"},
+        {...base, measuredAt: "2025-13-45"},
+        {memberId: firstId, measuredAt: "2025-12-01"},
+        {...base, weightKg: 0},
+        {...base, weightKg: -5},
+        {...base, weightKg: 9999},
+        {...base, heightCm: "170"},
+        {...base, source: "camera"},
+        {...base, memberConfirmed: "yes"},
+        {...base, unknownKey: 1},
+        {...base, bmi: 22},
+      ];
+      for (const payload of invalidPayloads) {
+        const result = await callFunction(
+          "recordManagedMemberInbody",
+          owner.idToken,
+          payload,
+        );
+        assert.equal(
+          result.body.error.status,
+          "INVALID_ARGUMENT",
+          JSON.stringify(payload),
+        );
+      }
+    });
+    await scenario("inbody record is owner scoped", async () => {
+      const other = await callFunction(
+        "recordManagedMemberInbody",
+        deleteOwner.idToken,
+        {memberId: firstId, measuredAt: "2025-12-01", weightKg: 60},
+      );
+      assert.equal(other.body.error.status, "PERMISSION_DENIED");
+      const missing = await callFunction(
+        "recordManagedMemberInbody",
+        owner.idToken,
+        {memberId: "missing-member", measuredAt: "2025-12-01", weightKg: 60},
+      );
+      assert.equal(missing.body.error.status, "NOT_FOUND");
+    });
+    await scenario("inbody history keeps only the latest 60 entries", async () => {
+      const created = await callFunction(
+        "createManagedMember",
+        legacyOwner.idToken,
+        memberPayload(778, "010"),
+      );
+      assert.equal(created.status, 200, JSON.stringify(created.body));
+      const memberId = created.body.result.memberId;
+      for (let index = 0; index < 62; index += 1) {
+        const date = new Date(Date.UTC(2025, 0, 1 + index));
+        const recorded = await callFunction(
+          "recordManagedMemberInbody",
+          legacyOwner.idToken,
+          {
+            memberId,
+            measuredAt: date.toISOString().slice(0, 10),
+            weightKg: 50 + index / 10,
+          },
+        );
+        assert.equal(recorded.status, 200, JSON.stringify(recorded.body));
+      }
+      const health = await readHealth(memberId);
+      assert.equal(health.inbodyHistory.length, 60);
+      assert.equal(dateOf(health.inbodyHistory[0].measuredAt), "2025-01-03");
+      assert.equal(dateOf(health.inbodyHistory[59].measuredAt), "2025-03-03");
+    });
     await scenario("anonymous owner can read only own member", async () => {
       const db = context(env, owner.localId, true).firestore();
       await assertSucceeds(getDoc(doc(db, "members", firstId)));
@@ -1558,8 +1868,8 @@ async function main() {
       });
     }
 
-    assert.equal(passed, 80);
-    process.stdout.write("All 80 anonymous member and tier scenarios passed.\n");
+    assert.equal(passed, 94);
+    process.stdout.write("All 94 anonymous member and tier scenarios passed.\n");
   } finally {
     await env.cleanup();
   }

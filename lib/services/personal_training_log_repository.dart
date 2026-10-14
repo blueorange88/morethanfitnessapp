@@ -118,6 +118,7 @@ class PersonalTrainingLogRepository {
       'status': PersonalTrainingLogStatus.draft,
       'source': draft.source,
       'memo': draft.memo.trim(),
+      if (draft.details != null) 'details': draft.details,
     });
     return lessonLogId;
   }
@@ -150,6 +151,7 @@ class PersonalTrainingLogRepository {
       'endAt': draft.endAt,
       'lessonType': draft.lessonType.trim(),
       'memo': draft.memo.trim(),
+      if (draft.details != null) 'details': draft.details,
     });
   }
 
@@ -379,6 +381,10 @@ class FirebasePersonalTrainingLogDataSource
       status: (data['status'] ?? '').toString(),
       source: (data['source'] ?? '').toString(),
       memo: (data['memo'] ?? '').toString(),
+      details:
+          data['details'] is Map
+              ? Map<String, dynamic>.from(data['details'] as Map)
+              : null,
       deductionApplied: data['deductionApplied'] == true,
       createdAt: data['createdAt'] == null ? null : date(data['createdAt']),
       updatedAt: data['updatedAt'] == null ? null : date(data['updatedAt']),

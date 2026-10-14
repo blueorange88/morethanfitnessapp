@@ -66,11 +66,11 @@ class HomeSingleLessonTimeDialog {
       return '${tempHour.toString().padLeft(2, '0')}:${tempMinute.toString().padLeft(2, '0')}';
     }
 
-    void syncInputsFromPickedTime() {
+    void syncInputsFromPickedTime({bool animateWheels = true}) {
       hourTextController.text = tempHour.toString().padLeft(2, '0');
       minuteTextController.text = tempMinute.toString().padLeft(2, '0');
 
-      if (!useKeyboard) {
+      if (!useKeyboard && animateWheels) {
         hourWheelController.animateToItem(
           tempHour,
           duration: const Duration(milliseconds: 260),
@@ -295,7 +295,9 @@ class HomeSingleLessonTimeDialog {
                                       onChanged: (idx) {
                                         localSetState(() {
                                           tempHour = idx;
-                                          syncInputsFromPickedTime();
+                                          syncInputsFromPickedTime(
+                                            animateWheels: false,
+                                          );
                                         });
                                       },
                                     ),
@@ -328,7 +330,9 @@ class HomeSingleLessonTimeDialog {
                                       onChanged: (idx) {
                                         localSetState(() {
                                           tempMinute = validMinutes[idx];
-                                          syncInputsFromPickedTime();
+                                          syncInputsFromPickedTime(
+                                            animateWheels: false,
+                                          );
                                         });
                                       },
                                     ),

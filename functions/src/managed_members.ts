@@ -136,6 +136,99 @@ function nullableCalendarDate(
   return Timestamp.fromDate(date);
 }
 
+const HEALTH_NUMBER_LIMITS: Record<string, number> = {
+  heightCm: 300,
+  weightKg: 500,
+  bodyFatPct: 100,
+  skeletalMuscleKg: 300,
+  bodyFatKg: 500,
+  bmi: 100,
+};
+
+function healthInvalid(): functions.https.HttpsError {
+  return new functions.https.HttpsError("invalid-argument", "health_invalid");
+}
+
+function healthNumber(value: unknown, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) ||
+      value < 0 || value > max) {
+    throw healthInvalid();
+  }
+  return Math.round(value * 100) / 100;
+}
+
+function healthText(
+  data: Record<string, unknown>,
+  key: string,
+  maxLength: number,
+): string {
+  const raw = data[key];
+  if (raw == null) return "";
+  if (typeof raw !== "string") throw healthInvalid();
+  const value = raw.trim();
+  if (value.length > maxLength) throw healthInvalid();
+  return value;
+}
+
+// 회원카드 건강정보(인바디·병력·복용약·여성 컨디션)를 검증·정규화한다. 통째로 교체된다.
+function normalizeMemberHealth(raw: unknown): Record<string, unknown> {
+  const data = objectData(raw);
+  allowOnly(data, [
+    "inbodyNotProvided", "diseaseHistory", "medicineHistory", "inbody",
+    "inbodyMeasuredAt", "femaleCondition",
+  ]);
+  const result: Record<string, unknown> = {};
+  if (hasOwn(data, "inbodyNotProvided")) {
+    if (typeof data.inbodyNotProvided !== "boolean") throw healthInvalid();
+    result.inbodyNotProvided = data.inbodyNotProvided;
+  }
+  if (hasOwn(data, "diseaseHistory")) {
+    result.diseaseHistory = healthText(data, "diseaseHistory", 500);
+  }
+  if (hasOwn(data, "medicineHistory")) {
+    result.medicineHistory = healthText(data, "medicineHistory", 500);
+  }
+  if (hasOwn(data, "inbody")) {
+    if (data.inbody == null) {
+      result.inbody = null;
+    } else {
+      const inbody = objectData(data.inbody);
+      allowOnly(inbody, Object.keys(HEALTH_NUMBER_LIMITS));
+      const values: Record<string, number> = {};
+      for (const key of Object.keys(HEALTH_NUMBER_LIMITS)) {
+        if (hasOwn(inbody, key)) {
+          values[key] = healthNumber(inbody[key], HEALTH_NUMBER_LIMITS[key]);
+        }
+      }
+      result.inbody = values;
+    }
+  }
+  if (hasOwn(data, "inbodyMeasuredAt")) {
+    result.inbodyMeasuredAt = nullableCalendarDate(data, "inbodyMeasuredAt");
+  }
+  if (hasOwn(data, "femaleCondition")) {
+    const condition = objectData(data.femaleCondition);
+    allowOnly(condition, ["enabled", "lastStartAt", "cycleDays", "memo"]);
+    if (hasOwn(condition, "enabled") && typeof condition.enabled !== "boolean") {
+      throw healthInvalid();
+    }
+    const cycleDays = hasOwn(condition, "cycleDays") ?
+      Number(condition.cycleDays) : 28;
+    if (!Number.isInteger(cycleDays) || cycleDays < 10 || cycleDays > 90) {
+      throw healthInvalid();
+    }
+    result.femaleCondition = {
+      enabled: condition.enabled === true,
+      lastStartAt: hasOwn(condition, "lastStartAt") ?
+        nullableCalendarDate(condition, "lastStartAt") : null,
+      cycleDays,
+      memo: healthText(condition, "memo", 300),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+  }
+  return result;
+}
+
 function managedMembershipUpdate(value: unknown): ManagedMembershipUpdate {
   const data = objectData(value);
   allowOnly(data, [
@@ -412,7 +505,7 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
       "activityRegion", "registrationMode", "nextReservationAt",
       "membershipGrade", "membership", "anniversaryDate", "anniversaryLabel",
-      "personalGroupId", "personalTagIds", "photoUrl",
+      "personalGroupId", "personalTagIds", "photoUrl", "health",
     ]);
     const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
     const registrationMode = optionalString(data, "registrationMode") || "full";
@@ -459,6 +552,8 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
     }
     const photoUrl = hasOwn(data, "photoUrl") ?
       nullableString(data, "photoUrl") : null;
+    const health = hasOwn(data, "health") ?
+      normalizeMemberHealth(data.health) : null;
     if (photoUrl != null) {
       requireMaxLength(photoUrl, "photoUrl", 2048);
     }
@@ -556,6 +651,7 @@ export function createManagedMemberHandler(db: FirebaseFirestore.Firestore) {
           ...(anniversaryDate == null ? {} : {anniversaryDate}),
           ...(anniversaryLabel == null ? {} : {anniversaryLabel}),
           ...(photoUrl == null ? {} : {photoUrl}),
+          ...(health == null ? {} : {health}),
           note,
           ...(nextReservationAt == null ? {} : {nextReservationAt}),
           ...personalMemberTaxonomyCreateFields(taxonomyAssignments),
@@ -713,7 +809,7 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
       "postal", "address", "detailAddress", "lessonType",
       "totalSessions", "remainingSessions", "lessonsNotRegistered",
       "activityRegion", "membership", "anniversaryDate", "anniversaryLabel",
-      "membershipGrade", "photoUrl",
+      "membershipGrade", "photoUrl", "health",
       "personalGroupId", "personalTagIds",
     ]);
     const taxonomyAssignments = parsePersonalMemberTaxonomyAssignments(data);
@@ -744,6 +840,8 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
     }
     const photoUrl = hasOwn(data, "photoUrl") ?
       nullableString(data, "photoUrl") : undefined;
+    const health = hasOwn(data, "health") ?
+      normalizeMemberHealth(data.health) : undefined;
     if (photoUrl != null) {
       requireMaxLength(photoUrl, "photoUrl", 2048);
     }
@@ -878,6 +976,14 @@ export function updateManagedMemberHandler(db: FirebaseFirestore.Firestore) {
         }
         if (photoUrl !== undefined) {
           canonicalUpdate.photoUrl = photoUrl;
+        }
+        if (health !== undefined) {
+          // 카드 저장은 건강정보를 통째로 교체하지만, 인바디 이력은 따로 쌓이는 값이라 유지한다.
+          const previousHealth = current.health as
+            Record<string, unknown> | undefined;
+          const previousHistory = previousHealth?.inbodyHistory;
+          canonicalUpdate.health = Array.isArray(previousHistory) ?
+            {...health, inbodyHistory: previousHistory} : health;
         }
         applyPersonalMemberTaxonomyUpdate(
           canonicalUpdate,
@@ -1019,6 +1125,164 @@ function daysBetweenKoreaDates(from: Date, to: Date): number {
   return Math.round((to.getTime() - from.getTime()) / MS_PER_DAY);
 }
 
+type MembershipResumeBuild = {
+  update: Record<string, unknown>;
+  result: {
+    actualPauseDays: number;
+    plannedDays: number;
+    nextPassEndMillis: number | null;
+    nextDays: number | null;
+  };
+};
+
+// 정지 중인 회원을 재개할 때 바뀌는 값을 계산한다. 직접 재개(client_card)와
+// 정지 기간이 끝난 회원의 자동 재개(auto_resume)가 같은 계산을 쓴다.
+// 실제 정지 일수는 예정 일수를 넘지 않고, 종료일은 그만큼만 연장된다.
+export function buildMembershipResume(
+  current: Record<string, unknown>,
+  now: Timestamp,
+  source: string,
+): MembershipResumeBuild {
+  const membership = (current.membership &&
+    typeof current.membership === "object") ?
+    current.membership as Record<string, unknown> : {};
+  const nowServer = FieldValue.serverTimestamp();
+  const today = koreaDateOnly(now.toDate());
+  const pausedAtRaw = membership.pausedAt ?? current.membershipPausedAt;
+  const pausedAt = pausedAtRaw instanceof Timestamp ?
+    koreaDateOnly(pausedAtRaw.toDate()) : today;
+  const elapsedRaw = daysBetweenKoreaDates(pausedAt, today);
+  const elapsedDays = elapsedRaw <= 0 ? 1 : elapsedRaw;
+  const plannedDaysRaw =
+    typeof membership.pausePlannedDays === "number" ?
+      membership.pausePlannedDays :
+      typeof current.membershipPausePlannedDays === "number" ?
+        current.membershipPausePlannedDays : 0;
+  const plannedDays = plannedDaysRaw <= 0 ? elapsedDays : plannedDaysRaw;
+  const actualPauseDays =
+    elapsedDays > plannedDays ? plannedDays : elapsedDays;
+  const endAtRaw = membership.endAt;
+  const passEnd = endAtRaw instanceof Timestamp ?
+    endAtRaw.toDate() : null;
+  let nextPassEndTimestamp: Timestamp | null = null;
+  let nextDaysValue: number | null = null;
+  if (passEnd != null) {
+    const passEndDateOnly = koreaDateOnly(passEnd);
+    const nextPassEnd = new Date(
+      passEndDateOnly.getTime() + actualPauseDays * MS_PER_DAY,
+    );
+    nextPassEndTimestamp = Timestamp.fromDate(nextPassEnd);
+    const startAtRaw = membership.startAt;
+    if (startAtRaw instanceof Timestamp) {
+      const startDateOnly = koreaDateOnly(startAtRaw.toDate());
+      nextDaysValue =
+        daysBetweenKoreaDates(startDateOnly, nextPassEnd) + 1;
+    }
+  }
+  const pauseUsedDaysCurrent =
+    typeof membership.pauseUsedDays === "number" ?
+      membership.pauseUsedDays :
+      typeof current.membershipPauseUsedDays === "number" ?
+        current.membershipPauseUsedDays : 0;
+  const nextPauseUsedDays = pauseUsedDaysCurrent + actualPauseDays;
+  const update: Record<string, unknown> = {
+    "memberStatus": "활성",
+    "membershipStatus": "active",
+    "membership.status": "active",
+    "membership.resumedAt": nowServer,
+    "membership.pauseActualDays": actualPauseDays,
+    "membership.lastPauseActualDays": actualPauseDays,
+    "membership.pauseUsedDays": nextPauseUsedDays,
+    "membership.updatedAt": nowServer,
+    ...(nextPassEndTimestamp != null ?
+      {"membership.endAt": nextPassEndTimestamp} : {}),
+    ...(nextDaysValue != null ?
+      {"membership.days": nextDaysValue} : {}),
+    ...(nextPassEndTimestamp != null ?
+      {membershipResumeExtendedEndAt: nextPassEndTimestamp} : {}),
+    "membershipPauseActualDays": actualPauseDays,
+    "membershipPauseUsedDays": nextPauseUsedDays,
+    "membershipPauseHistory": FieldValue.arrayUnion({
+      type: "resume",
+      at: now,
+      actualDays: actualPauseDays,
+      plannedDays: plannedDays,
+      ...(nextPassEndTimestamp != null ?
+        {extendedEndAt: nextPassEndTimestamp} : {}),
+      source,
+    }),
+    "updatedAt": nowServer,
+  };
+  return {
+    update,
+    result: {
+      actualPauseDays,
+      plannedDays,
+      nextPassEndMillis: nextPassEndTimestamp?.toMillis() ?? null,
+      nextDays: nextDaysValue,
+    },
+  };
+}
+
+// 정지 중이고 재개 예정일(한국 날짜)이 오늘이거나 지난 개인 워크스페이스 회원인지.
+function isDuePausedPersonalMember(
+  data: Record<string, unknown>,
+  today: Date,
+): boolean {
+  if (data.workspaceType !== "personal") return false;
+  const membership = (data.membership &&
+    typeof data.membership === "object") ?
+    data.membership as Record<string, unknown> : {};
+  const paused = membership.status === "paused" ||
+    data.membershipStatus === "paused";
+  if (!paused) return false;
+  const dueRaw = membership.resumeDueAt ?? data.membershipResumeDueAt;
+  if (!(dueRaw instanceof Timestamp)) return false;
+  return koreaDateOnly(dueRaw.toDate()).getTime() <= today.getTime();
+}
+
+// 정지 기간이 끝난 회원을 자동으로 재개한다(매일 예약 실행). 트레이너가 재개를 누르는
+// 것과 같은 계산(buildMembershipResume)을 쓰고, 이력에는 source: "auto_resume"으로
+// 남는다. 한 회원이 실패해도 나머지는 계속 처리한다.
+export async function resumeDuePausedMemberships(
+  db: FirebaseFirestore.Firestore,
+  nowDate: Date = new Date(),
+): Promise<{checked: number; resumed: number; skipped: number}> {
+  const now = Timestamp.fromDate(nowDate);
+  const today = koreaDateOnly(nowDate);
+  const snapshot = await db.collection("members")
+    .where("membershipStatus", "==", "paused")
+    .get();
+  let resumed = 0;
+  let skipped = 0;
+  for (const doc of snapshot.docs) {
+    if (!isDuePausedPersonalMember(doc.data(), today)) {
+      skipped += 1;
+      continue;
+    }
+    try {
+      const done = await db.runTransaction(async (transaction) => {
+        const fresh = await transaction.get(doc.ref);
+        const current = fresh.data();
+        if (!current || !isDuePausedPersonalMember(current, today)) {
+          return false;
+        }
+        const built = buildMembershipResume(current, now, "auto_resume");
+        transaction.update(doc.ref, built.update);
+        return true;
+      });
+      if (done) resumed += 1; else skipped += 1;
+    } catch (error) {
+      skipped += 1;
+      functions.logger.error("auto_resume_failed", {
+        memberId: doc.id,
+        error: String(error),
+      });
+    }
+  }
+  return {checked: snapshot.size, resumed, skipped};
+}
+
 export function updateManagedMemberMembershipPauseHandler(
   db: FirebaseFirestore.Firestore,
 ) {
@@ -1156,83 +1420,159 @@ export function updateManagedMemberMembershipPauseHandler(
             "not_paused",
           );
         }
-        const pausedAtRaw = membership.pausedAt ?? current.membershipPausedAt;
-        const pausedAt = pausedAtRaw instanceof Timestamp ?
-          koreaDateOnly(pausedAtRaw.toDate()) : today;
-        const elapsedRaw = daysBetweenKoreaDates(pausedAt, today);
-        const elapsedDays = elapsedRaw <= 0 ? 1 : elapsedRaw;
-        const plannedDaysRaw =
-          typeof membership.pausePlannedDays === "number" ?
-            membership.pausePlannedDays :
-            typeof current.membershipPausePlannedDays === "number" ?
-              current.membershipPausePlannedDays : 0;
-        const plannedDays = plannedDaysRaw <= 0 ? elapsedDays : plannedDaysRaw;
-        const actualPauseDays =
-          elapsedDays > plannedDays ? plannedDays : elapsedDays;
-        const endAtRaw = membership.endAt;
-        const passEnd = endAtRaw instanceof Timestamp ?
-          endAtRaw.toDate() : null;
-        let nextPassEndTimestamp: Timestamp | null = null;
-        let nextDaysValue: number | null = null;
-        if (passEnd != null) {
-          const passEndDateOnly = koreaDateOnly(passEnd);
-          const nextPassEnd = new Date(
-            passEndDateOnly.getTime() + actualPauseDays * MS_PER_DAY,
-          );
-          nextPassEndTimestamp = Timestamp.fromDate(nextPassEnd);
-          const startAtRaw = membership.startAt;
-          if (startAtRaw instanceof Timestamp) {
-            const startDateOnly = koreaDateOnly(startAtRaw.toDate());
-            nextDaysValue =
-              daysBetweenKoreaDates(startDateOnly, nextPassEnd) + 1;
-          }
-        }
-        const pauseUsedDaysCurrent =
-          typeof membership.pauseUsedDays === "number" ?
-            membership.pauseUsedDays :
-            typeof current.membershipPauseUsedDays === "number" ?
-              current.membershipPauseUsedDays : 0;
-        const nextPauseUsedDays = pauseUsedDaysCurrent + actualPauseDays;
-        transaction.update(memberRef, {
-          "memberStatus": "활성",
-          "membershipStatus": "active",
-          "membership.status": "active",
-          "membership.resumedAt": nowServer,
-          "membership.pauseActualDays": actualPauseDays,
-          "membership.lastPauseActualDays": actualPauseDays,
-          "membership.pauseUsedDays": nextPauseUsedDays,
-          "membership.updatedAt": nowServer,
-          ...(nextPassEndTimestamp != null ?
-            {"membership.endAt": nextPassEndTimestamp} : {}),
-          ...(nextDaysValue != null ?
-            {"membership.days": nextDaysValue} : {}),
-          ...(nextPassEndTimestamp != null ?
-            {membershipResumeExtendedEndAt: nextPassEndTimestamp} : {}),
-          "membershipPauseActualDays": actualPauseDays,
-          "membershipPauseUsedDays": nextPauseUsedDays,
-          "membershipPauseHistory": FieldValue.arrayUnion({
-            type: "resume",
-            at: now,
-            actualDays: actualPauseDays,
-            plannedDays: plannedDays,
-            ...(nextPassEndTimestamp != null ?
-              {extendedEndAt: nextPassEndTimestamp} : {}),
-            source: "client_card",
-          }),
-          "updatedAt": nowServer,
-        });
+        const built = buildMembershipResume(current, now, "client_card");
+        transaction.update(memberRef, built.update);
         return {
           updated: true,
           memberId,
           action,
-          actualPauseDays,
-          plannedDays,
-          nextPassEndMillis: nextPassEndTimestamp?.toMillis() ?? null,
-          nextDays: nextDaysValue,
+          ...built.result,
         };
       });
     } catch (error) {
       return translateError(error, "updateManagedMemberMembershipPause");
+    }
+  };
+}
+
+const INBODY_HISTORY_LIMIT = 60;
+const INBODY_VALUE_KEYS = [
+  "heightCm", "weightKg", "bodyFatPct", "skeletalMuscleKg", "bodyFatKg",
+] as const;
+
+function roundTwo(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+// 레슨 전 체크리스트 등에서 인바디를 측정했을 때 회원 건강정보에 기록한다.
+// 최신 값(health.inbody)을 갱신하고 이력(health.inbodyHistory)에 쌓는다.
+export function recordManagedMemberInbodyHandler(
+  db: FirebaseFirestore.Firestore,
+) {
+  return async (raw: unknown, ctx: functions.https.CallableContext) => {
+    const uid = requireUid(ctx);
+    const data = objectData(raw);
+    allowOnly(data, [
+      "memberId", "measuredAt", ...INBODY_VALUE_KEYS, "source",
+      "memberConfirmed",
+    ]);
+    const memberId = requiredString(data, "memberId");
+    const measuredAt = hasOwn(data, "measuredAt") ?
+      nullableCalendarDate(data, "measuredAt") : null;
+    if (measuredAt == null) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "measured_at_required",
+      );
+    }
+    if (measuredAt.toMillis() > Date.now() + 36 * 60 * 60 * 1000) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "measured_at_future",
+      );
+    }
+    const values: Record<string, number> = {};
+    for (const key of INBODY_VALUE_KEYS) {
+      if (!hasOwn(data, key) || data[key] == null) continue;
+      const value = healthNumber(data[key], HEALTH_NUMBER_LIMITS[key]);
+      if (value <= 0) throw healthInvalid();
+      values[key] = value;
+    }
+    if (Object.keys(values).length === 0) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "inbody_values_required",
+      );
+    }
+    const source = hasOwn(data, "source") ? data.source : "manual";
+    if (source !== "scan" && source !== "manual") {
+      throw new functions.https.HttpsError("invalid-argument", "source_invalid");
+    }
+    if (hasOwn(data, "memberConfirmed") &&
+        typeof data.memberConfirmed !== "boolean") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "member_confirmed_invalid",
+      );
+    }
+    const memberConfirmed = data.memberConfirmed === true;
+    const profileRef = db.collection("trainer_profiles").doc(uid);
+    const memberRef = db.collection("members").doc(memberId);
+    try {
+      return await db.runTransaction(async (transaction) => {
+        const [profileSnapshot, memberSnapshot] = await Promise.all([
+          transaction.get(profileRef),
+          transaction.get(memberRef),
+        ]);
+        validateProfile(uid, profileSnapshot, ctx);
+        if (!memberSnapshot.exists) {
+          throw new functions.https.HttpsError("not-found", "member_not_found");
+        }
+        const current = memberSnapshot.data() ?? {};
+        if (current.memberId !== memberId || current.trainerId !== uid ||
+            current.workspaceType !== "personal") {
+          throw new functions.https.HttpsError(
+            "permission-denied",
+            "member_owner_mismatch",
+          );
+        }
+        if (current.managementState === "deleted" ||
+            current.isDeleted === true ||
+            current.deleteStatus === "pending_delete") {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "member_deleted",
+          );
+        }
+        const health = (current.health ?? {}) as Record<string, unknown>;
+        const previous = (health.inbody ?? {}) as Record<string, unknown>;
+        const latest: Record<string, number> = {};
+        for (const key of INBODY_VALUE_KEYS) {
+          const value = values[key] ?? previous[key];
+          if (typeof value === "number" && value > 0) latest[key] = value;
+        }
+        const bmiOf = (height?: number, weight?: number) =>
+          height && weight ? roundTwo(weight / ((height / 100) ** 2)) : null;
+        const latestBmi = bmiOf(latest.heightCm, latest.weightKg);
+        if (latestBmi != null) (latest as Record<string, number>).bmi = latestBmi;
+
+        const entryBmi = bmiOf(
+          values.heightCm ?? latest.heightCm,
+          values.weightKg,
+        );
+        const entry: Record<string, unknown> = {
+          measuredAt,
+          ...values,
+          ...(entryBmi == null ? {} : {bmi: entryBmi}),
+          source,
+          memberConfirmed,
+          recordedAt: Timestamp.now(),
+        };
+        const existing = Array.isArray(health.inbodyHistory) ?
+          health.inbodyHistory as Record<string, unknown>[] : [];
+        // 같은 날짜를 다시 기록하면 이전 기록을 대체한다.
+        const history = [
+          ...existing.filter((item) => {
+            const at = item.measuredAt as Timestamp | undefined;
+            return at == null || at.toMillis() !== measuredAt.toMillis();
+          }),
+          entry,
+        ].sort((a, b) =>
+          (a.measuredAt as Timestamp).toMillis() -
+          (b.measuredAt as Timestamp).toMillis(),
+        ).slice(-INBODY_HISTORY_LIMIT);
+
+        transaction.update(memberRef, {
+          "health.inbody": latest,
+          "health.inbodyMeasuredAt": measuredAt,
+          "health.inbodyNotProvided": false,
+          "health.inbodyHistory": history,
+          "updatedAt": FieldValue.serverTimestamp(),
+        });
+        return {recorded: true, memberId, historyCount: history.length};
+      });
+    } catch (error) {
+      return translateError(error, "recordManagedMemberInbody");
     }
   };
 }

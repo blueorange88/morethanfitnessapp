@@ -10,7 +10,18 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'personal_training_log_text_voice_page.dart';
 import 'personal_training_log_category_page.dart';
 import 'personal_training_log_pdf_page.dart';
+import 'personal_training_log_anatomy/anatomy_history_page.dart';
 import 'personal_training_log_anatomy/anatomy_page.dart';
+import 'personal_training_log_anatomy/anatomy_trend_page.dart'
+    show anatomyNoteTitle;
+import 'personal_training_log_anatomy/models/anatomy_lesson_summary.dart';
+import 'personal_training_log_anatomy/models/anatomy_log.dart'
+    show AnatomyLogRecord, AnatomyRecordType, MobilityResult;
+import 'personal_training_log_anatomy/models/anatomy_trend.dart'
+    show AnatomyMemberHistory;
+import 'personal_training_log_anatomy/widgets/anatomy_change_card.dart';
+import 'personal_training_log_anatomy/widgets/anatomy_mini_figures.dart';
+import 'personal_training_log_anatomy/widgets/lesson_share_card.dart';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,6 +38,17 @@ import '../services/member_sign_url_service.dart';
 
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
 import '../widgets/personal_training_log_entry_guard.dart';
+import '../models/personal_training_log.dart';
+import '../models/personal_training_log_details.dart';
+import '../services/personal_training_log_repository.dart';
+import '../services/training_log_preferences.dart';
+import '../services/anatomy_exercise_store.dart';
+import '../services/anatomy_history_service.dart';
+import '../services/personal_custom_exercise_service.dart';
+import '../services/inbody_history.dart';
+import '../widgets/inbody_measure_flow.dart';
+import '../widgets/inbody_trend_card.dart';
+import '../widgets/training_log_pre_check.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 
 import '../aifc/core/aifc_chat_sheet.dart';
@@ -96,11 +118,18 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   String _lastTrainerTyped = '';
   String _lastCustomerTyped = '';
   bool _isHeaderInfoExpanded = false;
-  String _logFilter = 'locked';
+  String _logFilter = 'all';
   bool _showMoreLogFilters = false;
   String _searchQuery = '';
   String? _highlightDraftId;
   String? _expandedLogId;
+
+  /// 아나토미 레슨일지 카드에 보여줄 레슨별 요약(운동 이름·통증·주의·가동성). 레슨일지 id가 키.
+  Map<String, AnatomyLessonSummary> _anatomySummaries =
+      const <String, AnatomyLessonSummary>{};
+
+  /// 이 회원의 아나토미 기록 전체(변화 보기 화면용).
+  List<AnatomyLogRecord> _anatomyRecords = const <AnatomyLogRecord>[];
 
   /// 마지막 작성 타입 유지
   String _lastSelectedSessionType = '개인PT';
@@ -108,8 +137,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   /// 달력/빠른 이동용 날짜 필터
   DateTime? _selectedDateFilter;
 
-  /// 샘플 인바디 추이
-  final List<double> _inbodyTrend = [31.5, 31.9, 32.4, 32.8, 33.2];
+  /// 회원 건강정보에 쌓인 인바디 이력(개인 워크스페이스). 기록이 없으면 비어 있다.
+  List<InbodyHistoryPoint> _inbodyHistory = const [];
   final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _logScrollController = ScrollController();
@@ -807,98 +836,16 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
         _resolvePersonalEntryAccess(owner);
       });
     }
-
-    final now = DateTime.now();
-    final d1 = now.subtract(const Duration(days: 18));
-    final d2 = now.subtract(const Duration(days: 14));
-    final d3 = now.subtract(const Duration(days: 11));
-    final d4 = now.subtract(const Duration(days: 8));
-    final d5 = now.subtract(const Duration(days: 5));
-    final d6 = now.subtract(const Duration(days: 2));
-    final d7 = now.subtract(const Duration(days: 1));
-
-    _logs.addAll([
-      _TrainingLogItem(
-        title: '하체 패턴 교정',
-        name: '김유신',
-        time: '09:00',
-        type: '개인PT',
-        memo: '흉추 회전 체크 후 스쿼트 패턴 교정 진행',
-        date: d1,
-        performanceScore: 5.8,
-        inputMethod: 'text',
-        registrationLabel: '재등록 3회차',
-        isRegistrationStart: true,
-        packageCount: 30,
-      ),
-      _TrainingLogItem(
-        title: '자율운동 체크',
-        name: '김유신',
-        time: '19:00',
-        type: '그룹/자율',
-        memo: '플랭크, 데드버그, 밴드 워크 수행 상태 확인',
-        date: d6,
-        performanceScore: 8.1,
-        inputMethod: 'text',
-        sessionStatus: 'service',
-      ),
-      _TrainingLogItem(
-        title: '무릎 부담 조절',
-        name: '김유신',
-        time: '10:00',
-        type: '재활',
-        memo: '선피로 트레이닝으로 무릎 부담 감소 유도',
-        date: d2,
-        performanceScore: 6.2,
-        inputMethod: 'text',
-      ),
-      _TrainingLogItem(
-        title: '코어 안정화',
-        name: '김유신',
-        time: '11:30',
-        type: '필라테스',
-        memo: '호흡 + 코어 연결감 위주로 진행',
-        date: d3,
-        performanceScore: 6.8,
-        inputMethod: 'text',
-      ),
-      _TrainingLogItem(
-        title: '무릎 부담 감소 재확인',
-        name: '김유신',
-        time: '09:20',
-        type: '재활',
-        memo: '무릎 불편감 감소, 런지 깊이 조절하면서 진행',
-        date: d7,
-        performanceScore: 8.5,
-        inputMethod: 'text',
-        sessionStatus: 'no_show',
-      ),
-      _TrainingLogItem(
-        title: '상체 가동성 회복',
-        name: '김유신',
-        time: '07:50',
-        type: '개인PT',
-        memo: 'T-spine 모빌리티와 어깨 움직임 재확인',
-        date: d5,
-        performanceScore: 7.8,
-        inputMethod: 'text',
-      ),
-      _TrainingLogItem(
-        title: '전신 밸런스',
-        name: '김유신',
-        time: '08:30',
-        type: '요가',
-        memo: '고관절 정렬과 좌우 밸런스 중심',
-        date: d4,
-        performanceScore: 7.1,
-        inputMethod: 'text',
-      ),
-    ]);
   }
 
   void _loadTrainingLogDataSources() {
     _loadQuickSignedLogsFromFirestore();
+    if (_isPersonalWorkspace) {
+      _loadFormalLogsFromFirestore();
+      _loadInbodyHistory();
+    }
     _loadAnatomyLogsFromFirestore();
+    _loadAnatomySummaries();
     if (_isPersonalWorkspace) {
       _loadFemaleConditionFromMember();
       return;
@@ -1113,6 +1060,138 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     }
   }
 
+  // 회원 문서의 건강정보에서 인바디 이력을 읽어 헤더 추이에 보여준다.
+  Future<void> _loadInbodyHistory() async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (!_isPersonalWorkspace || memberId.isEmpty) return;
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('members')
+              .doc(memberId)
+              .get();
+      if (!mounted) return;
+      setState(() {
+        _inbodyHistory = parseInbodyHistory(snapshot.data()?['health']);
+      });
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'inbody_history', error: error);
+    }
+  }
+
+  // 헤더의 인바디 입력 아이콘·추이 카드·체크리스트가 같이 쓰는 입구. 개인 워크스페이스는
+  // 새 측정 흐름(본인 확인 + 서버 기록)을, 기존 워크스페이스는 이전 흐름을 연다.
+  Future<void> _openInbodyMeasure() async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (!_isPersonalWorkspace || memberId.isEmpty) {
+      await _showInbodyScanOptions();
+      return;
+    }
+    final result = await runInbodyMeasureFlow(
+      context,
+      memberId: memberId,
+      memberName: (widget.memberName ?? '').trim(),
+    );
+    if (result != null) await _loadInbodyHistory();
+  }
+
+  // 개인 워크스페이스에서 이 화면이 서버에 저장한 일반(formal) 레슨일지를 목록에 불러온다.
+  Future<void> _loadFormalLogsFromFirestore() async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return;
+
+    try {
+      final snapshot = await _trainingLogsQuery(memberId).get();
+      if (!mounted) return;
+
+      final loaded = <_TrainingLogItem>[];
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['source'] != 'formal' || data['schemaVersion'] != 1) continue;
+        loaded.add(_logItemFromFormalDoc(doc.id, data));
+      }
+      if (loaded.isEmpty) return;
+
+      setState(() {
+        final knownDocIds =
+            _logs
+                .map((e) => e.trainingLogDocId.trim())
+                .where((e) => e.isNotEmpty)
+                .toSet();
+        for (final log in loaded) {
+          if (knownDocIds.contains(log.trainingLogDocId)) continue;
+          _logs.add(log);
+        }
+      });
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'formal_logs', error: error);
+    }
+  }
+
+  _TrainingLogItem _logItemFromFormalDoc(
+    String docId,
+    Map<String, dynamic> data,
+  ) {
+    final start = _quickLogDateFromAny(data['startAt']) ?? DateTime.now();
+    final status = (data['status'] ?? '').toString();
+    final memo = (data['memo'] ?? '').toString();
+    final details =
+        data['details'] is Map
+            ? Map<String, dynamic>.from(data['details'] as Map)
+            : null;
+    final hasPreCheck = details != null && details['pre'] is Map;
+    final hasContent =
+        memo.trim().isNotEmpty ||
+        (details != null &&
+            ((details['title'] ?? '').toString().trim().isNotEmpty ||
+                (details['inputMethod'] ?? '').toString().trim().isNotEmpty ||
+                (details['exercises'] is List &&
+                    (details['exercises'] as List).isNotEmpty)));
+    final finalized = PersonalTrainingLogStatus.finalized.contains(status);
+
+    final item = _TrainingLogItem(
+      id: 'formal_$docId',
+      trainingLogDocId: docId,
+      scheduleDocId: (data['scheduleDocId'] ?? '').toString().trim(),
+      title: '레슨일지 작성 전',
+      name:
+          (widget.memberName ?? '').trim().isEmpty
+              ? '회원'
+              : (widget.memberName ?? '').trim(),
+      time: _quickLogTimeText(start),
+      type: (data['lessonType'] ?? '개인PT').toString(),
+      memo: memo,
+      date: DateTime(start.year, start.month, start.day),
+      performanceScore: 0,
+      source: 'formal',
+      sessionStatus: _quickLogStatusToLocalStatus(status),
+      isDraft: !hasContent,
+      locked: finalized,
+      deductionApplied: data['deductionApplied'] == true,
+      confirmCancelled: status == 'confirm_cancelled',
+    );
+    if (details != null) {
+      final flat = editorMapFromPersonalTrainingLogDetails(details);
+      _assignEditorMap(item, {
+        ...flat,
+        'memo': memo,
+        'type': item.type,
+        'name': item.name,
+      });
+    }
+    if (hasContent) {
+      item.draftEntryMode =
+          item.inputMethod == 'category' ? 'category' : 'text';
+    } else {
+      // 레슨 전 체크만 저장된 초안: 작성 전 상태를 유지하고 체크 값만 복원한다.
+      item.title = '레슨일지 작성 전';
+      item.inputMethod = 'text';
+      item.isDraft = true;
+    }
+    item.preCheckDone = hasPreCheck;
+    return item;
+  }
+
   Future<void> _loadAnatomyLogsFromFirestore() async {
     final memberId = (widget.memberId ?? '').trim();
     if (memberId.isEmpty) return;
@@ -1165,6 +1244,97 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     } catch (error) {
       _logFirestoreReadFailure(source: 'anatomy_logs', error: error);
     }
+  }
+
+  /// 이 회원의 아나토미 기록을 한 번에 읽어 레슨별로 나눈다. 못 읽으면 카드는
+  /// 기존처럼 '신체 부위 기록 N개'만 보여준다.
+  Future<void> _loadAnatomySummaries() async {
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return;
+    try {
+      final trainerId = (FirebaseAuth.instance.currentUser?.uid ?? '').trim();
+      if (trainerId.isEmpty) return;
+      final records = await FirestoreAnatomyHistoryStore().loadMemberRecords(
+        trainerId: trainerId,
+        memberId: memberId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _anatomyRecords = records;
+        _anatomySummaries = AnatomyLessonSummary.groupByLesson(records);
+      });
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'anatomy_summaries', error: error);
+    }
+  }
+
+  /// 회원에게 보낼 레슨 요약 이미지 시트(운동 내용만. 통증·주의·가동성은 넣지 않는다).
+  Future<void> _shareAnatomyLesson(_TrainingLogItem log) async {
+    final lessonLogId = _firestoreLogDocIdFromLog(log).trim();
+    final records = shareSafeRecords(
+      _anatomyRecords.where((r) => r.lessonLogId.trim() == lessonLogId),
+    );
+    if (records.isEmpty) {
+      _showSnack('보낼 운동 기록이 없어요.');
+      return;
+    }
+    await showLessonShareSheet(
+      context,
+      dateText: _fmtDotYmd(log.date),
+      timeText: log.time,
+      subtitle: '${_sessionNumberOf(log)}회차 · ${log.name} 님',
+      records: records,
+    );
+  }
+
+  /// 텍스트·음성·카테고리 레슨을 회원에게 보낼 이미지로 만든다(몸 그림 없음).
+  /// 카테고리는 운동 구성(이름, 세트×횟수), 텍스트는 회원 공개 메모(없으면 레슨 내용)를 쓰고
+  /// 내부 메모·통증·레슨 전 체크는 넣지 않는다. 보내기 전에 시트에서 내용을 확인한다.
+  Future<void> _shareTextOrCategoryLesson(_TrainingLogItem log) async {
+    final lines = categoryShareLines(log.exercises);
+    final fallbackNames =
+        log.inputMethod == 'category' && lines.isEmpty
+            ? _extractCategoryExercisesFromMemo(log.memo)
+            : const <String>[];
+    final body = textLessonShareBody(
+      inputMethod: log.inputMethod,
+      publicSummary: log.publicSummary,
+      publicGood: log.publicGood,
+      publicHomeworkNote: log.publicHomeworkNote,
+      publicCaution: log.publicCaution,
+      memo: log.memo,
+    );
+    final shareLines = [
+      ...lines,
+      for (final name in fallbackNames)
+        ShareExerciseLine(name: name, summary: ''),
+    ];
+    if (shareLines.isEmpty && body.isEmpty) {
+      _showSnack('보낼 레슨 내용이 없어요.');
+      return;
+    }
+    await showLessonShareSheet(
+      context,
+      dateText: _fmtDotYmd(log.date),
+      timeText: log.time,
+      subtitle: '${_sessionNumberOf(log)}회차 · ${log.name} 님',
+      lines: shareLines,
+      bodyText: body,
+      notice: '아래 내용이 이미지로 보내져요. 내부 메모·통증 기록은 들어가지 않아요.',
+    );
+  }
+
+  /// 회원의 운동 변화·통증·가동성 기록 화면(아나토미 기록 기준).
+  Future<void> _openAnatomyHistory() {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder:
+            (_) => AnatomyHistoryPage(
+              memberName: widget.memberName ?? '',
+              history: AnatomyMemberHistory(_anatomyRecords),
+            ),
+      ),
+    );
   }
 
   _TrainingLogItem? _findTodayDraft() {
@@ -1361,17 +1531,45 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     if (_searchQuery.isNotEmpty) {
       items =
           items.where((e) {
-            final dateText =
-                '${e.date.year}.${e.date.month.toString().padLeft(2, '0')}.${e.date.day.toString().padLeft(2, '0')}';
-
-            final target =
-                [e.title, e.memo, e.type, dateText].join(' ').toLowerCase();
-
-            return target.contains(_searchQuery);
+            return logSearchMatches(_searchTextFor(e), _searchQuery);
           }).toList();
     }
 
     return items;
+  }
+
+  /// 검색에 쓰는 한 레슨일지의 글자: 제목·메모·종류·날짜에 더해 특이사항 칩, 통증 메모,
+  /// 카테고리 운동 구성, 아나토미 기록(운동·통증·주의·가동성)까지 모은다.
+  String _searchTextFor(_TrainingLogItem e) {
+    final dateText =
+        '${e.date.year}.${e.date.month.toString().padLeft(2, '0')}.${e.date.day.toString().padLeft(2, '0')}';
+    final parts = <String>[
+      e.title,
+      e.memo,
+      e.type,
+      dateText,
+      ...e.issueChips,
+      e.nextLessonCheckpoint,
+      e.preNote,
+      e.prePainDetail,
+      e.duringPainDetail,
+      e.postPainDetail,
+      e.internalMemo,
+      e.publicSummary,
+      e.publicCaution,
+      e.publicHomeworkNote,
+      if (e.prePain == '있음') '통증',
+    ];
+    for (final exercise in e.exercises) {
+      for (final key in const ['main', 'part', 'name', 'note']) {
+        parts.add((exercise[key] ?? '').toString());
+      }
+    }
+    if (e.inputMethod == 'anatomy') {
+      final summary = _anatomySummaries[_firestoreLogDocIdFromLog(e)];
+      if (summary != null) parts.add(summary.searchText);
+    }
+    return parts.join(' ');
   }
 
   List<_TrainingLogItem> _chartLogs() {
@@ -1679,6 +1877,61 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               }
             },
           ),
+    );
+  }
+
+  // 레슨일지 설정: 새 레슨일지에서 레슨 전 체크리스트를 자동으로 열지 정한다(기기 안 저장).
+  Future<void> _openLogSettings() async {
+    final owner = _personalOwnerUid;
+    var autoOpen = await TrainingLogPreferences.autoOpenPreCheck(owner);
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Text(
+                        '레슨일지 설정',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    SwitchListTile(
+                      key: const Key('log_setting_auto_pre_check'),
+                      title: const Text('레슨 전 체크 자동으로 열기'),
+                      subtitle: Text(
+                        autoOpen
+                            ? '새 레슨일지를 만들면 레슨 전 체크리스트가 먼저 열려요.'
+                            : '꺼져 있어요. 레슨 전 체크는 일지 안의 카드에서 직접 열 수 있어요.',
+                      ),
+                      value: autoOpen,
+                      onChanged: (value) async {
+                        setSheetState(() => autoOpen = value);
+                        await TrainingLogPreferences.setAutoOpenPreCheck(
+                          owner,
+                          value,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -2042,8 +2295,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                     reRegistrationLabel: reRegistrationLabel,
                     recentIssue: recentIssue,
                     openingMent: openingMent,
-                    inbodyTrend: _inbodyTrend,
-                    todayRecommendedExercise: _todayRecommendedExercise(),
+                    inbodyPoints: _inbodyHistory,
+                    briefingLastLesson: _briefingLastLesson(),
+                    briefingWarning: _briefingWarning(),
+                    briefingRested: _briefingRested(),
                     initialGoalLabel: headerInitialGoal,
                     goalDdayLabel: headerGoalDday,
                     isExpanded: _isHeaderInfoExpanded,
@@ -2055,8 +2310,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                         _isHeaderInfoExpanded = !_isHeaderInfoExpanded;
                       });
                     },
-                    onInbodyTap: _showInbodyScanOptions,
+                    onInbodyTap: _openInbodyMeasure,
                     onCalendarTap: _openCalendarMenu,
+                    onSettingsTap: _openLogSettings,
+                    anatomyHistory:
+                        _isHeaderInfoExpanded &&
+                                (widget.memberId ?? '').trim().isNotEmpty
+                            ? AnatomyMemberHistory(_anatomyRecords)
+                            : null,
+                    onAnatomyHistoryTap: _openAnatomyHistory,
                   ),
                   Expanded(
                     child: SingleChildScrollView(
@@ -2213,6 +2475,8 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
   Widget _buildLogFilterBar() {
     final chips = <Widget>[
+      _buildFilterChip('전체', 'all'),
+      const SizedBox(width: 8),
       _buildFilterChip('확정완료', 'locked'),
       const SizedBox(width: 8),
       _buildMoreFilterToggleChip(),
@@ -2220,8 +2484,6 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     if (_showMoreLogFilters) {
       chips.addAll([
-        const SizedBox(width: 8),
-        _buildFilterChip('전체', 'all'),
         const SizedBox(width: 8),
         _buildFilterChip('서비스', 'service'),
         const SizedBox(width: 8),
@@ -2549,6 +2811,27 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             registrationStartText: '',
             isHighlighted: _highlightDraftId == log.id,
             isExpanded: _expandedLogId == log.id,
+            anatomySummary:
+                log.inputMethod == 'anatomy' && !log.isDraft
+                    ? _anatomySummaries[_firestoreLogDocIdFromLog(log)]
+                    : null,
+            onShareLesson:
+                log.isDraft
+                    ? null
+                    : log.inputMethod == 'anatomy'
+                    ? () => _shareAnatomyLesson(log)
+                    : (log.inputMethod == 'category' ||
+                        log.inputMethod == 'text' ||
+                        log.inputMethod == 'voice_draft')
+                    ? () => _shareTextOrCategoryLesson(log)
+                    : null,
+            // 아나토미 카드는 탭하면 레슨일지가 열리므로 펼침은 화살표로 따로 한다.
+            onToggleExpand:
+                log.inputMethod == 'anatomy' && !log.isDraft
+                    ? () => setState(() {
+                      _expandedLogId = _expandedLogId == log.id ? null : log.id;
+                    })
+                    : null,
             goalDdayLabel: _goalDdayLabel(),
             femaleConditionVisible: _shouldShowFemaleConditionChip(log.date),
             onFemaleConditionTap: _showFemaleConditionHint,
@@ -2603,7 +2886,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
                     log.publicGood = '';
                     log.publicHomeworkNote = '';
                     log.publicCaution = '';
+                    log.exercises = [];
                   });
+                  await _persistPersonalLogDraft(log);
                 }
 
                 _openDraftEntryPicker(log);
@@ -3663,6 +3948,21 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       return;
     }
 
+    // 회원카드의 성별로 남/여 바디를 고른다. 못 읽으면 아나토미 화면에서 직접 고른다.
+    String? memberGender;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('members')
+          .doc(memberId)
+          .get()
+          // 느려도 아나토미 화면이 열리게 한다(성별은 화면에서 직접 고를 수 있다).
+          .timeout(const Duration(seconds: 3));
+      memberGender = snapshot.data()?['gender']?.toString();
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'anatomy_member_gender', error: error);
+    }
+    if (!mounted) return;
+
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder:
@@ -3674,6 +3974,11 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               lessonType: log.type,
               trainerId: trainerId,
               scheduleDocId: scheduleDocId,
+              memberGender: memberGender,
+              exerciseStore: PersonalAnatomyExerciseStore(
+                PersonalCustomExerciseService(uid: trainerId),
+              ),
+              historyStore: FirestoreAnatomyHistoryStore(),
             ),
       ),
     );
@@ -3686,6 +3991,88 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       log.title = '해부학 레슨일지';
       _highlightDraftId = null;
     });
+    _loadAnatomySummaries();
+  }
+
+  // 레슨 전 체크리스트의 인바디 측정 줄. 회원이 정해진 개인 워크스페이스에서만 연다.
+  Future<String?> Function()? _inbodyMeasureCallback() {
+    final memberId = (widget.memberId ?? '').trim();
+    if (!_isPersonalWorkspace || memberId.isEmpty) return null;
+    return () async {
+      final result = await runInbodyMeasureFlow(
+        context,
+        memberId: memberId,
+        memberName: (widget.memberName ?? '').trim(),
+      );
+      if (result != null) await _loadInbodyHistory();
+      return result?.summary;
+    };
+  }
+
+  // 새 레슨일지는 작성 방식(텍스트·카테고리·PDF·아나토미)과 상관없이 먼저 레슨 전 체크리스트를 연다.
+  // 설정에서 끄면 열지 않는다. 완료하면 서버 초안에도 저장해 어떤 방식으로 쓰든 남는다.
+  Future<void> _runPreCheckForNewLog(_TrainingLogItem log) async {
+    if (!log.isDraft || log.preCheckDone) return;
+    if (log.memo.trim().isNotEmpty || log.exercises.isNotEmpty) return;
+    final enabled = await TrainingLogPreferences.autoOpenPreCheck(
+      _personalOwnerUid,
+    );
+    if (!enabled || !mounted) return;
+
+    final data = TrainingLogPreCheckData(
+      condition: log.preCondition,
+      meal: log.preMeal,
+      sleep: log.preSleep,
+      pain: log.prePain,
+      painDetail: log.prePainDetail,
+      stretching: log.preStretching,
+      note: log.preNote,
+      inbodySummary: log.inbodySummary,
+      issueChips: {...log.issueChips},
+    )..dropImpliedAutoChips();
+    final painC = TextEditingController(text: data.painDetail);
+    final noteC = TextEditingController(text: data.note);
+    final options = <String>[
+      ...kDefaultManualIssueOptions,
+      ...data.issueChips.where(
+        (c) =>
+            !kDefaultManualIssueOptions.contains(c) &&
+            !kAutoIssueNames.contains(c),
+      ),
+    ];
+
+    final done = await showTrainingLogPreCheckDialog(
+      context,
+      memberName: log.name,
+      data: data,
+      painDetailController: painC,
+      noteController: noteC,
+      issueOptions: options,
+      onAddIssue: () async {
+        final value = await showTrainingLogCustomIssueDialog(context);
+        if (value != null && !options.contains(value)) options.add(value);
+        return value;
+      },
+      onMeasureInbody: _inbodyMeasureCallback(),
+      onChanged: () {},
+    );
+    painC.dispose();
+    noteC.dispose();
+    if (!mounted) return;
+
+    setState(() {
+      log.preCondition = data.condition;
+      log.preMeal = data.meal;
+      log.preSleep = data.sleep;
+      log.prePain = data.pain;
+      log.prePainDetail = data.painDetail.trim();
+      log.preStretching = data.stretching;
+      log.preNote = data.note.trim();
+      log.inbodySummary = data.inbodySummary;
+      log.issueChips = data.savedIssueChips;
+      log.preCheckDone = done;
+    });
+    if (done) await _persistPersonalLogDraft(log);
   }
 
   Future<void> _openDraftEntryPicker(_TrainingLogItem log) async {
@@ -3775,6 +4162,9 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       log.draftEntryMode = selected;
     });
 
+    await _runPreCheckForNewLog(log);
+    if (!mounted) return;
+
     if (selected == 'text' || selected == 'category') {
       await _openEditorForDraft(log, forcedMode: selected);
       return;
@@ -3803,70 +4193,155 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     );
   }
 
-  void _applyDraftEditorResult(_TrainingLogItem log, Map<String, dynamic> map) {
+  // 에디터(텍스트·카테고리) 결과 또는 서버 details를 평면 map으로 받아 항목에 채운다.
+  // 키가 없으면 기본값을 쓴다. setState는 호출하는 쪽에서 감싼다.
+  void _assignEditorMap(_TrainingLogItem log, Map<String, dynamic> map) {
     final String title = (map['title'] ?? '').toString().trim();
     final String memo = (map['memo'] ?? '').toString().trim();
     final String type = (map['type'] ?? '개인PT').toString();
 
+    List<String> strings(Object? value) =>
+        ((value as List?) ?? []).map((e) => e.toString()).toList();
+
+    log.title = title.isEmpty ? '레슨일지' : title;
+    log.name =
+        (map['name'] ?? '').toString().trim().isEmpty
+            ? ((widget.memberName ?? '').trim().isEmpty
+                ? '회원 미지정'
+                : (widget.memberName ?? '').trim())
+            : (map['name'] ?? '').toString().trim();
+    log.memo = memo;
+    log.type = type;
+    log.inputMethod = (map['inputMethod'] ?? 'text').toString();
+    log.rawVoiceText = (map['rawVoiceText'] ?? '').toString();
+    log.issueChips = strings(map['issueChips']);
+    log.homeworkStatus = (map['homeworkStatus'] ?? '없음').toString();
+    log.nextLessonCheckpoint =
+        (map['nextLessonCheckpoint'] ?? '').toString().trim();
+
+    log.preCondition = (map['preCondition'] ?? '보통').toString();
+    log.preMeal = (map['preMeal'] ?? '1~3시간 전').toString();
+    log.preNote = (map['preNote'] ?? '').toString().trim();
+    log.preSleep = (map['preSleep'] ?? '보통').toString();
+    log.prePain = (map['prePain'] ?? '없음').toString();
+    log.prePainDetail = (map['prePainDetail'] ?? '').toString().trim();
+    log.preStretching = (map['preStretching'] ?? '안 함').toString();
+
+    log.duringGoals = strings(map['duringGoals']);
+    log.duringFocusParts = strings(map['duringFocusParts']);
+    log.duringReactions = strings(map['duringReactions']);
+    log.duringPainDetail = (map['duringPainDetail'] ?? '').toString().trim();
+    log.cognitiveResponse = (map['cognitiveResponse'] ?? '보통').toString();
+    log.performanceResponse = (map['performanceResponse'] ?? '보통').toString();
+
+    log.postPainChange = (map['postPainChange'] ?? '없음').toString();
+    log.postPainDetail = (map['postPainDetail'] ?? '').toString().trim();
+    log.postPerformance = (map['postPerformance'] ?? '보통').toString();
+    log.postNextAction = (map['postNextAction'] ?? '유지').toString();
+    log.postHomework = (map['postHomework'] ?? '없음').toString();
+
+    log.internalMemo = (map['internalMemo'] ?? '').toString().trim();
+    log.publicSummary = (map['publicSummary'] ?? '').toString().trim();
+    log.publicGood = (map['publicGood'] ?? '').toString().trim();
+    log.publicHomeworkNote =
+        (map['publicHomeworkNote'] ?? '').toString().trim();
+    log.publicCaution = (map['publicCaution'] ?? '').toString().trim();
+    log.exercises = sanitizeLogExercises(map['exercises']);
+  }
+
+  void _applyDraftEditorResult(_TrainingLogItem log, Map<String, dynamic> map) {
     setState(() {
-      log.title = title.isEmpty ? '레슨일지' : title;
-      log.name =
-          (map['name'] ?? '').toString().trim().isEmpty
-              ? ((widget.memberName ?? '').trim().isEmpty
-                  ? '회원 미지정'
-                  : (widget.memberName ?? '').trim())
-              : (map['name'] ?? '').toString().trim();
-      log.memo = memo;
-      log.type = type;
-      log.time = _nowHm();
-      log.inputMethod = (map['inputMethod'] ?? 'text').toString();
-      log.rawVoiceText = (map['rawVoiceText'] ?? '').toString();
-      log.issueChips =
-          ((map['issueChips'] as List?) ?? [])
-              .map((e) => e.toString())
-              .toList();
-      log.homeworkStatus = (map['homeworkStatus'] ?? '없음').toString();
-      log.nextLessonCheckpoint =
-          (map['nextLessonCheckpoint'] ?? '').toString().trim();
-
-      log.preCondition = (map['preCondition'] ?? '보통').toString();
-      log.preMeal = (map['preMeal'] ?? '가볍게 먹음').toString();
-      log.preSleep = (map['preSleep'] ?? '보통').toString();
-      log.prePain = (map['prePain'] ?? '없음').toString();
-      log.prePainDetail = (map['prePainDetail'] ?? '').toString().trim();
-      log.preStretching = (map['preStretching'] ?? '안 함').toString();
-
-      log.duringGoals =
-          ((map['duringGoals'] as List?) ?? [])
-              .map((e) => e.toString())
-              .toList();
-      log.duringFocusParts =
-          ((map['duringFocusParts'] as List?) ?? [])
-              .map((e) => e.toString())
-              .toList();
-      log.duringReactions =
-          ((map['duringReactions'] as List?) ?? [])
-              .map((e) => e.toString())
-              .toList();
-      log.duringPainDetail = (map['duringPainDetail'] ?? '').toString().trim();
-
-      log.postPainChange = (map['postPainChange'] ?? '없음').toString();
-      log.postPainDetail = (map['postPainDetail'] ?? '').toString().trim();
-      log.postPerformance = (map['postPerformance'] ?? '보통').toString();
-      log.postNextAction = (map['postNextAction'] ?? '유지').toString();
-      log.postHomework = (map['postHomework'] ?? '없음').toString();
-
-      log.internalMemo = (map['internalMemo'] ?? '').toString().trim();
-      log.publicSummary = (map['publicSummary'] ?? '').toString().trim();
-      log.publicGood = (map['publicGood'] ?? '').toString().trim();
-      log.publicHomeworkNote =
-          (map['publicHomeworkNote'] ?? '').toString().trim();
-      log.publicCaution = (map['publicCaution'] ?? '').toString().trim();
-
+      _assignEditorMap(log, map);
+      // 서버에 저장된 일지는 처음 저장한 시각을 유지한다.
+      if (log.trainingLogDocId.trim().isEmpty) log.time = _nowHm();
+      log.preCheckDone = map['preCheckConfirmed'] != false;
+      log.inbodySummary = (map['inbodySummary'] ?? '').toString();
       log.isDraft = false;
-      _lastSelectedSessionType = type;
+      _lastSelectedSessionType = log.type;
       _highlightDraftId = null;
     });
+  }
+
+  // 항목을 서버 details 형식으로 바꾼다. 확정 전(초안) 저장에만 쓴다.
+  Map<String, dynamic> _detailsFromLog(_TrainingLogItem log) {
+    return personalTrainingLogDetailsFromEditorMap({
+      'title': log.isDraft || log.title == '레슨일지 작성 전' ? '' : log.title,
+      'inputMethod': log.isDraft ? '' : log.inputMethod,
+      'rawVoiceText': log.rawVoiceText,
+      'issueChips': log.issueChips,
+      'homeworkStatus': log.homeworkStatus,
+      'nextLessonCheckpoint': log.nextLessonCheckpoint,
+      'preCondition': log.preCondition,
+      'preMeal': log.preMeal,
+      'preSleep': log.preSleep,
+      'prePain': log.prePain,
+      'prePainDetail': log.prePainDetail,
+      'preStretching': log.preStretching,
+      'preNote': log.preNote,
+      'duringGoals': log.duringGoals,
+      'duringFocusParts': log.duringFocusParts,
+      'duringReactions': log.duringReactions,
+      'duringPainDetail': log.duringPainDetail,
+      'cognitiveResponse': log.cognitiveResponse,
+      'performanceResponse': log.performanceResponse,
+      'postPainChange': log.postPainChange,
+      'postPainDetail': log.postPainDetail,
+      'postPerformance': log.postPerformance,
+      'postNextAction': log.postNextAction,
+      'postHomework': log.postHomework,
+      'internalMemo': log.internalMemo,
+      'publicSummary': log.publicSummary,
+      'publicGood': log.publicGood,
+      'publicHomeworkNote': log.publicHomeworkNote,
+      'publicCaution': log.publicCaution,
+      'exercises': log.exercises,
+    });
+  }
+
+  // 개인 워크스페이스의 초안 일지를 서버(training_logs)에 만들거나 갱신한다.
+  // 서버에 쓰지 못해도 화면 입력은 유지하고, 다음 저장에서 다시 시도한다.
+  Future<bool> _persistPersonalLogDraft(_TrainingLogItem log) async {
+    if (!_isPersonalWorkspace || log.locked) return true;
+    final memberId = (widget.memberId ?? '').trim();
+    if (memberId.isEmpty) return true;
+
+    String clip(String value, int max) =>
+        value.length <= max ? value : value.substring(0, max);
+
+    final start = _actualLessonDateTime(log);
+    final lessonType = clip(
+      log.type.trim().isEmpty ? '개인PT' : log.type.trim(),
+      40,
+    );
+    final scheduleId = log.scheduleDocId.trim();
+    final draft = PersonalTrainingLogDraft(
+      memberId: memberId,
+      scheduleDocId: scheduleId.isEmpty ? null : scheduleId,
+      lessonDate: DateTime(start.year, start.month, start.day),
+      startAt: start,
+      endAt: start.add(const Duration(minutes: 50)),
+      lessonType: lessonType,
+      memo: clip(log.memo.trim(), 4000),
+      details: _detailsFromLog(log),
+    );
+
+    try {
+      final repository = PersonalTrainingLogRepository.firebase(
+        uid: _personalOwnerUid,
+      );
+      final docId = log.trainingLogDocId.trim();
+      if (docId.isEmpty) {
+        final createdId = await repository.createDraft(draft);
+        if (mounted) setState(() => log.trainingLogDocId = createdId);
+      } else {
+        await repository.autosave(docId, draft);
+      }
+      return true;
+    } catch (error) {
+      _logFirestoreReadFailure(source: 'formal_log_save', error: error);
+      _showSnack('레슨일지를 서버에 저장하지 못했어요. 입력한 내용은 유지했어요.');
+      return false;
+    }
   }
 
   Future<void> _syncSmartAlarmContextFromLog(_TrainingLogItem log) async {
@@ -3942,6 +4417,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
       MaterialPageRoute(
         builder:
             (_) => PersonalTrainingLogTextVoicePage(
+              autoOpenPreCheck: false,
+              onMeasureInbody: _inbodyMeasureCallback(),
+              initialInbodySummary: log.inbodySummary,
+              initialPreCheckConfirmed: log.preCheckDone,
+              initialPrePainDetail: log.prePainDetail,
+              initialDuringPainDetail: log.duringPainDetail,
+              initialPostPainDetail: log.postPainDetail,
+              initialPreNote: log.preNote,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
               initialName: log.name,
               initialSessionLabel: _sessionDisplayText(log),
               initialTitle: log.title == '레슨일지 작성 전' ? '' : log.title,
@@ -3973,12 +4457,14 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
 
     if (result == null || !mounted) return;
 
-    _applyDraftEditorResult(log, result as Map<String, dynamic>);
+    if (result is! Map<String, dynamic>) return;
+    _applyDraftEditorResult(log, result);
+    final saved = await _persistPersonalLogDraft(log);
     await _syncSmartAlarmContextFromLog(log);
     await _requestMoreCareSlotAfterLogSaved();
 
     if (!mounted) return;
-    _showSnack('텍스트 레슨일지가 저장되었어요.');
+    if (saved) _showSnack('텍스트 레슨일지가 저장되었어요.');
   }
 
   Future<void> _openCategoryDraftPage(_TrainingLogItem log) async {
@@ -4011,16 +4497,30 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
               initialPublicGood: log.publicGood,
               initialPublicHomeworkNote: log.publicHomeworkNote,
               initialPublicCaution: log.publicCaution,
+              initialExercises: log.exercises,
+              initialPrePainDetail: log.prePainDetail,
+              initialDuringPainDetail: log.duringPainDetail,
+              initialPostPainDetail: log.postPainDetail,
+              initialPreNote: log.preNote,
+              autoOpenPreCheck: false,
+              onMeasureInbody: _inbodyMeasureCallback(),
+              initialInbodySummary: log.inbodySummary,
+              initialPreCheckConfirmed: log.preCheckDone,
+              initialCognitiveResponse: log.cognitiveResponse,
+              initialPerformanceResponse: log.performanceResponse,
+              personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
             ),
       ),
     );
 
-    _applyDraftEditorResult(log, result as Map<String, dynamic>);
+    if (result is! Map<String, dynamic>) return;
+    _applyDraftEditorResult(log, result);
+    final saved = await _persistPersonalLogDraft(log);
     await _syncSmartAlarmContextFromLog(log);
     await _requestMoreCareSlotAfterLogSaved();
 
     if (!mounted) return;
-    _showSnack('카테고리 레슨일지가 저장되었어요.');
+    if (saved) _showSnack('카테고리 레슨일지가 저장되었어요.');
   }
 
   Future<void> _openEditorForDraft(
@@ -4669,14 +5169,50 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     );
   }
 
-  String _todayRecommendedExercise() {
-    if (_logs.isEmpty) return '추천 운동 없음';
+  /// 브리핑의 `지난 레슨`: 가장 최근에 쓴 레슨일지의 운동(아나토미는 운동 이름을 `/` 로 이은 글).
+  _TrainingLogItem? _briefingLastLog() {
+    for (final log in _logsNewestFirst()) {
+      if (!log.isDraft) return log;
+    }
+    return null;
+  }
 
-    final latest = _logsNewestFirst().first;
-    final summary = _exerciseSummaryFromLog(latest);
+  String _briefingLastLesson() {
+    final last = _briefingLastLog();
+    if (last == null) return '아직 지난 레슨 기록이 없어요';
+    if (last.inputMethod == 'anatomy') {
+      final summary = _anatomySummaries[_firestoreLogDocIdFromLog(last)];
+      if (summary == null) return '아나토미 레슨';
+      return summary.exerciseNames.isEmpty ? '운동 기록 없음' : summary.exerciseLine;
+    }
+    final text = _exerciseSummaryFromLog(last);
+    return text.isEmpty ? '운동 기록 없음' : text;
+  }
 
-    if (summary.isEmpty) return '추천 운동 없음';
-    return summary;
+  /// 지난 레슨에 적어 둔 통증·주의(아나토미 기록 또는 레슨 전·중·후 통증 메모). 없으면 빈 글자.
+  String _briefingWarning() {
+    final last = _briefingLastLog();
+    if (last == null) return '';
+    if (last.inputMethod == 'anatomy') {
+      return _anatomySummaries[_firestoreLogDocIdFromLog(last)]?.reminderText ??
+          '';
+    }
+    final details =
+        [last.prePainDetail, last.duringPainDetail, last.postPainDetail]
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toList();
+    if (details.isNotEmpty) return '통증 ${details.join(', ')}';
+    return last.prePain == '있음' ? '레슨 전 통증이 있었어요' : '';
+  }
+
+  /// 아나토미 기록으로 본 최근 4주 동안 운동하지 않은 큰 부위. 기록이 없으면 빈 글자.
+  String _briefingRested() {
+    if (_anatomyRecords.isEmpty) return '';
+    final history = AnatomyMemberHistory(_anatomyRecords);
+    final rested = history.restedParts();
+    if (rested.isEmpty) return '최근 4주 동안 고르게 운동했어요';
+    return '최근 4주 동안 ${rested.join(' · ')} 운동이 없었어요';
   }
 
   String _exerciseSummaryFromLog(_TrainingLogItem log) {
@@ -4758,20 +5294,26 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Widget _buildTimelineSectionHeader(String text) {
+    const lineColor = Color(0xFFD1D5DB);
+    // 라이트는 기존 회색 글자, 다크는 어두운 배경에서 보이도록 선과 같은 색.
+    final textColor =
+        Theme.of(context).brightness == Brightness.dark
+            ? lineColor
+            : Colors.black54;
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 10),
       child: Row(
         children: [
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.8,
               fontWeight: FontWeight.w900,
-              color: Colors.black54,
+              color: textColor,
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(child: Container(height: 1, color: const Color(0xFFD1D5DB))),
+          Expanded(child: Container(height: 1, color: lineColor)),
         ],
       ),
     );
@@ -4932,8 +5474,10 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
     required this.reRegistrationLabel,
     required this.recentIssue,
     required this.openingMent,
-    required this.inbodyTrend,
-    required this.todayRecommendedExercise,
+    required this.inbodyPoints,
+    required this.briefingLastLesson,
+    required this.briefingWarning,
+    required this.briefingRested,
     required this.initialGoalLabel,
     required this.goalDdayLabel,
     required this.isExpanded,
@@ -4941,6 +5485,9 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
     required this.onToggleExpand,
     required this.onInbodyTap,
     required this.onCalendarTap,
+    required this.onSettingsTap,
+    this.anatomyHistory,
+    this.onAnatomyHistoryTap,
   });
 
   final String title;
@@ -4951,8 +5498,10 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
   final String recentIssue;
   final String reRegistrationLabel;
   final String openingMent;
-  final List<double> inbodyTrend;
-  final String todayRecommendedExercise;
+  final List<InbodyHistoryPoint> inbodyPoints;
+  final String briefingLastLesson;
+  final String briefingWarning;
+  final String briefingRested;
   final String initialGoalLabel;
   final String goalDdayLabel;
 
@@ -4962,6 +5511,13 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
   final VoidCallback onToggleExpand;
   final VoidCallback onInbodyTap;
   final VoidCallback onCalendarTap;
+  final VoidCallback onSettingsTap;
+
+  /// 회원의 아나토미 기록(운동 변화 카드용). 상세 정보가 접혀 있거나 회원이 없으면 null.
+  final AnatomyMemberHistory? anatomyHistory;
+
+  /// 운동 변화 카드의 `자세히 보기`.
+  final VoidCallback? onAnatomyHistoryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -4972,215 +5528,332 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
       isExpanded: isExpanded,
       intensity: 0.52,
       strokeWidth: 1.6,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.only(
-          top: topPadding + 14,
-          left: 16,
-          right: 16,
-          bottom: 18,
-        ),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(32),
+      child: GestureDetector(
+        // 머리말을 아래로 끌어 내리면 MORE 레슨브리핑을 열고, 열려 있을 때 위로 끌어 올리면 닫는다.
+        key: const ValueKey<String>('log_header_swipe'),
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (isExpanded ? velocity < -250 : velocity > 250) onToggleExpand();
+        },
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.only(
+            top: topPadding + 14,
+            left: 16,
+            right: 16,
+            bottom: 18,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(32),
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 44,
-              child: Row(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: onBackTap,
+                      borderRadius: BorderRadius.circular(999),
+                      child: const SizedBox(
+                        width: 42,
+                        height: 42,
+                        child: Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _HeaderTopActionButton(
+                      icon: Icons.document_scanner_outlined,
+                      tooltip: '인바디 입력',
+                      onTap: onInbodyTap,
+                    ),
+                    const SizedBox(width: 8),
+                    _HeaderTopActionButton(
+                      icon: Icons.calendar_month_rounded,
+                      tooltip: '달력 보기',
+                      onTap: onCalendarTap,
+                    ),
+                    const SizedBox(width: 8),
+                    _HeaderTopActionButton(
+                      icon: Icons.settings_outlined,
+                      tooltip: '레슨일지 설정',
+                      onTap: onSettingsTap,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 46),
+                child: Text(
+                  recentIssue.isEmpty ? '최근 이슈' : recentIssue,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.88),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  InkWell(
-                    onTap: onBackTap,
-                    borderRadius: BorderRadius.circular(999),
-                    child: const SizedBox(
-                      width: 42,
-                      height: 42,
-                      child: Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
                   Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    child: _HeaderStatCard(
+                      icon: Icons.flag_circle_outlined,
+                      label: '등록 목표',
+                      value: initialGoalLabel,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _HeaderTopActionButton(
-                    icon: Icons.document_scanner_outlined,
-                    tooltip: '인바디 스캔',
-                    onTap: onInbodyTap,
+                  Expanded(
+                    child: _HeaderStatCard(
+                      icon: Icons.event_available_rounded,
+                      label: '마지막 레슨일',
+                      value: lastLessonText,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  _HeaderTopActionButton(
-                    icon: Icons.calendar_month_rounded,
-                    tooltip: '달력 보기',
-                    onTap: onCalendarTap,
+                  Expanded(
+                    child: _HeaderStatCard(
+                      icon: Icons.flag_outlined,
+                      label: 'D - DAY',
+                      value: goalDdayLabel,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(left: 46),
-              child: Text(
-                recentIssue.isEmpty ? '최근 이슈' : recentIssue,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.88),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _HeaderStatCard(
-                    icon: Icons.flag_circle_outlined,
-                    label: '등록 목표',
-                    value: initialGoalLabel,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _HeaderStatCard(
-                    icon: Icons.event_available_rounded,
-                    label: '마지막 레슨일',
-                    value: lastLessonText,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _HeaderStatCard(
-                    icon: Icons.flag_outlined,
-                    label: 'D - DAY',
-                    value: goalDdayLabel,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: InkWell(
-                onTap: onToggleExpand,
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.10),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  InkWell(
+                    key: const ValueKey<String>('log_header_briefing'),
+                    onTap: onToggleExpand,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white.withOpacity(0.14)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isExpanded ? '레슨 상세 정보 닫기' : '레슨 상세 정보 보기',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.92),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        isExpanded
-                            ? Icons.keyboard_arrow_up_rounded
-                            : Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white.withOpacity(0.92),
-                        size: 18,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'MORE 레슨브리핑',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.92),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            isExpanded
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white.withOpacity(0.92),
+                            size: 18,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              child:
-                  isExpanded
-                      ? Padding(
-                        key: const ValueKey('header_info_open'),
-                        padding: const EdgeInsets.only(top: 12),
-                        child: _HeaderMemberInfoBox(
-                          openingMent: openingMent,
-                          inbodyTrend: inbodyTrend,
-                          todayRecommendedExercise: todayRecommendedExercise,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child:
+                    isExpanded
+                        ? Padding(
+                          key: const ValueKey('header_info_open'),
+                          padding: const EdgeInsets.only(top: 12),
+                          child: _HeaderMemberInfoBox(
+                            openingMent: openingMent,
+                            inbodyPoints: inbodyPoints,
+                            onInbodyMeasure: onInbodyTap,
+                            lastLesson: briefingLastLesson,
+                            warning: briefingWarning,
+                            rested: briefingRested,
+                            anatomyHistory: anatomyHistory,
+                            onAnatomyHistoryTap: onAnatomyHistoryTap,
+                          ),
+                        )
+                        : const SizedBox.shrink(
+                          key: ValueKey('header_info_closed'),
                         ),
-                      )
-                      : const SizedBox.shrink(
-                        key: ValueKey('header_info_closed'),
-                      ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _HeaderMemberInfoBox extends StatelessWidget {
+/// `MORE 레슨브리핑` 패널. 카드가 늘어도 머리말이 길어지지 않게 좌우로 넘겨 보는
+/// 페이지로 나눈다(시작 멘트·추천 운동 / 인바디 추이 / 운동 변화).
+class _HeaderMemberInfoBox extends StatefulWidget {
   const _HeaderMemberInfoBox({
     required this.openingMent,
-    required this.inbodyTrend,
-    required this.todayRecommendedExercise,
+    required this.inbodyPoints,
+    required this.onInbodyMeasure,
+    required this.lastLesson,
+    required this.warning,
+    required this.rested,
+    this.anatomyHistory,
+    this.onAnatomyHistoryTap,
   });
 
   final String openingMent;
-  final List<double> inbodyTrend;
-  final String todayRecommendedExercise;
+  final List<InbodyHistoryPoint> inbodyPoints;
+  final VoidCallback onInbodyMeasure;
+  final String lastLesson;
+  final String warning;
+  final String rested;
+  final AnatomyMemberHistory? anatomyHistory;
+  final VoidCallback? onAnatomyHistoryTap;
+
+  @override
+  State<_HeaderMemberInfoBox> createState() => _HeaderMemberInfoBoxState();
+}
+
+class _HeaderMemberInfoBoxState extends State<_HeaderMemberInfoBox> {
+  static const double _pageHeight = 292;
+
+  final PageController _controller = PageController();
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.14)),
+    final inbodyPoints = widget.inbodyPoints;
+    final history = widget.anatomyHistory;
+    final showChange =
+        history != null &&
+        widget.onAnatomyHistoryTap != null &&
+        !history.isEmpty;
+    final pages = <Widget>[
+      Column(
+        children: [
+          _HeaderMessageCard(
+            title: '다음 레슨 시작 멘트 및 체크포인트',
+            value: widget.openingMent,
+          ),
+          Divider(
+            height: 20,
+            thickness: 1,
+            color: Colors.white.withOpacity(0.14),
+          ),
+          Divider(
+            height: 20,
+            thickness: 1,
+            color: Colors.white.withOpacity(0.14),
+          ),
+          _HeaderMessageCard(title: '지난 레슨', value: widget.lastLesson),
+          if (widget.warning.isNotEmpty)
+            _HeaderMessageCard(
+              key: const ValueKey<String>('briefing_warning'),
+              title: '지난 레슨 통증·주의',
+              value: widget.warning,
+              valueColor: const Color(0xFFFCD34D),
+            ),
+          if (widget.rested.isNotEmpty) ...[
+            Divider(
+              height: 20,
+              thickness: 1,
+              color: Colors.white.withOpacity(0.14),
+            ),
+            _HeaderMessageCard(
+              key: const ValueKey<String>('briefing_rested'),
+              title: '쉬어간 부위',
+              value: widget.rested,
+            ),
+          ],
+        ],
       ),
+      InbodyTrendCard(points: inbodyPoints, onMeasure: widget.onInbodyMeasure),
+      if (showChange)
+        AnatomyChangeCard(
+          history: history,
+          onOpenDetail: widget.onAnatomyHistoryTap!,
+        ),
+    ];
+    final current = _page.clamp(0, pages.length - 1);
+
+    // 상자 없이 머리말 배경 위에 바로 놓는다(페이지 점으로만 구분).
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 6, 2, 0),
       child: Column(
         children: [
-          _HeaderMessageCard(title: '다음 레슨 시작 멘트 및 체크포인트', value: openingMent),
-          const SizedBox(height: 10),
-          _HeaderMessageCard(
-            title: '오늘 추천 운동',
-            value: todayRecommendedExercise,
+          SizedBox(
+            height: _pageHeight,
+            child: PageView(
+              key: const ValueKey<String>('header_info_pages'),
+              controller: _controller,
+              onPageChanged: (index) => setState(() => _page = index),
+              children: [
+                for (final page in pages)
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: page,
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          _MiniTrendCard(
-            title: '인바디 추이',
-            values: inbodyTrend,
-            unitLabel: '최근 인바디',
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < pages.length; i++)
+                Container(
+                  key: ValueKey<String>('header_info_dot_$i'),
+                  width: i == current ? 16 : 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(i == current ? 0.9 : 0.35),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -5233,21 +5906,22 @@ class _HeaderInfoTile extends StatelessWidget {
 }
 
 class _HeaderMessageCard extends StatelessWidget {
-  const _HeaderMessageCard({required this.title, required this.value});
+  const _HeaderMessageCard({
+    super.key,
+    required this.title,
+    required this.value,
+    this.valueColor = Colors.white,
+  });
 
   final String title;
   final String value;
+  final Color valueColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
+      padding: const EdgeInsets.fromLTRB(2, 6, 2, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -5262,76 +5936,11 @@ class _HeaderMessageCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: valueColor,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               height: 1.45,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniTrendCard extends StatelessWidget {
-  const _MiniTrendCard({
-    required this.title,
-    required this.values,
-    required this.unitLabel,
-  });
-
-  final String title;
-  final List<double> values;
-  final String unitLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final last = values.isEmpty ? 0.0 : values.last;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.78),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${last.toStringAsFixed(1)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          Text(
-            unitLabel,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.70),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 52,
-            child: _MiniSparkline(
-              values: values,
-              lineColor: Colors.white,
-              pointColor: Colors.white,
             ),
           ),
         ],
@@ -6421,6 +7030,60 @@ class _ExtractedInbodyData {
   });
 }
 
+/// 카테고리 레슨의 운동 구성(`exercises`)을 공유 이미지 줄로 바꾼다: `이름 / 3세트 × 12회(+2)`.
+List<ShareExerciseLine> categoryShareLines(
+  List<Map<String, dynamic>> exercises,
+) {
+  final lines = <ShareExerciseLine>[];
+  for (final exercise in exercises) {
+    final name = (exercise['name'] ?? '').toString().trim();
+    if (name.isEmpty) continue;
+    final sets = (exercise['sets'] as num?)?.toInt() ?? 0;
+    final reps = (exercise['reps'] as num?)?.toInt() ?? 0;
+    final assist = (exercise['assist'] as num?)?.toInt() ?? 0;
+    final summary =
+        sets > 0 && reps > 0
+            ? '${sets}세트 × ${reps}회${assist > 0 ? '(+$assist)' : ''}'
+            : '';
+    lines.add(ShareExerciseLine(name: name, summary: summary));
+  }
+  return lines;
+}
+
+/// 텍스트·음성 레슨의 공유 글. 회원 공개 메모(요약·잘한 점·숙제·주의)가 있으면 그것만,
+/// 없으면 레슨 내용(메모)을 쓴다. 카테고리 레슨은 글 없이 운동 목록만 보낸다.
+String textLessonShareBody({
+  required String inputMethod,
+  required String publicSummary,
+  required String publicGood,
+  required String publicHomeworkNote,
+  required String publicCaution,
+  required String memo,
+}) {
+  if (inputMethod == 'category') return '';
+  final publicParts =
+      [publicSummary, publicGood, publicHomeworkNote, publicCaution]
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toList();
+  if (publicParts.isNotEmpty) return publicParts.join('\n');
+  return memo.trim();
+}
+
+/// 레슨일지 검색. 검색어를 공백으로 나눠 모두 들어 있으면 찾는다. 공백을 뺀 글자에서도
+/// 찾아서 `무릎통증` 은 `무릎 통증` 을 찾는다.
+bool logSearchMatches(String haystack, String query) {
+  final text = haystack.toLowerCase();
+  final compact = text.replaceAll(RegExp(r'\s+'), '');
+  final tokens = query
+      .toLowerCase()
+      .split(RegExp(r'\s+'))
+      .where((token) => token.isNotEmpty);
+  return tokens.every(
+    (token) => text.contains(token) || compact.contains(token),
+  );
+}
+
 class _TrainingLogItem {
   String title;
   String name;
@@ -6453,7 +7116,10 @@ class _TrainingLogItem {
 
   /// 시작 전 체크
   String preCondition; // 좋음 / 보통 / 나쁨
-  String preMeal; // 공복 / 가볍게 먹음 / 충분히 먹음
+  String preMeal; // 1시간 이내 / 1~3시간 전 / 4시간 이상(공복) (옛 값: 공복 / 가볍게 먹음 / 충분히 먹음)
+  String preNote; // 시작 전 특이사항 한 줄 메모
+  bool preCheckDone; // 레슨 전 체크리스트를 완료했는지(화면 상태, 서버에 저장하지 않음)
+  String inbodySummary; // 이번 레슨 전 인바디 측정 요약(화면 표시용, 측정값은 회원 건강정보에 기록)
   String preSleep; // 부족 / 보통 / 충분
   String prePain; // 없음 / 있음
   String preStretching; // 안 함 / 조금 함 / 충분히 함
@@ -6478,6 +7144,11 @@ class _TrainingLogItem {
   String publicGood;
   String publicHomeworkNote;
   String publicCaution;
+
+  /// 카테고리 방식 운동 구성: {main, part, name, sets, reps, assist, note}
+  List<Map<String, dynamic>> exercises;
+  String cognitiveResponse; // 인지 잘됨 / 보통 / 어려움
+  String performanceResponse; // 수행 좋음 / 보통 / 어려움 / 통증으로 제한
 
   SigCell trainerSig;
   SigCell customerSig;
@@ -6516,7 +7187,10 @@ class _TrainingLogItem {
     this.homeworkStatus = '없음',
     this.nextLessonCheckpoint = '',
     this.preCondition = '보통',
-    this.preMeal = '가볍게 먹음',
+    this.preMeal = '1~3시간 전',
+    this.preNote = '',
+    this.preCheckDone = false,
+    this.inbodySummary = '',
     this.preSleep = '보통',
     this.prePain = '없음',
     this.prePainDetail = '',
@@ -6535,6 +7209,9 @@ class _TrainingLogItem {
     this.publicGood = '',
     this.publicHomeworkNote = '',
     this.publicCaution = '',
+    this.exercises = const [],
+    this.cognitiveResponse = '보통',
+    this.performanceResponse = '보통',
     SigCell? trainerSig,
     SigCell? customerSig,
     String? id,
@@ -6569,6 +7246,9 @@ class _TrainingLogCard extends StatelessWidget {
     required this.goalDdayLabel,
     required this.femaleConditionVisible,
     required this.draftEntryMode,
+    this.anatomySummary,
+    this.onToggleExpand,
+    this.onShareLesson,
     this.onFemaleConditionTap,
     this.onTap,
     this.onLongPress,
@@ -6593,6 +7273,15 @@ class _TrainingLogCard extends StatelessWidget {
   final bool isHighlighted;
   final bool isExpanded;
 
+  /// 아나토미 레슨일지의 요약. 있으면 운동 이름과 통증·주의·가동성 칩을 보여준다.
+  final AnatomyLessonSummary? anatomySummary;
+
+  /// 아나토미 카드의 펼침 화살표(카드 본문 탭은 레슨일지를 연다).
+  final VoidCallback? onToggleExpand;
+
+  /// 회원에게 레슨 요약 이미지를 보낸다(펼친 아나토미 카드).
+  final VoidCallback? onShareLesson;
+
   String _issueChipSummary(_TrainingLogItem item) {
     if (item.issueChips.isEmpty) return '';
     return item.issueChips.join(', ');
@@ -6606,6 +7295,8 @@ class _TrainingLogCard extends StatelessWidget {
         return '카테고리';
       case 'pdf':
         return 'PDF';
+      case 'anatomy':
+        return '아나토미';
       default:
         return '작성방식 선택';
     }
@@ -6624,13 +7315,15 @@ class _TrainingLogCard extends StatelessWidget {
 
     switch (item.inputMethod) {
       case 'category':
-        return 'TAG NOTE';
+        return 'CATEGORY NOTE';
       case 'pdf':
         return 'PDF NOTE';
+      case 'anatomy':
+        return 'ANATOMY NOTE';
       case 'voice_draft':
       case 'text':
       default:
-        return 'TEXT NOTE';
+        return 'TEXT/VOICE NOTE';
     }
   }
 
@@ -6650,6 +7343,8 @@ class _TrainingLogCard extends StatelessWidget {
         return Icons.sell_rounded;
       case 'pdf':
         return Icons.picture_as_pdf_rounded;
+      case 'anatomy':
+        return Icons.accessibility_new_rounded;
       case 'voice_draft':
       case 'text':
       default:
@@ -6729,6 +7424,312 @@ class _TrainingLogCard extends StatelessWidget {
       first = '${first.substring(0, 28)}...';
     }
     return first;
+  }
+
+  /// 카드 2번째 줄: 아나토미 레슨은 운동 이름을 `/` 로 이어 한 줄로 보여준다.
+  String _cardExerciseText(_TrainingLogItem item) {
+    final summary = anatomySummary;
+    if (summary == null) return _exerciseSummary(item);
+    return summary.exerciseNames.isEmpty ? '운동 기록 없음' : summary.exerciseLine;
+  }
+
+  Widget _anatomyNoteChip(String label, int count, Color bg, Color fg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label $count',
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: fg),
+      ),
+    );
+  }
+
+  /// 카드 3번째 줄: `통증 2  주의 1  가동성 1` (0개인 종류는 숨긴다).
+  Widget _anatomyNoteChips(AnatomyLessonSummary summary, ColorScheme scheme) {
+    if (!summary.hasNotes) {
+      return Text(
+        '특이사항 없음',
+        style: TextStyle(
+          fontSize: 11.5,
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    return Wrap(
+      key: const ValueKey<String>('log_card_note_chips'),
+      spacing: 6,
+      runSpacing: 4,
+      children: [
+        if (summary.painCount > 0)
+          _anatomyNoteChip(
+            '통증',
+            summary.painCount,
+            const Color(0xFFFEE2E2),
+            const Color(0xFFB91C1C),
+          ),
+        if (summary.cautionCount > 0)
+          _anatomyNoteChip(
+            '주의',
+            summary.cautionCount,
+            const Color(0xFFFFEDD5),
+            const Color(0xFF9A3412),
+          ),
+        if (summary.mobilityCount > 0)
+          _anatomyNoteChip(
+            '가동성',
+            summary.mobilityCount,
+            const Color(0xFFFEF9C3),
+            const Color(0xFF854D0E),
+          ),
+      ],
+    );
+  }
+
+  String _anatomyNoteTrailing(AnatomyLogRecord record) {
+    switch (record.recordType) {
+      case AnatomyRecordType.pain:
+        return '${record.painLevel} / 10';
+      case AnatomyRecordType.caution:
+        return '주의';
+      default:
+        return switch (record.mobilityResult) {
+          MobilityResult.normal => '○ 정상',
+          MobilityResult.mild => '△ 보상',
+          MobilityResult.severe => '× 제한',
+          _ => '가동성',
+        };
+    }
+  }
+
+  Widget _anatomyNoteSection(
+    String title,
+    List<AnatomyLogRecord> records,
+    ColorScheme scheme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: scheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 6),
+        for (final record in records)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        anatomyNoteTitle(record),
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Text(
+                        record.bodyPartLabel,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      if (record.memo.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text(
+                            record.memo,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              height: 1.35,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _anatomyNoteTrailing(record),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _thousands(double value) {
+    final digits = value.round().toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
+
+  Widget _anatomyStatTile(String label, String value, {Key? key}) {
+    return Expanded(
+      child: Container(
+        key: key,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10.5, color: Colors.black54),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 펼친 카드(아나토미): 운동 개수·세트·볼륨과 한 운동 목록(세부 세트는 레슨일지에서).
+  List<Widget> _anatomyStatWidgets(
+    AnatomyLessonSummary summary,
+    ColorScheme scheme,
+  ) {
+    final rows = summary.exerciseRows;
+    if (rows.isEmpty) return const <Widget>[];
+    final volume = summary.volumeKg;
+    return [
+      Row(
+        key: const ValueKey<String>('log_card_stats'),
+        children: [
+          _anatomyStatTile('운동', '${rows.length}'),
+          const SizedBox(width: 8),
+          _anatomyStatTile('세트', '${summary.setCount}'),
+          const SizedBox(width: 8),
+          _anatomyStatTile('볼륨 kg', volume > 0 ? _thousands(volume) : '-'),
+        ],
+      ),
+      const SizedBox(height: 10),
+      for (final row in rows)
+        Padding(
+          key: ValueKey<String>('log_card_exercise_${row.name}'),
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  row.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              if (row.pr)
+                const Padding(
+                  key: ValueKey<String>('log_card_pr'),
+                  padding: EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.emoji_events_rounded,
+                    size: 15,
+                    color: Color(0xFFF59E0B),
+                  ),
+                ),
+              Text(
+                row.part,
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      const SizedBox(height: 10),
+    ];
+  }
+
+  /// 펼친 카드(아나토미): 통증·주의·가동성 상세. 세트·무게·횟수는 레슨일지를 열어 본다.
+  List<Widget> _anatomyDetailWidgets(
+    AnatomyLessonSummary summary,
+    ColorScheme scheme,
+  ) {
+    return [
+      if (summary.records.isNotEmpty) ...[
+        AnatomyMiniFigures(records: summary.records),
+        const SizedBox(height: 10),
+      ],
+      ..._anatomyStatWidgets(summary, scheme),
+      if (!summary.hasNotes)
+        Text(
+          '통증·주의·가동성 기록이 없어요.',
+          key: const ValueKey<String>('log_card_no_notes'),
+          style: TextStyle(
+            fontSize: 12,
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      if (summary.painCount > 0)
+        _anatomyNoteSection('통증', summary.pain, scheme),
+      if (summary.cautionCount > 0)
+        _anatomyNoteSection('주의', summary.caution, scheme),
+      if (summary.mobilityCount > 0)
+        _anatomyNoteSection('가동성', summary.mobility, scheme),
+      const SizedBox(height: 4),
+      Text(
+        '세트·무게·횟수는 카드를 눌러 레슨일지에서 확인해요.',
+        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+      ),
+      if (onShareLesson != null) ...[
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            key: const ValueKey<String>('log_card_share'),
+            onPressed: onShareLesson,
+            icon: const Icon(Icons.ios_share_rounded, size: 18),
+            label: const Text('회원에게 레슨일지 보내기'),
+          ),
+        ),
+      ],
+    ];
   }
 
   String _memoSummary(_TrainingLogItem item) {
@@ -7172,6 +8173,7 @@ class _TrainingLogCard extends StatelessWidget {
     final customerOk = item.customerSig.isSigned;
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.mtfThemeTokens;
+    final dark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       borderRadius: BorderRadius.circular(22),
@@ -7180,13 +8182,15 @@ class _TrainingLogCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
+          // 서비스·노쇼 카드는 상태 색을 입힌다. 다크모드에서는 어두운 상태 색을 쓴다
+          // (밝은 파스텔 배경에 밝은 글자가 올라가 안 보이던 문제).
           color:
               item.sessionStatus == 'service'
-                  ? const Color(0xFFF0FDFA)
+                  ? (dark ? const Color(0xFF0F2E2B) : const Color(0xFFF0FDFA))
                   : item.sessionStatus == 'no_show'
-                  ? const Color(0xFFFEF2F2)
+                  ? (dark ? const Color(0xFF3A1F22) : const Color(0xFFFEF2F2))
                   : item.sessionStatus == 'no_show_no_deduct'
-                  ? const Color(0xFFFFFBEB)
+                  ? (dark ? const Color(0xFF3A2D14) : const Color(0xFFFFFBEB))
                   : tokens.trainingLogSurface,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
@@ -7196,11 +8200,11 @@ class _TrainingLogCard extends StatelessWidget {
                     : item.locked
                     ? const Color(0xFFD6D3D1)
                     : item.sessionStatus == 'service'
-                    ? const Color(0xFF99F6E4)
+                    ? (dark ? const Color(0xFF2F7A72) : const Color(0xFF99F6E4))
                     : item.sessionStatus == 'no_show'
-                    ? const Color(0xFFFECACA)
+                    ? (dark ? const Color(0xFF8A4247) : const Color(0xFFFECACA))
                     : item.sessionStatus == 'no_show_no_deduct'
-                    ? const Color(0xFFFED7AA)
+                    ? (dark ? const Color(0xFF8A6A2F) : const Color(0xFFFED7AA))
                     : tokens.trainingLogSetDivider,
             width: isHighlighted ? 2 : 1,
           ),
@@ -7225,10 +8229,13 @@ class _TrainingLogCard extends StatelessWidget {
                       item.sessionStatus == 'no_show_no_deduct'
                           ? RichText(
                             text: TextSpan(
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF92400E),
+                                color:
+                                    dark
+                                        ? const Color(0xFFFDBA74)
+                                        : const Color(0xFF92400E),
                               ),
                               children: [
                                 TextSpan(
@@ -7256,22 +8263,43 @@ class _TrainingLogCard extends StatelessWidget {
                               fontSize: 10.5,
                               color:
                                   item.sessionStatus == 'service'
-                                      ? const Color(0xFF0F766E)
+                                      ? (dark
+                                          ? const Color(0xFF5EEAD4)
+                                          : const Color(0xFF0F766E))
                                       : item.sessionStatus == 'no_show'
-                                      ? const Color(0xFFB91C1C)
+                                      ? (dark
+                                          ? const Color(0xFFFCA5A5)
+                                          : const Color(0xFFB91C1C))
                                       : scheme.onSurfaceVariant,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                 ),
                 const SizedBox(width: 6),
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  size: 20,
-                  color: scheme.onSurfaceVariant,
-                ),
+                if (onToggleExpand != null)
+                  InkWell(
+                    key: const ValueKey<String>('log_card_expand'),
+                    onTap: onToggleExpand,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 22,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else
+                  Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: scheme.onSurfaceVariant,
+                  ),
               ],
             ),
 
@@ -7494,8 +8522,8 @@ class _TrainingLogCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    _exerciseSummary(item),
-                    maxLines: 2,
+                    _cardExerciseText(item),
+                    maxLines: anatomySummary == null ? 2 : 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12.5,
@@ -7536,17 +8564,20 @@ class _TrainingLogCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    _memoSummary(item),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                      height: 1.4,
-                    ),
-                  ),
+                  child:
+                      anatomySummary != null
+                          ? _anatomyNoteChips(anatomySummary!, scheme)
+                          : Text(
+                            _memoSummary(item),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
+                            ),
+                          ),
                 ),
                 const SizedBox(width: 8),
                 _inlineSignatureChip(
@@ -7683,41 +8714,47 @@ class _TrainingLogCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      '레슨 내용',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Text(
-                        item.memo.trim().isEmpty ? '(메모 없음)' : item.memo.trim(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.5,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
+                    if (anatomySummary != null)
+                      ..._anatomyDetailWidgets(anatomySummary!, scheme)
+                    else ...[
+                      Text(
+                        '레슨 내용',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: scheme.onSurface,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Text(
+                          item.memo.trim().isEmpty
+                              ? '(메모 없음)'
+                              : item.memo.trim(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 1.5,
+                            color: Colors.black54,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                     if (item.rawVoiceText.trim().isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         '음성 원문',
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
-                          color: Colors.black45,
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -7742,12 +8779,12 @@ class _TrainingLogCard extends StatelessWidget {
                     ],
                     if (registrationStartText.isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         '등록 시작 정보',
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
-                          color: Colors.black45,
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -7766,6 +8803,18 @@ class _TrainingLogCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             color: Colors.black54,
                           ),
+                        ),
+                      ),
+                    ],
+                    if (onShareLesson != null && anatomySummary == null) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          key: const ValueKey<String>('log_card_share'),
+                          onPressed: onShareLesson,
+                          icon: const Icon(Icons.ios_share_rounded, size: 18),
+                          label: const Text('회원에게 레슨일지 보내기'),
                         ),
                       ),
                     ],

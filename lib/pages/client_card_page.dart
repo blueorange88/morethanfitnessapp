@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:io';
 
 import '../utils/member_input_validation.dart';
+import '../utils/membership_pause_history_utils.dart';
 import '../utils/membership_pause_status_utils.dart';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -30,7 +31,9 @@ import '../services/app_account_service.dart';
 import '../services/lesson_product_service.dart';
 import '../services/inbody_camera_permission_service.dart';
 import '../services/managed_member_workspace_service.dart';
+import '../services/inbody_scan.dart';
 import '../services/personal_member_card_save_service.dart';
+import '../widgets/inbody_review_sheet.dart';
 import '../services/personal_member_consent_service.dart';
 import '../services/personal_member_preferences_service.dart';
 import '../services/personal_member_taxonomy_service.dart';
@@ -2283,11 +2286,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
   bool _inbodyNotProvided = false;
   final _diseaseC = TextEditingController();
   final _medicineC = TextEditingController();
-  final _heightC = TextEditingController(text: '170.0');
-  final _weightC = TextEditingController(text: '65.0');
-  final _bfPctC = TextEditingController(text: '18.5');
-  final _smmC = TextEditingController(text: '29.0');
-  final _bfKgC = TextEditingController(text: '12.0');
+  // 인바디 값은 비어 있는 것이 기본이다. 입력하지 않은 값을 임의 값으로 저장하지 않는다.
+  final _heightC = TextEditingController();
+  final _weightC = TextEditingController();
+  final _bfPctC = TextEditingController();
+  final _smmC = TextEditingController();
+  final _bfKgC = TextEditingController();
   String? _latestInbodyImageUrl;
   DateTime? _latestInbodyMeasuredAt;
 
@@ -4283,6 +4287,17 @@ class _ClientCardPageState extends State<ClientCardPage> {
         ].firstWhere((value) => value.isNotEmpty, orElse: () => '');
 
         _phoneC.text = formatKoreanMobilePhone(loadedPhone);
+        if (kDebugMode) {
+          debugPrint(
+            '[MTF_MEMBER_CARD_LOAD] genderRaw=${d['gender'] ?? 'none'} '
+            'genderUi=$_gender phoneUiLen=${_phoneC.text.length} '
+            'phoneKeys=${[
+              for (final key in const ['phoneDisplay', 'phoneNormalized', 'phone'])
+                if ((d[key] ?? '').toString().trim().isNotEmpty) key,
+            ].join(',')} '
+            'healthKeys=${d['health'] is Map ? (d['health'] as Map).keys.join(',') : 'none'}',
+          );
+        }
 
         _postalC.text = (d['postal'] as String?) ?? _postalC.text;
         _addrC.text = (d['address'] as String?) ?? _addrC.text;
@@ -4437,15 +4452,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
         if (inbodyRaw != null && inbodyRaw.isNotEmpty) {
           final h = inbodyRaw['heightCm'];
-          if (h is num) _heightC.text = h.toString();
+          if (h is num && h > 0) _heightC.text = h.toString();
           final w = inbodyRaw['weightKg'];
-          if (w is num) _weightC.text = w.toString();
+          if (w is num && w > 0) _weightC.text = w.toString();
           final bfPct = inbodyRaw['bodyFatPct'];
-          if (bfPct is num) _bfPctC.text = bfPct.toString();
+          if (bfPct is num && bfPct > 0) _bfPctC.text = bfPct.toString();
           final smm = inbodyRaw['skeletalMuscleKg'];
-          if (smm is num) _smmC.text = smm.toString();
+          if (smm is num && smm > 0) _smmC.text = smm.toString();
           final bfKg = inbodyRaw['bodyFatKg'];
-          if (bfKg is num) _bfKgC.text = bfKg.toString();
+          if (bfKg is num && bfKg > 0) _bfKgC.text = bfKg.toString();
         }
 
         _noteC.text = (d['note'] ?? '').toString();
@@ -6033,37 +6048,6 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 .toList()
             : <Map<String, dynamic>>[];
 
-    String dateText(dynamic value) {
-      if (value is Timestamp) {
-        return DateFormat('yyyy.MM.dd').format(value.toDate());
-      }
-      if (value is DateTime) {
-        return DateFormat('yyyy.MM.dd').format(value);
-      }
-      return '-';
-    }
-
-    String itemText(Map<String, dynamic> item) {
-      final type = (item['type'] ?? '').toString();
-      final at = dateText(item['at']);
-      final plannedDays = (item['plannedDays'] as num?)?.toInt();
-      final actualDays = (item['actualDays'] as num?)?.toInt();
-
-      if (type == 'pause') {
-        return plannedDays == null
-            ? '$at · 회원권 정지'
-            : '$at · 회원권 정지 · 예정 ${plannedDays}일';
-      }
-
-      if (type == 'resume') {
-        return actualDays == null
-            ? '$at · 회원권 재개'
-            : '$at · 회원권 재개 · 실제 ${actualDays}일';
-      }
-
-      return '$at · 회원권 기록';
-    }
-
     await AifcInfoChatSheet.show(
       context: context,
       nickname: _safeAifcNickname,
@@ -6071,11 +6055,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
       message:
           history.isEmpty
               ? '아직 회원권 정지 또는 재개 이력이 없어요.'
-              : '최근 회원권 정지와 재개 이력을 정리했어요.',
+              : '정지한 날짜와 며칠 정지했는지, 언제 재개됐는지 정리했어요.',
       items:
           history.isEmpty
               ? const ['정지/재개를 진행하면 이곳에 기록됩니다.']
-              : history.map(itemText).toList().reversed.take(8).toList(),
+              : membershipPauseHistoryLines(history),
       confirmText: '확인했어요',
       userConfirmText: '확인했습니다',
       replyText: '확인되었습니다. 필요한 기록이 생기면 계속 정리해둘게요.',
@@ -6729,6 +6713,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
         PersonalMemberSaveTraceStatus.start,
       );
       if (_isPersonalWorkspace && !_isEditMode) {
+        if (kDebugMode) {
+          debugPrint(
+            '[MTF_MEMBER_CARD_SAVE_INPUT] mode=create genderUi=$_gender '
+            'phoneUiLen=${_phoneC.text.trim().length} '
+            'nameLen=${_nameC.text.trim().length}',
+          );
+        }
         final result = await PersonalMemberCardSaveService(
           uid: widget.personalOwnerUid!.trim(),
         ).createAndVerify(
@@ -6769,6 +6760,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             personalTagIds: _selectedPersonalTagIds,
           ),
           photoUrl: photoUrl,
+          health: _personalHealthPayload(),
           trace: trace,
         );
         var consentSaveFailed = false;
@@ -6802,6 +6794,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
       }
 
       if (_isPersonalWorkspace && _isEditMode) {
+        if (kDebugMode) {
+          debugPrint(
+            '[MTF_MEMBER_CARD_SAVE_INPUT] mode=update genderUi=$_gender '
+            'phoneUiLen=${_phoneC.text.trim().length} '
+            'nameLen=${_nameC.text.trim().length}',
+          );
+        }
         final updateResult = await PersonalMemberCardSaveService(
           uid: widget.personalOwnerUid!.trim(),
         ).updateAndVerify(
@@ -6844,6 +6843,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             personalTagIds: _selectedPersonalTagIds,
           ),
           photoUrl: photoUrl,
+          health: _personalHealthPayload(),
           trace: trace,
         );
         final postSaveSucceeded = await _runPostCanonicalSaveTasks();
@@ -7002,11 +7002,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
       _inbodyNotProvided = false;
       _diseaseC.clear();
       _medicineC.clear();
-      _heightC.text = '170.0';
-      _weightC.text = '65.0';
-      _bfPctC.text = '18.5';
-      _smmC.text = '29.0';
-      _bfKgC.text = '12.0';
+      _heightC.clear();
+      _weightC.clear();
+      _bfPctC.clear();
+      _smmC.clear();
+      _bfKgC.clear();
 
       _nextReservation = null;
       _noteC.text = '';
@@ -8075,6 +8075,48 @@ class _ClientCardPageState extends State<ClientCardPage> {
     await PersonalMemberPreferencesService(
       uid: widget.personalOwnerUid!.trim(),
     ).saveCustomLessonTypes([..._customLessonTypes, value]);
+  }
+
+  // 개인 워크스페이스 저장에 함께 보내는 건강정보(서버 `health` 형식). 숫자는 0 이상 유한한 값만 보낸다.
+  Map<String, dynamic> _personalHealthPayload() {
+    // 입력한 값만 보낸다. 빈 칸·0·잘못된 값은 보내지 않아 임의 값이 저장되지 않는다.
+    double? entered(String text) {
+      final parsed = double.tryParse(text.trim());
+      return parsed != null && parsed.isFinite && parsed > 0 ? parsed : null;
+    }
+
+    final height = entered(_heightC.text);
+    final weight = entered(_weightC.text);
+    final bodyFatPct = entered(_bfPctC.text);
+    final skeletal = entered(_smmC.text);
+    final bodyFatKg = entered(_bfKgC.text);
+    final bmi = height != null && weight != null ? _safeBmi(height, weight) : 0;
+    final inbody = <String, dynamic>{
+      if (height != null) 'heightCm': height,
+      if (weight != null) 'weightKg': weight,
+      if (bodyFatPct != null) 'bodyFatPct': bodyFatPct,
+      if (skeletal != null) 'skeletalMuscleKg': skeletal,
+      if (bodyFatKg != null) 'bodyFatKg': bodyFatKg,
+      if (bmi.isFinite && bmi > 0) 'bmi': bmi,
+    };
+    final lastStart = _parseSoftDate(_femaleConditionLastStartC.text);
+    final cycle = (int.tryParse(_femaleConditionCycleC.text.trim()) ?? 28)
+        .clamp(10, 90);
+    return {
+      'inbodyNotProvided': _inbodyNotProvided,
+      'diseaseHistory': _diseaseC.text.trim(),
+      'medicineHistory': _medicineC.text.trim(),
+      'inbody': _inbodyNotProvided || inbody.isEmpty ? null : inbody,
+      'inbodyMeasuredAt': personalMemberCalendarDateForSave(
+        _latestInbodyMeasuredAt,
+      ),
+      'femaleCondition': {
+        'enabled': _gender == '여' && _femaleConditionEnabled,
+        'lastStartAt': personalMemberCalendarDateForSave(lastStart),
+        'cycleDays': cycle,
+        'memo': _femaleConditionMemoC.text.trim(),
+      },
+    };
   }
 
   Future<bool> _runPostCanonicalSaveTasks() async {
@@ -9955,6 +9997,46 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                               ),
                                             ],
                                           ),
+                                          if (membershipResumeCountdownText(
+                                                isPaused: _membershipPaused,
+                                                resumeDueAt:
+                                                    _membershipResumeDueAt,
+                                              )
+                                              case final countdown?) ...[
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              countdown,
+                                              key: const ValueKey<String>(
+                                                'pause_resume_countdown',
+                                              ),
+                                              style: const TextStyle(
+                                                color: Color(0xFFB45309),
+                                                fontSize: 11.2,
+                                                height: 1.35,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ],
+                                          if (membershipPauseOverdueDays(
+                                                isPaused: _membershipPaused,
+                                                resumeDueAt:
+                                                    _membershipResumeDueAt,
+                                              ) !=
+                                              null) ...[
+                                            const SizedBox(height: 6),
+                                            const Text(
+                                              '정지 기간이 끝났어요. 곧 자동으로 재개돼요. 바로 바꾸려면 재개를 눌러주세요.',
+                                              key: ValueKey<String>(
+                                                'pause_overdue_notice',
+                                              ),
+                                              style: TextStyle(
+                                                color: Color(0xFFB91C1C),
+                                                fontSize: 11.2,
+                                                height: 1.35,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ],
                                         ] else ...[
                                           const SizedBox(height: 3),
                                           const Text(
@@ -10154,6 +10236,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
       try {
         final inputImage = InputImage.fromFilePath(picked.path);
         final recognizedText = await recognizer.processImage(inputImage);
+        // 개인 워크스페이스는 공용 해석·본인 확인 화면을 쓴다(나이·성별로 다른 회원 용지인지 확인).
+        if (_isPersonalWorkspace) {
+          if (!mounted) return;
+          await _applyInbodyScanToPersonalCard(
+            parseInbodyText(recognizedText.text),
+          );
+          return;
+        }
         final extracted = _extractClientCardInbodyData(recognizedText.text);
 
         if (!mounted) return;
@@ -10169,6 +10259,44 @@ class _ClientCardPageState extends State<ClientCardPage> {
       if (!mounted) return;
       _showAifcToast('인바디 용지 인식 중 오류가 발생했어요.');
     }
+  }
+
+  // 읽은 인바디 값을 확인 화면에서 확정한 뒤 카드 입력칸에 채운다. 저장은 사용자가
+  // `수정 저장`을 눌러야 서버(건강정보)에 반영된다. 용지 사진은 저장하지 않는다.
+  Future<void> _applyInbodyScanToPersonalCard(InbodyScanResult scan) async {
+    final outcome = await showInbodyReviewSheet(
+      context,
+      scan: scan,
+      memberName: _nameC.text.trim(),
+      cardBirthDate: _birthDate,
+      cardGender: _gender,
+      showRawText: kDebugMode,
+    );
+    if (outcome == null || !mounted) return;
+
+    setState(() {
+      _inbodyNotProvided = false;
+      void fill(TextEditingController controller, String value) {
+        if (value.trim().isNotEmpty) controller.text = value.trim();
+      }
+
+      fill(_heightC, outcome.height);
+      fill(_weightC, outcome.weight);
+      fill(_smmC, outcome.skeletalMuscle);
+      fill(_bfPctC, outcome.bodyFatPercent);
+      fill(_bfKgC, outcome.bodyFatKg);
+      _latestInbodyMeasuredAt =
+          _parseInbodyMeasuredDate(outcome.date) ?? _latestInbodyMeasuredAt;
+      if (outcome.updateGender && scan.gender != null) {
+        _gender = scan.gender == 'male' ? '남' : '여';
+      }
+    });
+
+    _showAifcToast(
+      outcome.checkBirthDate
+          ? '인바디 값을 채웠어요. 생년월일을 확인한 뒤 저장해 주세요.'
+          : '인바디 값을 채웠어요. 저장을 눌러 반영해 주세요.',
+    );
   }
 
   _ClientCardInbodyOcrData _extractClientCardInbodyData(String raw) {

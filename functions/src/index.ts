@@ -23,9 +23,11 @@ import {
 } from "./profile_bootstrap.js";
 import {
   createManagedMemberHandler,
+  recordManagedMemberInbodyHandler,
   transitionManagedMemberStateHandler,
   updateManagedMemberConsentHandler,
   updateManagedMemberHandler,
+  resumeDuePausedMemberships,
   updateManagedMemberMembershipPauseHandler,
 } from "./managed_members.js";
 import {
@@ -86,9 +88,20 @@ exports.updateManagedMember = personalFunctions.https.onCall(
 exports.updateManagedMemberConsent = personalFunctions.https.onCall(
   updateManagedMemberConsentHandler(db),
 );
+exports.recordManagedMemberInbody = personalFunctions.https.onCall(
+  recordManagedMemberInbodyHandler(db),
+);
 exports.updateManagedMemberMembershipPause = personalFunctions.https.onCall(
   updateManagedMemberMembershipPauseHandler(db),
 );
+// 정지 기간(재개 예정일)이 끝난 회원을 매일 새벽에 자동으로 재개한다.
+exports.autoResumePausedMemberships = personalFunctions.pubsub
+  .schedule("every day 00:20")
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    const result = await resumeDuePausedMemberships(db);
+    functions.logger.info("auto_resume_done", result);
+  });
 exports.createPersonalGroup = personalFunctions.https.onCall(
   createPersonalGroupHandler(db),
 );

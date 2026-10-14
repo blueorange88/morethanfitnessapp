@@ -656,6 +656,53 @@ export function createCompleteNicknameOnboardingHandler(
   };
 }
 
+const CUSTOM_EXERCISE_MAX_PARTS = 20;
+const CUSTOM_EXERCISE_MAX_PER_PART = 30;
+const CUSTOM_EXERCISE_MAX_LENGTH = 40;
+
+function customExercisesInvalid(): functions.https.HttpsError {
+  return new functions.https.HttpsError(
+    "invalid-argument",
+    "custom_exercises_invalid",
+  );
+}
+
+// 부위별 사용자 지정 운동 목록을 검증·정규화한다. 빈 부위는 제거한다.
+function normalizeCustomExercises(raw: unknown): Record<string, string[]> {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw customExercisesInvalid();
+  }
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.length > CUSTOM_EXERCISE_MAX_PARTS) throw customExercisesInvalid();
+  const result: Record<string, string[]> = {};
+  for (const [rawPart, rawList] of entries) {
+    const part = rawPart.trim().replace(/\s+/g, " ");
+    if (part.length === 0 || part.length > 20 || /^__.*__$/.test(part) ||
+        Object.prototype.hasOwnProperty.call(result, part) ||
+        !Array.isArray(rawList)) {
+      throw customExercisesInvalid();
+    }
+    const seen = new Set<string>();
+    const values: string[] = [];
+    for (const rawValue of rawList) {
+      if (typeof rawValue !== "string") throw customExercisesInvalid();
+      const value = rawValue.trim().replace(/\s+/g, " ");
+      const key = value.toLocaleLowerCase("ko-KR");
+      if (value.length === 0 || value.length > CUSTOM_EXERCISE_MAX_LENGTH ||
+          seen.has(key)) {
+        throw customExercisesInvalid();
+      }
+      seen.add(key);
+      values.push(value);
+    }
+    if (values.length > CUSTOM_EXERCISE_MAX_PER_PART) {
+      throw customExercisesInvalid();
+    }
+    if (values.length > 0) result[part] = values;
+  }
+  return result;
+}
+
 export function createUpdatePersonalTrainerProfileHandler(
   db: FirebaseFirestore.Firestore,
 ) {
@@ -672,7 +719,7 @@ export function createUpdatePersonalTrainerProfileHandler(
       "affiliationType", "nickname", "realName", "jobTitle",
       "birth", "contractTrainerNameSource", "contractTrainerCustomName",
       "nameEn", "activityRegions", "gymName", "centerLocation",
-      "memberDefaultGroupLabel", "customLessonTypes", "intro",
+      "memberDefaultGroupLabel", "customLessonTypes", "customExercises", "intro",
       "businessCardPhotoUrl", "businessCardPhotoAlign",
     ];
     if (Object.keys(data).some((key) => !allowed.includes(key))) {
@@ -684,7 +731,8 @@ export function createUpdatePersonalTrainerProfileHandler(
     const updates: Record<string, unknown> = {};
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
-        if (key === "activityRegions" || key === "customLessonTypes") continue;
+        if (key === "activityRegions" || key === "customLessonTypes" ||
+            key === "customExercises") continue;
         const maxLength = key === "phone" ? 32 :
           key === "birth" ? 10 : key === "nickname" ? 6 :
             key === "nameEn" ? 40 : key === "intro" ? 200 :
@@ -738,6 +786,9 @@ export function createUpdatePersonalTrainerProfileHandler(
         );
       }
       updates.customLessonTypes = values;
+    }
+    if (Object.prototype.hasOwnProperty.call(data, "customExercises")) {
+      updates.customExercises = normalizeCustomExercises(data.customExercises);
     }
     if (Object.prototype.hasOwnProperty.call(
       updates,

@@ -14,6 +14,7 @@ class AnatomyStepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Row(
       children: List.generate(totalSteps, (index) {
         final isCompleted = index < currentStep;
@@ -35,8 +36,8 @@ class AnatomyStepIndicator extends StatelessWidget {
                               height: 2,
                               color:
                                   isCompleted || isCurrent
-                                      ? const Color(0xFF4F46E5)
-                                      : const Color(0xFFE5E7EB),
+                                      ? colors.primary
+                                      : colors.outline,
                             ),
                           ),
                         // 스텝 원
@@ -47,17 +48,17 @@ class AnatomyStepIndicator extends StatelessWidget {
                             shape: BoxShape.circle,
                             color:
                                 isCompleted
-                                    ? const Color(0xFF4F46E5)
+                                    ? colors.primary
                                     : isCurrent
                                     ? Colors.white
                                     : const Color(0xFFF3F4F6),
                             border: Border.all(
                               color:
                                   isCurrent
-                                      ? const Color(0xFF4F46E5)
+                                      ? colors.primary
                                       : isCompleted
-                                      ? const Color(0xFF4F46E5)
-                                      : const Color(0xFFE5E7EB),
+                                      ? colors.primary
+                                      : colors.outline,
                               width: isCurrent ? 2 : 1,
                             ),
                           ),
@@ -76,8 +77,10 @@ class AnatomyStepIndicator extends StatelessWidget {
                                         fontWeight: FontWeight.w900,
                                         color:
                                             isCurrent
-                                                ? const Color(0xFF4F46E5)
-                                                : const Color(0xFF9CA3AF),
+                                                ? colors.primary
+                                                : colors.onSurface.withValues(
+                                                  alpha: 0.45,
+                                                ),
                                       ),
                                     ),
                           ),
@@ -88,9 +91,7 @@ class AnatomyStepIndicator extends StatelessWidget {
                             child: Container(
                               height: 2,
                               color:
-                                  isCompleted
-                                      ? const Color(0xFF4F46E5)
-                                      : const Color(0xFFE5E7EB),
+                                  isCompleted ? colors.primary : colors.outline,
                             ),
                           ),
                       ],
@@ -103,10 +104,10 @@ class AnatomyStepIndicator extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color:
                             isCurrent
-                                ? const Color(0xFF4F46E5)
+                                ? colors.primary
                                 : isCompleted
-                                ? const Color(0xFF6B7280)
-                                : const Color(0xFF9CA3AF),
+                                ? colors.onSurface.withValues(alpha: 0.65)
+                                : colors.onSurface.withValues(alpha: 0.45),
                       ),
                     ),
                   ],

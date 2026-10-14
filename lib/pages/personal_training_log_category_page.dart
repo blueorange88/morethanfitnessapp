@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../services/personal_custom_exercise_service.dart';
+import '../services/training_log_preferences.dart';
+import '../widgets/training_log_pre_check.dart';
 import '../theme/app_colors.dart';
 
 class _CategoryExerciseMemory {
@@ -61,6 +66,27 @@ class PersonalTrainingLogCategoryPage extends StatefulWidget {
   final String? initialPublicHomeworkNote;
   final String? initialPublicCaution;
 
+  final String? personalOwnerUid;
+
+  // 저장된 일지를 다시 열 때 복원하는 값
+  final List<Map<String, dynamic>>? initialExercises;
+  final String? initialPrePainDetail;
+  final String? initialDuringPainDetail;
+  final String? initialPostPainDetail;
+  final String? initialPreNote;
+  final String? initialInbodySummary;
+
+  // null이면 설정(새 일지에서 레슨 전 체크 자동 열기)을 따른다.
+  final bool? autoOpenPreCheck;
+
+  // 레슨 전 체크리스트의 인바디 측정 줄. 회원이 정해진 일지에서만 넘어온다.
+  final Future<String?> Function()? onMeasureInbody;
+
+  // 레슨 전 체크를 이미 마쳤는지(레슨일지 목록 화면에서 먼저 열었을 때). null이면 새 일지만 미확인.
+  final bool? initialPreCheckConfirmed;
+  final String? initialCognitiveResponse;
+  final String? initialPerformanceResponse;
+
   const PersonalTrainingLogCategoryPage({
     super.key,
     this.initialName,
@@ -88,6 +114,18 @@ class PersonalTrainingLogCategoryPage extends StatefulWidget {
     this.initialPublicGood,
     this.initialPublicHomeworkNote,
     this.initialPublicCaution,
+    this.personalOwnerUid,
+    this.initialExercises,
+    this.initialPrePainDetail,
+    this.initialDuringPainDetail,
+    this.initialPostPainDetail,
+    this.initialPreNote,
+    this.initialInbodySummary,
+    this.autoOpenPreCheck,
+    this.onMeasureInbody,
+    this.initialPreCheckConfirmed,
+    this.initialCognitiveResponse,
+    this.initialPerformanceResponse,
   });
 
   @override
@@ -108,6 +146,7 @@ class _PersonalTrainingLogCategoryPageState
   final TextEditingController _titleC = TextEditingController();
   final TextEditingController _memoC = TextEditingController();
   final TextEditingController _prePainDetailC = TextEditingController();
+  final TextEditingController _preNoteC = TextEditingController();
   final TextEditingController _duringPainDetailC = TextEditingController();
   final TextEditingController _postPainDetailC = TextEditingController();
   final TextEditingController _nextCheckpointC = TextEditingController();
@@ -122,26 +161,24 @@ class _PersonalTrainingLogCategoryPageState
   String _currentCategoryPart = '';
   final List<_CategoryExerciseGroup> _categoryGroups = [];
 
+  // 서버(트레이너 프로필)에 저장되는 부위별 "추가 운동". Personal이 아니면 앱 실행 동안만 유지한다.
+  Map<String, List<String>> _customExercisesByPart = {};
+  PersonalCustomExerciseService? _exerciseService;
+  bool _savingCustomExercises = false;
+  final TextEditingController _exerciseSearchC = TextEditingController();
+
   final Map<String, bool> _memoOpen = {};
   String _lastAutoSummary = '';
   bool _isApplyingAutoSummary = false;
 
-  bool _preExpanded = true;
   bool _categoryExpanded = true;
-  bool _duringExpanded = false;
-  bool _postExpanded = false;
+  bool _postExpanded = true;
   bool _internalExpanded = false;
   bool _publicExpanded = false;
-  bool _lessonEtcExpanded = false;
 
-  late Set<String> _selectedIssueChips;
+  late TrainingLogPreCheckData _preCheck;
+  bool _preCheckConfirmed = true;
   late String _homeworkStatus;
-
-  late String _preCondition;
-  late String _preMeal;
-  late String _preSleep;
-  late String _prePain;
-  late String _preStretching;
 
   late Set<String> _duringGoals;
   late Set<String> _duringFocusParts;
@@ -158,14 +195,8 @@ class _PersonalTrainingLogCategoryPageState
   late String _postNextAction;
   late String _postHomework;
 
-  final List<String> _issueChipOptions = [
-    '통증',
-    '피로',
-    '공복',
-    '결혼준비',
-    '수면부족',
-    'PMS',
-  ];
+  // 통증·수면부족·공복은 시작 전 체크에서 자동으로 잡히므로 직접 고르는 칩에서 뺐다.
+  final List<String> _issueChipOptions = [...kDefaultManualIssueOptions];
 
   final List<String> _mainCategories = const [
     '웨이트 트레이닝',
@@ -204,15 +235,36 @@ class _PersonalTrainingLogCategoryPageState
     _memoC.text = widget.initialMemo ?? '';
     _type = widget.initialType ?? '개인PT';
 
-    _selectedIssueChips = {...?widget.initialIssueChips};
     _homeworkStatus = widget.initialHomeworkStatus ?? '없음';
     _nextCheckpointC.text = widget.initialNextLessonCheckpoint ?? '';
 
-    _preCondition = widget.initialPreCondition ?? '보통';
-    _preMeal = widget.initialPreMeal ?? '가볍게 먹음';
-    _preSleep = widget.initialPreSleep ?? '보통';
-    _prePain = widget.initialPrePain ?? '없음';
-    _preStretching = widget.initialPreStretching ?? '안 함';
+    _preCheck = TrainingLogPreCheckData(
+      condition: widget.initialPreCondition ?? '보통',
+      meal: widget.initialPreMeal ?? kPreMealDefault,
+      sleep: widget.initialPreSleep ?? '보통',
+      pain: widget.initialPrePain ?? '없음',
+      painDetail: widget.initialPrePainDetail ?? '',
+      stretching: widget.initialPreStretching ?? '안 함',
+      note: widget.initialPreNote ?? '',
+      inbodySummary: widget.initialInbodySummary ?? '',
+      issueChips: {...?widget.initialIssueChips},
+    );
+    _prePainDetailC.text = _preCheck.painDetail;
+    _preNoteC.text = _preCheck.note;
+    // 저장된 일지를 다시 열 때는 이미 확인한 것으로 보고, 새 일지만 확인 전 상태로 시작한다.
+    _preCheckConfirmed = widget.initialPreCheckConfirmed ?? !_isNewLog;
+    _preCheck.dropImpliedAutoChips();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_maybeAutoOpenPreCheck());
+    });
+    _duringPainDetailC.text = widget.initialDuringPainDetail ?? '';
+    _postPainDetailC.text = widget.initialPostPainDetail ?? '';
+    for (final chip in _preCheck.issueChips) {
+      if (!_issueChipOptions.contains(chip) &&
+          !kAutoIssueNames.contains(chip)) {
+        _issueChipOptions.add(chip);
+      }
+    }
 
     _duringGoals = {...?widget.initialDuringGoals};
     _duringFocusParts = {...?widget.initialDuringFocusParts};
@@ -229,7 +281,22 @@ class _PersonalTrainingLogCategoryPageState
     _publicHomeworkC.text = widget.initialPublicHomeworkNote ?? '';
     _publicCautionC.text = widget.initialPublicCaution ?? '';
 
-    _applyAutoSummary(force: true);
+    final ownerUid = (widget.personalOwnerUid ?? '').trim();
+    if (ownerUid.isNotEmpty) {
+      _exerciseService = PersonalCustomExerciseService(uid: ownerUid);
+      unawaited(_loadCustomExercises());
+    }
+
+    _cognitiveResponse = widget.initialCognitiveResponse ?? '보통';
+    _performanceResponse = widget.initialPerformanceResponse ?? '보통';
+    _restoreExerciseGroups(widget.initialExercises);
+
+    // 저장된 공개 요약이 있으면 자동 요약으로 덮어쓰지 않는다.
+    _applyAutoSummary(force: _publicSummaryC.text.trim().isEmpty);
+
+    _exerciseSearchC.addListener(() {
+      if (mounted) setState(() {});
+    });
 
     _memoC.addListener(() {
       if (!mounted) return;
@@ -247,6 +314,7 @@ class _PersonalTrainingLogCategoryPageState
   @override
   void dispose() {
     _titleC.dispose();
+    _exerciseSearchC.dispose();
     _memoC.dispose();
     _nextCheckpointC.dispose();
     _internalMemoC.dispose();
@@ -255,9 +323,399 @@ class _PersonalTrainingLogCategoryPageState
     _publicHomeworkC.dispose();
     _publicCautionC.dispose();
     _prePainDetailC.dispose();
+    _preNoteC.dispose();
     _duringPainDetailC.dispose();
     _postPainDetailC.dispose();
     super.dispose();
+  }
+
+  List<String> _customExercisesFor(String part) {
+    if (_exerciseService == null) {
+      return _CategoryExerciseMemory.customExercisesByPart[part] ?? const [];
+    }
+    return _customExercisesByPart[part] ?? const [];
+  }
+
+  Future<void> _loadCustomExercises() async {
+    final service = _exerciseService;
+    if (service == null) return;
+    try {
+      final loaded = await service.load();
+      if (!mounted) return;
+      setState(() {
+        // 불러오는 동안 추가한 운동이 있으면 합친다.
+        final merged = <String, List<String>>{...loaded};
+        for (final entry in _customExercisesByPart.entries) {
+          final list = [...(merged[entry.key] ?? const <String>[])];
+          for (final item in entry.value) {
+            final key = customExerciseComparisonKey(item);
+            if (!list.any((e) => customExerciseComparisonKey(e) == key)) {
+              list.add(item);
+            }
+          }
+          merged[entry.key] = list;
+        }
+        _customExercisesByPart = merged;
+      });
+    } catch (_) {
+      // 목록을 못 불러와도 기본 운동으로 계속 작성할 수 있다.
+    }
+  }
+
+  void _showExerciseMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // 선택한 부위의 "추가 운동" 목록을 바꾸고 서버에 저장한다. 실패하면 되돌리고 false를 돌려준다.
+  Future<bool> _commitCustomExercises(String part, List<String> next) async {
+    final service = _exerciseService;
+    if (service == null) {
+      setState(() {
+        if (next.isEmpty) {
+          _CategoryExerciseMemory.customExercisesByPart.remove(part);
+        } else {
+          _CategoryExerciseMemory.customExercisesByPart[part] = next;
+        }
+      });
+      return true;
+    }
+    if (_savingCustomExercises) {
+      _showExerciseMessage('저장 중이에요. 잠시 후 다시 시도해주세요.');
+      return false;
+    }
+    final previous = {
+      for (final e in _customExercisesByPart.entries) e.key: [...e.value],
+    };
+    final updated = {
+      for (final e in _customExercisesByPart.entries) e.key: [...e.value],
+    };
+    if (next.isEmpty) {
+      updated.remove(part);
+    } else {
+      updated[part] = next;
+    }
+    setState(() {
+      _customExercisesByPart = updated;
+      _savingCustomExercises = true;
+    });
+    try {
+      final saved = await service.save(updated);
+      if (!mounted) return true;
+      setState(() {
+        _customExercisesByPart = saved;
+        _savingCustomExercises = false;
+      });
+      return true;
+    } catch (_) {
+      if (!mounted) return false;
+      setState(() {
+        _customExercisesByPart = previous;
+        _savingCustomExercises = false;
+      });
+      _showExerciseMessage('추가 운동을 저장하지 못했어요. 잠시 후 다시 시도해주세요.');
+      return false;
+    }
+  }
+
+  // 검색창에 입력한 이름을 "추가 운동"으로 저장하고 바로 선택한다.
+  Future<void> _addCustomExerciseFromSearch() async {
+    final part = _currentCategoryPart;
+    final name = normalizeCustomExerciseName(_exerciseSearchC.text);
+    if (part.isEmpty) return;
+
+    final current = _customExercisesFor(part);
+    final error = validateNewCustomExercise(
+      name: name,
+      builtInExercises: _exerciseCategories[part] ?? const <String>[],
+      currentCustomExercises: current,
+    );
+    if (error != null) {
+      _showExerciseMessage(error);
+      return;
+    }
+    final saved = await _commitCustomExercises(part, [...current, name]);
+    if (!saved || !mounted) return;
+    _exerciseSearchC.clear();
+    if (!(_currentGroup?.exercises.contains(name) ?? false)) {
+      _toggleExerciseChip(name);
+    }
+  }
+
+  Future<void> _confirmRemoveCustomExercise(String exercise) async {
+    final part = _currentCategoryPart;
+    if (part.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: const Text('추가 운동 삭제'),
+            content: Text(
+              "'$exercise'를 추가 운동 목록에서 삭제할까요?\n이미 작성한 레슨일지에는 영향이 없어요.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('삭제'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !mounted) return;
+    final key = customExerciseComparisonKey(exercise);
+    await _commitCustomExercises(
+      part,
+      _customExercisesFor(
+        part,
+      ).where((item) => customExerciseComparisonKey(item) != key).toList(),
+    );
+  }
+
+  Widget _buildExercisePicker() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final part = _currentCategoryPart;
+    final query = normalizeCustomExerciseName(_exerciseSearchC.text);
+    final queryKey = customExerciseComparisonKey(query);
+
+    final custom = _customExercisesFor(part);
+    final customKeys = custom.map(customExerciseComparisonKey).toSet();
+    final options = <({String name, bool isCustom})>[
+      for (final name in _exerciseCategories[part] ?? const <String>[])
+        (name: name, isCustom: false),
+      for (final name in custom) (name: name, isCustom: true),
+    ]..sort((a, b) => a.name.compareTo(b.name));
+
+    final filtered =
+        queryKey.isEmpty
+            ? options
+            : options
+                .where(
+                  (o) => customExerciseComparisonKey(o.name).contains(queryKey),
+                )
+                .toList();
+    final exactExists = options.any(
+      (o) => customExerciseComparisonKey(o.name) == queryKey,
+    );
+    final canAdd =
+        queryKey.isNotEmpty &&
+        !exactExists &&
+        !customKeys.contains(queryKey) &&
+        query.length <= kCustomExerciseMaxLength;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          key: const Key('category_exercise_search'),
+          controller: _exerciseSearchC,
+          textInputAction: TextInputAction.search,
+          maxLength: kCustomExerciseMaxLength,
+          buildCounter:
+              (_, {required currentLength, required isFocused, maxLength}) =>
+                  null,
+          decoration: InputDecoration(
+            hintText: '운동 검색 또는 추가',
+            isDense: true,
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon:
+                _exerciseSearchC.text.isEmpty
+                    ? null
+                    : IconButton(
+                      tooltip: '지우기',
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      onPressed: _exerciseSearchC.clear,
+                    ),
+          ),
+        ),
+        if (canAdd)
+          InkWell(
+            key: const Key('category_exercise_add_row'),
+            onTap: _addCustomExerciseFromSearch,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '"$query"을(를) 추가 운동으로 저장',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(height: 4),
+        if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            child: Text(
+              queryKey.isEmpty ? '운동이 없어요.' : '일치하는 운동이 없어요.',
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: ListView.separated(
+              key: const Key('category_exercise_list'),
+              shrinkWrap: true,
+              primary: false,
+              physics: const ClampingScrollPhysics(),
+              itemCount: filtered.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final option = filtered[index];
+                return _exerciseRow(option.name, isCustom: option.isCustom);
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _exerciseRow(String name, {required bool isCustom}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final selected = _currentGroup?.exercises.contains(name) ?? false;
+    return InkWell(
+      key: Key('category_exercise_row_$name'),
+      onTap: () => _toggleExerciseChip(name),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: selected ? colorScheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color:
+                        selected
+                            ? colorScheme.primary
+                            : _themeTokens.trainingLogSetDivider,
+                    width: 1.5,
+                  ),
+                ),
+                child:
+                    selected
+                        ? Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: colorScheme.onPrimary,
+                        )
+                        : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.35,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (isCustom) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '추가',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: '추가 운동 삭제',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  onPressed: () => _confirmRemoveCustomExercise(name),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 저장된 운동 구성(exercises)을 선택 상태로 되돌린다. 메모 문자열은 이미 저장돼 있으므로
+  // 다시 만들지 않는다(선택을 바꿀 때 _syncCategoryDraftToFields가 다시 만든다).
+  void _restoreExerciseGroups(List<Map<String, dynamic>>? saved) {
+    if (saved == null) return;
+    for (final item in saved) {
+      final name = (item['name'] ?? '').toString().trim();
+      final main = (item['main'] ?? '').toString().trim();
+      final part = (item['part'] ?? '').toString().trim();
+      if (name.isEmpty || main.isEmpty || part.isEmpty) continue;
+      final group = _getOrCreateGroup(main, part);
+      if (group.exercises.contains(name)) continue;
+      group.exercises.add(name);
+      group.setCounts[name] = (item['sets'] as num?)?.toInt() ?? 3;
+      group.repCounts[name] = (item['reps'] as num?)?.toInt() ?? 12;
+      group.assistCounts[name] = (item['assist'] as num?)?.toInt() ?? 0;
+      group.noteByExercise[name] = (item['note'] ?? '').toString();
+    }
+  }
+
+  List<Map<String, dynamic>> _exercisesForSave() {
+    return [
+      for (final group in _categoryGroups)
+        for (final exercise in group.exercises)
+          {
+            'main': group.main,
+            'part': group.part,
+            'name': exercise,
+            'sets': group.setCounts[exercise] ?? 3,
+            'reps': group.repCounts[exercise] ?? 12,
+            'assist': group.assistCounts[exercise] ?? 0,
+            'note': (group.noteByExercise[exercise] ?? '').trim(),
+          },
+    ];
   }
 
   String _guessGoalFromCategoryGroup(_CategoryExerciseGroup group) {
@@ -786,57 +1244,8 @@ class _PersonalTrainingLogCategoryPageState
     );
   }
 
-  Widget _multiSelect({
-    required List<String> options,
-    required Set<String> selectedValues,
-    required ValueChanged<String> onToggle,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children:
-          options.map((value) {
-            final selected = selectedValues.contains(value);
-            return InkWell(
-              onTap: () => onToggle(value),
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      selected
-                          ? colorScheme.secondaryContainer
-                          : _themeTokens.trainingLogSetRow,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color:
-                        selected
-                            ? const Color(0xFF4F46E5)
-                            : _themeTokens.trainingLogSetDivider,
-                  ),
-                ),
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color:
-                        selected
-                            ? colorScheme.onSecondaryContainer
-                            : colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-    );
-  }
-
-  Future<void> _addCustomIssueChip() async {
+  // 특이사항 직접 추가 입력창. 입력한 이름을 돌려주고, 시트가 선택 상태로 만든다.
+  Future<String?> _askCustomIssue() async {
     final controller = TextEditingController();
 
     final result = await showDialog<String>(
@@ -846,6 +1255,8 @@ class _PersonalTrainingLogCategoryPageState
             title: const Text('특이사항 추가'),
             content: TextField(
               controller: controller,
+              autofocus: true,
+              maxLength: 40,
               decoration: const InputDecoration(
                 hintText: '예: 어지러움 / 컨디션 저하 / 생리통',
                 border: OutlineInputBorder(),
@@ -866,16 +1277,48 @@ class _PersonalTrainingLogCategoryPageState
 
     controller.dispose();
 
-    if (result == null || result.trim().isEmpty) return;
+    final value = (result ?? '').trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (value.isEmpty) return null;
+    if (!_issueChipOptions.contains(value) &&
+        !kAutoIssueNames.contains(value)) {
+      setState(() => _issueChipOptions.add(value));
+    }
+    return value;
+  }
 
-    final value = result.trim();
+  bool get _isNewLog =>
+      (widget.initialTitle ?? '').trim().isEmpty &&
+      (widget.initialMemo ?? '').trim().isEmpty &&
+      (widget.initialExercises ?? const []).isEmpty;
 
-    setState(() {
-      if (!_issueChipOptions.contains(value)) {
-        _issueChipOptions.add(value);
-      }
-      _selectedIssueChips.add(value);
-    });
+  Future<void> _maybeAutoOpenPreCheck() async {
+    if (!_isNewLog) return;
+    final enabled =
+        widget.autoOpenPreCheck ??
+        await TrainingLogPreferences.autoOpenPreCheck(
+          (widget.personalOwnerUid ?? '').trim(),
+        );
+    if (!enabled || !mounted) return;
+    await _openPreCheckSheet();
+  }
+
+  Future<void> _openPreCheckSheet() async {
+    _prePainDetailC.text = _preCheck.painDetail;
+    _preNoteC.text = _preCheck.note;
+    final done = await showTrainingLogPreCheckDialog(
+      context,
+      memberName: widget.initialName ?? '',
+      data: _preCheck,
+      painDetailController: _prePainDetailC,
+      noteController: _preNoteC,
+      issueOptions: _issueChipOptions,
+      onAddIssue: _askCustomIssue,
+      onMeasureInbody: widget.onMeasureInbody,
+      onChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+    if (done && mounted) setState(() => _preCheckConfirmed = true);
   }
 
   Widget _miniCounter({
@@ -962,15 +1405,18 @@ class _PersonalTrainingLogCategoryPageState
       'type': _type,
       'inputMethod': 'category',
       'rawVoiceText': '',
-      'issueChips': _selectedIssueChips.toList(),
+      'issueChips': _preCheck.savedIssueChips,
       'homeworkStatus': _homeworkStatus,
       'nextLessonCheckpoint': _nextCheckpointC.text.trim(),
-      'preCondition': _preCondition,
-      'preMeal': _preMeal,
-      'preSleep': _preSleep,
-      'prePain': _prePain,
-      'prePainDetail': _prePainDetailC.text.trim(),
-      'preStretching': _preStretching,
+      'preCondition': _preCheck.condition,
+      'preMeal': _preCheck.meal,
+      'preSleep': _preCheck.sleep,
+      'prePain': _preCheck.pain,
+      'prePainDetail': _preCheck.painDetail.trim(),
+      'preStretching': _preCheck.stretching,
+      'preNote': _preCheck.note.trim(),
+      'inbodySummary': _preCheck.inbodySummary,
+      'preCheckConfirmed': _preCheckConfirmed,
       'duringGoals': _duringGoals.toList(),
       'duringFocusParts': _duringFocusParts.toList(),
       'duringReactions': _duringReactions.toList(),
@@ -979,6 +1425,9 @@ class _PersonalTrainingLogCategoryPageState
       'postPainDetail': _postPainDetailC.text.trim(),
       'postPerformance': _postPerformance,
       'focusResponse': _focusResponse,
+      'cognitiveResponse': _cognitiveResponse,
+      'performanceResponse': _performanceResponse,
+      'exercises': _exercisesForSave(),
       'postNextAction': _postNextAction,
       'postHomework': _postHomework,
       'internalMemo': _internalMemoC.text.trim(),
@@ -1026,101 +1475,10 @@ class _PersonalTrainingLogCategoryPageState
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildCollapsibleSection(
-                          title: '시작 전 체크',
-                          expanded: _preExpanded,
-                          onToggle:
-                              () =>
-                                  setState(() => _preExpanded = !_preExpanded),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '오늘 컨디션',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const ['좋음', '보통', '나쁨'],
-                                selectedValue: _preCondition,
-                                onChanged:
-                                    (v) => setState(() => _preCondition = v),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                '식사 상태',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const ['공복', '가볍게 먹음', '충분히 먹음'],
-                                selectedValue: _preMeal,
-                                onChanged: (v) => setState(() => _preMeal = v),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                '수면 상태',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const ['부족', '보통', '충분'],
-                                selectedValue: _preSleep,
-                                onChanged: (v) => setState(() => _preSleep = v),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                '통증 상태',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const ['없음', '있음'],
-                                selectedValue: _prePain,
-                                onChanged: (v) => setState(() => _prePain = v),
-                              ),
-                              if (_prePain == '있음') ...[
-                                const SizedBox(height: 10),
-                                TextField(
-                                  controller: _prePainDetailC,
-                                  maxLines: 2,
-                                  decoration: const InputDecoration(
-                                    labelText: '통증 상세',
-                                    hintText: '예: 오른쪽 어깨 전면이 팔 올릴 때 걸리는 느낌',
-                                    border: OutlineInputBorder(),
-                                    alignLabelWithHint: true,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 14),
-                              const Text(
-                                '사전 스트레칭',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const ['안 함', '조금 함', '충분히 함'],
-                                selectedValue: _preStretching,
-                                onChanged:
-                                    (v) => setState(() => _preStretching = v),
-                              ),
-                            ],
-                          ),
+                        TrainingLogPreCheckCard(
+                          data: _preCheck,
+                          onEdit: _openPreCheckSheet,
+                          confirmed: _preCheckConfirmed,
                         ),
                         const SizedBox(height: 12),
                         _buildCollapsibleSection(
@@ -1165,6 +1523,7 @@ class _PersonalTrainingLogCategoryPageState
                                           setState(() {
                                             _currentCategoryMain = item;
                                             _currentCategoryPart = '';
+                                            _exerciseSearchC.clear();
                                           });
                                         },
                                       );
@@ -1195,6 +1554,7 @@ class _PersonalTrainingLogCategoryPageState
                                               onSelected: (_) {
                                                 setState(() {
                                                   _currentCategoryPart = item;
+                                                  _exerciseSearchC.clear();
                                                 });
                                               },
                                             );
@@ -1204,104 +1564,15 @@ class _PersonalTrainingLogCategoryPageState
                               ],
                               if (_currentCategoryPart.isNotEmpty) ...[
                                 const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    const Expanded(
-                                      child: Text(
-                                        '3) 운동 선택',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: () async {
-                                        final controller =
-                                            TextEditingController();
-                                        final result = await showDialog<String>(
-                                          context: context,
-                                          builder:
-                                              (_) => AlertDialog(
-                                                title: const Text('운동 추가'),
-                                                content: TextField(
-                                                  controller: controller,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        hintText:
-                                                            '예: 데드 버그 / 힙힌지',
-                                                        border:
-                                                            OutlineInputBorder(),
-                                                      ),
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed:
-                                                        () => Navigator.pop(
-                                                          context,
-                                                        ),
-                                                    child: const Text('취소'),
-                                                  ),
-                                                  FilledButton(
-                                                    onPressed:
-                                                        () => Navigator.pop(
-                                                          context,
-                                                          controller.text
-                                                              .trim(),
-                                                        ),
-                                                    child: const Text('추가'),
-                                                  ),
-                                                ],
-                                              ),
-                                        );
-
-                                        if (result == null ||
-                                            result.trim().isEmpty)
-                                          return;
-
-                                        final part = _currentCategoryPart;
-                                        final list = _CategoryExerciseMemory
-                                            .customExercisesByPart
-                                            .putIfAbsent(part, () => []);
-                                        if (!list.contains(result.trim())) {
-                                          setState(() {
-                                            list.add(result.trim());
-                                          });
-                                        }
-                                      },
-                                      icon: const Icon(
-                                        Icons.add_rounded,
-                                        size: 16,
-                                      ),
-                                      label: const Text('운동추가'),
-                                    ),
-                                  ],
+                                const Text(
+                                  '3) 운동 선택',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children:
-                                      [
-                                        ...(_exerciseCategories[_currentCategoryPart] ??
-                                            []),
-                                        ...(_CategoryExerciseMemory
-                                                .customExercisesByPart[_currentCategoryPart] ??
-                                            []),
-                                      ].map((item) {
-                                        final selected =
-                                            _currentGroup?.exercises.contains(
-                                              item,
-                                            ) ??
-                                            false;
-                                        return FilterChip(
-                                          label: Text(item),
-                                          selected: selected,
-                                          onSelected:
-                                              (_) => _toggleExerciseChip(item),
-                                        );
-                                      }).toList(),
-                                ),
+                                _buildExercisePicker(),
                               ],
                               if (_categoryGroups.isNotEmpty) ...[
                                 const SizedBox(height: 16),
@@ -1423,7 +1694,7 @@ class _PersonalTrainingLogCategoryPageState
                                                                 Expanded(
                                                                   child: Text(
                                                                     exercise,
-                                                                    maxLines: 1,
+                                                                    maxLines: 2,
                                                                     overflow:
                                                                         TextOverflow
                                                                             .ellipsis,
@@ -1820,108 +2091,6 @@ class _PersonalTrainingLogCategoryPageState
                         ),
                         const SizedBox(height: 12),
                         _buildCollapsibleSection(
-                          title: '수업 중 체크',
-                          expanded: _duringExpanded,
-                          onToggle:
-                              () => setState(
-                                () => _duringExpanded = !_duringExpanded,
-                              ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '집중력',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const ['집중 잘됨', '보통', '낮음'],
-                                selectedValue: _focusResponse,
-                                onChanged:
-                                    (v) => setState(() => _focusResponse = v),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                '인지 반응',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const ['인지 잘됨', '보통', '어려움'],
-                                selectedValue: _cognitiveResponse,
-                                onChanged:
-                                    (v) =>
-                                        setState(() => _cognitiveResponse = v),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                '수행 반응',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _singleSelect(
-                                options: const [
-                                  '수행 좋음',
-                                  '보통',
-                                  '어려움',
-                                  '통증으로 제한',
-                                ],
-                                selectedValue: _performanceResponse,
-                                onChanged:
-                                    (v) => setState(
-                                      () => _performanceResponse = v,
-                                    ),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                '특이 반응',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              _multiSelect(
-                                options: const ['통증', '밸런스', '호흡', '자세'],
-                                selectedValues: _duringReactions,
-                                onToggle: (v) {
-                                  setState(() {
-                                    if (_duringReactions.contains(v)) {
-                                      _duringReactions.remove(v);
-                                    } else {
-                                      _duringReactions.add(v);
-                                    }
-                                  });
-                                },
-                              ),
-                              if (_duringReactions.contains('통증')) ...[
-                                const SizedBox(height: 10),
-                                TextField(
-                                  controller: _duringPainDetailC,
-                                  maxLines: 2,
-                                  decoration: const InputDecoration(
-                                    labelText: '수업 중 통증 메모',
-                                    hintText:
-                                        '예: 스텝다운 시 무릎 안쪽 불편 / 브릿지에서 허리 압박감',
-                                    border: OutlineInputBorder(),
-                                    alignLabelWithHint: true,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildCollapsibleSection(
                           title: '종료 후 체크',
                           expanded: _postExpanded,
                           onToggle:
@@ -1993,7 +2162,7 @@ class _PersonalTrainingLogCategoryPageState
                               ),
                               const SizedBox(height: 14),
                               const Text(
-                                '숙제',
+                                '오늘 낸 숙제',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -2011,6 +2180,32 @@ class _PersonalTrainingLogCategoryPageState
                                 selectedValue: _postHomework,
                                 onChanged:
                                     (v) => setState(() => _postHomework = v),
+                              ),
+                              const SizedBox(height: 14),
+                              const Text(
+                                '지난 숙제 수행',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _singleSelect(
+                                options: const ['없음', '완료', '일부', '미수행'],
+                                selectedValue: _homeworkStatus,
+                                onChanged:
+                                    (v) => setState(() => _homeworkStatus = v),
+                              ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: _nextCheckpointC,
+                                maxLines: 2,
+                                decoration: const InputDecoration(
+                                  labelText: '다음 수업 체크포인트',
+                                  hintText: '예: 무릎 통증 확인, 스쿼트 숙제 확인',
+                                  border: OutlineInputBorder(),
+                                  alignLabelWithHint: true,
+                                ),
                               ),
                             ],
                           ),
@@ -2077,199 +2272,6 @@ class _PersonalTrainingLogCategoryPageState
                                 decoration: const InputDecoration(
                                   hintText:
                                       '운동 내용을 기반으로 자동 요약되며, 직접 수정할 수 있어요.',
-                                  border: OutlineInputBorder(),
-                                  alignLabelWithHint: true,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildCollapsibleSection(
-                          title: '수업 체크사항',
-                          expanded: _lessonEtcExpanded,
-                          onToggle:
-                              () => setState(
-                                () => _lessonEtcExpanded = !_lessonEtcExpanded,
-                              ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '특이사항',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children:
-                                    _issueChipOptions.map((chip) {
-                                        final selected = _selectedIssueChips
-                                            .contains(chip);
-                                        return InkWell(
-                                          onTap: () {
-                                            setState(() {
-                                              if (selected) {
-                                                _selectedIssueChips.remove(
-                                                  chip,
-                                                );
-                                              } else {
-                                                _selectedIssueChips.add(chip);
-                                              }
-                                            });
-                                          },
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  selected
-                                                      ? colorScheme
-                                                          .secondaryContainer
-                                                      : _themeTokens
-                                                          .trainingLogSetRow,
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                              border: Border.all(
-                                                color:
-                                                    selected
-                                                        ? const Color(
-                                                          0xFF4F46E5,
-                                                        )
-                                                        : _themeTokens
-                                                            .trainingLogSetDivider,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              chip,
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w800,
-                                                color:
-                                                    selected
-                                                        ? colorScheme
-                                                            .onSecondaryContainer
-                                                        : colorScheme.onSurface,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }).toList()
-                                      ..add(
-                                        InkWell(
-                                          onTap: _addCustomIssueChip,
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  _themeTokens
-                                                      .trainingLogSetRow,
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                              border: Border.all(
-                                                color:
-                                                    _themeTokens
-                                                        .trainingLogSetDivider,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              '+ 추가',
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w800,
-                                                color:
-                                                    colorScheme
-                                                        .onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                '숙제 수행 체크',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children:
-                                    ['없음', '완료', '일부', '미수행'].map((value) {
-                                      final selected = _homeworkStatus == value;
-                                      return InkWell(
-                                        onTap:
-                                            () => setState(
-                                              () => _homeworkStatus = value,
-                                            ),
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                selected
-                                                    ? colorScheme
-                                                        .secondaryContainer
-                                                    : _themeTokens
-                                                        .trainingLogSetRow,
-                                            borderRadius: BorderRadius.circular(
-                                              999,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  selected
-                                                      ? const Color(0xFF4F46E5)
-                                                      : _themeTokens
-                                                          .trainingLogSetDivider,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            value,
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w800,
-                                              color:
-                                                  selected
-                                                      ? colorScheme
-                                                          .onSecondaryContainer
-                                                      : colorScheme.onSurface,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                              ),
-                              const SizedBox(height: 16),
-                              TextField(
-                                controller: _nextCheckpointC,
-                                maxLines: 2,
-                                decoration: const InputDecoration(
-                                  labelText: '다음 수업 체크포인트',
-                                  hintText: '예: 무릎 통증 확인, 스쿼트 숙제 확인',
                                   border: OutlineInputBorder(),
                                   alignLabelWithHint: true,
                                 ),

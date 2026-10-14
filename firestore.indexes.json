@@ -36,6 +36,15 @@
         {"fieldPath": "workspaceType", "order": "ASCENDING"},
         {"fieldPath": "isDeleted", "order": "ASCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "anatomyRecords",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "trainerId", "order": "ASCENDING"},
+        {"fieldPath": "memberId", "order": "ASCENDING"},
+        {"fieldPath": "recordedAt", "order": "DESCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

@@ -457,6 +457,20 @@ class AnatomyLogService {
         'exerciseName': record.exerciseName,
         'painLevel': record.painLevel.clamp(0, 10),
         'memo': record.memo,
+        // 수정에서 비운 값이 옛 값으로 남지 않게 지운다(없는 필드를 지우는 것은 무해).
+        'sets':
+            record.sets.isEmpty
+                ? FieldValue.delete()
+                : record.sets.map((s) => s.toMap()).toList(),
+        'relatedPartIds':
+            record.relatedPartIds.isEmpty
+                ? FieldValue.delete()
+                : record.relatedPartIds,
+        'pin': record.pin == null ? FieldValue.delete() : record.pin!.toMap(),
+        'mobilityResult':
+            record.mobilityResult == null
+                ? FieldValue.delete()
+                : record.mobilityResult!.name,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 

@@ -3186,3 +3186,376 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 사용자 승인("폰에서 확인했고 prod 배포하자") 후 `npx firebase deploy --only functions --project more-than-fitness-f6adb` 실행. 전 함수 update 성공(`createManagedMember`, `updateManagedMember`, `updateManagedMemberConsent` 등). 마지막 "cleanup policy" 오류는 기존과 같은 무해한 메시지다. Rules·Firestore 데이터·인덱스는 건드리지 않았다.
 - `pubspec.yaml` 버전 1.0.5+24 → 1.0.5+25, `flutter build appbundle --flavor prod -t lib/main_prod.dart --release --no-pub` 성공(75.6MB, `build/app/outputs/bundle/prodRelease/app-prod-release.aab`).
 - 미작업: Play Console 업로드(사용자), commit, push.
+
+## 2026-10-09 시작시간 분/시 휠 빠른 스와이프 관성 복구
+
+- 증상: 레슨 시작시간 변경 휠이 스와이프 한 번에 한 칸(5분)씩만 움직이고, 빠르게 넘겨도 더 많이 넘어가지 않았다.
+- 원인: `home_single_lesson_time_dialog.dart`의 `syncInputsFromPickedTime()`이 휠의 `onSelectedItemChanged`마다 `animateToItem(현재 항목)`을 호출해 진행 중인 플링(관성)을 끊었다.
+- 수정: `syncInputsFromPickedTime({bool animateWheels = true})`로 바꾸고, 휠 onChanged(시·분)에서는 `animateWheels: false`로 호출한다. 키보드 전환·소요시간 칩처럼 프로그램이 값을 바꾸는 경우는 기존대로 애니메이션한다. `home_time_range_dialog.dart`는 휠 onChanged에서 호출하지 않아 해당 없음.
+- 테스트: `test/home_time_wheel_fling_test.dart`(소스 기준) 추가, 전체 Flutter 787개 통과. PROD 릴리스 APK(버전코드 25 그대로)를 빌드해 폰에 `install -r`로 설치했다. 이전에 만든 AAB에는 이 수정이 없다 → Play 업로드 전에 버전코드를 올려 AAB를 다시 빌드해야 한다.
+- 미확인: 사이드패널 첫 열기 버벅임은 원인 미확정(gfxinfo로 Flutter 프레임 측정 불가). 미작업: commit, push, PROD 재배포 없음(앱만 변경, Functions 변경 없음).
+
+## 2026-10-11 카테고리 레슨일지 "내 운동" 서버 저장 (코드 완료, 배포 전)
+
+- 요구: 카테고리 레슨일지에서 `운동추가`로 만든 운동을 앱 재시작·기기 변경 후에도 쓰고(폰·태블릿 공유), 관리할 수 있게 한다. 서버(트레이너 프로필) 저장으로 결정.
+- 기존: 추가한 운동이 `_CategoryExerciseMemory` static 메모리에만 있어 앱을 껐다 켜면 사라졌다.
+- Functions: `updatePersonalTrainerProfile`에 `customExercises`(부위→운동 목록) 허용 필드 추가(`profile_bootstrap.ts` `normalizeCustomExercises`). 부위 최대 20개·부위명 20자, 부위당 30개·이름 40자, 공백 정리, 대소문자 무시 중복 거절, 빈 부위 제거, 전체를 통째로 교체. 기존 필드·규칙은 변경 없음. Firestore Rules·Storage Rules 변경 없음.
+- 앱: `lib/services/personal_custom_exercise_service.dart` 신규(정규화·검증·서버 저장 후 server readback). 카테고리 페이지가 `personalOwnerUid`를 받아 시작 시 목록을 불러오고, `운동추가`는 검증 후 서버에 저장하며 실패하면 되돌리고 "내 운동을 저장하지 못했어요"를 안내한다. 내 운동 칩은 사람 아이콘으로 구분하고 길게 눌러 삭제(확인 창, 이미 쓴 일지에는 영향 없음). Personal이 아닌 워크스페이스는 기존처럼 앱 실행 동안만 유지한다.
+- 검증: member Emulator 82개 통과(신규 2: 정규화·통째 교체, 잘못된 payload 거절), functions build·lint 통과, 신규 Flutter 테스트 6개, 전체 Flutter 793개 통과, analyze 오류 0.
+- 미작업/주의: **Functions DEV·PROD 배포 전이다.** 앱이 먼저 나가면 서버가 `unknown_fields`로 거절해 저장 실패 안내가 뜬다(앱 동작은 유지). 순서는 Functions 배포 → 앱 설치. 이름 변경은 미구현(삭제 후 재추가). commit·push 안 함.
+
+## 2026-10-11 카테고리 운동 선택을 검색창 + 목록으로 변경, DEV Functions 배포
+
+- 사용자 승인("1번부터 진행하고 DEV 배포도 승인")에 따라 DEV Functions(`more-than-fitness-dev-mft`)를 배포했다(`updatePersonalTrainerProfile`의 `customExercises` 포함, 전 함수 update 성공, 마지막 cleanup policy 오류는 기존과 같은 무해한 메시지). PROD 배포는 하지 않았다.
+- 변경(`personal_training_log_category_page.dart`): 3단계 운동 선택을 칩에서 검색창 + 목록으로 바꿨다. 기본 운동과 추가 운동을 한 목록에 섞어 가나다순으로 보여주고 추가 운동에는 `추가` 표시와 삭제(휴지통) 버튼을 둔다. 입력한 이름이 목록에 없으면 "OOO을(를) 추가 운동으로 저장" 행이 나타나 저장 후 바로 선택된다(저장 실패 시 되돌림). 긴 이름은 목록에서 2줄까지, 선택된 운동 카드에서도 2줄까지 보인다. 라벨은 "추가 운동"으로 통일, 길게 누르기·`운동추가` 팝업은 제거했다.
+- 보류(사용자 결정): "최근 사용"·"자주 쓰는 순"은 운동 구조 저장(레슨일지에 운동 목록 저장)과 함께 다음 단계에서 한다. 별도 사용 기록 필드는 만들지 않기로 했다. 통계는 구조화 저장 + 표준 운동 이름 이후.
+- 테스트: 위젯 테스트 4개(가나다순·검색 필터, 선택 반영, 긴 이름 추가·선택, 중복 시 추가 행 숨김) + 서비스 테스트. 전체 Flutter 797개 통과, analyze 오류 0. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+- 미작업: 폰 실사용 확인, PROD Functions 배포, commit, push.
+
+## 2026-10-11 레슨일지 목록 기본 필터와 세부 기록(details) 저장 구조 1단계
+
+- 목록: `PersonalTrainingLogPage` 기본 필터를 `확정완료`→`전체`로, 칩 순서를 `전체 → 확정완료 → 더보기`로 바꿨다(들어가면 레슨이 바로 보이도록). 소스 테스트 추가.
+- 발견: 이 화면의 작성 방식 에디터 결과(제목·체크·특이사항·숙제·운동 구성·공개/내부 메모)는 `_applyDraftEditorResult`로 화면 메모리에만 담기고 서버에 저장·복원되지 않는다. 서버 `training_logs`(personal)는 `memo` 등 몇 필드만 허용한다. 폰에서 저장 후 다시 열면 사라지는 것을 사용자가 확인했다. 설계는 `docs/product/lesson-log-details-design.md`.
+- 1단계(완료, 로컬): `firestore.rules`의 personal `training_logs`에 `details`(초안일 때만 쓰기, 키·크기 검증) 추가. 규칙 평가 한도 때문에 체크 항목을 pre/during/post/notes 묶음으로 나눴다. `personal_training_logs` Emulator 46개 통과(신규: 저장·읽기, 생성 시 details, 알 수 없는 키·과대 문자열·잘못된 타입 거부, 묶음 키 제한, 타 트레이너 거부, 확정 후 불변). 모델(`details`)·저장소(createDraft/autosave/load)·변환(`personal_training_log_details.dart`)·단위 테스트 추가.
+- 미작업: 규칙 DEV 배포(승인 필요), 화면 연결(2단계), 확정·확정취소 연결(3단계), PROD 배포, commit, push.
+
+## 2026-10-11 레슨일지 에디터 저장을 서버에 연결 (2단계, DEV)
+
+- 사용자 승인에 따라 `firestore.rules`(training_logs `details`)를 DEV(`more-than-fitness-dev-mft`)에만 배포했다(`firebase deploy --only firestore:rules`, 컴파일·릴리스 성공). PROD는 하지 않았다.
+- `PersonalTrainingLogPage`(personal_training_log_page.dart): 에디터 결과를 `_assignEditorMap`으로 항목에 채우고, 개인 워크스페이스에서는 `_persistPersonalLogDraft`가 `PersonalTrainingLogRepository`로 초안을 만들거나(`createDraft`, `trainingLogDocId` 기록) 갱신(`autosave`)한다. 확정된 일지는 건너뛴다. 저장 실패 시 입력은 유지하고 안내한다. 진입 시 `_loadFormalLogsFromFirestore`가 서버의 formal 일지를 목록에 불러와 `details`로 항목을 복원한다(중복 doc 제외). 에디터를 결과 없이 닫을 때의 `null as Map` 예외도 고쳤다(텍스트·카테고리).
+- 항목에 운동 구성(`exercises`)·인지 반응·수행 반응 필드를 추가했다. 카테고리 에디터는 이 값들을 저장 결과에 포함하고(이전에는 인지·수행 반응이 버려졌다), 다시 열 때 운동 구성을 복원하며 저장된 공개 요약을 자동 요약으로 덮어쓰지 않는다.
+- 서버 시각은 처음 저장한 시각을 유지한다(재저장 시 시작 시각이 흔들리지 않게 서버 문서가 있으면 `time` 갱신 안 함).
+- 미작업(3단계): 이 화면의 확정·확정취소·서명은 여전히 화면 안 처리다(직접 Firestore 쓰기가 personal 규칙과 맞지 않을 수 있어 점검 필요). 시작 전 체크 UI·특이사항 개편, PROD 규칙·앱 배포, commit, push.
+- 검증: 전체 Flutter 808개 통과, analyze 오류 0, personal training log Emulator 46개 통과. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+
+## 2026-10-11 카테고리 레슨일지 구성 개편: 시작 전 체크 요약 카드·빠른 체크 시트, 수업 중 체크 제거
+
+- 사용자 결정: 시작 전 체크를 한 줄 요약 카드 + 한 화면 빠른 체크 시트로 바꾸고, 특이사항은 시작 전 체크 안(스트레칭 아래 접힘)으로 옮기며, 수업 중 체크는 없애고 숙제·다음 수업 체크포인트는 종료 후 체크로 합친다(섹션 7개 → 4개: 시작 전 체크 / 운동 구성 / 종료 후 체크 / 메모).
+- `lib/widgets/training_log_pre_check.dart` 신규: `TrainingLogPreCheckData`(컨디션·식사·수면·통증·스트레칭·특이사항 칩·메모), 요약 카드(`TrainingLogPreCheckCard`, "이상 없음/확인 필요 N", 이상 항목 강조), 빠른 체크 시트(큰 선택 버튼, 통증 상세, 접힌 특이사항: 자동 항목·칩·직접 추가·한 줄 메모). 식사 선택지는 `1시간 이내 / 1~3시간 전 / 4시간 이상(공복)`이고, 이전 일지의 옛 값(공복·가볍게 먹음·충분히 먹음)은 그대로 읽어 시트에 남긴다(`공복`은 공복으로 취급). 컨디션 나쁨·수면 부족·통증·공복은 자동으로 확인 항목이 되며, 저장할 때 기존 특이사항 칩 이름(통증·수면부족·공복)으로 `issueChips`에 합친다(과거 요약과 호환).
+- `personal_training_log_category_page.dart`: 시작 전 체크 섹션을 카드로 교체, 수업 중 체크·수업 체크사항 섹션 삭제(수업 중 값은 화면에서 받지 않지만 저장된 값은 그대로 유지·전달), 종료 후 체크에 `오늘 낸 숙제`·`지난 숙제 수행`·`다음 수업 체크포인트` 통합(기본 펼침), 특이사항 기본 칩은 피로·결혼준비·PMS. 이전에 다시 열면 복원되지 않던 통증 상세(시작 전·수업 중·종료 후)도 이제 복원한다. `preNote`(특이사항 한 줄 메모)는 `details.pre.note`로 저장된다(Rules 변경 없음).
+- `personal_training_log_page.dart`: 항목에 `preNote` 추가, 새 일지 식사 기본값 `1~3시간 전`, 카테고리 에디터에 복원값 전달.
+- 미작업: 텍스트·음성 에디터(`personal_training_log_text_voice_page.dart`)는 아직 옛 시작 전 체크 UI와 옛 식사 선택지를 쓴다(같은 `preMeal` 필드). 확정·확정취소·서명 서버 연결(3단계), PROD 규칙·앱 배포, commit, push.
+- 검증: 신규 위젯 테스트 13개(값 로직, 요약 카드, 시트 상호작용, 접힘/펼침, 옛 식사 값 보존, 카테고리 화면 구성). 전체 Flutter 821개 통과, analyze 오류 0. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+
+## 2026-10-11 시작 전 체크 자동 열기 + 레슨일지 설정
+
+- 사용자 결정: 새 레슨일지를 만들면 시작 전 체크 창을 먼저 띄우고(화면이 짧아짐), 헤더의 달력 아이콘 옆 설정에서 끌 수 있게 한다. 책임 소지 논의(운동 전 컨디션 확인 기록)는 증거 목적이 아니라 흐름 파악용으로 보고 1·2번만 진행했다.
+- 카테고리 에디터: 새 일지(제목·메모·운동 구성이 모두 비어 있을 때)만 첫 화면 직후 `showTrainingLogPreCheckSheet`를 자동으로 연다. 저장된 일지를 다시 열 때는 열지 않고 확인한 것으로 본다. 시트를 `완료`로 닫아야 확인 상태가 되고, 그냥 닫으면 카드에 "아직 체크 안 함"과 `체크하기` 버튼이 남는다(확인 여부는 저장하지 않는 화면 상태이며 Rules 변경 없음). `autoOpenPreCheck` 파라미터가 null이면 설정을 따른다.
+- 설정: `lib/services/training_log_preferences.dart`(SharedPreferences, 계정별 키, 기본 켜짐). 레슨일지 목록 헤더에 설정 아이콘을 추가하고(`_openLogSettings`) "시작 전 체크 자동으로 열기" 스위치를 둔다. 기기 안 저장이라 기기를 바꾸면 다시 설정해야 한다.
+- 보류(승인 필요): 이상이 있을 때 조치(강도 조절·종목 변경·진행) 기록, 확인 시각(수정 불가) 저장, 회원 확인 서명 — 서버 규칙 변경이 필요할 수 있다. 책임 관련 문구는 법적 보호를 보장하는 것처럼 표현하지 않는다.
+- 검증: 신규 위젯 테스트(자동 열기·완료·닫기·재열기·저장된 일지·설정 끔·기본 켜짐·설정 저장) + 헤더 설정 소스 테스트, 전체 Flutter 828개 통과, analyze 오류 0. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다. 텍스트·음성 에디터는 아직 이전 방식이다.
+
+## 2026-10-11 레슨 전 체크리스트: 바텀시트 → 가운데 카드 팝업, 이름 변경
+
+- 사용자 결정: 시작 전 체크를 바텀시트 대신 가운데 카드 팝업으로 바꾸고 디자인을 더한다. 이름은 "오늘 상태" 대신 "레슨 전 체크리스트"(요약 카드 제목은 "레슨 전 체크")로 통일.
+- `training_log_pre_check.dart`: `showTrainingLogPreCheckSheet` → `showTrainingLogPreCheckDialog`(`showGeneralDialog`, 페이드·스케일 전환, 최대 폭 440, 키보드 높이 반영, 내용이 길면 카드 안에서 스크롤). 헤더에 아이콘 + "OOO님 레슨 전 체크리스트 / 수업 시작 전에 한 번 확인해요", 질문마다 아이콘 배지(컨디션·식사·수면·통증·스트레칭)와 알약 선택지(높이 42 이상), 이상 값을 고르면 아이콘 배지·선택 알약이 강조되고 "확인 필요 N · 항목" 요약이 생긴다. 하단 `나중에` / `이상 없음 · 완료`(이상이 있으면 `완료`). `완료`만 확인 상태이고 `나중에`·바깥 탭은 "아직 체크 안 함"으로 남는다.
+- 문구: 카테고리·텍스트 에디터 섹션 제목, 설정 스위치("레슨 전 체크 자동으로 열기") 등을 "레슨 전 체크"로 바꿨다. 저장 형식·서버 변경 없음.
+- 테스트: 기존 위젯 테스트를 새 팝업에 맞게 갱신. 테스트에서 `setSurfaceSize`는 MediaQuery 크기를 바꾸지 않아 높이 제한이 어긋났으므로 `tester.view.physicalSize`로 바꿨다(앱 동작 문제 아님). 전체 Flutter 828개 통과, analyze 오류 0. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+
+## 2026-10-11 레슨 전 체크리스트를 텍스트·음성·PDF·아나토미까지 적용
+
+- 구조: 레슨 전 체크는 에디터가 아니라 레슨일지(로그) 자체의 정보이므로 `PersonalTrainingLogPage`의 작성 방식 선택 직후(`_runPreCheckForNewLog`) 방식과 상관없이 먼저 연다(설정에서 끄면 생략). 완료하면 서버 초안(`details.pre`)에 바로 저장해(`_persistPersonalLogDraft`) 텍스트·카테고리·PDF·아나토미 어느 방식으로 쓰든 남는다. 작성 중이거나 이미 확인한 일지는 다시 열지 않는다.
+- 카테고리·텍스트 에디터는 목록 화면에서 이미 연 체크를 다시 열지 않고(`autoOpenPreCheck: false`, `initialPreCheckConfirmed`) 카드(`레슨 전 체크`, 수정하기/체크하기)로 값을 보여주고 고친다. 에디터 저장 결과에 `preCheckConfirmed`를 담아 목록의 확인 상태(`preCheckDone`, 화면 상태)를 갱신한다.
+- 텍스트·음성 에디터(`personal_training_log_text_voice_page.dart`)를 카테고리와 같은 구성으로 바꿨다: 레슨 전 체크 요약 카드·팝업, 수업 중 체크·수업 체크사항 제거, 종료 후 체크에 `오늘 낸 숙제`·`지난 숙제 수행`·`다음 수업 체크포인트` 통합, 특이사항 기본 칩 피로·결혼준비·PMS, 통증 상세(시작 전·수업 중·종료 후) 복원. 식사 선택지도 같은 새 값을 쓴다.
+- 서버 복원: 레슨 전 체크만 저장된 초안(제목·입력 방식·운동 구성·메모 없음)은 "레슨일지 작성 전" 초안으로 불러오고 체크 값만 되살린다(`details`가 있어도 내용이 없으면 초안). `details`의 제목·입력 방식은 초안일 때 쓰지 않는다. 직접 고른 칩 중 체크에서 자동으로 만들어지는 통증·수면부족·공복은 `dropImpliedAutoChips`로 겹치지 않게 한다(옛 일지의 칩은 유지).
+- PDF: 현재 `personal_training_log_pdf_page.dart`는 77줄짜리 자리표시 화면이라 체크 항목을 담을 입력 UI가 없다. 체크는 목록 단계에서 먼저 열려 서버 초안에 저장되고, PDF 화면은 이후 수기 기능을 만들 때 연결한다.
+- 아나토미: 체크는 같은 목록 단계에서 열리고 저장 초안이 만들어져 로그 doc id가 생긴다. 다만 아나토미 저장(`AnatomyLogService`)은 `training_logs/{id}/anatomyRecords`와 부모 문서의 `anatomyRecords` 필드에 쓰는데, 현재 personal 규칙은 이 하위 컬렉션을 막고(Emulator "personal anatomy child access remains denied") 부모 문서 갱신 가능 키에도 없어, 개인 워크스페이스에서 아나토미 기록 저장이 막힐 가능성이 크다. 실기기 확인과 별도 설계 필요(미작업).
+- 검증: 신규 위젯·소스 테스트 11개(텍스트 화면 구성·자동 열기·확인 상태, 목록 화면 연결, 자동 칩 정리). 전체 Flutter 839개 통과, analyze 오류 0. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+
+## 2026-10-11 레슨에서 회원카드를 열면 성별·전화번호가 비고 저장하면 중복 회원이 생기는 문제 수정
+
+- 증상: 홈 일정(레슨)의 `회원카드`로 열면 이름·생년월일만 있고 성별 미입력·전화번호 빈 카드가 열리고, 저장하면 새 회원 카드가 하나 더 생겼다(이름을 바꾸면 카드가 둘이 되는 문제와 같은 원인).
+- 원인(로그·화면 재현으로 확인): `home_page.dart` `_openClientCardFromSchedule`이 `ClientCardPage(memberId: ...)`를 `isEditMode` 없이(기본값 false) 열었다. 신규 등록 모드라 서버 문서를 불러오지 않고(`MTF_MEMBER_CARD_LOAD` 로그 없음), 임시 초안(`_loadDraft`)에서 이름·생년월일만 복원돼 성별·전화번호가 비었다. 저장은 `createManagedMember` 경로이고 서버가 `idempotencyKey`를 해시해 새 memberId를 만들기 때문에 기존 회원이 아닌 **새 회원**이 만들어졌다. 이 코드는 커밋 `1ec213c` 이전부터 있었고(이번 작업으로 생긴 게 아님), 같은 파일의 최근 회원 열기(12397행)와 월간 레슨 기록 화면은 이미 `isEditMode: true`였다.
+- 수정: `_openClientCardFromSchedule`에 `isEditMode: true` 추가(이유 주석 포함). 회귀 테스트 `test/client_card_open_mode_test.dart`: `lib` 전체에서 기존 회원 카드를 여는 `ClientCardPage(` 호출이 모두 `isEditMode: true`를 쓰는지 검사한다.
+- 디버그 로그: 회원카드 로드·저장 입력에 `[MTF_MEMBER_CARD_LOAD]`/`[MTF_MEMBER_CARD_SAVE_INPUT]`을 디버그 빌드 전용으로 추가했다(성별 종류·전화번호 길이·서버 키만, 값은 남기지 않음).
+- 실기기 검증(DEV, adb로 재현): 수정 후 지나 레슨 → `회원카드`가 수정 모드("수정 저장")로 열리고 전화번호가 보이며 `MTF_MEMBER_CARD_LOAD genderRaw=female genderUi=여 phoneUiLen=13`이 찍힌다.
+- 남은 일: 이 경로로 이미 만들어진 중복 회원(예: DEV의 동명 회원 2명)은 데이터에 그대로 있다(자동 삭제하지 않음). 회원카드 건강정보(키·체중·병력 등)가 개인 워크스페이스에서 서버에 저장되지 않는 문제는 별도(서버 함수 변경·승인 필요). PROD 앱(1.0.5+25 AAB)에는 아직 이 수정이 없다 → 업로드 전 버전코드를 올려 다시 빌드해야 한다. commit·push 안 함.
+- 검증: 전체 Flutter 841개 통과, analyze 오류 0.
+
+## 2026-10-11 회원카드 건강정보(health) 서버 저장 (코드 완료, 배포 전)
+
+- 문제: 개인 워크스페이스의 회원카드 저장(`createManagedMember`/`updateManagedMember`)은 건강정보를 받지 않아 인바디/건강정보 섹션(키·체중·체지방률·골격근량·BMI·병력·복용약·여성 컨디션)이 저장되지 않았다. 기존 workspace 경로만 `health`를 직접 썼다.
+- Functions(`managed_members.ts`): 두 함수가 `health`를 받는다. `normalizeMemberHealth`가 허용 키(inbodyNotProvided, diseaseHistory, medicineHistory, inbody, inbodyMeasuredAt, femaleCondition)와 범위(키 ≤300, 체중 ≤500, 체지방률 ≤100 등 0 이상 유한한 숫자, 병력·복용약 ≤500자, 주기 10~90일, 메모 ≤300자, 날짜 YYYY-MM-DD)를 검증하고 소수 2자리로 정리한다. 수정에서는 `health`가 있을 때만 통째로 교체하고 없으면 기존 값을 유지한다. 인바디 사진 URL(`inbodyImageUrl`)은 받지 않는다(Storage 규칙이 개인 워크스페이스를 막고 사진은 저장하지 않기로 함). Firestore Rules 변경 없음(members 쓰기는 원래 Functions만).
+- 앱: `PersonalMemberCardSaveService.createAndVerify/updateAndVerify`에 `health` 인자, `client_card_page.dart`의 `_personalHealthPayload()`가 화면 값을 서버 형식으로 보낸다(날짜는 문자열, 숫자는 0 이상 유한값, 인바디 미제공이면 `inbody: null`). 불러오기는 기존 코드가 `health`를 이미 읽는다.
+- 검증: member Emulator 87개 통과(신규 5: 수정 시 저장·통째 교체, health 없이 수정하면 유지, 잘못된 값 11종 거절, 타 트레이너 거부, 등록 시 저장), functions build·lint 통과, 신규 Flutter 테스트 3개, 전체 Flutter 844개 통과, analyze 오류 0.
+- 미작업/주의: **Functions DEV·PROD 배포 전이다. 앱을 먼저 설치하면 서버가 `health`를 `unknown_fields`로 거절해 회원카드 저장이 실패하므로 반드시 Functions를 먼저 배포한다.** 같은 방식으로 개인 워크스페이스에서 저장되지 않을 가능성이 있는 항목: 담당 강사(trainer), 직업(job), 특별 일정(specialEvent), 알림·마일스톤 설정(별도 확인·작업 필요). commit·push 안 함.
+
+- 2026-10-11 사용자 승인으로 Functions를 DEV(`more-than-fitness-dev-mft`)에 배포했다(`updateManagedMember`, `createManagedMember` 포함 전 함수 update 성공, 마지막 cleanup policy 오류는 기존과 같은 무해한 메시지). 이후 DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다. PROD 배포·commit·push는 하지 않았다.
+
+- 2026-10-11 인바디 임의 기본값 제거: 회원카드 인바디 입력 기본값(키 170.0·체중 65.0·체지방률 18.5·골격근량 29.0·체지방량 12.0)이 건강정보가 서버에 저장되면 실제 데이터처럼 저장될 수 있어 모두 빈 칸으로 바꿨다(초기화도 빈 칸). 개인 워크스페이스 저장은 입력한 값만 보내고(0·빈 칸·잘못된 값 제외), 입력한 값이 없거나 `인바디 미제공`이면 `inbody: null`이며 BMI는 키·체중이 모두 있을 때만 계산한다. 불러올 때도 0이거나 없는 값은 빈 칸으로 둔다. 회귀 테스트 추가(`personal_member_health_save_test.dart`). 전체 Flutter 845개 통과, DEV Debug APK 설치. 서버(Functions) 변경 없음(이미 0 이상 값을 받고 키가 없으면 저장하지 않음).
+
+## 2026-10-11 인바디 용지 해석·본인 확인 (1단계: 회원카드)
+
+- 결정: 키는 건강정보(회원카드)에 저장, 용지 사진 원본은 저장하지 않음, 나이 허용 범위 1살, 읽은 값이 다른 회원 용지일 수 있으면 확인을 요구하고 성별은 사용자가 고를 때만 카드에 반영, 생년월일은 나이만으로 정할 수 없어 자동 수정하지 않음.
+- `lib/services/inbody_scan.dart` 신규: `parseInbodyText`(체중·골격근량·체지방률·체지방량·키·나이·성별·측정일, 라벨 같은 줄/다음 줄 모두, 항목별 숫자 범위로 걸러냄), `internationalAge`, `verifyInbodyAgainstMember`(일치/1살 차이/불일치/확인 불가). 글자 인식(ML Kit)은 기기 안에서 하고 사진은 서버로 올리지 않는다.
+- `lib/widgets/inbody_review_sheet.dart` 신규: 읽은 값 수정 + 본인 확인 박스("OOO님 용지가 맞아요"/나이 1살 차이/"다른 회원의 용지일 수 있어요"/확인 불가). 불일치·확인 불가이면 "이 회원 용지가 맞아요"를 눌러야 반영되고, 성별이 다르면 "카드 성별도 용지에 맞게 고칠게요" 선택, 나이가 2살 이상 다르면 "생년월일을 직접 확인할게요" 안내. DEV 빌드에는 "인식된 원문 보기/복사" 버튼.
+- `client_card_page.dart`: 개인 워크스페이스에서 `인바디 사진 읽기` 후 공용 해석·확인 화면을 쓰고(`_applyInbodyScanToPersonalCard`), 확정한 값만 입력칸에 채운다(저장은 사용자가 `수정 저장`을 눌러야 서버 건강정보에 반영). 기존 workspace용 흐름은 그대로 둔다.
+- 테스트: 파싱·나이·본인 확인 15개, 확인 화면 위젯 9개, 카드 연결 소스 2개. 전체 Flutter 871개 통과, analyze 오류 0. DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다.
+- 미작업: 레슨 전 체크리스트의 인바디 측정 줄·레슨일지 헤더 인바디 스캔/샘플 추이 정리(실제 기록으로 대체), 인바디 이력 저장(회원 화면 추이), 실제 용지 샘플로 인식 정확도 조정, PROD 배포, commit, push. 서버(Functions)·규칙 변경 없음.
+
+## 2026-10-11 레슨 전 체크리스트에 인바디 측정 연결 (코드 완료, 배포 전)
+
+- 결정: 인바디는 레슨 전 체크리스트에서 측정·기록하고(카메라·갤러리·직접 입력), 값은 회원 건강정보의 최신 값과 이력으로 쌓는다. 용지 사진은 저장하지 않는다.
+- Functions(`managed_members.ts`, `index.ts`): 새 callable `recordManagedMemberInbody`. 회원 소유·삭제 여부를 확인하고(`validateProfile`), 측정일(필수, 미래 36시간 초과 거절)·값(키·체중·체지방률·골격근량·체지방량, 0 초과 범위 검증, 최소 1개)·출처(`scan`/`manual`)·본인 확인 여부를 받아 `health.inbody`(최신 값, 이전 값 위에 덮어씀·BMI 재계산)·`health.inbodyMeasuredAt`·`health.inbodyNotProvided=false`·`health.inbodyHistory`(측정일 순, 같은 날짜는 대체, 최대 60건)를 한 트랜잭션으로 갱신한다. `updateManagedMember`가 회원카드의 `health`를 통째로 교체할 때 서버가 쌓은 `inbodyHistory`는 유지한다. Rules 변경 없음.
+- 앱: `inbody_record_service.dart`(입력 변환·요약·callable 호출·성별 수정), `inbody_measure_flow.dart`(읽기 방식 선택 → 읽기 → 회원 나이·성별 조회 → 본인 확인·값 확인 → 서버 기록, 사진 저장 안 함), `inbody_review_sheet.dart`에 직접 입력 모드(`manualEntry`)와 `memberVerified` 추가. 체크리스트 팝업에 `인바디 측정` 줄(`측정하기`/`다시 측정`, 요약 표시)과 요약 카드의 인바디 칩을 추가했고, 목록 화면·카테고리·텍스트 에디터가 같은 콜백을 쓴다(개인 워크스페이스·회원이 있을 때만). 측정 요약은 화면 표시용이며 일지(`details`)에는 저장하지 않는다.
+- 검증: member Emulator 94개 통과(신규 7: 기록·최신 값/BMI·이력, 부분 기록이 이전 값 유지·정렬, 같은 날짜 대체, 카드 health 교체 시 이력 유지, 잘못된 입력 12종 거절, 소유자 범위, 최근 60건 유지), functions build·lint 통과, 신규 Flutter 테스트 29개(해석 15·확인 화면 9·변환/연결 14·체크리스트 줄 5 포함 일부 중복 파일), 전체 Flutter 890개 통과, analyze 오류 0.
+- 미작업/주의: **Functions DEV·PROD 배포 전이다.** 새 함수가 없으면 앱의 측정 기록이 "저장하지 못했어요"로 실패하므로 Functions를 먼저 배포한다. 레슨일지 헤더의 인바디 스캔 아이콘·샘플 추이(`_inbodyTrend`)는 아직 그대로이며 실제 이력으로 교체해야 한다. commit·push 안 함.
+
+## 2026-10-11 레슨일지 헤더 인바디: 가짜 추이 제거, 실제 이력·입력 입구 (코드 완료, 배포 전)
+
+- 문제: 헤더 `레슨 상세 정보`의 인바디 추이는 하드코딩 샘플(`[31.5, 31.9, 32.4, 32.8, 33.2]`)이었고, 헤더 인바디 아이콘의 입력은 화면에만 남았다.
+- `lib/services/inbody_history.dart`: 회원 `health`에서 인바디 이력을 읽는다(`parseInbodyHistory`: 서버 `inbodyHistory` 우선, 없으면 회원카드 최신 값+측정일 한 건, 측정일 없는 값·0·잘못된 값 제외, 측정일 순). `inbodyMetricChange`(직전 대비 변화).
+- `lib/widgets/inbody_trend_card.dart`: 헤더 추이 카드. 기록이 없으면 "아직 인바디 기록이 없어요" + `인바디 입력하기`(카메라 아이콘) 버튼, 있으면 체중·골격근량·체지방률 최신 값과 직전 대비 변화, 항목 선택, 추이 그래프(2건 이상), 마지막 측정일·총 건수, `+ 측정 추가`.
+- `personal_training_log_page.dart`: 샘플 추이 삭제(`_MiniTrendCard` 제거), 진입 시 회원 문서에서 이력 로드(`_loadInbodyHistory`), 헤더 인바디 아이콘(툴팁 `인바디 입력`)·추이 카드·체크리스트가 같은 입구 `_openInbodyMeasure`를 쓴다. 개인 워크스페이스는 새 흐름(본인 확인 + 서버 기록) 후 이력을 다시 읽고, 기존 워크스페이스는 이전 흐름을 연다. 체크리스트에서 측정해도 이력을 다시 읽는다.
+- 입구 정리: ① 헤더 상단 아이콘, ② 상세 정보 추이 카드(비었을 때 CTA·있을 때 `+ 측정 추가`), ③ 레슨 전 체크리스트 줄. 세 곳 모두 같은 측정 흐름이다.
+- 검증: 신규 테스트 12개(이력 해석 4·추이 카드 4·헤더 연결 4), 전체 Flutter 902개 통과(예상), analyze 오류 0.
+- 미작업: **Functions DEV·PROD 배포 전**(`recordManagedMemberInbody` 필요 — 배포 전에는 측정 기록이 실패하고 이력은 비어 있다). commit·push 안 함.
+
+- 2026-10-11 사용자 승인으로 Functions를 DEV(`more-than-fitness-dev-mft`)에 배포했다(새 함수 `recordManagedMemberInbody` 생성, `updateManagedMember` 갱신 성공, 마지막 cleanup policy 오류는 기존과 같은 무해한 메시지). 이후 DEV Debug APK를 Galaxy `R3CX40M6EEM`에 설치했다. 전체 Flutter 902개 통과. PROD 배포·commit·push는 하지 않았다.
+
+## 2026-10-11 아나토미 바디맵: SVG 영역 JSON + 부위 터치 선택 (코드 완료, 배포 전)
+
+- 결정: 사용자가 일러스트로 그린 SVG 4개(남·여 전·후면)를 앱에서 해석하지 않고, 변환 스크립트로 부위별 다각형 JSON을 만들어 이미지와 함께 번들한다(새 의존성 없음). 좌우는 그림 속 사람 기준(앞면은 화면 왼쪽이 오른쪽, 뒷면은 화면 왼쪽이 왼쪽). 기본은 `양쪽 함께`, 재활용 `한쪽씩` 토글은 부위 선택 화면에 둔다(기억하지 않음). 목(SCM) 영역·여자 후면 측면삼각근은 제외, 앞면 정강이는 `tibialis`, 어퍼백(`upper_back`)은 승모근 아래·양옆 영역(승모근이 겹침 우선), 광배근은 `lat` 하나(상·하 분리 안 함), 기립근은 기존 `lower_back` id를 쓰고 표시명만 `기립근·허리`.
+- `tool/anatomy/build_zones.cjs` + `tool/anatomy/src/*.svg`(원본 4개): 조각 id를 부위·좌우로 매핑해 `assets/anatomy/body_map.json`(약 19KB)을 만든다. 곡선 path는 다각형으로 펴고, 좌우 이름이 없는 조각은 가운데선에서 자르며(복근만 `center`), 겹침은 승모근 우선 + 면적이 작을수록 위로 정렬한다. 이미지는 viewBox 기준으로 잘라 `assets/anatomy/{male,female}_{front,back}.jpg`(각 약 85KB, 1190x1684)로 줄였다. `pubspec.yaml`에 `assets/anatomy/` 추가.
+- 앱: `models/body_map_data.dart`(JSON 해석, 위쪽 조각 우선 터치 판정 + 조각 사이 6 단위 터치 여유, `nextSingleSide` 전이), `widgets/body_map_canvas.dart`(이미지 위 조각 그리기·터치), `step1_body_part_selector.dart`(칩 겹침 위치 방식 제거 → 바디맵, 좌우 선택 칩, 미지정은 남성 몸), `body_part.dart`(부위 추가: 전면삼각근·측면삼각근·전완·손·외복사근·장요근·TFL·전경골근·발·어퍼백·후면삼각근·중둔근, 앞·뒷면 모두 보이는 부위 `extraViews`, 기존 `shoulder`는 `legacy`로 보존), `anatomy_page.dart`(부위별 `_partSides`·`_partViews`, 기록의 `bodySide`/`bodyView`를 부위별로 저장).
+- Firestore 스키마·Rules 변경 없음: 기록에는 이미 `bodySide`/`bodyView`가 있었고 전역 값 하나로만 쓰던 것을 부위별 값으로 바꿨다. 기존 기록은 그대로 읽힌다(`shoulder`는 칩 선택 상태일 때만 보임, 저장된 `lower_back` 라벨은 다시 저장할 때 `기립근·허리`로 갱신).
+- 검증: 신규 테스트 13개(`anatomy_body_map_test.dart`: 데이터 구조·부위 id 일치·좌우 방향·겹침 우선·틈 터치·전이 규칙, 페이지 터치 선택·한쪽씩·복근·저장값), 전체 Flutter 915개 통과, analyze 오류 0, DEV Debug APK 빌드 성공. 임시 골든 이미지로 4개 화면의 칠해짐을 눈으로 확인했다(휴대폰 실기 확인 전).
+- 미작업/주의: ① 휴대폰 실기 확인(터치 정확도·조각 모양·겹침), ② 이미지 라이선스(상업 사용·재배포) 확인 — 앱 배포 전 필수, ③ 여자 후면은 어깨 조각이 하나뿐이라 후면삼각근만 있다(측면삼각근 칩은 있으나 그림 영역 없음), ④ 개인 워크스페이스에서 아나토미 기록 저장이 Rules에 막히는지 미확인(personal anatomy child Rules 백로그), ⑤ 성별은 회원카드와 연결하지 않았다(페이지에서 선택), ⑥ PROD 배포·commit·push 안 함.
+
+## 2026-10-11 DEV 구글 연동 복구: 새 패키지에 서명 SHA 등록
+
+- 원인: 패키지를 `com.morethanfitness.app.dev`로 바꾼 뒤 Firebase DEV 프로젝트(`more-than-fitness-dev-mft`)의 새 Android 앱에 SHA 인증서가 하나도 없었고(`apps:android:sha:list` 결과 없음), `google-services.json`의 새 패키지 항목에는 Android OAuth 클라이언트(`type1`)가 없었다(웹 `type3`만). 옛 패키지 `com.example.mtf_app.dev` 항목에만 있었다.
+- 조치(사용자 승인): DEV debug 서명 SHA-1·SHA-256(`gradlew signingReport`의 devDebug 값)을 새 DEV Android 앱에 등록했고(`apps:android:sha:create` 2회, 등록 후 목록 2건 확인), `apps:sdkconfig`로 받은 새 항목(`type1`+`type3`)을 `android/app/src/dev/google-services.json`의 같은 패키지 항목에만 교체했다(옛 패키지 항목 유지). DEV Debug APK를 다시 빌드해 Galaxy `R3CX40M6EEM`에 설치했다.
+- 미확인: 폰에서 실제 구글 연결 성공 여부(사용자 확인 필요). PROD(`com.morethanfitness.app`)는 `type1`이 하나 있으나 어떤 서명인지 확인하지 않았고, Play 설치본용 App Signing SHA는 Play Console 발급 후 추가해야 한다.
+
+## 2026-10-11 개인 아나토미 기록 저장 규칙 (코드·Emulator 완료, 배포 전)
+
+- 문제: `training_logs/{id}/anatomyRecords`가 레거시 관리자 전용이라 개인 워크스페이스 강사의 아나토미 저장이 `permission-denied`("현재 저장 권한이 없어 처리하지 못했습니다")로 막혀 있었다. 서비스는 자식 기록 + 부모 요약 필드(`anatomySchemaVersion`·`hasAnatomyRecords`·`anatomyRecordCount`)를 한 트랜잭션으로 쓰는데 부모 update 허용 키에도 요약 필드가 없었다.
+- `firestore.rules`: ① 부모 개인 레슨일지 update 허용 키에 요약 3개 + 값 검사(`hasValidPersonalAnatomySummary`: 버전 1, bool, 0~100 정수). ② `anatomyRecords`: 읽기는 부모 소유자(개인 워크스페이스)·레거시 관리자, 쓰기(생성·수정·삭제)는 부모가 `draft`일 때만. 생성은 키 17개 정확히 일치, `anatomyLogId`/`lessonLogId`/`trainerId`/`memberId`가 경로·인증·부모와 일치, `scheduleDocId`는 빈 값이거나 부모 일정과 같고(부모에 일정이 없으면 자유, 128자 이하), 값 범위(성별·면·좌우·종류 열거형, 통증 0~10 정수, 이름 100자·메모 2000자 이하, 부위 id 1~40자), `createdAt`/`updatedAt`은 서버 시각. 수정은 변경 가능한 키(`recordedAt`·`bodyGender`·`bodyView`·`bodySide`·`bodyPartId`·`bodyPartLabel`·`recordType`·`exerciseName`·`painLevel`·`memo`·`updatedAt`)만 허용하고 필드 삭제는 막는다. 부위 id는 목록으로 고정하지 않아(길이만 검사) 부위가 늘어도 규칙을 다시 배포하지 않는다.
+- 검증: `test:personal-training-log-emulators` 60개 통과(기존 45 + 아나토미 15: 부모 요약과 함께 저장, 목록 읽기, 7건 한 번에 저장(접근 한도 문제 없음), 수정, 식별 필드·생성 시각 불변, 잘못된 값 13종 거절, 신원 불일치, 일정 불일치, 서버 시각 필요, 필수 필드 삭제 거절, 부모 요약의 다른 키·타입 거절, 다른 강사·비로그인 거절, 삭제, 확정된 레슨일지는 읽기만·쓰기 잠김, 다른 강사 레슨일지 거절), `test:legacy-emulators` 28개 통과. functions build 통과.
+- 미작업: **Rules DEV·PROD 배포 전**(DEV에는 이전 `details` 규칙만 배포돼 있다). 배포하면 폰에서 아나토미 저장·다시 열기를 확인한다. commit·push 안 함.
+
+- 2026-10-11 사용자 승인으로 Firestore Rules를 DEV(`more-than-fitness-dev-mft`)에만 배포했다(컴파일 성공, released). 아나토미 저장 규칙 + 이전 `details` 규칙이 함께 반영됐다. 앱 코드 변경은 없어 재설치는 하지 않았다. PROD 배포·commit·push는 하지 않았다. 폰 확인(아나토미 저장·다시 열기) 대기.
+
+## 2026-10-12 여자 전면 어깨 영역 교정
+
+- 문제(폰 확인): 여자 전면에서 전면삼각근·측면삼각근이 맞지 않았다. 원인 두 가지: ① 화면 오른쪽(사람의 왼쪽) 어깨는 원본 SVG가 어깨 전체 조각(`shoulder_R`) 위에 가는 띠(`shoulder_R_3_`)를 겹쳐 그려, 측면삼각근이 머리카락 굵기 선으로만 칠해졌다. ② 화면 왼쪽(사람의 오른쪽)은 이전 작업에서 안쪽 쐐기와 바깥 띠를 반대로 지정해 전면삼각근이 바깥 띠로 칠해졌다.
+- 조치: `tool/anatomy/build_zones.cjs`에 직선 분할 매핑(`splitLine`/`outsidePoint`)을 추가해 오른쪽 어깨 조각을 띠가 지나는 선(364.4,147.8 → 397.6,208.6)으로 안쪽(전면삼각근)·바깥(측면삼각근)으로 나눴고 `shoulder_R_3_`는 제외했다. 왼쪽은 안쪽 쐐기(`shoulder_R_2_`)=전면, 바깥 띠(`shoulder_R_1_`)=측면으로 되돌렸다. 남자 전면과 같은 구조다. `body_map.json`을 다시 만들었고 임시 렌더링으로 확인했다.
+- 검증: `anatomy_body_map_test.dart` 13개 통과, DEV Debug APK 재설치. 여자 후면의 측면삼각근은 사용자 결정대로 없음.
+
+## 2026-10-12 아나토미 바디맵 화면 다듬기 (배경·경계·성별·머리말)
+
+- 배경: 이미지의 어두운 배경을 투명하게 만들었다(밝기 기반 부드러운 마스크, 가장자리는 중립 회색으로 칠해 후광 제거). `assets/anatomy/*.png` 4장(약 0.3~1.1MB), JPG 삭제, `body_map.json`의 이미지 경로 갱신. 배경은 위젯이 테마(라이트/다크)에 맞춰 깐다. 여자 후면은 원본의 왼쪽 림라이트(밝은 파란 조명)가 라이트 배경에서 밝은 얼룩처럼 보일 수 있다(원본 렌더 특성).
+- 경계: 선택 영역은 번진 칠(블러 4) + 옅은 칠로 그리고 흰 테두리는 없앴다. 미선택 조각은 아주 옅은 힌트 선만 둔다. 하이라이트 색은 앱 테마 `primary`(다크는 연한 인디고)를 쓴다.
+- 성별: `PersonalTrainingLogAnatomyPage(memberGender)` 추가. 레슨일지 화면이 아나토미를 열 때 `members/{id}.gender`를 읽어 넘기고(못 읽으면 무시), 알면 남/여 바디를 자동으로 쓰고 "바디 기준" 선택을 숨기며 저장 시 `bodyGender`도 그 값으로 쓴다. 모르면 기존처럼 직접 고른다(미지정은 남성). `bodyGenderFromMemberValue`(male/female/남/여 등).
+- 머리말: AppBar를 없애고 다른 레슨일지 화면과 같은 공통 그라데이션 머리말(`context.mtfHeaderGradient`, 둥근 아래 모서리, 뒤로가기, 가운데 제목 `OOO 님 아나토미 일지`)로 바꿨다. 화면 배경·단계 표시·칩·요약·오류 상자의 하드코딩 색을 앱 테마 색(`colorScheme`)으로 바꿨다.
+- 검증: 아나토미 테스트 17개(성별 자동·머리말·성별 파싱 4개 추가) 포함 전체 Flutter 919개 통과, analyze 오류 0, DEV Debug APK 설치. 임시 렌더링으로 라이트·다크 화면을 눈으로 확인했다.
+- 미작업: 부위를 누르면 운동을 넣는 창을 띄우는 구조 변경(제안 단계, 사용자 승인 대기). PROD 배포·commit·push 안 함.
+
+## 2026-10-12 아나토미 바디맵 화면 다듬기 (배경·경계·성별·머리말)
+
+- 배경: 이미지의 어두운 배경을 투명하게 만들었다(밝기 기반 부드러운 마스크, 가장자리는 중립 회색으로 칠해 후광 제거). `assets/anatomy/*.png` 4장(약 0.3~1.1MB), JPG 삭제, `body_map.json`의 이미지 경로 갱신. 배경은 위젯이 테마(라이트/다크)에 맞춰 깐다. 여자 후면은 원본의 왼쪽 림라이트(밝은 파란 조명)가 라이트 배경에서 밝은 얼룩처럼 보일 수 있다(원본 렌더 특성).
+- 경계: 선택 영역은 번진 칠(블러 4) + 옅은 칠로 그리고 흰 테두리는 없앴다. 미선택 조각은 아주 옅은 힌트 선만 둔다. 하이라이트 색은 앱 테마 `primary`(다크는 연한 인디고)를 쓴다.
+- 성별: `PersonalTrainingLogAnatomyPage(memberGender)` 추가. 레슨일지 화면이 아나토미를 열 때 `members/{id}.gender`를 읽어 넘기고(못 읽으면 무시), 알면 남/여 바디를 자동으로 쓰고 "바디 기준" 선택을 숨기며 저장 시 `bodyGender`도 그 값으로 쓴다. 모르면 기존처럼 직접 고른다(미지정은 남성). `bodyGenderFromMemberValue`(male/female/남/여 등).
+- 머리말: AppBar를 없애고 다른 레슨일지 화면과 같은 공통 그라데이션 머리말(`context.mtfHeaderGradient`, 둥근 아래 모서리, 뒤로가기, 가운데 제목 `OOO 님 아나토미 일지`)로 바꿨다. 화면 배경·단계 표시·칩·요약·오류 상자의 하드코딩 색을 앱 테마 색(`colorScheme`)으로 바꿨다.
+- 검증: 아나토미 테스트 17개(성별 자동·머리말·성별 파싱 4개 추가) 포함 전체 Flutter 919개 통과, analyze 오류 0, DEV Debug APK 빌드 성공. 임시 렌더링으로 라이트·다크 화면을 눈으로 확인했다. **폰이 PC에 연결되지 않아(adb 목록 비어 있음) 설치는 못 했다.**
+- 미작업: 폰 설치·확인, 부위를 누르면 운동을 넣는 창을 띄우는 구조 변경(제안 단계, 사용자 승인 대기). PROD 배포·commit·push 안 함.
+
+## 2026-10-12 아나토미 1단계: 부위 입력 창 + 세트(무게·횟수) 기록 (코드·Emulator 완료, 규칙 배포 전)
+
+- 결정: 부위를 누르면 입력 창(하단 시트)이 올라온다. 기록이 화면의 기준이고(그림에 칠하는 부위·좌우는 기록에서 계산), 단계는 `기록 → 영상·음성 → 확인·저장` 3단계. 운동의 추이(Flic식 1RM/무게/볼륨/횟수 그래프)를 위해 세트별 무게·횟수를 기록에 저장한다(추이 조회·그래프는 2단계, 요약 카드는 3단계).
+- 모델: `AnatomySet(weightKg, reps)`(맨몸 0, 범위 검증, 볼륨, Epley 추정 1RM(12회 이하·무게 있을 때), `anatomySetsSummary`: `3 X 8kg | 36회` 형식)와 `AnatomyLogRecord.sets`. `sets`가 비면 필드를 쓰지 않아 옛 기록·옛 규칙과 호환된다. 서비스 `_mutableData`에도 반영.
+- 규칙(`firestore.rules`): `anatomyRecords`에 선택 필드 `sets`(리스트, 30개 이하) 허용(생성 키 목록·수정 허용 키·값 검사). 리스트 원소는 규칙에서 검사할 수 없어 앱이 범위를 보장한다. Emulator 61개 통과(신규: 세트 저장·수정·30개 한도·31개/문자열 거절).
+- 화면: `anatomy_record_sheet.dart`(부위명 + 좌우(왼쪽/양쪽/오른쪽, 복근은 없음) + 기록 종류(운동·통증·주의·가동성) + 운동 검색/추천/내 운동 + 세트 행(무게·횟수, 이전 세트 복사 추가) + 통증 슬라이더 + 메모, 연달아 여러 기록 추가, 창을 내려도 추가한 기록 유지, 수정·삭제 모드). `step1_body_part_selector.dart`는 바디맵 + 부위별 기록 목록 + 접힌 "부위 목록에서 선택". 페이지는 기록 기준으로 칠하고 `bodyView`/`bodySide`를 기록에 직접 저장. 기존 2단계 폼(`step2_exercise_form.dart`) 삭제.
+- 내 운동: 입력 창에서 목록에 없는 운동을 쓰면 기존 서버 저장 내 운동 목록에 `a:부위id` 키로 합쳐 저장(`AnatomyExerciseStore`, `PersonalAnatomyExerciseStore`가 불러온 전체 목록 위에 `a:` 항목만 덮어씀). 실패하면 안내만 하고 기록은 계속.
+- 검증: 테스트 17→28개(세트 요약·1RM·범위·직렬화 4, 입력 창 흐름 12), 전체 Flutter 930개 통과, analyze 오류 0, DEV Debug APK 빌드·설치. 한글 폰트로 렌더링해 입력 창·세트 입력·기록 목록을 눈으로 확인했다.
+- 미작업: **Firestore Rules DEV 배포 전**(세트가 있는 기록은 배포 전에는 저장이 거절된다). 2단계: 회원별 운동 이력 조회(collectionGroup `anatomyRecords`: memberId + exerciseName, 규칙·인덱스 필요)와 추이 그래프(1RM·무게·볼륨·횟수), "최근 사용" 운동. 3단계: 요약 카드. PROD 배포·commit·push 안 함.
+
+- 2026-10-12 사용자 승인으로 Firestore Rules를 DEV(`more-than-fitness-dev-mft`)에만 배포했다(`anatomyRecords.sets` 허용 포함, 컴파일 성공·released). 앱 재설치는 필요 없다(이미 설치됨). PROD 배포·commit·push 안 함. 폰 확인(세트 입력·저장·다시 열기) 대기.
+
+## 2026-10-12 아나토미 1단계 폰 확인 후 수정
+
+- 입력 창 `기록 추가` 버튼이 시스템 내비게이션 바에 가려지던 문제: `useSafeArea`는 아래쪽을 비우지 않아, 키보드가 없을 때 `viewPadding.bottom`만큼 하단 여백을 추가했다. 테스트(`FakeViewPadding(bottom: 120)`로 버튼이 그 위에 있는지) 추가.
+- 운동을 고르면 첫 세트 횟수를 12로 미리 채운다(`kDefaultReps`). 세트 횟수 오류 테스트는 횟수를 지운 뒤 확인하도록 바꿨다.
+- 머리말 제목을 `아나토미 운동일지`로 변경(회원 이름 제거).
+- 배경 제거 재작업: 이전(밝기 마스크)은 머리·겨드랑이처럼 어두운 몸 안쪽 그림자까지 반투명 회색이 됐다. 이제 테두리에서 시작해 "아주 어둡고 푸른" 픽셀로 이어진 바깥 배경만 투명하게 하고(몸 안쪽 그림자는 바깥과 이어지지 않으면 그대로 불투명), 배경 가장자리 3픽셀만 부드럽게 한다. 이미지 왼쪽 끝의 순수 검정 선도 배경으로 처리했다. 4장 모두 라이트 배경에서 확인했다.
+- 검증: 아나토미 테스트 30개, 전체 Flutter 932개 통과, DEV Debug APK 빌드·설치.
+- 논의 중(코드 변경 없음): 복합 운동(스쿼트 등)의 여러 부위 처리, 통증·주의·가동성의 추이/표시, 입력 창 vs 전체 화면.
+
+## 2026-10-12 아나토미 1단계 폰 확인 후 수정
+
+- 입력 창 `기록 추가` 버튼이 시스템 내비게이션 바에 가려지던 문제: `useSafeArea`는 아래쪽을 비우지 않아, 키보드가 없을 때 `viewPadding.bottom`만큼 하단 여백을 추가했다. 테스트(`FakeViewPadding(bottom: 120)`로 버튼이 그 위에 있는지) 추가.
+- 운동을 고르면 첫 세트 횟수를 12로 미리 채운다(`kDefaultReps`). 세트 횟수 오류 테스트는 횟수를 지운 뒤 확인하도록 바꿨다.
+- 머리말 제목을 `아나토미 운동일지`로 변경(회원 이름 제거).
+- 배경 제거 재작업: 이전(밝기 마스크)은 머리·겨드랑이처럼 어두운 몸 안쪽 그림자까지 반투명 회색이 됐다. 이제 테두리에서 시작해 "아주 어둡고 푸른" 픽셀로 이어진 바깥 배경만 투명하게 하고(몸 안쪽 그림자는 바깥과 이어지지 않으면 그대로 불투명), 배경 가장자리 3픽셀만 부드럽게 한다. 이미지 왼쪽 끝의 순수 검정 선도 배경으로 처리했다. 4장 모두 라이트 배경에서 확인했다.
+- 검증: 아나토미 테스트 30개, 전체 Flutter 932개 통과, DEV Debug APK 빌드 성공. **폰이 PC에 연결되지 않아(adb 목록 비어 있음) 설치는 못 했다.**
+- 논의 중(코드 변경 없음): 복합 운동(스쿼트 등)의 여러 부위 처리, 통증·주의·가동성의 추이/표시, 입력 창 vs 전체 화면.
+
+## 2026-10-12 아나토미: 이번 수업의 목표 부위 + 함께 쓴 부위 (코드·Emulator 완료, 규칙 배포 전)
+
+- 결정: 레슨일지이므로 같은 운동(스쿼트)도 수업마다 강사가 목표 부위를 정한다. 운동 목록의 기본 사용 부위 정보는 그대로 두고(제안), 실제 수업의 의도는 기록에 저장한다. 다른 앱(Hevy: 운동마다 주 근육 1 + 보조 여러 개, Fitbod: 주 1.0·보조 0.5 세트로 집계(도움말 모순))과 같은 주/보조 모델이되, 주 부위를 운동에 고정하지 않고 기록마다 정한다. 부위별 통계에서는 목표 1.0·보조 0.5로 세는 것을 권장(미구현).
+- 데이터: `models/exercise_muscles.dart`의 `kExerciseMuscles`(추천 운동 전부의 기본 사용 부위, 앞이 주로 쓰는 부위), `relatedPartsFor(운동, 목표부위)`. 기록 `relatedPartIds`(8개 이하, 중복·빈 값 제거, 비면 필드를 쓰지 않음). `bodyPartId`가 목표 부위. 서비스 수정 경로는 `sets`·`relatedPartIds`가 비면 `FieldValue.delete()`로 지워 옛 값이 남지 않게 했다(기존에는 수정에서 세트를 모두 지워도 옛 세트가 남는 문제가 있었음).
+- 규칙: `relatedPartIds` 선택 필드(리스트, 8개 이하) 허용(생성 키·수정 허용 키·값 검사). Emulator 62개 통과(신규: 저장·수정·삭제 필드·8개 한도·9개/문자열 거절).
+- 입력 창: 운동을 고르면 `이번 수업의 목표 부위` 칩(누른 부위, 목록에서 바꾸면 이전 목표가 보조로 남음)과 `함께 쓴 부위` 칩(기본 사용 부위 자동 켜짐, 끄기·`부위 추가`)이 나온다. 내 운동은 보조가 비어 있어 직접 추가. 통증·주의·가동성은 단일 부위.
+- 그림: 목표 부위는 진하게, 보조 부위는 연하게(`relatedSides`). 기록 목록에 `함께 쓴 부위 · …`, 확인 단계에도 표시. 수정에서 목표 부위를 바꾸면 `bodyPartId`/라벨/면도 함께 바꾼다.
+- 검증: 테스트 37개(사용 부위 데이터 4·흐름 3 추가), 전체 Flutter 939개 통과, analyze 오류 0, DEV Debug APK 빌드·설치. 한글 폰트 렌더링으로 입력 창·목록을 확인했다.
+- 미작업: **Firestore Rules DEV 배포 전**(보조 부위가 있는 기록은 배포 전에는 저장 거절). 이후: 2단계(회원별 운동 이력·추이 그래프, 인덱스·규칙 필요), 통증 추이·주의 알림·가동성 결과, 3단계 요약 카드. PROD 배포·commit·push 안 함.
+
+- 2026-10-12 설계 검토 메모(사용자가 붙여 준 3층 구조 제안 검토): 운동 정보(`kExerciseMuscles`)·수업 목표(`bodyPartId`+`relatedPartIds`)·실제 수행(`sets`)의 3층은 이미 이 구조와 같다. 집계 원칙으로 확정: ① 실제 세트·볼륨은 운동 기록 기준으로 한 번만 센다(부위별로 중복 합산 금지), ② 목표 부위별 집계는 `bodyPartId`로 따로 센다, ③ 부위별 훈련량 추정은 저장하지 않고 읽을 때 계산하며(목표 1.0·보조 0.5, 추정치로 표시) ④ 목표 부위는 기록마다 정확히 하나. 채택하지 않음: 복수 주 타겟, `추가 목표` 중간 단계, 근육 기여도 가중치. 2단계에 넣을 후보: 내 운동의 마지막 보조 부위 기억, 최근 4주 집중 부위 요약.
+
+- 2026-10-12 사용자 승인으로 Firestore Rules를 DEV(`more-than-fitness-dev-mft`)에만 배포했다(`anatomyRecords.relatedPartIds` 허용 포함, released). 앱은 이미 설치돼 있다. PROD 배포·commit·push 안 함. 폰 확인(목표·함께 쓴 부위 저장·복원) 대기.
+
+## 2026-10-12 아나토미 폰 확인 후 수정 2 (함께 쓴 부위 격자·복사근·코어·여자 후면 발목)
+
+- 함께 쓴 부위: 입력 창의 칩을 4열 격자(칩 폭 동일, 말줄임)로 바꿨고, `부위 추가`는 24개 부위가 세로로 길게 나오던 팝업 메뉴 대신 4열 격자 선택 창(3행이 보이고 위아래 스크롤, 목표 부위는 선택 불가, 누르면 켜고 끔, `완료`)으로 바꿨다. 입력 창 본문은 기존처럼 위아래 스크롤되고 `기록 추가` 버튼은 아래에 고정.
+- 이름: `외복사근` → `복사근`(`oblique` id는 그대로, 저장된 라벨은 다시 저장할 때 갱신).
+- 코어: `코어` 부위를 따로 만들지 않고 복근을 목표 부위로, 복사근·기립근 등은 함께 쓴 부위로 둔다(플랭크 → 복근 + 복사근·기립근). 복근 추천 운동에 마운틴 클라이머·복근 롤아웃·할로우 홀드를 추가하고 사용 부위를 정했다.
+- 여자 후면 이미지: 왼쪽 발목 위 레깅스 단에 배경 제거가 몸을 파먹어 생긴 투명 구멍(밝은 배경에서 흰 빈칸)이 있었다. 해당 사각형(414,1538~450,1566)을 배경 제거 예외로 두고 다시 만들어 단이 이어지게 했다(`cutout.ps1`의 `keep`).
+- 검증: 아나토미 테스트 38개(부위 추가 격자 테스트 추가, 스크롤 헬퍼), 전체 Flutter 940개 통과, analyze 오류 0, DEV Debug APK 빌드. **폰이 PC에 연결되지 않아 설치는 못 했다.** Firestore 변경 없음.
+
+## 2026-10-12 아나토미: 제목·색 체계(줄무늬)·열림 안정화
+
+- 홈 → 레슨일지 → 아나토미가 안 열리던 증상: 사용자가 재현했을 때는 정상 동작했고 로그에도 오류가 남지 않아 원인은 확인하지 못했다(일시적). 아나토미를 열기 전 회원 성별 읽기(`_openAnatomyLogPage`)가 느려질 가능성이 있어 3초 제한(`timeout`)을 걸어 막히지 않게 했다. 등급 잠금은 원인이 아니었다(PRO).
+- 제목: `OOO 님 아나토미 레슨일지`(이름이 없으면 `아나토미 레슨일지`).
+- 색 체계: 기록이 칠하는 단위가 됐다. `models/anatomy_marks.dart`의 `anatomyMarksFor(조각, 기록들)`가 조각마다 표시를 계산한다(통증 > 주의 > 가동성 > 운동 목표 순, 함께 쓴 부위는 다른 표시가 없을 때만, 좌우가 닿는 조각만). 색은 종류마다 고정(운동 목표 네이비, 함께 쓴 부위 파스텔 파랑, 통증 파스텔 빨강, 주의 파스텔 주황, 가동성 파스텔 노랑; 다크는 밝은 변형)이고 섞지 않는다. 한 종류면 한 번만 단색으로 칠하고(투명 겹침 없음), 둘 이상이면 사선 줄무늬로 번갈아 칠한다. 줄 간격은 조각 크기에 맞춰 3~9 단위로 조절해 손·발 같은 작은 부위도 줄무늬가 여러 개 보인다. 그림 아래에 색 범례(`BodyMapLegend`)를 추가. `BodyMapCanvas`는 `partSides/relatedSides` 대신 `records`를 받는다.
+- 검증: 아나토미 테스트 43개(표시 계산 5개 추가), 전체 Flutter 945개 통과, analyze 오류 0, DEV Debug APK 설치. 임시 렌더링으로 단색·줄무늬(작은 부위 포함)를 눈으로 확인했다. Firestore 변경 없음.
+
+## 2026-10-12 아나토미: 줄무늬 영역 오류·겹침 정리, 통증 1부터
+
+- 줄무늬 버그: 사선 줄을 그리는 범위가 `c < 너비 + 간격`까지만이라 영역 경계 상자의 오른쪽 아래 절반을 빼먹었다(승모근 가운데 흰 삼각형 등). 점 (x, y)는 `c = (x-left)+(y-top)`인 줄에 속하므로 `-간격 ~ 너비+높이+간격` 전체를 덮도록 고쳤다. 또 터치가 위쪽 조각을 받는 것과 맞게, 칠할 때 위쪽(나중에 그려지는) 칠해진 조각과 겹치는 부분은 `Path.combine(difference)`로 잘라 낸다(승모근 위에 어퍼백이 비쳐 섞이던 문제). 임시 렌더링으로 앞·뒷면 확인.
+- 통증 정도: 슬라이더를 1~10(기본 1)으로 바꿨다. 예전에 0으로 저장된 통증 기록을 열면 1로 보인다(규칙은 0~10을 그대로 허용). 주의·가동성은 내용(또는 메모)이 비어 있으면 추가되지 않는다(빈 기록이 쌓이지 않게).
+- 검증: 아나토미 테스트 45개(통증 1부터·빈 주의/가동성 2개 추가), 전체 Flutter 947개 통과, analyze 오류 0, DEV Debug APK 설치. Firestore 변경 없음.
+- 논의 중: 같은 종류의 기록이 계속 추가되는 문제의 중복 정책(통증·주의·가동성은 부위+좌우+종류당 하나로 합치기 제안).
+
+## 2026-10-12 아나토미: 점(핀) 기록 — 통증·주의·가동성 (코드·Emulator 완료, 규칙 배포 전)
+
+- 결정(사용자와 논의): 통증·주의·가동성은 구역을 칠하지 않고 **누른 자리에 점**으로 남긴다. 점을 다시 누르면 수정, 마지막 확인 화면에서 점을 누르면 적어 둔 내용(읽기 전용). 좌우는 점 자리로 자동 결정(가운데선 ±8 단위는 중앙). 구역 밖의 몸(머리·목·관절)을 눌러도 찍을 수 있고 부위는 `기타 부위`(`other`). 운동은 기존처럼 구역(목표·함께 쓴 부위)을 칠한다. 증상 유형 칩·한도 5개·관절 구역은 하지 않기로 했다.
+- 점 3종: 통증·불편(파스텔 빨강, 점 안에 정도 1~10), 주의(파스텔 주황, `!`), 가동성(파스텔 노랑, ○ 정상·음성 / △ 약간·경계 / × 많이·양성, 결과는 선택). 입력은 위치·증상 글자 필수(한글/영문 글자가 하나 이상, 숫자·기호만 불가), 메모 선택. 같은 구역·좌우·종류·글자(공백·대소문자 무시)는 중복으로 막고, 점 근처(20dp)를 누르면 새로 만들지 않고 그 점을 연다.
+- 칩: 누른 구역별 위치 칩(`kLocationChips`, 24개 구역)·일반 관절 칩, 가동성 검사 칩(토마스 테스트·스쿼트 패턴·발목 굽히기·햄스트링 길이(SLR)·어깨 올리기·흉추 회전·고관절 내회전). 칩을 누르면 글자 칸에 단어가 들어가고, `추가`로 내 칩을 만들면 서버의 내 운동 저장소에 `p:부위id`(위치)·`t:mobility`(검사) 키로 저장(`PersonalAnatomyExerciseStore`가 `a:`/`p:`/`t:` 키를 병합).
+- 모델·규칙: 기록 `pin`({x,y}, viewBox 좌표 0~700·0~900)과 `mobilityResult`(normal/mild/severe) 선택 필드. `firestore.rules`에 형식 검증(pin은 x·y 숫자만, 범위, 결과는 3값)과 생성·수정 허용 키 추가, Emulator 63개 통과(신규: 점·결과 형식 거절 10종·수정·삭제). 서비스 수정 경로는 비운 값을 `FieldValue.delete()`로 지운다.
+- 화면: `BodyMapCanvas`가 점을 그리고(`AnatomyMapTap`: 점 → 구역 → 몸 마스크 순으로 판정), `BodyMask`(이미지 알파 샘플링)로 구역 밖 몸 누르기를 허용한다. 점이 있는 통증·주의·가동성은 `anatomyMarksFor`에서 구역 칠하기에서 제외하고(점 없는 예전 기록·부위 목록 칩 기록은 기존대로 구역 칠하기·줄무늬 유지), 입력 창은 점이 있으면 좌우 선택 대신 고정 표시. 확인 단계에 앞/뒷면 바디맵과 점 상세(`showAnatomyPinDetails`) 추가. 범례는 운동은 네모, 점 종류는 동그라미.
+- 검증: 아나토미 테스트 64개(점·좌우·칩·중복·가동성·기타 부위·확인 단계 등), 전체 Flutter 966개 통과, analyze 오류 0, DEV Debug APK 빌드 성공. 한글 폰트 렌더링으로 점과 입력 창을 확인했다. **폰이 PC에 연결되지 않아 설치는 못 했다. Firestore Rules DEV 배포 전(`pin`/`mobilityResult`가 있는 기록은 배포 전에는 저장 거절).**
+- 미작업: 점 이동(끌기), 그림 확대(핀치), 통증을 운동에 연결(`어느 운동 중에?`)과 회원별 이력 목록·추이(2단계), 요약·공유 카드(3단계), PROD 배포·commit·push.
+
+- 2026-10-12 사용자 승인으로 Firestore Rules를 DEV(`more-than-fitness-dev-mft`)에만 배포했다(`anatomyRecords.pin`·`mobilityResult` 허용 포함, released). PROD 배포·commit·push 안 함. 폰 설치·확인 대기(폰 미연결).
+- 2026-10-12 DEV Debug APK를 Galaxy R3CX40M6EEM에 설치했다.
+
+## 2026-10-12 아나토미 2단계: 회원별 이력·추이·최근 운동 (코드·Emulator 완료, 규칙·인덱스 배포 전)
+
+- 조회: `FirestoreAnatomyHistoryStore`(`lib/services/anatomy_history_service.dart`)가 `anatomyRecords` collection group을 `trainerId == 내 uid`, `memberId`, `recordedAt` 내림차순으로 읽는다(최대 400건). `firestore.rules`에 `match /{path=**}/anatomyRecords/{id}` 읽기 전용 규칙(`trainerId == auth.uid`)을, `firestore.indexes.json`에 복합 인덱스(`trainerId`, `memberId`, `recordedAt DESC`, COLLECTION_GROUP)를 추가했다. Emulator 64개 통과(신규: 내 기록을 여러 레슨일지에 걸쳐 조회, 다른 강사·uid 조건 없음·비로그인 거절, collection group 규칙으로는 쓰기 불가). 레거시 28개 통과.
+- 계산(`models/anatomy_trend.dart`): `AnatomyMemberHistory`가 레슨별 운동 기록 묶음(`ExerciseSession`), 지표(추정 1RM·최대 무게·볼륨·최대 횟수), 최근 운동 이름, 지난번 기록, 지난번 보조 부위 기억(`lastRelatedFor`), 최근 4주 집중 부위(목표 부위 기준 레슨 수·세트 수), 운동별 개요, 종류별 기록을 제공한다. 화면에서 편집 중인 이번 레슨 기록은 서버 값 대신 합친다(`merge`). 집계 원칙: 실제 세트·볼륨은 운동 기록 기준으로 한 번만 센다.
+- 화면: `AnatomyExerciseTrendPage`(지표 선택·값·직전 대비 변화·꺾은선 그래프(`TrendChart`, 날짜 간격 비례)·레슨별 기록), `AnatomyHistoryPage`(탭 3개: 운동(집중 부위 막대 + 운동별 기록→추이), 통증·불편, 가동성·주의). 아나토미 머리말 오른쪽에 이력 버튼, 머리말은 공통 위젯 `AnatomyHeader`로 분리.
+- 입력 창: 운동 선택 전 `최근` 칩(이 회원의 최근 운동 5개), 운동을 고르면 `지난번 날짜 · 세트 요약` 줄과 `같게 입력`(지난번 세트를 그대로 채움)·`추이` 버튼, 기본 사용 부위가 없는 내 운동은 지난번 선택한 목표·보조 부위를 다시 불러온다. 이력 저장소가 없거나 못 읽으면 이 기능만 빠지고 기록은 그대로 된다.
+- 검증: 아나토미 테스트 88개(이력 계산 10·화면 6·페이지 연동 6 추가), 전체 Flutter 990개 통과, analyze 오류 0(신규 린트 없음), DEV Debug APK 빌드·설치. 그래프·이력 화면은 한글 폰트 렌더링으로 확인했다.
+- 미작업/주의: **Firestore Rules·Indexes DEV 배포 전**(배포 전에는 이력 조회가 권한 오류/인덱스 오류로 실패해 이력 기능만 비어 보이고 기록·저장은 정상). 이후: 통증을 운동에 연결(`어느 운동 중에?`), 3단계 요약 카드·공유 카드, PROD 배포·commit·push.
+
+- 2026-10-13 사용자 승인으로 Firestore Rules와 Indexes를 DEV(`more-than-fitness-dev-mft`)에만 배포했다(collection group 읽기 규칙·`anatomyRecords` 복합 인덱스, 규칙 released·인덱스 deployed). 인덱스 생성에는 시간이 걸릴 수 있다. PROD 배포·commit·push 안 함. 폰 확인 대기.
+
+## 2026-10-13 레슨일지 목록 카드(요약·펼침)·회원 공유 이미지·변화 보기·윗등 (Firestore 변경 없음)
+
+- 결정(사용자와 논의): 접힌 카드는 `N회차 · 날짜 시간`(회원 서명 칸)·작성 방식 칩·운동 이름 `A / B / C` 한 줄(강사 서명 칸)·`통증 N 주의 N 가동성 N` 칩. **서명 칸(130×52)·위치·서명 동작·확정 규칙은 건드리지 않았다.** 펼친 카드는 통증·주의·가동성 상세 + `회원에게 레슨일지 보내기`. 세트·무게·횟수는 펼친 카드에 넣지 않고 카드를 눌러 레슨일지에서 본다. 아나토미 카드는 본문 탭이 레슨일지 열기라서 펼침은 오른쪽 위 화살표(⌄)로 한다(A안). 텍스트·카테고리 카드는 기존 동작 그대로.
+- 데이터: `models/anatomy_lesson_summary.dart`(`AnatomyLessonSummary`: 운동 이름·통증/주의/가동성 목록·개수, `groupByLesson`). 목록 화면이 회원의 아나토미 기록을 기존 collection group 조회(`FirestoreAnatomyHistoryStore`, 규칙·인덱스 이미 DEV 배포됨) **한 번**으로 읽어 레슨일지 id별로 나눈다. 못 읽으면 카드는 예전처럼 `신체 부위 기록 N개`만 보인다. 아나토미 저장 후 다시 읽는다.
+- 회원 공유 이미지: `widgets/lesson_share_card.dart`. 어두운 배경에 날짜·시간·회차, 운동 목록(`5 X 60kg | 15회`), 운동한 부위 앞·뒤 몸 그림, 선택 한마디(최대 20자, 저장하지 않고 보낼 때만 입력). `shareSafeRecords`로 **운동 기록만** 통과시켜 통증·주의·가동성·내부 메모는 이미지에 들어갈 수 없다(위젯에서도 한 번 더 거른다). 이미지를 만들어(PNG, `RepaintBoundary`, 3배) 휴대폰 공유 창(`share_plus`, 기존 의존성)으로 보낸다. 서명 완료 시 자동 확인 문자는 **문자 발송 연동이 필요해 별도 과제**로 보류(코드에 서버 발송 없음).
+- 변화 보기: 기존 `이력` 화면 이름을 `변화 보기`로 바꾸고, 레슨일지 목록 머리말(`레슨 상세 정보 보기` 옆)에 `변화 보기` 버튼을 추가했다(회원이 정해진 경우). 아나토미 화면 안의 시계 버튼도 유지. 텍스트·카테고리 레슨 기록은 아직 이 화면에 합쳐지지 않는다.
+- 부위 이름: `어퍼백` → `윗등`. 기록은 id를 저장하고 이름 문자열도 같이 저장하므로, 읽을 때 현재 부위 이름으로 바꿔 보여준다(옛 기록도 윗등). 목록에 없는 id는 저장된 이름 유지. (부위 이름 검색 기능은 없어서 `상부등` 검색 별칭은 만들지 않았다.)
+- 검증: 신규 테스트 `anatomy_lesson_summary_test.dart`(요약·이름·서명 칸 유지 소스 가드)·`lesson_share_card_test.dart`(운동만 통과, 한마디 20자, PNG 생성), 전체 Flutter 1004개 통과, 변경 파일 analyze 오류 0(기존 경고는 그대로), DEV Debug APK 빌드·Galaxy R3CX40M6EEM 설치.
+- 미확인: 폰에서 실제 카드 모양·펼침·공유 창(카카오톡 전송)·변화 보기 버튼 확인은 사용자 확인 대기. 이미지 색(운동 부위 색은 앱 색 그대로)·레이아웃은 폰에서 보고 조정 가능.
+- 미작업: 텍스트·카테고리 레슨의 공유 카드, `레슨 전 통증` 칩(컨디션 체크 기반), 통증 목록 제목 형식(부위·좌우·글자), 자동 확인 문자, PROD 배포·commit·push.
+
+## 2026-10-13 폰 확인 후 보완: 가동성 이름·코어·숫자 안내·ANATOMY NOTE·펼친 카드 몸 그림 (Firestore 변경 없음)
+
+- 가동성 결과 이름: `정상 / 약간 / 많이` → `○ 정상 / △ 보상(다른 곳을 써서 움직임) / × 제한(움직임이 막힘)`. 라벨만 바꿨고 저장 값(`normal/mild/severe`)과 규칙은 그대로라 기존 기록도 새 이름으로 보인다. 입력 창·확인 단계·변화 보기·카드 상세에 모두 적용.
+- 함께 쓴 부위에 `코어` 추가: `kCorePartId='core'`(레거시 부위로 두어 목표 부위 목록엔 안 나오고 함께 쓴 부위 격자에만 나온다). 바디맵에서는 복근·복사근·기립근·허리 세 부위로 펼쳐 `함께 쓴 부위` 색으로 칠하고, 목표 부위가 그중 하나면 목표 표시가 우선. 규칙에 부위 id 목록 검사가 없어 배포 필요 없음.
+- 무게·횟수 칸에 글자·특수문자를 넣으면 걸러내고 `숫자만 입력할 수 있어요.` 안내(`AifcInteraction.toast`, 키보드 위에 뜬다).
+- 카드의 작성 방식 표시: 아나토미는 `ANATOMY NOTE`(아이콘 `accessibility_new`), 작성 전 초안 칩은 `아나토미`. 기존 `TEXT NOTE`/`TAG NOTE`/`PDF NOTE`는 그대로.
+- 펼친 아나토미 카드: 맨 위에 앞·뒤 작은 몸 그림(`AnatomyMiniFigures`, 운동 부위 + 통증·주의·가동성 점, 트레이너 화면 전용). 서명 칸 위치와 무관(펼친 영역은 카드 맨 아래에 붙고 서명 칸은 그대로).
+- 검증: 전체 Flutter 1009개 통과, analyze 오류 0, DEV Debug APK 빌드·Galaxy R3CX40M6EEM 설치.
+- 논의 중(미작업): 변화 보기를 `레슨 상세 정보` 패널(인바디 그래프 옆)의 운동 변화 카드로 합치기, 아나토미 세트의 보조(서포트) 횟수(저장 필드 추가라 Firestore Rules 변경·승인 필요).
+
+## 2026-10-13 변화 보기 합치기·세트 보조 횟수·펼친 카드 요약 (Firestore 변경 없음)
+
+- 변화 보기 합치기: 머리말의 `변화 보기` 버튼을 없애고, `레슨 상세 정보` 패널(인바디 추이 아래)에 `운동 변화` 카드(`widgets/anatomy_change_card.dart`)를 넣었다. 대표 운동 칩(최근 5개)·추정 1RM(없으면 최대 무게→볼륨→최대 횟수)·직전 대비 ▲▼·꺾은선 그래프·최근 4주 집중 부위 3개·통증/주의/가동성 개수·`자세히 보기`(기존 변화 보기 화면). 기록이 없으면 카드를 그리지 않는다. 아나토미 화면 안의 시계 버튼은 유지.
+- 세트 보조 횟수: `AnatomySet.assist`(0~99, 선택, 저장 키 `a`는 0보다 클 때만). 규칙은 `sets` 길이(≤30)만 검사하고 원소 키는 검사하지 않아 **규칙·인덱스 변경 없음**. 입력 창 세트 줄은 무게·횟수·보조 3칸(너비 5:4:3)으로 줄였다. 요약은 `3 X 40kg | 16(+2)회`, 볼륨·추정 1RM에는 보조를 넣지 않는다. 지난번 `같게 입력`·수정에도 보조가 따라간다.
+- 펼친 아나토미 카드: 몸 그림 → `운동 N / 세트 N / 볼륨 kg` 세 칸 → 한 운동 목록(운동 이름 + 목표 부위, 세부 세트·무게는 레슨일지에서) → 통증·주의·가동성 상세 → 보내기 버튼.
+- 검증: 신규·보강 테스트(보조 저장·요약·입력, 요약 집계, 변화 카드 5개), 전체 Flutter 1019개 통과, analyze 오류 0, DEV Debug APK 빌드·Galaxy R3CX40M6EEM 설치.
+- 미작업: 운동별 PR(최고 기록 갱신) 표시, 텍스트·카테고리 레슨의 공유 카드·변화 카드 합치기, PROD 배포·commit·push.
+
+## 2026-10-13 PR 트로피·레슨 상세 정보 좌우 넘기기 (Firestore 변경 없음)
+
+- PR(최고 기록 갱신): `AnatomyMemberHistory.isPersonalRecord(운동, 레슨일지 id)` — 이전 레슨들의 추정 1RM 최고값보다 이번이 **더 높을 때만** true(처음 한 운동·같은 값·1RM 계산 불가(12회 초과·맨몸)는 false). 트로피(`emoji_events`)는 펼친 카드의 운동 목록, 운동 변화 카드의 대표 운동 값 옆, 변화 보기 화면의 운동별 줄에 붙는다. 접힌 카드·회원 공유 이미지에는 넣지 않았다.
+- 레슨 상세 정보 패널: 카드가 세로로 길어져 머리말 안에서 잘리던 문제를 좌우로 넘기는 3페이지(시작 멘트·추천 운동 / 인바디 추이 / 운동 변화) + 점 표시로 바꿨다. 페이지 높이는 292dp 고정이고 각 페이지는 안에서 위아래로 스크롤된다(`header_info_pages`).
+- 운동 변화 카드: 값 줄의 오른쪽 문구가 폭을 넘치던 문제(테스트에서 발견)를 `Expanded`+말줄임으로 고치고, 320dp 폭 테스트를 추가했다.
+- 검증: 전체 Flutter 1024개 통과, analyze 오류 0, DEV Debug APK 빌드·Galaxy R3CX40M6EEM 설치.
+- 미결정: `레슨 상세 정보 보기/닫기` 버튼 이름 변경(사용자 선택 대기).
+
+## 2026-10-14 다크모드: 월 구분 글자·펼친 카드 글자 색 (Firestore 변경 없음)
+
+- 레슨일지 목록의 월 구분(`2026.10 ─────`) 글자가 다크모드에서 검은 회색(`Colors.black54`)이라 안 보이던 문제: 다크모드에서는 선과 같은 색(`0xFFD1D5DB`)으로, 라이트모드는 기존 그대로.
+- 같은 이유로 펼친 아나토미 카드에서 배경 위에 바로 놓이는 글자(`특이사항 없음`, 통증/주의/가동성 소제목, 운동 목록, 안내 문구)도 고정 검정 대신 테마 색(`onSurface`/`onSurfaceVariant`)으로 바꿨다. 흰 상자 안 글자는 그대로.
+- 검증: 소스 가드 테스트 2개 추가, 전체 Flutter 1026개 통과, analyze 오류 0, DEV Debug APK 설치. 폰의 다크모드 눈 확인은 대기.
+
+## 2026-10-14 MORE 브리핑·검색 복구·펼친 카드 글자 색 (Firestore 변경 없음)
+
+- 이름: `레슨 상세 정보 보기/닫기` → `MORE 브리핑 보기/닫기`(앱의 `MORE 데이`·`MORE 스마트 알림`과 같은 표기).
+- 상자 정리: 패널 바깥 큰 상자, 시작 멘트·추천 운동 각각의 상자, 인바디 추이·운동 변화 카드의 바깥 상자를 없애고 머리말 배경 위에 바로 놓았다(첫 페이지 두 글 사이는 가는 선, 페이지 점으로 구분). 인바디 지표 선택 칸과 그래프 흰 상자는 조작/가독 때문에 유지. 닫기·보기 버튼(타원)도 유지.
+- 위로 끌어 올려 닫기: 패널이 열려 있을 때 머리말에서 위로 빠르게 끌면(속도 -250 이하) 닫힌다. 패널 안에서 내용이 스크롤되는 페이지는 스크롤이 먼저 받는다.
+- 검색: 이전에는 제목·메모·종류·날짜를 한 덩어리로만 비교해 `스쿼트 무릎통증`처럼 여러 단어를 넣으면 못 찾았고, 아나토미 레슨은 메모가 `신체 부위 기록 N개`라 운동·통증 글자가 검색 대상이 아니었다. 이제 검색어를 공백으로 나눠 모두 들어 있으면 찾고(`logSearchMatches`), 공백을 뺀 글자에서도 찾아 `무릎통증`↔`무릎 통증`이 서로 찾힌다. 검색 대상에 특이사항 칩·통증 메모·카테고리 운동 구성·레슨 전 통증 `있음`·아나토미 기록(운동·부위·통증/주의/가동성의 글자·메모·좌우, `왼쪽무릎통증` 형태 포함)을 추가했다.
+- 다크모드: 일반(텍스트·카테고리) 카드를 펼쳤을 때 `레슨 내용`·`음성 원문`·`등록 시작 정보` 소제목이 고정 검정이라 안 보이던 문제를 테마 색으로 고쳤다.
+- 검증: 신규 테스트(검색·소스 가드), 전체 Flutter 1029개 통과, analyze 오류 0, DEV Debug APK 설치. 위로 끌어 닫기·다크모드는 폰 확인 대기(목록 화면은 위젯 테스트로 열 수 없어 소스 가드만 있음).
+- 미작업: `오늘 추천 운동`은 실제 추천이 아니라 가장 최근 레슨의 첫 줄을 보여주는 것이다(아나토미 레슨은 `신체 부위 기록 N개`가 나옴) — 기준 개선은 사용자 결정 대기.
+
+## 2026-10-14 MORE 레슨브리핑: 이름·토글·지난 레슨/쉬어간 부위 (Firestore 변경 없음)
+
+- 이름 `MORE 레슨브리핑`. 타원·`보기/닫기` 글자를 없애고 이름+화살표만 있는 토글로 바꿨다. 머리말을 아래로 끌면 열고 위로 끌면 닫는다.
+- `오늘 추천 운동`(실제로는 가장 최근 레슨의 첫 줄)을 없애고 `지난 레슨` / `지난 레슨 통증·주의`(있을 때만, 노란 글자) / `쉬어간 부위`(아나토미 기록이 있을 때만) 세 칸으로 교체.
+- 쉬어간 부위(`AnatomyMemberHistory.restedParts`): 큰 부위 12개 중 최근 28일 동안 목표·함께 쓴 부위로 쓰지 않은 부위를 한 번도 안 한 부위 → 마지막으로 한 날이 오래된 순으로 최대 3개. 코어는 복근·복사근·기립근으로 펼쳐 센다. 같은 기간 통증·주의를 적은 부위는 권하지 않는다. 운동 선택을 대신하는 추천이 아니라 안 한 부위 알림이다.
+- 검증: 신규 테스트 포함 전체 Flutter 1035개 통과, analyze 오류 0, DEV Debug APK 빌드·Galaxy R3CX40M6EEM 설치. 끌어서 열고 닫기·표시는 폰 확인 대기.
+
+## 2026-10-14 텍스트·카테고리 공유·작성 방식 표시·회원 정지 기간·요일 글자 (Firestore 변경 없음)
+
+- 작성 방식 표시: `TEXT/VOICE NOTE`·`CATEGORY NOTE`(구 TAG NOTE)·`PDF NOTE`·`ANATOMY NOTE`.
+- 텍스트·음성·카테고리 레슨 공유: 펼친 카드에 `회원에게 레슨일지 보내기`. 이미지는 몸 그림 없이 날짜·시간·회차 + (카테고리) 운동 이름과 `3세트 × 12회(+보조)` 줄 / (텍스트·음성) 회원 공개 메모(요약·잘한 점·숙제·주의)가 있으면 그것, 없으면 레슨 내용(메모) + 선택 한마디 20자. 내부 메모·통증 메모·레슨 전 체크는 넣지 않고, 시트에서 내용을 확인한 뒤 보낸다(`categoryShareLines`, `textLessonShareBody`, 공유 시트를 몸 그림 없이도 쓰도록 일반화).
+- 회원 정지: 코드 확인 결과 **정지는 저절로 풀리지 않는다.** 재개는 `재개` 버튼 → `updateManagedMemberMembershipPause`(resume)로만 되고(서버가 실제 정지 일수를 예정 일수까지만 인정해 종료일을 연장), 재개 예정일(`resumeDueAt`)이 지나도 자동 해제하는 로직·예약 함수가 없다. 그래서 기간이 지나도 `회원권 정지중`·`정지 N일째`·지난 날짜의 `재개 예정 MM.DD`가 그대로 보였다. 이번 변경은 표시만: 예정일 당일은 `오늘 재개 예정`, 지나면 `재개 예정일 N일 지남` 칩 + `정지 기간이 끝났어요. 재개를 눌러 …` 안내(`membershipPauseOverdueDays`). 회원 데이터는 자동으로 바꾸지 않는다. 자동 재개는 예약 Cloud Function(배포·종료일 연장 로직)이 필요해 승인 대기.
+- 레슨 등록 요일 글자: `HomeLessonDaySelector`가 다크모드에서도 남색(`kPrimaryColor`)·검정 고정색을 써서 어두운 배경에 묻혔다. 다크모드는 선택 요일을 밝게 올리고 미선택은 밝은 글자로 바꿨다(대비 4.5 이상 테스트). 라이트모드는 그대로.
+- 검증: 신규 테스트(공유 내용·몸 그림 없는 공유 시트·정지 기간 계산·요일 대비·작성 방식 가드), 전체 Flutter 1045개 통과, analyze 오류 0, DEV Debug APK 빌드·Galaxy R3CX40M6EEM 설치. 폰 확인 대기.
+
+## 2026-10-14 회원권 정지 자동 재개·재개 N일 전 안내·정지/재개 이력 (코드·에뮬레이터 완료, Functions 배포 전)
+
+- 사용자 결정: 정지 기간이 끝나면 **자동 재개**, 고객카드 안에서 `재개 5일 전·3일 전…` 안내, 정지/재개 이력 목록(언제 며칠 정지, 언제 재개).
+- 서버(`functions/src/managed_members.ts`, `index.ts`): 재개 계산을 공용 `buildMembershipResume(current, now, source)`로 빼서 직접 재개(`client_card`)와 자동 재개(`auto_resume`)가 같은 규칙을 쓴다(실제 정지 일수는 예정 일수까지만 인정, 종료일은 그만큼만 연장, 이력 `membershipPauseHistory`에 `source` 기록). `resumeDuePausedMemberships(db, now)`는 `membershipStatus == "paused"` 회원 중 개인 워크스페이스이고 재개 예정일(한국 날짜)이 오늘 이전·당일인 회원을 트랜잭션으로 재개하며, 한 회원이 실패해도 나머지를 계속 처리한다. `autoResumePausedMemberships`는 매일 00:20(Asia/Seoul) 예약 실행. 새 인덱스·규칙 변경 없음(단일 필드 동등 조회).
+- 검증: `tsc`·eslint 오류 0, 신규 에뮬레이터 테스트 5개(`firebase-emulator-tests/membership_auto_resume.test.cjs`: 당일/지난 회원만 재개, 내일 예정·다른 워크스페이스·활성 회원 불변, 7일 상한·종료일 연장, 이력 source, 재실행 멱등, 다음 날 재개) 통과, 기존 수동 정지/재개 에뮬레이터 9개 통과(리팩터링 회귀 없음). `package.json`에 `test:membership-auto-resume(-emulators)` 스크립트 추가.
+- 앱(고객카드): 재개 예정일 5일 전부터 정지 상자에 `재개 N일 전 · MM.DD에 자동으로 재개돼요`(앰버), 예정일 이후 아직 정지면 `정지 기간이 끝났어요. 곧 자동으로 재개돼요…` 안내. 이력 시트는 정지와 재개를 짝지은 줄(`2026.10.13 ~ 2026.10.20 · 7일 정지 · 자동 재개 · 종료일 …로 연장`, 진행 중은 `정지 중 · N일 예정 · MM.DD 재개 예정`)로 최근 10건.
+- 검증(앱): 신규 테스트 12개(이력 줄·재개 N일 전), 전체 Flutter 1051개 통과, analyze 오류 0, DEV Debug APK 설치.
+- **미배포**: `autoResumePausedMemberships`(예약 함수)와 수정된 `updateManagedMemberMembershipPause`는 DEV에도 아직 배포하지 않았다. 배포하면 Cloud Scheduler·Pub/Sub API 사용 설정이 필요할 수 있고 요금제(Blaze) 확인이 필요하다. 사용자 승인 대기. 배포 전에는 앱이 `정지 기간이 끝났어요…` 안내만 보이고 실제 해제는 되지 않는다.
+- 알림: 이번 안내는 고객카드를 열었을 때 보이는 화면 안내이며 푸시/로컬 알림은 만들지 않았다.
+
+## 2026-10-14 요일 선택 색·홈 하단 최근 회원 글자 색 (Firestore 변경 없음)
+
+- 레슨 등록의 요일 선택: 선택한 요일을 레슨계약서·회원권계약서 칩(`home_lesson_quick_actions_section.dart`의 계약서 작업 칩)과 같은 색으로 바꿨다 — 라이트 배경 `0xFFFFF1C2`·글자 `0xFF0B1E32`, 다크 배경 `0xFF4A401F`·글자 `0xFFFFF4CF`, 테두리 `0xFFEFCB62`. 선택하지 않은 요일은 기존 회색 칩(다크는 밝은 글자). `activeColor` 인자는 호환용으로 남기고 쓰지 않는다.
+- 홈 하단 `최근 회원`: 제목·이름·안내 글자가 고정 검정(`black87`)이고 `전체보기`가 남색이라 다크모드에서 안 보이던 것을 테마 색으로 바꿨다(`HomeRecentClientsHeader` 분리, 다크는 남색을 밝게 올림, 오류·빈 상태 글자도 테마 색). 라이트는 그대로.
+- 검증: 요일·머리말 테스트(다크는 `themeMode: dark`로 실제 다크 렌더링, 대비 4.5 이상 확인 — 이전 요일 대비 테스트는 라이트로 돌고 있어 이번에 바로잡음), 전체 Flutter 통과, analyze 오류 0, DEV Debug APK 설치.
+
+## 2026-10-14 레슨일지 목록에 섞여 있던 예시(가짜) 레슨일지 제거·서비스/노쇼 카드 다크모드 색 (Firestore 변경 없음)
+
+- 발견: `PersonalTrainingLogPage.initState`가 `김유신` 이름의 예시 레슨일지 7개(제목 `하체 패턴 교정`·`무릎 부담 조절` 등, 날짜는 오늘 기준 1~18일 전, 서비스·노쇼 포함, 점수 포함)를 **항상** 목록에 넣고 있었다. 이름·회원으로 거르는 코드가 없어 실제 회원의 목록에도 섞여 보였고, 회차 번호·전체 횟수·검색·필터에도 들어갔을 수 있다. 배포본 1.0.5+25(`1dd5ea4`)에도 같은 코드가 있었다. 사용자가 `10.12/10.13` 예시를 알아보고 질문해서 확인.
+- 조치: 예시 시드를 통째로 제거(실제 데이터만 표시). 비어 있으면 기존 빈 상태 문구가 나온다. 소스 가드 테스트로 `김유신`·`_logs.addAll([` 재유입을 막는다.
+- 밝은 배경: 서비스(S.V)·노쇼 카드는 고정 파스텔 배경(`F0FDFA`/`FEF2F2`/`FFFBEB`)을 써서 다크모드에서도 밝았고, 그 위에 테마 글자(밝은 색)가 올라가 안 읽히던 문제. 다크모드에서는 어두운 상태 색(`0F2E2B`/`3A1F22`/`3A2D14`)과 테두리·머리글 글자색(밝은 청록·분홍·주황)으로 바꿨다. 라이트는 그대로.
+- 검증: 전체 Flutter 1056개 통과, analyze 오류 0, DEV Debug APK 설치. 폰 확인 대기.
+- 주의: 예시 로그가 사라진 만큼 실제 기록이 없는 회원의 목록은 비어 보인다(정상). PROD 반영은 다음 배포에 포함해야 한다.
+
+- 2026-10-14 사용자 승인으로 Cloud Functions 두 개를 DEV(`more-than-fitness-dev-mft`)에만 배포했다: 신규 예약 함수 `autoResumePausedMemberships`(asia-northeast3, 매일 00:20 Asia/Seoul)와 수정된 `updateManagedMemberMembershipPause`(공용 재개 계산). 배포 중 Cloud Scheduler API(`cloudscheduler.googleapis.com`)가 DEV 프로젝트에 새로 사용 설정됐다. 배포 자체는 성공했고 `functions:list`로 두 함수를 확인했다. 배포 끝에 Artifact Registry 정리 정책(cleanup policy) 설정 안내 오류가 떴으나(`--force` 미사용, 컨테이너 이미지가 쌓이면 소액 요금 가능) 함수 배포와는 무관하다. PROD 배포 없음. 예약 실행은 다음 00:20(KST)에 처음 돈다 — 실제 재개 동작은 DEV에서 정지한 회원으로 확인 필요.
+
+- 2026-10-14 사용자 승인으로 DEV(`more-than-fitness-dev-mft`)의 Artifact Registry 정리 정책을 설정했다: `asia-northeast3`의 `gcf-artifacts`에서 **7일 지난 함수 컨테이너 이미지를 자동 삭제**(`firebase functions:artifacts:setpolicy --location asia-northeast3 --days 7`). 배포 때 뜨던 정리 정책 안내 오류의 원인 해소. us-central1은 DEV에 함수가 없어 설정하지 않았다. PROD에는 설정하지 않았다(PROD 배포 때 별도 결정).
+
+## 2026-10-14 홈: 최근 회원 아바타(사람 모양·다크 색)·시간표 요일 줄 오늘 칸 다크 색 (Firestore 변경 없음)
+
+- 홈 하단 `최근 회원` 원형 아이콘: 이름 약자 대신 사람 모양(`person_rounded`) 아이콘으로 바꾸고(`HomeRecentClientAvatar`, 이름은 아래에 그대로 표시), 4가지 색을 라이트(연한 파스텔 배경+진한 아이콘)·다크(어두운 색조 배경+밝은 아이콘, 대비 3 이상) 팔레트로 나눴다.
+- 시간표 요일 줄: 다크모드 오늘 칸이 어두운 올리브 배경(`4A401F`) 위 남색 글자라 묻히던 것을 밝은 금색(`warmYellow`) 배경 + 남색 글자(대비 4.5 이상)로 바꿨다. 다른 주에서 보는 오늘 요일(soft)은 크림색 글자. 라이트는 그대로(`FFF1C2`+남색).
+- 검증: 신규 테스트 5개(`home_dark_colors_test.dart`), 전체 Flutter 통과, analyze 오류 0, DEV Debug APK 설치. 폰 확인 대기.
+
+## 2026-10-14 PROD 배포 (백엔드) + 1.0.6+26 AAB 빌드
+
+- 사전 점검: 백엔드 에뮬레이터 10개 묶음 모두 통과(profile 30·anonymous 26·member 94·personal-taxonomy 25·personal-schedule 30·personal-training-log 64·membership-pause 9·membership-auto-resume 5·nickname-onboarding 22·legacy 28 = 333 시나리오), 앱 전체 Flutter 1061개 통과.
+- 사용자 승인(`테스트 끝나면 PROD 배포 진행해줘`)으로 PROD(`more-than-fitness-f6adb`)에 배포: (1) Firestore 규칙 + 인덱스(`anatomyRecords` collection group 복합 인덱스 포함) 배포 완료, (2) Cloud Functions 전체 배포 완료(소스의 28개 함수가 모두 PROD에 이미 있거나 신규라 삭제된 함수 없음, `--force` 미사용). 신규 생성: `recordManagedMemberInbody`(인바디 기록), `autoResumePausedMemberships`(매일 00:20 Asia/Seoul 자동 재개). 수정: 회원권 정지/재개 등 기존 callable. 배포 끝에 us-central1 Artifact Registry 정리 정책 안내 오류가 떴으나(함수 배포 자체는 성공, 소액 요금 가능) `--force`는 쓰지 않았다.
+- 버전: `pubspec.yaml` 1.0.5+25 → **1.0.6+26**. `flutter build appbundle --flavor prod -t lib/main_prod.dart --release --no-pub` 성공, `build/app/outputs/bundle/prodRelease/app-prod-release.aab` 78.2MB, SHA-256 `7d4f580469e56819a925060cc40e505dbf2a2b6dad8e4507285e2164cbfe3f4c`.
+- 미작업: Play Console 업로드(사용자), git commit/push(임시 파일 제외, 사용자 요청 대기), PROD Cloud Scheduler API는 함수 배포가 자동으로 켰는지 PROD에서 첫 실행(00:20 KST) 확인 필요, PROD Artifact Registry 정리 정책.

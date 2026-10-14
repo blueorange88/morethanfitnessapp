@@ -9,6 +9,7 @@ void main() {
     String memberId = 'member-a',
     String? scheduleId,
     String source = 'formal',
+    Map<String, dynamic>? details,
   }) {
     return PersonalTrainingLogDraft(
       memberId: memberId,
@@ -19,6 +20,7 @@ void main() {
       lessonType: 'PT',
       memo: '하체 운동',
       source: source,
+      details: details,
     );
   }
 
@@ -179,6 +181,44 @@ void main() {
       throwsA(isA<PersonalTrainingLogException>()),
     );
   });
+
+  test('세부 기록(details)은 초안 생성과 자동저장에 함께 저장된다', () async {
+    final value = harness();
+    final id = await value.repository.createDraft(
+      draft(details: {'v': 1, 'title': '하체운동'}),
+    );
+    expect(value.source.records[id]!.details, {'v': 1, 'title': '하체운동'});
+
+    await value.repository.autosave(
+      id,
+      draft().copyWith(details: {'v': 1, 'title': '상체운동'}),
+    );
+    expect(value.source.records[id]!.details!['title'], '상체운동');
+  });
+
+  test('details 없이 자동저장해도 기존 세부 기록을 지우지 않는다', () async {
+    final value = harness();
+    final id = await value.repository.createDraft(
+      draft(details: {'v': 1, 'title': '하체운동'}),
+    );
+    await value.repository.autosave(id, draft().copyWith(memo: '메모만 수정'));
+    final record = value.source.records[id]!;
+    expect(record.memo, '메모만 수정');
+    expect(record.details!['title'], '하체운동');
+  });
+
+  test('확정 후에는 세부 기록을 자동저장으로 바꿀 수 없다', () async {
+    final value = harness();
+    final id = await value.repository.createDraft(draft());
+    await value.repository.finalize(id, 'completed');
+    await expectLater(
+      value.repository.autosave(
+        id,
+        draft().copyWith(details: {'v': 1, 'title': '확정 후'}),
+      ),
+      throwsA(isA<PersonalTrainingLogException>()),
+    );
+  });
 }
 
 Map<String, dynamic> _member(String id, String uid) => {
@@ -204,6 +244,7 @@ PersonalTrainingLogRecord _record({
   String source = 'formal',
   String memo = '',
   String? scheduleId,
+  Map<String, dynamic>? details,
 }) {
   return PersonalTrainingLogRecord(
     lessonLogId: id,
@@ -219,6 +260,7 @@ PersonalTrainingLogRecord _record({
     status: status,
     source: source,
     memo: memo,
+    details: details,
   );
 }
 
@@ -288,6 +330,7 @@ class _MemoryLogDataSource implements PersonalTrainingLogDataSource {
       source: data['source'] as String,
       memo: data['memo'] as String,
       scheduleId: data['scheduleDocId'] as String?,
+      details: data['details'] as Map<String, dynamic>?,
     );
   }
 
@@ -305,6 +348,7 @@ class _MemoryLogDataSource implements PersonalTrainingLogDataSource {
       status: current.status,
       source: current.source,
       memo: changes['memo'] as String? ?? current.memo,
+      details: changes['details'] as Map<String, dynamic>? ?? current.details,
       scheduleId:
           changes['scheduleDocId'] is String
               ? changes['scheduleDocId'] as String
@@ -341,6 +385,7 @@ class _MemoryMutationGateway implements PersonalTrainingLogMutationGateway {
       source: current.source,
       memo: current.memo,
       scheduleId: current.scheduleDocId,
+      details: current.details,
     );
     return {'lessonLogId': lessonLogId, 'status': status};
   }

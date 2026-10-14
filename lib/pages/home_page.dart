@@ -7078,6 +7078,9 @@ class _HomePageState extends State<HomePage>
         builder:
             (_) => ClientCardPage(
               memberId: resolvedMemberId,
+              // 이미 등록된 회원의 카드를 여는 것이므로 수정 모드로 연다. 기본값(false)이면
+              // 신규 등록 화면이 되어 서버 값을 불러오지 않고, 저장하면 중복 회원이 만들어진다.
+              isEditMode: true,
               personalOwnerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
             ),
       ),

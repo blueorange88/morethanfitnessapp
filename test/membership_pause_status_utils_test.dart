@@ -16,6 +16,7 @@ void main() {
         membershipResumeDueLabel(
           isPaused: true,
           resumeDueAt: DateTime(2026, 7, 25),
+          now: DateTime(2026, 7, 12),
         ),
         '재개 예정 07.25',
       );
@@ -35,6 +36,69 @@ void main() {
       );
       expect(
         membershipResumeDueLabel(isPaused: false, resumeDueAt: null),
+        isNull,
+      );
+    });
+
+    test('정지 기간이 끝났는데 재개하지 않았으면 지난 일수를 보여준다', () {
+      final due = DateTime(2026, 7, 25);
+      expect(
+        membershipPauseOverdueDays(
+          isPaused: true,
+          resumeDueAt: due,
+          now: DateTime(2026, 7, 24, 23, 59),
+        ),
+        isNull,
+      );
+      expect(
+        membershipPauseOverdueDays(
+          isPaused: true,
+          resumeDueAt: due,
+          now: DateTime(2026, 7, 25, 0, 1),
+        ),
+        0,
+      );
+      expect(
+        membershipPauseOverdueDays(
+          isPaused: true,
+          resumeDueAt: due,
+          now: DateTime(2026, 7, 30, 18),
+        ),
+        5,
+      );
+      expect(
+        membershipResumeDueLabel(
+          isPaused: true,
+          resumeDueAt: due,
+          now: DateTime(2026, 7, 25, 9),
+        ),
+        '오늘 재개 예정',
+      );
+      expect(
+        membershipResumeDueLabel(
+          isPaused: true,
+          resumeDueAt: due,
+          now: DateTime(2026, 7, 30),
+        ),
+        '재개 예정일 5일 지남',
+      );
+    });
+
+    test('정지 중이 아니거나 예정일이 없으면 지난 일수를 만들지 않는다', () {
+      expect(
+        membershipPauseOverdueDays(
+          isPaused: false,
+          resumeDueAt: DateTime(2026, 7, 1),
+          now: DateTime(2026, 7, 30),
+        ),
+        isNull,
+      );
+      expect(
+        membershipPauseOverdueDays(
+          isPaused: true,
+          resumeDueAt: null,
+          now: DateTime(2026, 7, 30),
+        ),
         isNull,
       );
     });

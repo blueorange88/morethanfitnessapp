@@ -513,6 +513,7 @@ class PersonalMemberCardSaveService {
     PersonalMemberAssignmentPatch assignments =
         const PersonalMemberAssignmentPatch(),
     String? photoUrl,
+    Map<String, dynamic>? health,
     PersonalMemberSaveTrace? trace,
   }) async {
     final normalizedGender = personalMemberGenderForSave(gender);
@@ -567,6 +568,7 @@ class PersonalMemberCardSaveService {
         ...photoUrl == null
             ? const <String, dynamic>{}
             : <String, dynamic>{'photoUrl': photoUrl},
+        if (health != null) 'health': health,
         ...assignments.toCallableMap(),
       },
       expectedName: name,
@@ -849,6 +851,7 @@ class PersonalMemberCardSaveService {
     PersonalMemberAssignmentPatch assignments =
         const PersonalMemberAssignmentPatch(),
     String? photoUrl,
+    Map<String, dynamic>? health,
     PersonalMemberSaveTrace? trace,
   }) async {
     final normalizedGender = personalMemberGenderForSave(gender);
@@ -901,6 +904,7 @@ class PersonalMemberCardSaveService {
           ...photoUrl == null
               ? const <String, dynamic>{}
               : <String, dynamic>{'photoUrl': photoUrl},
+          if (health != null) 'health': health,
           ...assignments.toCallableMap(),
         },
       );

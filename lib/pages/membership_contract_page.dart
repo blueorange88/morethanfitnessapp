@@ -806,10 +806,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
   }
 
   String get _contractPdfFileName {
-    final safeName = _safeMemberName().replaceAll(
-      RegExp(r'[\\/:*?"<>|]'),
-      '_',
-    );
+    final safeName = _safeMemberName().replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     return '${safeName}_회원권계약서.pdf';
   }
 
@@ -831,7 +828,9 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
     final font = pw.Font.ttf(fontData);
     final signatureBytes = await _signatureImageBytes();
 
-    final doc = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: font));
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(base: font, bold: font),
+    );
 
     pw.TextStyle textStyle({
       double size = 9.5,
@@ -902,7 +901,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
               infoRow(
                 '회원권 기간',
                 '${_dateText(widget.membershipStartAt)} ~ ${_dateText(widget.membershipEndAt)}'
-                '${membershipDays == null ? '' : ' ($membershipDays일)'}',
+                    '${membershipDays == null ? '' : ' ($membershipDays일)'}',
               ),
               infoRow(
                 '레슨',
@@ -925,7 +924,7 @@ class _MembershipContractPageState extends State<MembershipContractPage> {
               bodyText(
                 _isSigned
                     ? '서명자: ${_signatureNameC.text.trim()}'
-                    '${_signedAt == null ? '' : ' (${_dateText(_signedAt)} 서명 완료)'}'
+                        '${_signedAt == null ? '' : ' (${_dateText(_signedAt)} 서명 완료)'}'
                     : '서명 전',
               ),
               if (signatureBytes != null) ...[

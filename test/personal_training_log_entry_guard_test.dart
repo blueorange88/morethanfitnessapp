@@ -275,4 +275,104 @@ void main() {
     expect(source, isNot(contains('_resetTrainingLogConsent')));
     expect(source, isNot(contains('동의 초기화')));
   });
+
+  test('레슨일지 목록은 전체를 기본으로 하고 전체 칩을 맨 앞에 둔다', () {
+    final source =
+        File('lib/pages/personal_training_log_page.dart').readAsStringSync();
+
+    expect(source, contains("String _logFilter = 'all';"));
+    expect(
+      RegExp(
+        r"_buildFilterChip\('전체', 'all'\),[\s\S]*?"
+        r"_buildFilterChip\('확정완료', 'locked'\),[\s\S]*?"
+        r'_buildMoreFilterToggleChip\(\)',
+      ).hasMatch(source),
+      isTrue,
+    );
+  });
+
+  test('에디터 저장은 서버(training_logs)에 저장하고 열 때 다시 불러온다', () {
+    final source =
+        File('lib/pages/personal_training_log_page.dart').readAsStringSync();
+
+    // 에디터를 결과 없이 닫아도 예외 없이 끝난다(두 방식 모두).
+    expect(
+      RegExp(
+        r'if \(result is! Map<String, dynamic>\) return;',
+      ).allMatches(source).length,
+      2,
+    );
+    // 결과 반영 직후 서버 저장을 하고, 저장 성공일 때만 완료 안내를 보여준다.
+    expect(
+      RegExp(
+        r'_applyDraftEditorResult\(log, result\);\s*'
+        r'final saved = await _persistPersonalLogDraft\(log\);',
+      ).allMatches(source).length,
+      2,
+    );
+    expect(source, contains("if (saved) _showSnack('텍스트 레슨일지가 저장되었어요.');"));
+    expect(source, contains("if (saved) _showSnack('카테고리 레슨일지가 저장되었어요.');"));
+    // 새 일지는 createDraft, 이미 서버 문서가 있으면 autosave.
+    expect(source, contains('repository.createDraft(draft)'));
+    expect(source, contains('repository.autosave(docId, draft)'));
+    // 확정된 일지는 초안 저장을 건너뛴다.
+    expect(
+      RegExp(
+        r'Future<bool> _persistPersonalLogDraft[\s\S]*?'
+        r'if \(!_isPersonalWorkspace \|\| log\.locked\) return true;',
+      ).hasMatch(source),
+      isTrue,
+    );
+    // 진입 시 서버 일지를 불러오고, 운동 구성·인지/수행 반응도 저장 대상이다.
+    expect(
+      RegExp(
+        r'_loadQuickSignedLogsFromFirestore\(\);\s*'
+        r'if \(_isPersonalWorkspace\) \{\s*_loadFormalLogsFromFirestore\(\);',
+      ).hasMatch(source),
+      isTrue,
+    );
+    expect(source, contains("'exercises': log.exercises,"));
+    expect(source, contains("'cognitiveResponse': log.cognitiveResponse,"));
+    expect(source, contains("'performanceResponse': log.performanceResponse,"));
+    expect(source, contains('initialExercises: log.exercises,'));
+  });
+
+  test('카테고리 에디터는 운동 구성과 인지·수행 반응을 저장하고 복원한다', () {
+    final source =
+        File(
+          'lib/pages/personal_training_log_category_page.dart',
+        ).readAsStringSync();
+
+    expect(source, contains("'exercises': _exercisesForSave(),"));
+    expect(source, contains("'cognitiveResponse': _cognitiveResponse,"));
+    expect(source, contains("'performanceResponse': _performanceResponse,"));
+    expect(
+      source,
+      contains('_restoreExerciseGroups(widget.initialExercises);'),
+    );
+    expect(
+      source,
+      contains(
+        '_applyAutoSummary(force: _publicSummaryC.text.trim().isEmpty);',
+      ),
+    );
+  });
+
+  test('레슨일지 헤더에 설정이 있고 시작 전 체크 자동 열기를 끄고 켤 수 있다', () {
+    final source =
+        File('lib/pages/personal_training_log_page.dart').readAsStringSync();
+
+    // 달력 아이콘 바로 옆에 설정 아이콘.
+    expect(
+      RegExp(
+        r"icon: Icons\.calendar_month_rounded,[\s\S]*?"
+        r"icon: Icons\.settings_outlined,\s*tooltip: '레슨일지 설정',\s*"
+        r'onTap: onSettingsTap',
+      ).hasMatch(source),
+      isTrue,
+    );
+    expect(source, contains('onSettingsTap: _openLogSettings,'));
+    expect(source, contains("key: const Key('log_setting_auto_pre_check')"));
+    expect(source, contains('TrainingLogPreferences.setAutoOpenPreCheck('));
+  });
 }

@@ -13,6 +13,7 @@ class PersonalTrainingLogRecord {
     required this.source,
     required this.memo,
     this.scheduleDocId,
+    this.details,
     this.deductionApplied = false,
     this.createdAt,
     this.updatedAt,
@@ -31,6 +32,8 @@ class PersonalTrainingLogRecord {
   final String status;
   final String source;
   final String memo;
+  // 세부 기록(체크·특이사항·운동 구성). 형식은 personal_training_log_details.dart 참고.
+  final Map<String, dynamic>? details;
   final bool deductionApplied;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -55,6 +58,7 @@ class PersonalTrainingLogDraft {
     this.scheduleDocId,
     this.memo = '',
     this.source = 'formal',
+    this.details,
   });
 
   final String memberId;
@@ -65,6 +69,7 @@ class PersonalTrainingLogDraft {
   final String lessonType;
   final String memo;
   final String source;
+  final Map<String, dynamic>? details;
 
   PersonalTrainingLogDraft copyWith({
     String? scheduleDocId,
@@ -74,6 +79,7 @@ class PersonalTrainingLogDraft {
     DateTime? endAt,
     String? lessonType,
     String? memo,
+    Map<String, dynamic>? details,
   }) {
     return PersonalTrainingLogDraft(
       memberId: memberId,
@@ -84,6 +90,7 @@ class PersonalTrainingLogDraft {
       lessonType: lessonType ?? this.lessonType,
       memo: memo ?? this.memo,
       source: source,
+      details: details ?? this.details,
     );
   }
 }

@@ -620,18 +620,30 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
     required MtfThemeTokens tokens,
     required Color onHeader,
     bool isSoftToday = false,
+    bool dark = false,
   }) {
     final bool showSoftToday = !isToday && isSoftToday;
+    // 다크모드의 오늘 칸: 어두운 올리브색 배경에 남색 글자가 묻히던 것을 밝은 금색 배경 +
+    // 남색 글자로 바꾼다. 다른 주의 오늘 요일(soft)은 어두운 금색 배경 + 밝은 크림 글자.
+    final Color headerBackground =
+        dark && isToday
+            ? AppColors.warmYellow
+            : (isToday || showSoftToday
+                ? tokens.scheduleTodayHighlight
+                : tokens.scheduleHeaderBackground);
+    final Color headerText =
+        showSoftToday
+            ? (dark ? const Color(0xFFFFF4CF) : tokens.scheduleTimeText)
+            : isToday
+            ? AppColors.deepNavy
+            : onHeader;
 
     return Container(
       width: width,
       height: _kScheduleHeaderCellHeight,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color:
-            isToday || showSoftToday
-                ? tokens.scheduleTodayHighlight
-                : tokens.scheduleHeaderBackground,
+        color: headerBackground,
         border: Border(
           right: BorderSide(color: tokens.scheduleGridLine, width: 0.5),
           bottom: BorderSide(
@@ -647,12 +659,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
         day,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color:
-              showSoftToday
-                  ? tokens.scheduleTimeText
-                  : isToday
-                  ? AppColors.deepNavy
-                  : onHeader,
+          color: headerText,
           fontSize: 11,
           fontWeight: FontWeight.w800,
           height: 1.0,
@@ -815,6 +822,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                       isSoftToday: isSoftTodayCol,
                       tokens: tokens,
                       onHeader: AppColors.darkTextPrimary,
+                      dark: Theme.of(context).brightness == Brightness.dark,
                     );
                   }),
                 ],

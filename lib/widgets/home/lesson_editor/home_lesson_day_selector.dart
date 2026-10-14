@@ -12,10 +12,20 @@ class HomeLessonDaySelector extends StatelessWidget {
   final List<String> allDays;
   final Set<String> selectedDays;
   final ValueChanged<String> onDayTapped;
+
+  /// 예전 호출부와의 호환용. 선택한 요일의 색은 레슨계약서 칩과 같은 색을 쓴다.
   final Color activeColor;
+
+  // 레슨계약서·회원권계약서 칩(home_lesson_quick_actions_section.dart)과 같은 색.
+  static const Color selectedBackgroundLight = Color(0xFFFFF1C2);
+  static const Color selectedBackgroundDark = Color(0xFF4A401F);
+  static const Color selectedBorder = Color(0xFFEFCB62);
+  static const Color selectedTextLight = Color(0xFF0B1E32);
+  static const Color selectedTextDark = Color(0xFFFFF4CF);
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Wrap(
       spacing: 6,
       runSpacing: 6,
@@ -35,11 +45,20 @@ class HomeLessonDaySelector extends StatelessWidget {
                 decoration: BoxDecoration(
                   color:
                       isSelected
-                          ? activeColor.withOpacity(0.10)
-                          : Colors.grey.shade100,
+                          ? (dark
+                              ? selectedBackgroundDark
+                              : selectedBackgroundLight)
+                          : (dark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.grey.shade100),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: isSelected ? activeColor : Colors.grey.shade300,
+                    color:
+                        isSelected
+                            ? selectedBorder
+                            : (dark
+                                ? Colors.white.withOpacity(0.24)
+                                : Colors.grey.shade300),
                   ),
                 ),
                 child: Text(
@@ -47,7 +66,12 @@ class HomeLessonDaySelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: isSelected ? activeColor : Colors.black87,
+                    color:
+                        isSelected
+                            ? (dark ? selectedTextDark : selectedTextLight)
+                            : (dark
+                                ? Colors.white.withOpacity(0.88)
+                                : Colors.black87),
                   ),
                 ),
               ),
