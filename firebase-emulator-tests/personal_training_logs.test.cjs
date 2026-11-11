@@ -438,11 +438,53 @@ async function main() {
       assert.equal(result.body.error.status, "PERMISSION_DENIED");
     });
 
+    await scenario("확정하면 레슨 진행 알림(발송 전)이 같은 트랜잭션에서 남는다", async () => {
+      const notice = (await readAdmin(env, "lesson_progress_notices/log-a")).data();
+      assert.equal(notice.kind, "lesson_progress");
+      assert.equal(notice.state, "pending");
+      assert.equal(notice.channel, null);
+      assert.equal(notice.trainerId, anonymous.localId);
+      assert.equal(notice.memberId, "member-a");
+      assert.equal(notice.memberName, "회원");
+      assert.equal(notice.lessonType, "PT");
+      assert.equal(notice.total, 10);
+      assert.equal(notice.done, 6);
+      assert.equal(notice.remain, 4);
+      assert.equal(notice.progressChanged, true);
+      assert.equal(notice.message, "회원님 PT 레슨 10회 중 6회를 진행 중입니다.");
+      assert.ok(notice.createdAt);
+    });
+    await scenario("레슨 진행 알림은 앱이 읽거나 쓸 수 없다", async () => {
+      await assertFails(getDoc(doc(ownerDb, "lesson_progress_notices", "log-a")));
+      await assertFails(setDoc(doc(ownerDb, "lesson_progress_notices", "fake"), {
+        trainerId: anonymous.localId, state: "pending",
+      }));
+      await assertFails(updateDoc(doc(ownerDb, "lesson_progress_notices", "log-a"), {
+        state: "sent",
+      }));
+    });
+    await scenario("같은 확정을 다시 눌러도 알림은 한 건이다", async () => {
+      const again = await callFunction(
+        "finalizePersonalTrainingLog",
+        anonymous.idToken,
+        {lessonLogId: "log-a", status: "completed"},
+      );
+      assert.equal(again.body.result.alreadyFinalized, true);
+      const notice = (await readAdmin(env, "lesson_progress_notices/log-a")).data();
+      assert.equal(notice.done, 6);
+      assert.equal(notice.state, "pending");
+    });
+
     const cancelled = await callFunction(
       "cancelPersonalTrainingLog",
       anonymous.idToken,
       {lessonLogId: "log-a"},
     );
+    await scenario("확정을 취소하면 아직 보내지 않은 알림은 취소된다", async () => {
+      const notice = (await readAdmin(env, "lesson_progress_notices/log-a")).data();
+      assert.equal(notice.state, "cancelled");
+      assert.ok(notice.cancelledAt);
+    });
     await scenario("finalize cancel restores member count and stats", async () => {
       assert.equal(cancelled.status, 200, JSON.stringify(cancelled.body));
       const member = (await readAdmin(env, "members/member-a")).data();
@@ -497,6 +539,31 @@ async function main() {
       assert.equal(member.remainingSessions, 4);
       assert.equal(member.lessonStats.noShowDeductedCount, 1);
     });
+    await scenario("레슨 진행 알림 문장·생성 규칙(순수 함수)", async () => {
+      const notice = require("../functions/lib/lesson_progress_notice.js");
+      assert.equal(
+        notice.lessonProgressMessage({memberName: "홍길동", lessonType: "PT", total: 30, done: 10}),
+        "홍길동님 PT 레슨 30회 중 10회를 진행 중입니다.");
+      assert.equal(
+        notice.lessonProgressMessage({memberName: "홍길동", lessonType: "", total: 30, done: 10}),
+        "홍길동님 레슨 30회 중 10회를 진행 중입니다.");
+      assert.equal(
+        notice.lessonProgressMessage({memberName: "홍길동", lessonType: "필라테스", total: 30, done: 30}),
+        "홍길동님 필라테스 레슨 30회를 모두 진행했습니다.");
+      const base = {
+        trainerId: "t", memberId: "m", memberName: "홍길동", lessonType: "PT",
+        lessonLogId: "l1", status: "completed", progressChanged: true,
+        total: 30, done: 10, remain: 20,
+      };
+      assert.equal(notice.buildLessonProgressNotice({...base, total: 0}), null,
+        "레슨 미등록(총 0)이면 알림을 만들지 않는다");
+      assert.equal(notice.buildLessonProgressNotice({...base, memberName: "  "}), null);
+      const built = notice.buildLessonProgressNotice(base);
+      assert.equal(built.state, "pending");
+      assert.equal(built.noticeId, "l1");
+      assert.equal(built.workspaceType, "personal");
+    });
+
     await scenario("no_show_not_deducted keeps remaining and counts", async () => {
       const cancelledNoShow = await callFunction(
         "cancelPersonalTrainingLog",
@@ -517,6 +584,11 @@ async function main() {
       member = (await readAdmin(env, "members/member-a")).data();
       assert.equal(member.remainingSessions, 5);
       assert.equal(member.lessonStats.noShowUndeductedCount, 1);
+      // 소진이 없는 확정도 알림은 남기되 진행 횟수가 늘지 않았다고 표시한다.
+      const notice = (await readAdmin(env, "lesson_progress_notices/no-show-no-deduct")).data();
+      assert.equal(notice.progressChanged, false);
+      assert.equal(notice.done, 5);
+      assert.equal(notice.state, "pending");
     });
     await scenario("no_show_not_deducted cancel restores its stats only", async () => {
       const result = await callFunction(

@@ -45,6 +45,23 @@
         {"fieldPath": "memberId", "order": "ASCENDING"},
         {"fieldPath": "recordedAt", "order": "DESCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "personal_contracts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "trainerId", "order": "ASCENDING"},
+        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "personal_contracts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "trainerId", "order": "ASCENDING"},
+        {"fieldPath": "memberId", "order": "ASCENDING"},
+        {"fieldPath": "updatedAt", "order": "DESCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

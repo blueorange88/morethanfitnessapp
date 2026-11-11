@@ -24,8 +24,16 @@
     "test:membership-pause-emulators": "firebase emulators:exec --project demo-mtf-membership-pause --only auth,firestore,functions \"npm run test:membership-pause-rules\"",
     "test:membership-auto-resume": "node firebase-emulator-tests/membership_auto_resume.test.cjs",
     "test:membership-auto-resume-emulators": "firebase emulators:exec --project demo-mtf-membership-pause --only firestore \"npm run test:membership-auto-resume\"",
-    "test:storage-member-profile-rules": "node firebase-emulator-tests/storage_member_profile_rules.test.cjs",
-    "test:storage-member-profile-emulators": "firebase emulators:exec --project demo-mtf-storage-member-profile --only auth,firestore,storage \"npm run test:storage-member-profile-rules\""
+    "test:personal-contracts": "node firebase-emulator-tests/personal_contracts.test.cjs",
+    "test:personal-contracts-emulators": "npm --prefix functions run build && firebase emulators:exec --project demo-mtf-personal-contracts --only firestore \"npm run test:personal-contracts\"",
+    "test:personal-contract-delivery": "node firebase-emulator-tests/personal_contract_delivery.test.cjs",
+    "test:personal-contract-delivery-emulators": "npm --prefix functions run build && firebase emulators:exec --project demo-mtf-personal-contracts --only firestore \"npm run test:personal-contract-delivery\"",
+    "test:contract-access-probe":"node firebase-emulator-tests/contract_access_probe.test.cjs",
+    "test:contract-access-probe-emulators": "firebase emulators:exec --project demo-mtf-contract-access-probe --only auth,firestore,storage \"npm run test:contract-access-probe\"",
+    "test:storage-member-profile-rules":"node firebase-emulator-tests/storage_member_profile_rules.test.cjs",
+    "test:storage-member-profile-emulators": "firebase emulators:exec --project demo-mtf-storage-member-profile --only auth,firestore,storage \"npm run test:storage-member-profile-rules\"",
+    "test:storage-contract-rules":"node firebase-emulator-tests/storage_contract_rules.test.cjs",
+    "test:storage-contract-emulators": "firebase emulators:exec --project demo-mtf-storage-contract --only auth,firestore,storage \"npm run test:storage-contract-rules\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",

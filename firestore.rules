@@ -645,6 +645,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // 레슨계약서 v2(일반 워크스페이스). 쓰기는 서버 함수(Admin SDK)만 하고, 앱은 소유자만 읽는다.
+    match /personal_contracts/{contractId} {
+      allow read: if isNonAnonymous()
+        && resource.data.trainerId == request.auth.uid;
+      allow create, update, delete: if false;
+
+      match /events/{eventId} {
+        allow read: if isNonAnonymous()
+          && get(/databases/$(db)/documents/personal_contracts/$(contractId))
+            .data.trainerId == request.auth.uid;
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /personal_contract_counters/{counterId} {
+      allow read, write: if false;
+    }
+
     match /contractCounters/{counterId} {
       allow read, create, update: if isLegacyAdmin();
       allow delete: if false;

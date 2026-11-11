@@ -1,0 +1,97 @@
+{
+  "basic": {
+    "party": {
+      "kind": "individual",
+      "name": "김트레이너",
+      "trainerName": "김트레이너",
+      "phone": "010-1234-5678",
+      "place": "서울 강남구 테스트로 1",
+      "businessNo": "",
+      "logoPath": ""
+    },
+    "member": {
+      "name": "홍회원",
+      "phone": "010-9999-8888",
+      "birthDate": "",
+      "email": ""
+    },
+    "product": {
+      "name": "PT 10회",
+      "serviceContent": "PT 10회 (총 10회, 1회 50분)",
+      "sessionCount": 10,
+      "sessionMinutes": 50,
+      "paidAmount": 1000000,
+      "listPrice": null,
+      "paymentMethod": "card",
+      "paymentDate": "2026-10-20",
+      "periodStart": "2026-10-20",
+      "periodEnd": "2027-01-20"
+    },
+    "terms": {
+      "cancelDeadline": {
+        "mode": "hours_before",
+        "hours": 24
+      },
+      "lateNoShowMinutes": 30,
+      "penaltyPercent": 10,
+      "refundBasis": "contract_unit",
+      "refundBusinessDays": 3,
+      "transfer": {
+        "policy": "conditional",
+        "feeType": "none",
+        "feeValue": 0
+      },
+      "expiryExtensionClause": true,
+      "unavoidableRefundClause": false,
+      "extraTerms": ""
+    }
+  },
+  "full": {
+    "party": {
+      "kind": "center",
+      "name": "모어짐 강남",
+      "trainerName": "김트레이너",
+      "phone": "010-1234-5678",
+      "place": "서울 강남구 테스트로 1",
+      "businessNo": "123-45-67890",
+      "logoPath": "contract_logos/trainer-a/logo_1700000000000.png"
+    },
+    "member": {
+      "name": "홍회원",
+      "phone": "010-9999-8888",
+      "birthDate": "1990-05-17",
+      "email": "member@example.com"
+    },
+    "product": {
+      "name": "PT 20회",
+      "serviceContent": "PT 20회 (총 20회, 1회 60분)",
+      "sessionCount": 20,
+      "sessionMinutes": 60,
+      "paidAmount": 1800000,
+      "listPrice": 2400000,
+      "paymentMethod": "transfer",
+      "paymentDate": "2026-10-21",
+      "periodStart": "2026-10-21",
+      "periodEnd": "2027-04-21",
+      "vatIncluded": true
+    },
+    "terms": {
+      "cancelDeadline": {
+        "mode": "same_day",
+        "hours": 0
+      },
+      "lateNoShowMinutes": 15,
+      "penaltyPercent": 5,
+      "refundBasis": "list_price",
+      "refundBusinessDays": 2,
+      "transfer": {
+        "policy": "allowed",
+        "feeType": "amount",
+        "feeValue": 50000
+      },
+      "expiryExtensionClause": false,
+      "unavoidableRefundClause": true,
+      "extraTerms": "센터 샤워실 이용은 별도 안내에 따릅니다."
+    }
+  }
+}

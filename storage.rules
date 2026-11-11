@@ -50,6 +50,46 @@ service firebase.storage {
         && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
     }
 
+    // 레슨계약서 당사자 로고: 본인(비익명)만 PNG 2MB 이하로 올리고 읽는다.
+    match /contract_logos/{trainerUid}/{fileName} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == trainerUid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && fileName.matches('logo_[0-9]+[.]png')
+        && isAllowedImage(2 * 1024 * 1024, 'image/png');
+    }
+
+    // 레슨계약서 v2 완료본 PDF: 본인(비익명)이 완료된 자기 계약에 한해 한 번만 올린다(덮어쓰기·삭제 불가).
+    // 파일 이름은 계약의 현재 버전(contract_v{n}.pdf)이어야 하고, 형식은 PDF 10MB 이하다.
+    // 읽기는 본인만(회원은 서버 HTTPS 함수의 열람 링크로 본다).
+    match /personal_contracts/{trainerUid}/{contractId}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create: if request.auth != null
+        && request.auth.uid == trainerUid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        // 이미 올라간 파일이 있으면(덮어쓰기) 거부한다.
+        && resource == null
+        && contractId.matches('pc_[a-f0-9]{32}')
+        && isAllowedImage(10 * 1024 * 1024, 'application/pdf')
+        && request.resource.size > 0
+        && firestore.exists(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        )
+        && firestore.get(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        ).data.trainerId == trainerUid
+        && firestore.get(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        ).data.status == 'completed'
+        && fileName == 'contract_v' + string(firestore.get(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        ).data.version) + '.pdf';
+      allow update, delete: if false;
+    }
+
     match /member_inbody/{memberId}/{fileName} {
       allow read, delete: if isLegacyAdmin();
       allow create, update: if isLegacyAdmin()

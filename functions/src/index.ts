@@ -42,6 +42,23 @@ import {
   cancelPersonalTrainingLogHandler,
   finalizePersonalTrainingLogHandler,
 } from "./personal_training_logs.js";
+import {
+  createManagePersonalContractHandler,
+  createSavePersonalContractDraftHandler,
+  createSavePersonalContractSettingsHandler,
+  createSignPersonalContractHandler,
+} from "./personal_contracts.js";
+import {
+  createTerminatePersonalContractHandler,
+} from "./personal_contract_terminate.js";
+import {createVoidPersonalContractHandler} from "./personal_contract_void.js";
+import {autoExpireMemberships} from "./membership_expiry.js";
+import {
+  createAttachPersonalContractPdfHandler,
+  createBucketPdfStore,
+  createVerifyPersonalContractHandler,
+  createViewPersonalContractHandler,
+} from "./personal_contract_delivery.js";
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -102,6 +119,14 @@ exports.autoResumePausedMemberships = personalFunctions.pubsub
     const result = await resumeDuePausedMemberships(db);
     functions.logger.info("auto_resume_done", result);
   });
+// 회원권 종료일이 지난 활동 중 회원을 매일 새벽에 만료로 옮긴다(재계약 회원은 건드리지 않는다).
+exports.autoExpireMemberships = personalFunctions.pubsub
+  .schedule("every day 00:40")
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    const result = await autoExpireMemberships(db);
+    functions.logger.info("auto_expire_done", result);
+  });
 exports.createPersonalGroup = personalFunctions.https.onCall(
   createPersonalGroupHandler(db),
 );
@@ -125,6 +150,34 @@ exports.finalizePersonalTrainingLog = personalFunctions.https.onCall(
 );
 exports.cancelPersonalTrainingLog = personalFunctions.https.onCall(
   cancelPersonalTrainingLogHandler(db),
+);
+exports.savePersonalContractDraft = personalFunctions.https.onCall(
+  createSavePersonalContractDraftHandler(db),
+);
+exports.signPersonalContract = personalFunctions.https.onCall(
+  createSignPersonalContractHandler(db),
+);
+exports.managePersonalContract = personalFunctions.https.onCall(
+  createManagePersonalContractHandler(db),
+);
+exports.savePersonalContractSettings = personalFunctions.https.onCall(
+  createSavePersonalContractSettingsHandler(db),
+);
+const contractPdfStore = createBucketPdfStore(() => admin.storage().bucket());
+exports.attachPersonalContractPdf = personalFunctions.https.onCall(
+  createAttachPersonalContractPdfHandler(db, contractPdfStore),
+);
+exports.viewPersonalContract = personalFunctions.https.onRequest(
+  createViewPersonalContractHandler(db, contractPdfStore),
+);
+exports.verifyPersonalContract = personalFunctions.https.onRequest(
+  createVerifyPersonalContractHandler(db),
+);
+exports.voidPersonalContract = personalFunctions.https.onCall(
+  createVoidPersonalContractHandler(db),
+);
+exports.terminatePersonalContract = personalFunctions.https.onCall(
+  createTerminatePersonalContractHandler(db),
 );
 
 function isStaff(ctx: functions.https.CallableContext) {

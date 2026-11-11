@@ -1,6 +1,11 @@
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import * as functions from "firebase-functions/v1";
 
+import {
+  LESSON_PROGRESS_NOTICES,
+  buildLessonProgressNotice,
+} from "./lesson_progress_notice.js";
+
 const FINAL_STATUSES = [
   "completed",
   "no_show_deducted",
@@ -286,6 +291,26 @@ export function finalizePersonalTrainingLogHandler(
           updatedAt: finalizedAt,
         });
 
+        // 레슨 진행 알림(발송 전): 확정할 때마다 보낼 알림 한 건을 남긴다. 실제 발송은 별도로 붙인다.
+        const notice = buildLessonProgressNotice({
+          trainerId: uid,
+          memberId,
+          memberName: memberNameSnapshot,
+          lessonType: String(log.lessonType ?? member.lessonType ?? ""),
+          lessonLogId,
+          status: requestedStatus,
+          progressChanged: deductionApplied,
+          total,
+          done: doneAfter,
+          remain: remainingAfter,
+        });
+        if (notice != null) {
+          transaction.set(
+            db.collection(LESSON_PROGRESS_NOTICES).doc(lessonLogId),
+            {...notice, createdAt: FieldValue.serverTimestamp()},
+          );
+        }
+
         const ledgerRef = memberRef.collection("lesson_ledger").doc(lessonLogId);
         transaction.create(ledgerRef, {
           lessonLogId,
@@ -395,6 +420,9 @@ export function cancelPersonalTrainingLogHandler(
           }
         }
 
+        const noticeRef = db.collection(LESSON_PROGRESS_NOTICES).doc(lessonLogId);
+        const noticeSnapshot = await transaction.get(noticeRef);
+
         const sessions = mapData(member.sessions);
         const stats = mapData(member.lessonStats);
         const remaining = integer(
@@ -452,6 +480,14 @@ export function cancelPersonalTrainingLogHandler(
           deductionApplied: false,
           updatedAt: FieldValue.serverTimestamp(),
         });
+
+        // 아직 보내지 않은 레슨 진행 알림은 취소한다(이미 보낸 것은 그대로 둔다).
+        if (noticeSnapshot.exists && noticeSnapshot.data()?.state === "pending") {
+          transaction.update(noticeRef, {
+            state: "cancelled",
+            cancelledAt: FieldValue.serverTimestamp(),
+          });
+        }
 
         const reverseRef = memberRef.collection("lesson_ledger")
           .doc(`${lessonLogId}_reverse`);
