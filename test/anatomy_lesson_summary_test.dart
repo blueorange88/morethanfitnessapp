@@ -514,6 +514,30 @@ void main() {
       expect(body.contains('Colors.black45'), isFalse);
     });
 
+    test('머리말·브리핑에 예시 문구를 대신 넣지 않는다', () {
+      expect(source, isNot(contains('최근 이슈 · 무릎 통증 호소')));
+      expect(source, isNot(contains('지난레슨에 상체근력 트레이닝')));
+      expect(source, isNot(contains("            : '3회차';")));
+      // 시작 멘트는 지난 레슨에 적어 둔 다음 수업 체크포인트를 쓰고, 없으면 카드를 숨긴다
+      expect(source, contains('String _briefingOpeningMent()'));
+      expect(
+        source,
+        contains("key: const ValueKey<String>('briefing_opening')"),
+      );
+      expect(source, contains("if (recentIssue.isNotEmpty) ...["));
+    });
+
+    test('레슨일지 작성 화면 세 곳은 나갈 때 확인창을 쓴다', () {
+      for (final path in [
+        'lib/pages/personal_training_log_text_voice_page.dart',
+        'lib/pages/personal_training_log_category_page.dart',
+        'lib/pages/personal_training_log_anatomy/anatomy_page.dart',
+      ]) {
+        final text = File(path).readAsStringSync();
+        expect(text, contains('LeaveDraftGuard('), reason: path);
+      }
+    });
+
     test('예시(가짜) 레슨일지를 목록에 넣지 않는다', () {
       expect(source, isNot(contains('김유신')));
       expect(source, isNot(contains('_logs.addAll([')));

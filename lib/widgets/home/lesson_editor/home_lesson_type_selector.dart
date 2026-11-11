@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:mtf_app/models/lesson_type_item.dart';
+import 'package:mtf_app/widgets/lesson_type_color_picker.dart';
 
 class HomeLessonTypeSelector extends StatelessWidget {
   const HomeLessonTypeSelector({
@@ -98,7 +99,10 @@ class HomeLessonTypeSelector extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected ? Colors.white : const Color(0xFF6B7280),
+              color:
+                  isSelected
+                      ? lessonTypeInkColor(baseColor)
+                      : const Color(0xFF6B7280),
             ),
           ),
         ),

@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -249,57 +251,39 @@ class _TaxonomyBrandedHeader extends StatelessWidget {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: Container(
-        key: const ValueKey('personal_taxonomy_management_header'),
-        width: double.infinity,
-        padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 18),
-        decoration: BoxDecoration(
-          gradient: context.mtfHeaderGradient,
-          borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(30),
+      child: MtfHeaderNeonOverlay(
+        isExpanded: false,
+        child: Container(
+          key: const ValueKey('personal_taxonomy_management_header'),
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 18),
+          decoration: BoxDecoration(
+            gradient: context.mtfHeaderGradient,
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(kMtfHeaderBottomRadius),
+            ),
           ),
-        ),
-        child: SizedBox(
-          height: 44,
-          child: Row(
-            children: [
-              Semantics(
-                button: true,
-                label: '뒤로',
-                child: Material(
-                  color: foreground.withValues(alpha: 0.14),
-                  shape: CircleBorder(
-                    side: BorderSide(color: foreground.withValues(alpha: 0.20)),
-                  ),
-                  child: InkWell(
-                    onTap: onBackTap,
-                    customBorder: const CircleBorder(),
-                    child: const SizedBox.square(
-                      dimension: 42,
-                      child: Icon(
-                        Icons.arrow_back_rounded,
-                        color: foreground,
-                        size: 24,
-                      ),
+          child: SizedBox(
+            height: 44,
+            child: Row(
+              children: [
+                MtfBackButton(onTap: onBackTap, color: foreground),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: foreground,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: foreground,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

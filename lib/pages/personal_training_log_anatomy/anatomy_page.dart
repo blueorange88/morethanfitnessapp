@@ -11,6 +11,7 @@ import 'models/anatomy_log.dart';
 import 'models/anatomy_trend.dart';
 import 'models/body_map_data.dart';
 import 'models/body_part.dart';
+import '../../widgets/leave_draft_guard.dart';
 import 'widgets/anatomy_header.dart';
 import 'widgets/anatomy_record_sheet.dart';
 import 'widgets/anatomy_step_indicator.dart';
@@ -317,6 +318,7 @@ class _PersonalTrainingLogAnatomyPageState
     );
     if (!mounted || outcome == null) return;
     setState(() {
+      if (outcome.drafts.isNotEmpty) _dirty = true;
       for (final draft in outcome.drafts) {
         _records = [..._records, _newRecord(part, draft)];
       }
@@ -434,8 +436,12 @@ class _PersonalTrainingLogAnatomyPageState
     }
   }
 
+  /// 이번에 연 뒤로 기록을 추가·수정·삭제했는지(저장하면 화면이 닫힌다).
+  bool _dirty = false;
+
   void _updateRecord(AnatomyLogRecord updated) {
     setState(() {
+      _dirty = true;
       _records = AnatomyRecordCollection.upsert(
         _records,
         updated.copyWith(updatedAt: DateTime.now()),
@@ -445,6 +451,7 @@ class _PersonalTrainingLogAnatomyPageState
 
   void _removeRecord(String id) {
     setState(() {
+      _dirty = true;
       _deletedRecordIds.add(id);
       _records = AnatomyRecordCollection.remove(_records, id);
     });
@@ -543,6 +550,14 @@ class _PersonalTrainingLogAnatomyPageState
 
   @override
   Widget build(BuildContext context) {
+    return LeaveDraftGuard(
+      isDirty: () => _dirty && !_saving,
+      onSave: _save,
+      child: _buildAnatomyScaffold(context),
+    );
+  }
+
+  Widget _buildAnatomyScaffold(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,

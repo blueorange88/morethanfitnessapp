@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -316,7 +318,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   _SettingsHeader(onBackTap: _handleBackTap),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        16,
+                        16,
+                        28 + MediaQuery.paddingOf(context).bottom,
+                      ),
                       child: Column(
                         children: [
                           // ── 화면 설정 ──────────────────────────────
@@ -526,48 +533,36 @@ class _SettingsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 16),
-      decoration: BoxDecoration(
-        gradient: context.mtfHeaderGradient,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
-      ),
-      child: SizedBox(
-        height: 44,
-        child: Row(
-          children: [
-            InkWell(
-              onTap: onBackTap,
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                width: 42,
-                height: 42,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.14),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.20)),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                '설정',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.2,
+    return MtfHeaderNeonOverlay(
+      isExpanded: false,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 16),
+        decoration: BoxDecoration(
+          gradient: context.mtfHeaderGradient,
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(kMtfHeaderBottomRadius),
+          ),
+        ),
+        child: SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              MtfBackButton(onTap: onBackTap),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  '설정',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

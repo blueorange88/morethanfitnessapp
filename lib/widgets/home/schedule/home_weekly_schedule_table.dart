@@ -3,11 +3,33 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_colors.dart';
+import '../../lesson_type_color_picker.dart';
 
 const double _kScheduleRowHeight = 40.0;
 const double _kScheduleHeaderCellHeight = 34.0;
 
 const Color _kScheduleCurrentLine = Color(0xFFE11D48);
+
+/// 이번 주에서 멀어질수록 색이 얼마나 더 달라지는지.
+/// 지난 주·다음 주를 가장 자주 만지므로 이번 주→±1주에서 가장 크게 바뀌고,
+/// 그 뒤로도 눈에 띄게 한 단계씩 더 진해지며 4주에서 멈춥니다.
+const List<double> _kWeekDistanceCurve = [0.0, 1.0, 1.4, 1.75, 2.0];
+
+double _weekDistanceFactor(int weekOffset) =>
+    _kWeekDistanceCurve[math.min(weekOffset.abs(), 4)];
+
+/// 이번 주가 아닌 주를 한눈에 구분하도록 표 전체 배경 위에 덮는 색입니다.
+/// 지난 주는 검정으로 어둡게, 다음 주는 파랑으로 덮습니다(요일 줄 색은 그대로).
+/// 이번 주(offset 0)는 null이라 기존 배경을 그대로 씁니다.
+Color? homeWeekTintColor({required int weekOffset, required bool isDark}) {
+  if (weekOffset == 0) return null;
+  final factor = _weekDistanceFactor(weekOffset);
+  if (weekOffset < 0) {
+    return Colors.black.withValues(alpha: (isDark ? 0.22 : 0.12) * factor);
+  }
+  return (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+      .withValues(alpha: (isDark ? 0.20 : 0.19) * factor);
+}
 
 class HomeWeeklyScheduleTable extends StatelessWidget {
   const HomeWeeklyScheduleTable({
@@ -501,7 +523,10 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
     final confirmedBorderColor =
         (() {
           if (!lessonConfirmed) {
-            return blockColor.withOpacity(0.95);
+            // 아주 밝은 색은 흰 칸에서 테두리가 안 보이므로 옅은 회색 테두리를 쓴다.
+            return blockColor.computeLuminance() > 0.8
+                ? const Color(0xFFD1D5DB)
+                : blockColor.withOpacity(0.95);
           }
 
           switch (confirmStatus) {
@@ -517,8 +542,11 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
           }
         })();
 
+    // 레슨 종류 색이 밝으면(예: 흰색) 흰 글씨가 묻히므로 짙은 글씨로 바꾼다.
     final confirmedTextColor =
-        lessonConfirmed ? Colors.white.withOpacity(0.92) : Colors.white;
+        lessonConfirmed
+            ? Colors.white.withOpacity(0.92)
+            : lessonTypeInkColor(blockColor);
 
     final confirmedOpacity = lessonConfirmed ? 0.86 : 1.0;
 
@@ -770,6 +798,13 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
 
     const rowHeight = _kScheduleRowHeight;
 
+    final weekTint = homeWeekTintColor(
+      weekOffset: weekOffset,
+      isDark: Theme.of(context).brightness == Brightness.dark,
+    );
+    Color withWeekTint(Color base) =>
+        weekTint == null ? base : Color.alphaBlend(weekTint, base);
+
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -892,7 +927,7 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                         width: dayColWidth,
                         height: bodyHeight,
                         decoration: BoxDecoration(
-                          color: tokens.scheduleBackground,
+                          color: withWeekTint(tokens.scheduleBackground),
                         ),
                         child: Stack(
                           children: [
@@ -910,26 +945,27 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
                                   },
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color:
-                                          isTodayColumn
-                                              ? Color.alphaBlend(
-                                                tokens.scheduleTodayHighlight
-                                                    .withOpacity(
-                                                      i.isEven ? 0.42 : 0.30,
-                                                    ),
-                                                tokens.scheduleBackground,
-                                              )
-                                              : isSoftTodayColumn
-                                              ? Color.alphaBlend(
-                                                tokens.scheduleTodayHighlight
-                                                    .withOpacity(
-                                                      i.isEven ? 0.24 : 0.16,
-                                                    ),
-                                                tokens.scheduleBackground,
-                                              )
-                                              : i.isEven
-                                              ? tokens.scheduleEmptySlot
-                                              : tokens.scheduleBackground,
+                                      color: withWeekTint(
+                                        isTodayColumn
+                                            ? Color.alphaBlend(
+                                              tokens.scheduleTodayHighlight
+                                                  .withOpacity(
+                                                    i.isEven ? 0.42 : 0.30,
+                                                  ),
+                                              tokens.scheduleBackground,
+                                            )
+                                            : isSoftTodayColumn
+                                            ? Color.alphaBlend(
+                                              tokens.scheduleTodayHighlight
+                                                  .withOpacity(
+                                                    i.isEven ? 0.24 : 0.16,
+                                                  ),
+                                              tokens.scheduleBackground,
+                                            )
+                                            : i.isEven
+                                            ? tokens.scheduleEmptySlot
+                                            : tokens.scheduleBackground,
+                                      ),
                                       border: Border(
                                         right: BorderSide(
                                           color: tokens.scheduleGridLine,
@@ -1038,3 +1074,10 @@ class HomeWeeklyScheduleTable extends StatelessWidget {
     );
   }
 }
+
+/// "MM월DD일부터\nMM월DD일까지"처럼 두 줄로 만들어진 날짜 범위 제목인지 확인합니다.
+bool homeWeekTitleIsDateRange(String title) => title.contains('\n');
+
+/// 날짜 범위 제목을 한 줄("MM월DD일부터 MM월DD일까지")로 바꿉니다.
+String homeWeekTitleOneLine(String title) =>
+    title.replaceAll(RegExp(r'\s*\n\s*'), ' ').trim();

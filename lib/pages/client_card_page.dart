@@ -18,6 +18,9 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:mtf_app/pages/contract_page.dart';
+import 'package:mtf_app/pages/lesson_contract/lesson_contract_form_page.dart';
+import 'package:mtf_app/pages/lesson_contract/member_contracts_page.dart';
+import 'package:mtf_app/utils/registration_chip.dart';
 import 'package:mtf_app/pages/personal_training_log_page.dart'
     show PersonalTrainingLogPage;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -59,16 +62,84 @@ import '../widgets/aifc_account_link_required_chat_sheet.dart';
 import '../widgets/account_connection_dialog.dart';
 import '../widgets/aifc_badge_chat_sheet.dart';
 import '../widgets/aifc_personal_tag_management_chat_sheet.dart';
+import '../widgets/contract_chooser_sheet.dart';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/scroll_reveal_bottom_bar.dart';
 import '../widgets/personal_member_taxonomy_picker.dart';
 import '../widgets/personal_tag_horizontal_strip.dart';
 
+/// 버튼 바탕·그라데이션(흰 글씨와 함께 쓰는 색). 글자·아이콘·테두리는 [kPageAccent].
 const Color kPagePrimary = Color(0xFF4F46E5);
 const Color kPagePrimary2 = Color(0xFF9333EA);
-const Color kPageBg = Color(0xFFF8FAFC);
-const Color kPageBorder = Color(0xFFE5E7EB);
-const Color kPageText = Color(0xFF111827);
-const Color kPageMuted = Color(0xFF6B7280);
-const Color kPageFieldBg = Color(0xFFF8FAFC);
+
+/// 회원카드 색상. 밝은 모드는 기존 값 그대로, 어두운 모드는 앱 테마를 따른다.
+/// `_buildClientCardContent`에서 [PagePalette.sync]로 현재 테마를 반영한다.
+abstract final class PagePalette {
+  static ThemeData? _theme;
+
+  static void sync(ThemeData theme) => _theme = theme;
+
+  static bool get dark => _theme?.brightness == Brightness.dark;
+
+  static ColorScheme get scheme => (_theme ?? ThemeData()).colorScheme;
+
+  static Color get scaffold =>
+      _theme?.scaffoldBackgroundColor ?? scheme.surface;
+
+  static Color get inputFill =>
+      _theme?.inputDecorationTheme.fillColor ?? scheme.surfaceContainerHighest;
+}
+
+const Color _kAccentDark = Color(0xFFA5B4FC);
+
+Color get kPageBg =>
+    PagePalette.dark ? PagePalette.scaffold : const Color(0xFFF8FAFC);
+Color get kPageCard =>
+    PagePalette.dark ? PagePalette.scheme.surface : Colors.white;
+Color get kPageBorder =>
+    PagePalette.dark
+        ? PagePalette.scheme.outlineVariant
+        : const Color(0xFFE5E7EB);
+Color get kPageText =>
+    PagePalette.dark ? PagePalette.scheme.onSurface : const Color(0xFF111827);
+Color get kPageMuted =>
+    PagePalette.dark
+        ? PagePalette.scheme.onSurfaceVariant
+        : const Color(0xFF6B7280);
+Color get kPageSoft =>
+    PagePalette.dark
+        ? PagePalette.scheme.onSurfaceVariant.withValues(alpha: 0.75)
+        : const Color(0xFF9CA3AF);
+Color get kPageFieldBg =>
+    PagePalette.dark ? PagePalette.inputFill : const Color(0xFFF8FAFC);
+Color get kPageAccent =>
+    PagePalette.dark ? _kAccentDark : const Color(0xFF4F46E5);
+Color get kPageInfoBg =>
+    PagePalette.dark
+        ? _kAccentDark.withValues(alpha: 0.14)
+        : const Color(0xFFF5F3FF);
+Color get kPageInfoBorder =>
+    PagePalette.dark
+        ? _kAccentDark.withValues(alpha: 0.40)
+        : const Color(0xFFE9D5FF);
+Color get kPageWarnBg =>
+    PagePalette.dark
+        ? const Color(0xFFFFC107).withValues(alpha: 0.14)
+        : const Color(0xFFFFFBEB);
+Color get kPageWarnBorder =>
+    PagePalette.dark
+        ? const Color(0xFFFFC107).withValues(alpha: 0.45)
+        : const Color(0xFFFDE68A);
+Color get kPageWarnIcon =>
+    PagePalette.dark ? const Color(0xFFFFCA28) : const Color(0xFFB45309);
+Color get kPageWarnText =>
+    PagePalette.dark ? const Color(0xFFFFD98A) : const Color(0xFF92400E);
+Color get kPageErrorBg =>
+    PagePalette.dark
+        ? const Color(0xFFF87171).withValues(alpha: 0.16)
+        : const Color(0xFFFFF1F2);
+Color get kPageErrorText =>
+    PagePalette.dark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C);
 
 @visibleForTesting
 List<String> clientCardMissingRequiredFields({
@@ -317,7 +388,7 @@ List<Color> _gradeBaseColors(String grade) {
     case 'VVIP':
       return [Color(0xFF5B21B6), Color(0xFF7C3AED), Color(0xFFDB2777)];
     case 'VIP':
-      return [Color(0xFF3730A3), Color(0xFF4F46E5), Color(0xFF6366F1)];
+      return [Color(0xFF0F172A), Color(0xFF1F2937), Color(0xFF475569)];
     case 'GOLD':
       return [Color(0xFFB45309), Color(0xFFD97706), Color(0xFFF59E0B)];
     case 'SILVER':
@@ -334,7 +405,7 @@ List<Color> _resolveIcChipColors(String grade) {
     case 'VVIP':
       return [Color(0xFFE0D7FF), Color(0xFF7C3AED)];
     case 'VIP':
-      return [Color(0xFFC7D2FE), Color(0xFF4338CA)];
+      return [Color(0xFFE5E7EB), Color(0xFF4B5563)];
     case 'GOLD':
       return [Color(0xFFFDE68A), Color(0xFFD97706)];
     case 'SILVER':
@@ -343,6 +414,65 @@ List<Color> _resolveIcChipColors(String grade) {
       return [Color(0xFFFCD7AA), Color(0xFF92400E)];
     default:
       return [Color(0xFFC4B5FD), Color(0xFF7C3AED)];
+  }
+}
+
+/// 카드 바탕: 대각선 한가운데에 밝은 금속 띠가 있는 그라데이션(색이 3개가 아니면 그대로 이어 붙인다).
+LinearGradient _metallicGradient(List<Color> colors) {
+  if (colors.length != 3) {
+    return LinearGradient(
+      colors: colors,
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+  }
+  final highlight = Color.lerp(colors[2], Colors.white, 0.20)!;
+  return LinearGradient(
+    colors: [colors[0], colors[1], highlight, colors[2]],
+    stops: const [0.0, 0.42, 0.60, 1.0],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
+
+/// 회원 리스트의 월렛 카드가 고객카드와 같은 색을 쓰도록 등급·상태로 카드 바탕을 고른다.
+LinearGradient memberWalletCardGradient({
+  required String? grade,
+  required String status,
+}) {
+  final safeGrade = (grade ?? '').trim().toUpperCase();
+  final safeStatus = status.trim();
+  return _metallicGradient(
+    _resolveCardGradient(
+      const ['VVIP', 'VIP', 'GOLD', 'SILVER', 'BRONZE'].contains(safeGrade)
+          ? safeGrade
+          : 'BRONZE',
+      const ['활성', '휴면', '만료'].contains(safeStatus) ? safeStatus : '활성',
+    ),
+  );
+}
+
+/// 카드 바탕 위에 깔리는 사선 질감. Stack 안에서 쓴다.
+class MembershipCardTexture extends StatelessWidget {
+  const MembershipCardTexture({super.key});
+
+  @override
+  Widget build(BuildContext context) => const _MembershipCardTextureLayer();
+}
+
+/// 등급이 높을수록 반사광이 조금 더 또렷하다.
+double _gradeSheenStrength(String grade) {
+  switch (grade.trim().toUpperCase()) {
+    case 'VVIP':
+      return 0.26;
+    case 'VIP':
+      return 0.22;
+    case 'GOLD':
+      return 0.22;
+    case 'SILVER':
+      return 0.20;
+    default:
+      return 0.16;
   }
 }
 
@@ -377,7 +507,236 @@ double _membershipCardGroupLetterSpacing(String label) {
   return 1.2;
 }
 
+/// 카드 앞면과 접힌 헤더가 함께 쓰는 한 줄: `PT · 잔여 12/30회`.
+String membershipCardLessonLine({
+  required String lessonType,
+  required int totalSessions,
+  required int remainSessions,
+}) {
+  final type = lessonType.trim();
+  final hasType = type.isNotEmpty && type != '미입력';
+  final hasSessions = totalSessions > 0;
+  if (!hasType && !hasSessions) return '미등록';
+  return [
+    if (hasType) type,
+    if (hasSessions) '잔여 $remainSessions/$totalSessions회',
+  ].join(' · ');
+}
+
+/// 폼을 스크롤하면 카드 대신 보이는 접힌 카드: 카드 얼굴의 윗부분(뒤로 · 사진 · 이름 + 번호 ·
+/// 레슨 현황 · 작은 IC 칩)만 한 장으로 보인다. 누르면 카드로 다시 펼쳐진다.
+class MembershipCardCollapsedBar extends StatelessWidget {
+  /// 카드 얼굴 높이.
+  static const double barHeight = 84;
+
+  /// 상태 표시줄 아래 전체 높이.
+  static const double totalHeight = barHeight;
+
+  const MembershipCardCollapsedBar({
+    super.key,
+    required this.gradientColors,
+    required this.icChipColors,
+    required this.avatarImage,
+    required this.name,
+    required this.phone,
+    required this.lessonLine,
+    required this.onBackTap,
+    required this.onExpandTap,
+    this.representativeBadge,
+  });
+
+  final List<Color> gradientColors;
+  final List<Color> icChipColors;
+  final ImageProvider<Object>? avatarImage;
+  final String name;
+  final String phone;
+  final String lessonLine;
+  final VoidCallback onBackTap;
+  final VoidCallback onExpandTap;
+  final AchievementBadge? representativeBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(MembershipCardFlip.headerBottomRadius);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: MembershipCardFlip.statusBarStyle(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(height: MediaQuery.paddingOf(context).top),
+          SizedBox(
+            height: totalHeight,
+            width: double.infinity,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: barHeight,
+                  child: Container(
+                    key: const ValueKey<String>('membership_card_collapsed'),
+                    decoration: BoxDecoration(
+                      gradient: _metallicGradient(gradientColors),
+                      borderRadius: radius,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.14),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
+                      children: [
+                        const _MembershipCardTextureLayer(),
+                        Positioned.fill(
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: InkWell(
+                              onTap: onExpandTap,
+                              child: _content(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, right: 16),
+      child: Row(
+        children: [
+          MtfBackButton(onTap: onBackTap),
+          const SizedBox(width: 2),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+              color: Colors.white.withValues(alpha: 0.14),
+            ),
+            clipBehavior: Clip.hardEdge,
+            child:
+                avatarImage != null
+                    ? Image(image: avatarImage!, fit: BoxFit.cover)
+                    : Icon(
+                      Icons.person_rounded,
+                      size: 24,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      flex: 3,
+                      child: Text(
+                        aifcPersonLabel(name),
+                        key: const ValueKey<String>(
+                          'membership_card_collapsed_name',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3,
+                          shadows: _kMembershipEmboss,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      flex: 4,
+                      child: Text(
+                        phone,
+                        key: const ValueKey<String>(
+                          'membership_card_collapsed_phone',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.78),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  lessonLine,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 38,
+            height: 30,
+            child: FittedBox(
+              child: _MembershipIcChip(
+                colors: icChipColors,
+                representativeBadge: representativeBadge,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class MembershipCardFlip extends StatefulWidget {
+  /// 카드(헤더) 본문 높이: 상태 표시줄 아래부터 카드 아래 끝까지. 앞·뒷면 공통.
+  static const double cardHeight = 234;
+
+  /// 카드 윗줄(뒤로 · 그룹 이름/MORE 데이 · 아이콘)의 높이.
+  static const double topBarHeight = 44;
+
+  /// 다른 페이지 헤더와 같은 아래쪽 모서리.
+  static const double headerBottomRadius = 28;
+
+  /// 상태 표시줄 + 카드. 불러오는 동안 같은 높이를 비워 둔다.
+  static double headerHeight(BuildContext context) =>
+      MediaQuery.paddingOf(context).top + cardHeight;
+
+  /// 상태 표시줄 영역은 페이지 바탕색이라 밝은/어두운 테마에 맞춰 시계·배터리 색을 정한다.
+  static SystemUiOverlayStyle statusBarStyle(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    );
+  }
+
   const MembershipCardFlip({
     super.key,
     required this.onBackTap,
@@ -464,8 +823,128 @@ class MembershipCardFlip extends StatefulWidget {
   State<MembershipCardFlip> createState() => _MembershipCardFlipState();
 }
 
-class _MembershipCardFlipState extends State<MembershipCardFlip> {
+class _MembershipCardFlipState extends State<MembershipCardFlip>
+    with TickerProviderStateMixin {
   bool _isFlipped = false;
+
+  // 가로로 끌면 카드가 살짝 기울고 반사광이 따라 움직인다(-1~1). 손을 떼면 제자리로 돌아온다.
+  final ValueNotifier<double> _tilt = ValueNotifier<double>(0);
+  // 처음 보일 때 반사광이 한 번 지나간다.
+  late final AnimationController _entry;
+  late final AnimationController _settle;
+  // 뒤집을 수 있다는 것을 알려 주는 안내: 카드가 왼쪽으로 한 번 기울었다 돌아온다(처음 몇 번만, 카드의 빈 곳을 눌러도 한 번).
+  late final AnimationController _hint;
+  static const String _hintPrefsKey = 'membership_card_flip_hint_count';
+  static const int _hintMaxShows = 3;
+  double _settleFrom = 0;
+  bool _dragging = false;
+  bool _entryStarted = false;
+  // 끌기가 끝날 때 뒤집을지 정하려고 가로로 움직인 거리와 시작 위치를 기억한다.
+  double _dragDx = 0;
+  bool _dragFromEdge = false;
+  static const double _flipDistance = 56;
+  static const double _flipVelocity = 420;
+
+  @override
+  void initState() {
+    super.initState();
+    _entry = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    _settle = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    )..addListener(() {
+      _tilt.value =
+          _settleFrom * (1 - Curves.easeOutCubic.transform(_settle.value));
+    });
+    _hint = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..addListener(() {
+      _tilt.value = -math.sin(_hint.value * math.pi) * 0.9;
+    });
+    _entry.addStatusListener((status) {
+      if (status == AnimationStatus.completed) _maybeShowHint();
+    });
+  }
+
+  Future<void> _maybeShowHint() async {
+    if (!mounted || MediaQuery.disableAnimationsOf(context)) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final shown = prefs.getInt(_hintPrefsKey) ?? 0;
+      if (shown >= _hintMaxShows || !mounted) return;
+      await prefs.setInt(_hintPrefsKey, shown + 1);
+      _wobble();
+    } catch (_) {
+      // 저장소를 못 읽으면 힌트만 건너뛴다.
+    }
+  }
+
+  void _wobble() {
+    if (!mounted || _dragging || _isFlipped) return;
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    _settle.stop();
+    _hint.forward(from: 0);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_entryStarted) return;
+    _entryStarted = true;
+    // 기기에서 애니메이션을 줄여 둔 경우에는 움직이지 않는다.
+    if (!MediaQuery.disableAnimationsOf(context)) _entry.forward();
+  }
+
+  @override
+  void dispose() {
+    _entry.dispose();
+    _settle.dispose();
+    _hint.dispose();
+    _tilt.dispose();
+    super.dispose();
+  }
+
+  void _onTiltStart(DragStartDetails details) {
+    // 화면 양쪽 가장자리에서 시작한 끌기는 시스템 뒤로 가기 제스처에 양보한다.
+    final width = MediaQuery.sizeOf(context).width;
+    _dragFromEdge =
+        details.globalPosition.dx <= 24 ||
+        (width > 0 && details.globalPosition.dx >= width - 24);
+    _dragDx = 0;
+    // 기울기·반사광은 애니메이션 줄이기 설정을 따르지만, 던져서 뒤집기는 항상 된다.
+    _dragging = !_dragFromEdge && !MediaQuery.disableAnimationsOf(context);
+    if (_dragging) {
+      _settle.stop();
+      _hint.stop();
+    }
+  }
+
+  void _onTiltUpdate(DragUpdateDetails details) {
+    _dragDx += details.delta.dx;
+    if (!_dragging) return;
+    _tilt.value = (_tilt.value + details.delta.dx / 140).clamp(-1.0, 1.0);
+  }
+
+  void _onTiltEnd([DragEndDetails? details]) {
+    final dx = _dragDx;
+    final velocity = details?.primaryVelocity ?? 0;
+    final canFlip = details != null && !_dragFromEdge;
+    _dragDx = 0;
+    if (_dragging) {
+      _dragging = false;
+      _settleFrom = _tilt.value;
+      _settle.forward(from: 0);
+    }
+    if (!canFlip) return;
+    final toLeft = dx < -_flipDistance || velocity < -_flipVelocity;
+    final toRight = dx > _flipDistance || velocity > _flipVelocity;
+    // 앞면은 오른쪽에서 왼쪽으로 던질 때 뒤집히고, 뒷면은 어느 쪽으로 던져도 돌아온다.
+    if (_isFlipped ? (toLeft || toRight) : (toLeft && !toRight)) _flip();
+  }
 
   void _flip() {
     setState(() {
@@ -473,24 +952,30 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
     });
   }
 
-  String _buildMembershipLine() {
-    final days = widget.daysLeft;
-
-    final dayText =
-        days == null
-            ? ''
-            : days >= 0
-            ? ' · D-$days'
-            : ' · D+${days.abs()}';
-
-    final period = widget.membershipPeriod.trim();
-
-    if (period.isEmpty) {
-      return '${widget.membershipLabel}$dayText';
-    }
-
-    return '${widget.membershipLabel} · $period$dayText';
+  Widget _buildSheen() {
+    return _MembershipSheenLayer(
+      tilt: _tilt,
+      entry: _entry,
+      strength: _gradeSheenStrength(widget.membershipLabel),
+    );
   }
+
+  /// 이름 아래 마지막 줄: `26.10.01 - 27.01.01 · D-20`.
+  String _periodLine() {
+    final days = widget.daysLeft;
+    final period = widget.membershipPeriod.trim();
+    return [
+      if (period.isNotEmpty) period,
+      if (days != null) days >= 0 ? 'D-$days' : 'D+${days.abs()}',
+    ].join(' · ');
+  }
+
+  /// 이름 아래 한 줄: `PT · 잔여 12/30회`. 횟수가 없으면(0/0) 횟수는 숨기고, 종류도 없으면 `미등록`.
+  String _lessonLine() => membershipCardLessonLine(
+    lessonType: widget.lessonType,
+    totalSessions: widget.totalSessions,
+    remainSessions: widget.remainSessions,
+  );
 
   String _backAnniversaryLabel() {
     if (widget.anniversaryDate != null) {
@@ -526,269 +1011,409 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
     return '미등록';
   }
 
+  /// 앞면 윗줄: 뒤로가기 · 그룹 이름 · 계약서 · 더보기.
+  Widget _buildFrontTopBar(String groupText, String groupTitle) {
+    final iconColor = Colors.white.withValues(alpha: 0.92);
+    return SizedBox(
+      height: MembershipCardFlip.topBarHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            MtfBackButton(onTap: widget.onBackTap),
+            const SizedBox(width: 2),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  groupTitle,
+                  key: const ValueKey<String>('membership_card_group_title'),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: _membershipCardGroupLetterSpacing(groupText),
+                    shadows: _kMembershipEmboss,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 42,
+              height: 42,
+              child: InkWell(
+                key: const ValueKey<String>('membership_card_contract'),
+                onTap: widget.onContractTap,
+                borderRadius: BorderRadius.circular(999),
+                child: Icon(
+                  Icons.description_outlined,
+                  color: iconColor,
+                  size: 24,
+                ),
+              ),
+            ),
+            MtfFloatingMoreMenuButton<String>(
+              tooltip: '더보기',
+              icon: Icons.more_vert_rounded,
+              iconColor: iconColor,
+              iconSize: 24,
+              cardWidth: 212,
+              offset: const Offset(0, 8),
+              onSelected: widget.onMoreSelected,
+              items: const [
+                MtfMoreMenuItem(
+                  value: 'history',
+                  icon: Icons.description_outlined,
+                  label: '지난 레슨계약서',
+                  subLabel: '계약 이력 확인',
+                ),
+                MtfMoreMenuItem(
+                  value: 'membership_manage',
+                  icon: Icons.card_membership_rounded,
+                  label: '회원권 관리',
+                  subLabel: '정지 이력 · 회원권계약서',
+                ),
+                MtfMoreMenuItem(
+                  value: 'badges',
+                  icon: Icons.workspace_premium_outlined,
+                  label: '메달 전체보기',
+                  subLabel: '회원 상태 배지',
+                ),
+                MtfMoreMenuItem(
+                  value: 'inbody_scan',
+                  icon: Icons.document_scanner_outlined,
+                  label: '인바디 사진 읽기',
+                  subLabel: '사진에서 수치를 자동 입력',
+                ),
+                MtfMoreMenuItem(
+                  value: 'reset',
+                  icon: Icons.restart_alt_rounded,
+                  label: '입력 리셋',
+                  subLabel: '작성 내용 초기화',
+                ),
+                MtfMoreMenuItem(
+                  value: 'delete',
+                  icon: Icons.delete_outline_rounded,
+                  label: '회원 삭제',
+                  subLabel: '회원카드 삭제',
+                  isDanger: true,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 뒷면 윗줄: 뒤로가기 · MORE 데이 · 계약서/동의서 QR/알림톡 아이콘.
+  Widget _buildBackTopBar() {
+    return SizedBox(
+      height: MembershipCardFlip.topBarHeight,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8, right: 14),
+        child: Row(
+          children: [
+            MtfBackButton(onTap: widget.onBackTap),
+            const SizedBox(width: 2),
+            Expanded(
+              child: Text(
+                'MORE 데이',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.90),
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            _MembershipContractWifiIcon(
+              isSigned: widget.contractSigned,
+              onTap: widget.onContractTap,
+            ),
+            const SizedBox(width: 5),
+            _MembershipConsentQr(
+              isAgreed: widget.consentAgreed,
+              accentColor: widget.gradientColors.first,
+              onTap: widget.onConsentTap,
+            ),
+            const SizedBox(width: 5),
+            _MembershipTalkBellIcon(
+              enabled: widget.confirmTalkEnabled,
+              contractSigned: widget.contractSigned,
+              onTap: () {
+                widget.onConfirmTalkToggle(!widget.confirmTalkEnabled);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 카드 면(앞·뒤) 바탕: 화면 폭을 꽉 채우고 아래 모서리만 다른 페이지 헤더처럼 둥글다.
+  BoxDecoration _faceDecoration(List<Color> colors) {
+    return BoxDecoration(
+      gradient: _metallicGradient(colors),
+      borderRadius: BorderRadius.circular(
+        MembershipCardFlip.headerBottomRadius,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.08),
+          blurRadius: 12,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 280,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: _isFlipped ? math.pi : 0),
-        duration: const Duration(milliseconds: 620),
-        curve: Curves.easeOutCubic,
-        builder: (context, angle, _) {
-          final showBack = angle > math.pi / 2;
+    final flip = TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: _isFlipped ? math.pi : 0),
+      duration: const Duration(milliseconds: 620),
+      curve: Curves.easeOutCubic,
+      builder: (context, angle, _) {
+        final showBack = angle > math.pi / 2;
 
-          return Transform(
-            alignment: Alignment.center,
-            transform:
-                Matrix4.identity()
-                  ..setEntry(3, 2, 0.001)
-                  ..rotateY(angle),
-            child:
-                showBack
-                    ? Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()..rotateY(math.pi),
-                      child: _buildBack(),
-                    )
-                    : _buildFront(),
-          );
-        },
+        return Transform(
+          alignment: Alignment.center,
+          transform:
+              Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateY(angle),
+          child:
+              showBack
+                  ? Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()..rotateY(math.pi),
+                    child: _buildBack(),
+                  )
+                  : _buildFront(),
+        );
+      },
+    );
+
+    // 카드가 곧 헤더다: 화면 폭을 채우고 아래 모서리·그림자는 다른 페이지 헤더와 같다(네온 선은 쓰지 않는다).
+    // 맨 위 상태 표시줄(시간·배터리) 영역은 비워 두고 카드는 그 아래부터 시작한다.
+    // 뒤집히는 동안 카드 뒤로 헤더 그라데이션이 비쳐서 헤더가 사라진 것처럼 보이지 않는다.
+    // 세로 스크롤은 그대로 두고 가로 끌기만 기울기·뒤집기에 쓴다. 기울기가 바뀔 때는 카드 내용을 다시 만들지 않는다.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: MembershipCardFlip.statusBarStyle(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(height: MediaQuery.paddingOf(context).top),
+          Container(
+            key: const ValueKey<String>('membership_card_header'),
+            width: double.infinity,
+            height: MembershipCardFlip.cardHeight,
+            decoration: BoxDecoration(
+              gradient: context.mtfHeaderGradient,
+              borderRadius: BorderRadius.circular(
+                MembershipCardFlip.headerBottomRadius,
+              ),
+            ),
+            child: GestureDetector(
+              key: const ValueKey<String>('membership_card_tilt'),
+              // 카드의 빈 곳을 누르면 뒤집을 수 있다는 것을 알려 주는 기울임이 한 번 나온다.
+              onTap: _wobble,
+              onHorizontalDragStart: _onTiltStart,
+              onHorizontalDragUpdate: _onTiltUpdate,
+              onHorizontalDragEnd: _onTiltEnd,
+              onHorizontalDragCancel: _onTiltEnd,
+              child: RepaintBoundary(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _tilt,
+                  child: flip,
+                  builder:
+                      (context, tilt, child) => Transform(
+                        alignment: Alignment.center,
+                        transform:
+                            Matrix4.identity()
+                              ..setEntry(3, 2, 0.0008)
+                              ..rotateY(tilt * 0.06),
+                        child: child,
+                      ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFront() {
+    final groupText =
+        widget.groupLabel.trim().isEmpty
+            ? 'MORE THAN GYM'
+            : widget.groupLabel.trim();
+    final groupTitle =
+        RegExp(r'^[A-Za-z0-9\s\-_]+$').hasMatch(groupText)
+            ? groupText.toUpperCase()
+            : groupText;
+    final period = _periodLine();
+
     return Container(
       height: double.infinity,
       margin: EdgeInsets.zero,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: widget.gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
-        boxShadow: [
-          BoxShadow(
-            color: widget.gradientColors.last.withOpacity(0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.hardEdge,
+      decoration: _faceDecoration(widget.gradientColors),
+      clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
           const _MembershipCardTextureLayer(),
+          _buildSheen(),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: widget.onBackTap,
-                      child: const SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_left_rounded,
-                      color: Colors.white.withOpacity(0.30),
-                      size: 25,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        ' MEMBERSHIP CARD',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.48),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2.4,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: widget.onContractTap,
-                      child: Icon(
-                        Icons.description_outlined,
-                        color: Colors.white.withOpacity(0.68),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    MtfFloatingMoreMenuButton<String>(
-                      tooltip: '더보기',
-                      icon: Icons.more_vert_rounded,
-                      iconColor: Colors.white.withOpacity(0.68),
-                      iconSize: 24,
-                      cardWidth: 212,
-                      offset: const Offset(0, 8),
-                      onSelected: widget.onMoreSelected,
-                      items: const [
-                        MtfMoreMenuItem(
-                          value: 'history',
-                          icon: Icons.description_outlined,
-                          label: '지난 레슨계약서',
-                          subLabel: '계약 이력 확인',
-                        ),
-                        MtfMoreMenuItem(
-                          value: 'membership_manage',
-                          icon: Icons.card_membership_rounded,
-                          label: '회원권 관리',
-                          subLabel: '정지 이력 · 회원권계약서',
-                        ),
-                        MtfMoreMenuItem(
-                          value: 'badges',
-                          icon: Icons.workspace_premium_outlined,
-                          label: '메달 전체보기',
-                          subLabel: '회원 상태 배지',
-                        ),
-                        MtfMoreMenuItem(
-                          value: 'inbody_scan',
-                          icon: Icons.document_scanner_outlined,
-                          label: '인바디 사진 읽기',
-                          subLabel: '사진에서 수치를 자동 입력',
-                        ),
-                        MtfMoreMenuItem(
-                          value: 'reset',
-                          icon: Icons.restart_alt_rounded,
-                          label: '입력 리셋',
-                          subLabel: '작성 내용 초기화',
-                        ),
-                        MtfMoreMenuItem(
-                          value: 'delete',
-                          icon: Icons.delete_outline_rounded,
-                          label: '회원 삭제',
-                          subLabel: '회원카드 삭제',
-                          isDanger: true,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: widget.onAvatarTap,
-                      onLongPress: widget.onAvatarLongPress,
-                      child: Container(
-                        width: 58,
-                        height: 58,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.22),
-                          ),
-                          color: Colors.white.withOpacity(0.14),
-                        ),
-                        clipBehavior: Clip.hardEdge,
-                        child:
-                            widget.avatarImage != null
-                                ? Image(
-                                  image: widget.avatarImage!,
-                                  fit: BoxFit.cover,
-                                )
-                                : Icon(
-                                  Icons.person_rounded,
-                                  size: 30,
-                                  color: Colors.white.withOpacity(0.75),
-                                ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
+              _buildFrontTopBar(groupText, groupTitle),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 2, 18, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            aifcPersonLabel(widget.name),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.3,
+                          GestureDetector(
+                            onTap: widget.onAvatarTap,
+                            onLongPress: widget.onAvatarLongPress,
+                            child: Container(
+                              width: 70,
+                              height: 70,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                ),
+                                color: Colors.white.withValues(alpha: 0.14),
+                              ),
+                              clipBehavior: Clip.hardEdge,
+                              child:
+                                  widget.avatarImage != null
+                                      ? Image(
+                                        image: widget.avatarImage!,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Icon(
+                                        Icons.person_rounded,
+                                        size: 34,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.75,
+                                        ),
+                                      ),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.phone,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.70),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 9),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${widget.lessonType} · 총 ${widget.totalSessions}회 / 잔여 ${widget.remainSessions}회',
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        aifcPersonLabel(widget.name),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.3,
+                                          shadows: _kMembershipEmboss,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.membershipLabel,
+                                      maxLines: 1,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.8,
+                                        shadows: _kMembershipEmboss,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.phone,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.70),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              _MembershipIcChip(
-                                colors: widget.icChipColors,
-                                representativeBadge: widget.representativeBadge,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            _buildMembershipLine(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.82),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _lessonLine(),
+                                        key: const ValueKey<String>(
+                                          'membership_card_remaining',
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          shadows: _kMembershipEmboss,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _MembershipIcChip(
+                                      colors: widget.icChipColors,
+                                      representativeBadge:
+                                          widget.representativeBadge,
+                                    ),
+                                  ],
+                                ),
+                                if (period.isNotEmpty)
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      period,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.85,
+                                        ),
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              _MembershipMagneticStripe(
-                groupLabel: widget.groupLabel,
-                onTap: _flip,
-              ),
-              Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: widget.gradientColors,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                      const Spacer(),
+                      _MembershipBadgeSlotRow(
+                        badges: widget.badges,
+                        onBadgeTap: widget.onBadgeTap,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -805,131 +1430,68 @@ class _MembershipCardFlipState extends State<MembershipCardFlip> {
     return Container(
       height: double.infinity,
       margin: EdgeInsets.zero,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: backGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
-        boxShadow: [
-          BoxShadow(
-            color: backGradient.last.withOpacity(0.30),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.hardEdge,
+      decoration: _faceDecoration(backGradient),
+      clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
           const _MembershipCardTextureLayer(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          // 맨 아래에 끝에서 끝까지 깔린 마그네틱 줄(장식).
+          const _MembershipMagneticBand(),
+          _buildSheen(),
+          Column(
+            children: [
+              _buildBackTopBar(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onTap: widget.onBackTap,
-                      child: const SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                    Text(
+                      _backAnniversaryShortLabel(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.92),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.2,
+                        height: 1.1,
                       ),
                     ),
-                    Icon(
-                      Icons.chevron_left_rounded,
-                      color: Colors.white.withOpacity(0.30),
-                      size: 25,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'MORE 데이',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.90),
-                          fontSize: 16.5,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    _MembershipContractWifiIcon(
-                      isSigned: widget.contractSigned,
-                      onTap: widget.onContractTap,
-                    ),
-                    const SizedBox(width: 5),
-                    _MembershipConsentQr(
-                      isAgreed: widget.consentAgreed,
-                      accentColor: widget.gradientColors.first,
-                      onTap: widget.onConsentTap,
-                    ),
-                    const SizedBox(width: 5),
-                    _MembershipTalkBellIcon(
-                      enabled: widget.confirmTalkEnabled,
+                    const SizedBox(height: 6),
+                    _MembershipSignatureBand(
+                      memoText: widget.memoText,
                       contractSigned: widget.contractSigned,
-                      onTap: () {
-                        widget.onConfirmTalkToggle(!widget.confirmTalkEnabled);
-                      },
+                      contractSignedAt: widget.contractSignedAt,
+                      onTap: widget.onMemoTap,
+                    ),
+                    const SizedBox(height: 8),
+                    // 씰은 통계 줄 오른쪽 끝, 마그네틱 줄 바로 위에 둔다(줄과 겹치지 않는다).
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MembershipBackStats(
+                            reregisterCount: widget.reregisterCount,
+                            noShowDeducted: widget.noShowDeductedCount,
+                            noShowUndeducted: widget.noShowUndeductedCount,
+                            serviceCount: widget.serviceCount,
+                            firstRegisteredAt: widget.firstRegisteredAt,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _MembershipHologramButton(
+                          key: const ValueKey<String>(
+                            'membership_card_flip_back_button',
+                          ),
+                          tilt: _tilt,
+                          onTap: _flip,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 5),
-                Padding(
-                  padding: const EdgeInsets.only(left: 63),
-                  child: Text(
-                    _backAnniversaryShortLabel(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.92),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _MembershipSignatureBand(
-                  memoText: widget.memoText,
-                  contractSigned: widget.contractSigned,
-                  contractSignedAt: widget.contractSignedAt,
-                  onTap: widget.onMemoTap,
-                ),
-                const SizedBox(height: 11),
-                _MembershipBackStats(
-                  reregisterCount: widget.reregisterCount,
-                  noShowDeducted: widget.noShowDeductedCount,
-                  noShowUndeducted: widget.noShowUndeductedCount,
-                  serviceCount: widget.serviceCount,
-                  firstRegisteredAt: widget.firstRegisteredAt,
-                ),
-                const Spacer(),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: _MembershipBadgeSlotRow(
-                        badges: widget.badges,
-                        onBadgeTap: widget.onBadgeTap,
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    _MembershipHologramButton(onTap: _flip),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -951,18 +1513,34 @@ class _MembershipIcChip extends StatelessWidget {
       return AchievementIcChip(code: badge.code, width: 48, height: 36);
     }
 
+    // 대표 훈장이 없으면 진짜 IC 칩처럼 그린다(대표 훈장을 정하면 그 훈장 칩으로 바뀐다).
+    final light = colors.first;
+    final dark = colors.last;
     return Container(
-      width: 48,
-      height: 36,
+      key: const ValueKey<String>('membership_card_ic_chip'),
+      width: 52,
+      height: 40,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(8),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: colors,
+          colors: [light, Color.lerp(light, dark, 0.45)!, dark],
+          stops: const [0.0, 0.5, 1.0],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.28)),
+        border: Border.all(
+          color: Colors.black.withValues(alpha: 0.38),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.30),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
+      clipBehavior: Clip.hardEdge,
       child: CustomPaint(painter: _MembershipIcChipPainter()),
     );
   }
@@ -971,167 +1549,69 @@ class _MembershipIcChip extends StatelessWidget {
 class _MembershipIcChipPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final linePaint =
+    final w = size.width;
+    final h = size.height;
+    final groove =
         Paint()
-          ..color = Colors.white.withOpacity(0.28)
-          ..strokeWidth = 0.5
+          ..color = Colors.black.withValues(alpha: 0.42)
+          ..strokeWidth = 0.9
           ..style = PaintingStyle.stroke;
 
-    canvas.drawLine(
-      Offset(0, size.height / 2),
-      Offset(size.width, size.height / 2),
-      linePaint,
+    // 가운데 접점 판과 바깥으로 뻗는 홈(IC 칩의 접점 배치).
+    final center = RRect.fromRectAndRadius(
+      Rect.fromLTRB(w * 0.34, h * 0.22, w * 0.66, h * 0.78),
+      const Radius.circular(3.5),
     );
+    canvas.drawLine(Offset(0, h * 0.34), Offset(w * 0.34, h * 0.34), groove);
+    canvas.drawLine(Offset(0, h * 0.66), Offset(w * 0.34, h * 0.66), groove);
+    canvas.drawLine(Offset(w * 0.66, h * 0.34), Offset(w, h * 0.34), groove);
+    canvas.drawLine(Offset(w * 0.66, h * 0.66), Offset(w, h * 0.66), groove);
+    canvas.drawLine(Offset(w / 2, 0), Offset(w / 2, h * 0.22), groove);
+    canvas.drawLine(Offset(w / 2, h * 0.78), Offset(w / 2, h), groove);
 
-    canvas.drawLine(
-      Offset(size.width / 2, 0),
-      Offset(size.width / 2, size.height),
-      linePaint,
+    // 접점 판: 살짝 밝게 올리고 테두리를 어둡게.
+    canvas.drawRRect(
+      center,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.42),
+            Colors.white.withValues(alpha: 0.08),
+          ],
+        ).createShader(center.outerRect),
     );
+    canvas.drawRRect(center, groove);
 
-    final centerRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(size.width / 2, size.height / 2),
-        width: 15,
-        height: 12,
+    // 칩 윗면 광택과 안쪽 테두리.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(1, 1, w - 2, h - 2),
+        const Radius.circular(7),
       ),
-      const Radius.circular(2),
-    );
-
-    canvas.drawRRect(
-      centerRect,
       Paint()
-        ..color = Colors.white.withOpacity(0.20)
-        ..style = PaintingStyle.fill,
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8
+        ..color = Colors.white.withValues(alpha: 0.45),
     );
-
-    canvas.drawRRect(
-      centerRect,
+    final shine = Rect.fromLTWH(0, 0, w, h * 0.5);
+    canvas.drawRect(
+      shine,
       Paint()
-        ..color = Colors.white.withOpacity(0.35)
-        ..strokeWidth = 0.5
-        ..style = PaintingStyle.stroke,
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: 0.28),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ).createShader(shine),
     );
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _MembershipMagneticStripe extends StatelessWidget {
-  const _MembershipMagneticStripe({
-    required this.groupLabel,
-    required this.onTap,
-  });
-
-  final String groupLabel;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final label =
-        groupLabel.trim().isEmpty ? 'MORE THAN GYM' : groupLabel.trim();
-
-    final displayLabel =
-        RegExp(r'^[A-Za-z0-9\s\-_]+$').hasMatch(label)
-            ? label.toUpperCase()
-            : label;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 46,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0E0E0E), Color(0xFF1C1C1C), Color(0xFF0E0E0E)],
-          ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    Color(0x0DFFFFFF),
-                    Color(0x14FFFFFF),
-                    Color(0x0DFFFFFF),
-                    Colors.transparent,
-                  ],
-                  stops: [0.0, 0.35, 0.5, 0.65, 1.0],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 14,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.chevron_left_rounded,
-                    color: Colors.white.withOpacity(0.35),
-                    size: 28,
-                  ),
-                  Icon(
-                    Icons.chevron_left_rounded,
-                    color: Colors.white.withOpacity(0.15),
-                    size: 28,
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              right: 14,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.chevron_left_rounded,
-                    color: Colors.white.withOpacity(0.15),
-                    size: 28,
-                  ),
-                  Icon(
-                    Icons.chevron_left_rounded,
-                    color: Colors.white.withOpacity(0.35),
-                    size: 28,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 46),
-              child: Text(
-                displayLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white.withOpacity(0.55),
-                  letterSpacing: _membershipCardGroupLetterSpacing(
-                    displayLabel,
-                  ),
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.80),
-                      offset: const Offset(0, 1),
-                      blurRadius: 3,
-                    ),
-                    Shadow(
-                      color: Colors.white.withOpacity(0.08),
-                      offset: const Offset(0, -1),
-                      blurRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _MembershipSignatureBand extends StatelessWidget {
@@ -1184,14 +1664,14 @@ class _MembershipSignatureBand extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const RotatedBox(
+                    RotatedBox(
                       quarterTurns: 1,
                       child: Text(
                         'NOTE',
                         style: TextStyle(
                           fontSize: 7,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF9CA3AF),
+                          color: kPageSoft,
                           letterSpacing: 1,
                         ),
                       ),
@@ -1219,7 +1699,7 @@ class _MembershipSignatureBand extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F3FF),
+                        color: kPageInfoBg,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
@@ -1333,26 +1813,30 @@ class _MembershipBackStatItem extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w800,
-              color: Colors.white.withOpacity(0.42),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: Colors.white.withOpacity(0.42),
+              ),
             ),
           ),
           const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: valueFontSize,
-              fontWeight: FontWeight.w900,
-              color: Colors.white.withOpacity(0.84),
-              height: 1.0,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: valueFontSize,
+                fontWeight: FontWeight.w900,
+                color: Colors.white.withOpacity(0.84),
+                height: 1.0,
+              ),
             ),
           ),
         ],
@@ -1717,10 +2201,19 @@ class _MembershipQrPainter extends CustomPainter {
   }
 }
 
+/// 뒷면 씰(카드를 앞으로 돌리는 버튼): 모서리가 둥근 네모에 펄 무지갯빛, 은색 테두리, 발급처 `M` 마크.
 class _MembershipHologramButton extends StatefulWidget {
-  const _MembershipHologramButton({required this.onTap});
+  const _MembershipHologramButton({
+    super.key,
+    required this.onTap,
+    required this.tilt,
+  });
 
   final VoidCallback onTap;
+
+  /// 카드 기울기(-1~1). 기울어지면 씰의 무지갯빛이 따라 움직인다.
+  final ValueListenable<double> tilt;
+  final double size = 44;
 
   @override
   State<_MembershipHologramButton> createState() =>
@@ -1750,178 +2243,220 @@ class _MembershipHologramButtonState extends State<_MembershipHologramButton>
     super.dispose();
   }
 
-  Future<void> _handleTap() async {
-    await _controller.forward(from: 0);
-    if (!mounted) return;
+  void _handleTap() {
+    // 반짝임은 뒤집히는 동안 같이 보이도록 기다리지 않고 바로 뒤집는다.
+    _controller.forward(from: 0);
     widget.onTap();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _handleTap,
-      child: AnimatedBuilder(
-        animation: _shine,
-        builder: (context, _) {
-          return Transform.scale(
-            scale: 1.0 + (_shine.value * 0.05),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.38 + (_shine.value * 0.30)),
+    return Semantics(
+      button: true,
+      label: '카드 뒤집기',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: _handleTap,
+        child: AnimatedBuilder(
+          animation: _shine,
+          builder: (context, _) {
+            return Transform.scale(
+              scale: 1.0 + (_shine.value * 0.05),
+              child: Container(
+                width: widget.size,
+                height: widget.size,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(widget.size * 0.28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(
+                        0xFFC7D2FE,
+                      ).withValues(alpha: 0.16 + (_shine.value * 0.28)),
+                      blurRadius: 9 + (_shine.value * 9),
+                      spreadRadius: _shine.value * 1.2,
+                    ),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(
-                      0xFF67E8F9,
-                    ).withOpacity(0.12 + (_shine.value * 0.25)),
-                    blurRadius: 10 + (_shine.value * 10),
-                    spreadRadius: _shine.value * 1.4,
-                  ),
-                ],
+                child: ValueListenableBuilder<double>(
+                  valueListenable: widget.tilt,
+                  builder:
+                      (context, tilt, _) => CustomPaint(
+                        painter: _MembershipHologramPainter(
+                          shineValue: _shine.value,
+                          tilt: tilt,
+                        ),
+                      ),
+                ),
               ),
-              clipBehavior: Clip.hardEdge,
-              child: CustomPaint(
-                painter: _MembershipHologramPainter(shineValue: _shine.value),
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 }
 
 class _MembershipHologramPainter extends CustomPainter {
-  const _MembershipHologramPainter({this.shineValue = 0});
+  const _MembershipHologramPainter({this.shineValue = 0, this.tilt = 0});
 
   final double shineValue;
+  final double tilt;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final colors = [
-      const Color(0xBFFF0064),
-      const Color(0xBFFFC800),
-      const Color(0xBF00FF78),
-      const Color(0xBF00B4FF),
-      const Color(0xBF8C00FF),
-      const Color(0xBFFF0064),
-      const Color(0xBFFFC800),
-      const Color(0xBF00FF78),
-      const Color(0xBF00B4FF),
-    ];
+    final rect = Offset.zero & size;
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      Radius.circular(size.shortestSide * 0.28),
+    );
 
-    final cellWidth = size.width / 3;
-    final cellHeight = size.height / 3;
+    canvas.save();
+    canvas.clipRRect(rrect);
 
-    for (int row = 0; row < 3; row++) {
-      for (int col = 0; col < 3; col++) {
-        canvas.drawRect(
-          Rect.fromLTWH(
-            col * cellWidth,
-            row * cellHeight,
-            cellWidth,
-            cellHeight,
-          ),
-          Paint()..color = colors[row * 3 + col],
-        );
-      }
-    }
+    // 펄 바탕: 기울기에 따라 색이 미끄러진다.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment(-1 + tilt * 0.9, -1),
+          end: Alignment(1 + tilt * 0.9, 1),
+          colors: const [
+            Color(0xFFD7E3FF),
+            Color(0xFFF1DAFF),
+            Color(0xFFFFDDEE),
+            Color(0xFFD5F9EF),
+            Color(0xFFD7E3FF),
+          ],
+          stops: const [0.0, 0.28, 0.52, 0.76, 1.0],
+        ).createShader(rect),
+    );
 
-    final gridPaint =
+    // 대각선 가는 줄 무늬.
+    final linePaint =
         Paint()
-          ..color = Colors.white.withOpacity(0.07)
-          ..strokeWidth = 0.5;
-
-    for (double x = 0; x < size.width; x += 4) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+          ..color = Colors.white.withValues(alpha: 0.38)
+          ..strokeWidth = 0.6;
+    for (double d = -size.height; d < size.width; d += 4) {
+      canvas.drawLine(
+        Offset(d, size.height),
+        Offset(d + size.height, 0),
+        linePaint,
+      );
     }
 
-    for (double y = 0; y < size.height; y += 4) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    // 누를 때 한 번 지나가는 빛.
+    if (shineValue > 0) {
+      final shineX = -size.width + (size.width * 2.2 * shineValue);
+      final band = Rect.fromLTWH(shineX, 0, size.width * 0.38, size.height);
+      canvas.drawRect(
+        band,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0),
+              Colors.white.withValues(alpha: 0.70),
+              Colors.white.withValues(alpha: 0),
+            ],
+          ).createShader(band),
+      );
     }
 
-    canvas.drawRect(
-      Offset.zero & size,
+    // 카드를 기울이면 빛 띠가 씰 위를 가로질러 움직인다.
+    if (tilt.abs() > 0.001) {
+      final band = Rect.fromLTWH(
+        size.width * (0.5 + tilt * 0.9) - size.width * 0.19,
+        0,
+        size.width * 0.38,
+        size.height,
+      );
+      canvas.drawRect(
+        band,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0),
+              Colors.white.withValues(alpha: 0.55),
+              Colors.white.withValues(alpha: 0),
+            ],
+          ).createShader(band),
+      );
+    }
+
+    canvas.restore();
+
+    // 은색 테두리.
+    canvas.drawRRect(
+      rrect.deflate(0.8),
       Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..shader = const SweepGradient(
           colors: [
-            Colors.white.withOpacity(0.30 + shineValue * 0.35),
-            Colors.transparent,
-            const Color(0xFF67E8F9).withOpacity(0.12 + shineValue * 0.20),
-            const Color(0xFFFF4FD8).withOpacity(0.10 + shineValue * 0.18),
+            Color(0xFFF8FAFC),
+            Color(0xFF94A3B8),
+            Color(0xFFF1F5F9),
+            Color(0xFF64748B),
+            Color(0xFFF8FAFC),
           ],
-          stops: const [0.0, 0.38, 0.68, 1.0],
-        ).createShader(Offset.zero & size),
+        ).createShader(rect),
     );
 
-    final shineX = -size.width + (size.width * 2.2 * shineValue);
-
-    canvas.drawRect(
-      Rect.fromLTWH(shineX, 0, size.width * 0.38, size.height),
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withOpacity(0.0),
-            Colors.white.withOpacity(0.45),
-            Colors.white.withOpacity(0.0),
-          ],
-        ).createShader(Offset.zero & size),
-    );
-
-    final flipPainter = TextPainter(
+    // 발급처 마크 `M`.
+    final mark = TextPainter(
       text: TextSpan(
-        text: 'FLIP',
+        text: 'M',
         style: TextStyle(
-          fontSize: 9,
+          fontSize: size.height * 0.42,
           fontWeight: FontWeight.w900,
-          color: Colors.white.withOpacity(0.80),
-          letterSpacing: 2.5,
+          color: const Color(0xFF312E81).withValues(alpha: 0.80),
+          height: 1.0,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-
-    flipPainter.paint(
+    mark.paint(
       canvas,
       Offset(
-        (size.width - flipPainter.width) / 2,
-        (size.height - flipPainter.height) / 2 - 4,
+        (size.width - mark.width) / 2 - 1,
+        (size.height - mark.height) / 2 - 2.5,
       ),
     );
 
-    final subPainter = TextPainter(
-      text: TextSpan(
-        text: 'TAP TO FRONT',
-        style: TextStyle(
-          fontSize: 4.6,
-          fontWeight: FontWeight.w800,
-          color: Colors.white.withOpacity(0.80),
-          letterSpacing: 1,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    subPainter.paint(
-      canvas,
-      Offset(
-        (size.width - subPainter.width) / 2,
-        (size.height - subPainter.height) / 2 + 7,
-      ),
+    // 오른쪽 아래 작은 회전 화살표: 누르면 카드가 돈다는 표시.
+    final arrowCenter = Offset(size.width - 9, size.height - 9);
+    const arrowRadius = 3.6;
+    const startAngle = -math.pi * 0.15;
+    const sweep = math.pi * 1.5;
+    final arrowColor = const Color(0xFF312E81).withValues(alpha: 0.75);
+    canvas.drawArc(
+      Rect.fromCircle(center: arrowCenter, radius: arrowRadius),
+      startAngle,
+      sweep,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round
+        ..color = arrowColor,
     );
+    final endAngle = startAngle + sweep;
+    final end =
+        arrowCenter +
+        Offset(math.cos(endAngle), math.sin(endAngle)) * arrowRadius;
+    final tangent = Offset(-math.sin(endAngle), math.cos(endAngle));
+    final normal = Offset(math.cos(endAngle), math.sin(endAngle));
+    final head =
+        Path()
+          ..moveTo(end.dx + tangent.dx * 3.2, end.dy + tangent.dy * 3.2)
+          ..lineTo(end.dx + normal.dx * 2.2, end.dy + normal.dy * 2.2)
+          ..lineTo(end.dx - normal.dx * 2.2, end.dy - normal.dy * 2.2)
+          ..close();
+    canvas.drawPath(head, Paint()..color = arrowColor);
   }
 
   @override
   bool shouldRepaint(covariant _MembershipHologramPainter oldDelegate) {
-    return oldDelegate.shineValue != shineValue;
+    return oldDelegate.shineValue != shineValue || oldDelegate.tilt != tilt;
   }
 }
 
@@ -1957,6 +2492,183 @@ class _MembershipTexturePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 뒷면 맨 아래에 끝에서 끝까지 이어지는 마그네틱 줄(장식). 씰과 겹치지 않도록 씰은 줄 위에 둔다.
+class _MembershipMagneticBand extends StatelessWidget {
+  const _MembershipMagneticBand();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 12,
+      height: 34,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          key: const ValueKey<String>('membership_card_back_stripe'),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: const [
+                Color(0xF22A2A2D),
+                Color(0xFA0C0C0E),
+                Color(0xF2191A1C),
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+            border: Border.symmetric(
+              horizontal: BorderSide(
+                color: Colors.white.withValues(alpha: 0.14),
+                width: 0.6,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const List<Shadow> _kMembershipEmboss = [
+  Shadow(color: Color(0x40000000), offset: Offset(0, 1), blurRadius: 2),
+];
+
+/// 카드 광택: 윗면 빛, 가장자리 하이라이트, 기울기를 따라 움직이는 반사 띠, 처음 한 번 지나가는 반사광.
+/// 글자 아래에 깔려서 글자 가독성에는 영향을 주지 않는다.
+class _MembershipSheenLayer extends StatelessWidget {
+  const _MembershipSheenLayer({
+    required this.tilt,
+    required this.entry,
+    required this.strength,
+  });
+
+  final ValueListenable<double> tilt;
+  final Animation<double> entry;
+  final double strength;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([tilt, entry]),
+          builder:
+              (context, _) => CustomPaint(
+                key: const ValueKey<String>('membership_card_sheen'),
+                painter: _MembershipSheenPainter(
+                  tilt: tilt.value,
+                  entry: entry.value,
+                  strength: strength,
+                ),
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MembershipSheenPainter extends CustomPainter {
+  const _MembershipSheenPainter({
+    required this.tilt,
+    required this.entry,
+    required this.strength,
+  });
+
+  final double tilt;
+  final double entry;
+  final double strength;
+
+  void _band(Canvas canvas, Rect rect, double center, double half, double a) {
+    if (a <= 0.002) return;
+    double clamp01(double v) => v.clamp(0.0, 1.0);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0),
+            Colors.white.withValues(alpha: a.clamp(0.0, 1.0)),
+            Colors.white.withValues(alpha: 0),
+          ],
+          stops: [
+            clamp01(center - half),
+            clamp01(center),
+            clamp01(center + half),
+          ],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    // 윗면에서 떨어지는 빛
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: 0.10),
+            Colors.white.withValues(alpha: 0),
+          ],
+          stops: const [0.0, 0.45],
+        ).createShader(rect),
+    );
+
+    // 기울기를 따라 움직이는 반사 띠(가만히 있을 때는 은은하게)
+    _band(
+      canvas,
+      rect,
+      0.5 + tilt * 0.55,
+      0.20,
+      strength * (0.35 + 0.65 * tilt.abs()),
+    );
+
+    // 처음 보일 때 한 번 지나가는 반사광
+    if (entry > 0 && entry < 1) {
+      final t = Curves.easeInOutCubic.transform(entry);
+      _band(
+        canvas,
+        rect,
+        -0.3 + 1.6 * t,
+        0.14,
+        strength * 2.4 * math.sin(math.pi * entry),
+      );
+    }
+
+    // 가장자리 하이라이트(왼쪽 위는 밝게, 오른쪽 아래는 어둡게)
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        rect.deflate(0.5),
+        const Radius.circular(MembershipCardFlip.headerBottomRadius),
+      ),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.40),
+            Colors.white.withValues(alpha: 0.05),
+            Colors.black.withValues(alpha: 0.18),
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MembershipSheenPainter old) =>
+      old.tilt != tilt || old.entry != entry || old.strength != strength;
 }
 
 class _CareMilestoneItem {
@@ -2236,7 +2948,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   final _addrC = TextEditingController();
   final _addrDetailC = TextEditingController();
 
-  String _membershipGrade = 'GOLD';
+  String _membershipGrade = 'BRONZE';
   final _jobC = TextEditingController();
   final _trainerC = TextEditingController();
 
@@ -2258,6 +2970,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
   DateTime? _passStart;
   DateTime? _passEnd;
   DateTime? _lastRegisteredAt;
+
+  /// 마지막 계약으로 회원 횟수에 더해진 양과 시각(서버 `lastRegistration`). 칩의 `(+30)`에 쓴다.
+  int _lastRegistrationAdded = 0;
+  DateTime? _lastRegistrationAt;
+  String _lastRegistrationContractId = '';
   DateTime? _lastLogAt;
   int _noShowDeductedCount = 0;
   int _noShowUndeductedCount = 0;
@@ -2355,6 +3072,15 @@ class _ClientCardPageState extends State<ClientCardPage> {
   late final String _draftKey;
   String _headerDisplayName = '';
   String _headerGroupLabel = 'MORE THAN GYM';
+
+  // 폼을 아래로 스크롤하면 카드가 한 줄 헤더로 접히고, 맨 위로 올리면 다시 펼쳐진다.
+  final ScrollController _formScrollController = ScrollController();
+  bool _cardHeaderCollapsed = false;
+  bool _cardHeaderLocked = false;
+  static const double _cardHeaderCollapseOffset = 36;
+  static const double _cardHeaderExpandOffset = 2;
+  static const double _cardHeaderShrink =
+      MembershipCardFlip.cardHeight - MembershipCardCollapsedBar.totalHeight;
   bool _isClientCardLoaded = false;
   bool _newCardAccessResolved = false;
   bool _newCardAccessAllowed = false;
@@ -2717,6 +3443,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   void initState() {
     super.initState();
 
+    _formScrollController.addListener(_syncCardHeaderToScroll);
     _headerDisplayName = (widget.initialName ?? '').trim();
     _nameC.text = widget.initialName ?? '';
     _phoneC.text = formatKoreanMobilePhone(widget.initialPhone ?? '');
@@ -2884,6 +3611,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   @override
   void dispose() {
+    _formScrollController
+      ..removeListener(_syncCardHeaderToScroll)
+      ..dispose();
     _draftTimer?.cancel();
     _memberStatsSub?.cancel();
     _nextReservationSub?.cancel();
@@ -3046,7 +3776,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   String _safeMembershipGrade(String? raw) {
     final value = (raw ?? '').trim().toUpperCase();
     const allowed = ['VVIP', 'VIP', 'GOLD', 'SILVER', 'BRONZE'];
-    return allowed.contains(value) ? value : 'GOLD';
+    return allowed.contains(value) ? value : 'BRONZE';
   }
 
   String _safeLessonType(String? raw) {
@@ -3356,7 +4086,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '메달 추가',
                       style: TextStyle(
                         fontSize: 18,
@@ -3365,7 +4095,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       '회원의 긍정적인 성취를 직접 기록해요.',
                       style: TextStyle(
                         fontSize: 12,
@@ -3394,11 +4124,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F3FF),
+                                  color: kPageInfoBg,
                                   borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: const Color(0xFFE9D5FF),
-                                  ),
+                                  border: Border.all(color: kPageInfoBorder),
                                 ),
                                 child: Text(
                                   option.title,
@@ -3423,16 +4151,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         fillColor: kPageFieldBg,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: kPageBorder),
+                          borderSide: BorderSide(color: kPageBorder),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: kPageBorder),
+                          borderSide: BorderSide(color: kPageBorder),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: kPagePrimary,
+                          borderSide: BorderSide(
+                            color: kPageAccent,
                             width: 1.3,
                           ),
                         ),
@@ -3457,8 +4185,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         style: FilledButton.styleFrom(
                           backgroundColor: kPagePrimary,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor: const Color(0xFFE5E7EB),
-                          disabledForegroundColor: const Color(0xFF9CA3AF),
+                          disabledBackgroundColor: kPageBorder,
+                          disabledForegroundColor: kPageSoft,
                           minimumSize: const Size(0, 48),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -4477,6 +5205,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
         _contractSigned = loadedContractSigned;
         _contractSignedAt = loadedContractSignedAt;
+        _applyLastRegistration(d);
 
         final hasContractLesson =
             _contractSigned ||
@@ -5316,8 +6045,21 @@ class _ClientCardPageState extends State<ClientCardPage> {
       groups: _personalGroupOptions,
       selectedGroupId:
           _selectedGroupId == '__ungrouped__' ? null : _selectedGroupId,
+      showStatusOptions: _isEditMode,
+      currentState: _personalStateKey(_memberStatus),
     );
     if (result == null || !mounted) return;
+    final nextState = result.nextState;
+    if (nextState != null) {
+      if (nextState != _personalStateKey(_memberStatus)) {
+        await _transitionPersonalState(nextState);
+      }
+      return;
+    }
+    if (_isEditMode && _personalStateKey(_memberStatus) != 'active') {
+      // 휴면·만료 회원을 일반 그룹으로 옮기면 활성으로 돌려 그룹 목록에 다시 보이게 한다.
+      if (!await _transitionPersonalState('active') || !mounted) return;
+    }
     final nextId = result.personalGroupId ?? '__ungrouped__';
     final nextLabel =
         _groupOptions
@@ -5330,6 +6072,45 @@ class _ClientCardPageState extends State<ClientCardPage> {
       _selectedGroupId = nextId;
       _headerGroupLabel = nextLabel;
     });
+  }
+
+  String _personalStateKey(String memberStatus) {
+    return switch (memberStatus) {
+      '휴면' => 'dormant',
+      '만료' => 'expired',
+      _ => 'active',
+    };
+  }
+
+  // 휴면·만료는 그룹이 아니라 활동상태라 저장 버튼과 별개로 바로 상태 전환을 호출한다.
+  // 원래 그룹(personalGroupId)은 건드리지 않아 활성으로 돌리면 그대로 돌아온다.
+  Future<bool> _transitionPersonalState(String nextState) async {
+    try {
+      await PersonalMemberCardSaveService(
+        uid: _personalOwnerUid,
+      ).transitionStateAndVerify(
+        memberId: widget.memberId,
+        nextState: nextState,
+      );
+      if (!mounted) return false;
+      setState(() {
+        _memberStatus = switch (nextState) {
+          'dormant' => '휴면',
+          'expired' => '만료',
+          _ => '활성',
+        };
+      });
+      _showAifcToast(switch (nextState) {
+        'dormant' => '휴면회원으로 옮겼어요.',
+        'expired' => '만료회원으로 옮겼어요.',
+        _ => '활성회원으로 돌렸어요.',
+      });
+      return true;
+    } catch (_) {
+      if (!mounted) return false;
+      _showAifcToast('활동상태를 바꾸지 못했어요. 다시 시도해주세요.');
+      return false;
+    }
   }
 
   Future<void> _pickPersonalTags() async {
@@ -5405,8 +6186,136 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return await ref.getDownloadURL();
   }
 
+  /// 레슨계약서(v2)로 등록된 횟수는 계약서가 기준이라 회원카드에서 직접 바꾸지 못한다(소진 확인용).
+  /// 횟수를 바꾸려면 새 레슨계약서(재계약)를 쓴다. 계약서가 없는 회원은 지금처럼 직접 입력한다.
+  bool get _registrationLockedByContract =>
+      _isPersonalWorkspace && _lastRegistrationContractId.isNotEmpty;
+
+  void _applyLastRegistration(Map<String, dynamic> member) {
+    final raw = member['lastRegistration'];
+    final map =
+        raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+    final at = map['at'];
+    _lastRegistrationAdded = (map['added'] as num?)?.toInt() ?? 0;
+    _lastRegistrationAt = at is Timestamp ? at.toDate() : null;
+    _lastRegistrationContractId = (map['contractId'] ?? '').toString();
+  }
+
+  /// 계약서 화면에서 돌아온 뒤, 계약 완료로 서버가 합산한 횟수를 카드에 반영한다. 서버의 마지막
+  /// 등록이 카드가 알고 있는 것과 다를 때만 횟수·레슨 종류를 바꾸고, 그렇지 않으면 입력 중인 값을
+  /// 건드리지 않는다(저장할 때 예전 횟수로 덮어쓰지 않게 하려는 것이다).
+  Future<void> _refreshRegistrationAfterContract() async {
+    if (!_isPersonalWorkspace || !mounted) return;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('members')
+          .doc(widget.memberId)
+          .get(const GetOptions(source: Source.server));
+      final d = snap.data();
+      if (!mounted || d == null || !_isOwnedPersonalMember(d)) return;
+      final raw = d['lastRegistration'];
+      final map = raw is Map ? Map<String, dynamic>.from(raw) : const {};
+      final contractId = (map['contractId'] ?? '').toString();
+      final at =
+          map['at'] is Timestamp ? (map['at'] as Timestamp).toDate() : null;
+      final changed =
+          contractId != _lastRegistrationContractId ||
+          at != _lastRegistrationAt;
+      if (!changed) return;
+      final sessions =
+          d['sessions'] is Map
+              ? Map<String, dynamic>.from(d['sessions'] as Map)
+              : <String, dynamic>{};
+      int num0(Object? v) => (v is num) ? v.toInt() : int.tryParse('$v') ?? 0;
+      setState(() {
+        _applyLastRegistration(d);
+        _totalSessionsC.text =
+            num0(d['totalSessions'] ?? sessions['total']).toString();
+        _remainSessionsC.text =
+            num0(
+              d['remainSessions'] ??
+                  d['remainingSessions'] ??
+                  sessions['remain'],
+            ).toString();
+        _lessonsNotRegistered =
+            (sessions['notRegistered'] as bool?) ??
+            d['lessonsNotRegistered'] == true;
+        final type = _safeLessonType(d['lessonType'] as String?);
+        if (type != '미입력') {
+          _lessonType = type;
+          _syncCustomLessonTypeControllerIfNeeded();
+        }
+        _contractSigned = d['contractSigned'] == true || _contractSigned;
+        // 재계약이면 서버가 카드 뒷면 `재등록`도 올린다(안 읽으면 저장할 때 예전 값으로 덮어쓴다).
+        final membership =
+            d['membership'] is Map
+                ? Map<String, dynamic>.from(d['membership'] as Map)
+                : <String, dynamic>{};
+        final reregister = (membership['reregisterCount'] as num?)?.toInt();
+        if (reregister != null) {
+          _reregisterCount = reregister;
+          _reregisterCountC.text = reregister.toString();
+        }
+        final lastRereg = membership['lastReregisterAt'];
+        if (lastRereg is Timestamp) _lastReregisterAt = lastRereg.toDate();
+        // 계약이 회원권 기간(사용 기간)도 맞추고, 만료 회원은 활동 중으로 되돌린다. 안 읽으면 저장할 때
+        // 예전 기간·상태로 덮어쓴다.
+        _membershipNotRegistered = d['membershipNotRegistered'] == true;
+        _passStart = _parseDate(d['passStart'] as String?);
+        _passEnd = _parseDate(d['passEnd'] as String?);
+        if (d['managementState'] != null) {
+          _memberStatus = _safeMemberStatus(
+            personalMemberStatusFromCanonical(d),
+          );
+        }
+      });
+    } catch (error) {
+      debugPrint('[MTF_MEMBER_CARD] 계약 후 횟수 새로고침 실패: ${error.runtimeType}');
+    }
+  }
+
+  /// 하단 `레슨계약서`: 개인 워크스페이스는 이 회원으로 새 레슨계약서 작성을 바로 시작한다(이미 쓴 계약서는
+  /// 상단 계약서 아이콘의 계약서 관리에서 본다). 그 밖의 워크스페이스는 기존 흐름을 연다.
+  Future<void> _openNewLessonContract() async {
+    if (!_isPersonalWorkspace) {
+      await _openContract();
+      return;
+    }
+    if (!await _guardTierFeature(AppTierFeatureKey.contract)) return;
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => LessonContractFormPage(
+              personalOwnerUid: (widget.personalOwnerUid ?? '').trim(),
+              initialMemberId: widget.memberId,
+            ),
+      ),
+    );
+    await _refreshRegistrationAfterContract();
+  }
+
   Future<void> _openContract() async {
     if (!await _guardTierFeature(AppTierFeatureKey.contract)) return;
+
+    if (_isPersonalWorkspace) {
+      // 이 회원의 계약서 목록(없으면 바로 새 계약 작성)으로 간다.
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder:
+              (_) => MemberContractsPage(
+                personalOwnerUid: (widget.personalOwnerUid ?? '').trim(),
+                memberId: widget.memberId,
+                memberName: _nameC.text.trim(),
+                // 선택 화면 없이 계약서 관리로 바로 들어가고, 새로 쓸 때 종류를 고른다.
+                autoStartWhenEmpty: false,
+                onOpenMembership: _openMembershipContractDraft,
+              ),
+        ),
+      );
+      await _refreshRegistrationAfterContract();
+      return;
+    }
 
     final defaultTrainerName = await _loadDefaultTrainerName();
 
@@ -5572,11 +6481,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F4FF),
+                color: kPageInfoBg,
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: kPagePrimary.withOpacity(0.16),
+                    color: kPageAccent.withOpacity(0.16),
                     blurRadius: 28,
                     offset: const Offset(0, 12),
                   ),
@@ -5593,19 +6502,19 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AifcAvatar(
+                      AifcAvatar(
                         size: 34,
                         isAnimating: true,
-                        backgroundColor: Color(0xFFF5F4FF),
+                        backgroundColor: kPageInfoBg,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: kPageCard,
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0xFFE0DEFF)),
+                            border: Border.all(color: kPageInfoBorder),
                           ),
                           child: Text(
                             '${aifcPersonLabel(memberName)} 회원권을 $days일 정지할게요.\n\n'
@@ -5633,9 +6542,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             ).pop(_MembershipPauseConfirmAction.reset);
                           },
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: kPagePrimary,
+                            foregroundColor: kPageAccent,
                             side: BorderSide(
-                              color: kPagePrimary.withOpacity(0.24),
+                              color: kPageAccent.withOpacity(0.24),
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
@@ -5679,7 +6588,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         sheetContext,
                       ).pop(_MembershipPauseConfirmAction.cancel);
                     },
-                    child: const Text(
+                    child: Text(
                       '취소',
                       style: TextStyle(
                         color: kPageMuted,
@@ -6064,7 +6973,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       userConfirmText: '확인했습니다',
       replyText: '확인되었습니다. 필요한 기록이 생기면 계속 정리해둘게요.',
       icon: Icons.history_rounded,
-      accentColor: kPagePrimary,
+      accentColor: kPageAccent,
     );
   }
 
@@ -6256,6 +7165,12 @@ class _ClientCardPageState extends State<ClientCardPage> {
 
   Future<void> _openContractHistorySheet() async {
     if (!await _guardTierFeature(AppTierFeatureKey.contractHistory)) return;
+
+    // 일반 워크스페이스는 대화창 없이 이 회원의 계약서 목록(상단 계약서 아이콘과 같은 화면)을 연다.
+    if (_isPersonalWorkspace) {
+      await _openContract();
+      return;
+    }
 
     final items =
         _buildContractHistoryItems()
@@ -6701,9 +7616,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         context: context,
         barrierDismissible: false,
         builder:
-            (_) => const Center(
-              child: CircularProgressIndicator(color: kPagePrimary),
-            ),
+            (_) => Center(child: CircularProgressIndicator(color: kPageAccent)),
       );
     }
 
@@ -6974,7 +7887,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       _postalC.clear();
       _addrC.clear();
       _addrDetailC.clear();
-      _membershipGrade = 'GOLD';
+      _membershipGrade = 'BRONZE';
       _jobC.clear();
       _memberStatus = '활성';
       _lessonType = '미입력';
@@ -7244,9 +8157,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
         context: context,
         barrierDismissible: false,
         builder:
-            (_) => const Center(
-              child: CircularProgressIndicator(color: kPagePrimary),
-            ),
+            (_) => Center(child: CircularProgressIndicator(color: kPageAccent)),
       );
     }
 
@@ -7327,7 +8238,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: kPagePrimary, width: 1.3),
+        borderSide: BorderSide(color: kPageAccent, width: 1.3),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -7340,12 +8251,29 @@ class _ClientCardPageState extends State<ClientCardPage> {
     );
   }
 
+  /// 상단 계약서 아이콘: 개인 워크스페이스는 이 회원의 계약서 관리, 그 밖에는 레슨계약서·회원권계약서 선택 시트.
+  Future<void> _openContractChooser() async {
+    // 개인 워크스페이스는 선택 화면 없이 이 회원의 계약서 관리로 바로 들어간다.
+    if (_isPersonalWorkspace) {
+      await _openContract();
+      return;
+    }
+    final choice = await showContractChooserSheet(context);
+    if (!mounted || choice == null) return;
+    if (choice == ContractKind.lesson) {
+      await _openContract();
+    } else {
+      await _openMembershipContractDraft();
+    }
+  }
+
   Widget _buildHeaderContractButton() {
     return SizedBox(
       width: 36,
       height: 36,
       child: InkWell(
-        onTap: _openContract,
+        key: const Key('client_card_header_contract_button'),
+        onTap: _openContractChooser,
         borderRadius: BorderRadius.circular(999),
         child: const Center(
           child: Icon(
@@ -7364,7 +8292,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       children: [
         Text(
           _basicInfoPageIndex == 0 ? '기본정보 1/2' : '기본정보 2/2',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: kPageMuted,
@@ -7426,7 +8354,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       children: [
         Text(
           _memberSetupPageIndex == 0 ? '상태/등급 1/2' : '상태/등급 2/2',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: kPageMuted,
@@ -7493,7 +8421,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           width: selected ? 18 : 6,
           height: 6,
           decoration: BoxDecoration(
-            color: selected ? kPagePrimary : const Color(0xFFD1D5DB),
+            color: selected ? kPageAccent : const Color(0xFFD1D5DB),
             borderRadius: BorderRadius.circular(999),
           ),
         );
@@ -7507,7 +8435,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       children: [
         Text(
           _bodyHealthPageIndex == 0 ? '인바디/건강 1/2' : '인바디/건강 2/2',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: kPageMuted,
@@ -7574,7 +8502,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           width: selected ? 18 : 6,
           height: 6,
           decoration: BoxDecoration(
-            color: selected ? kPagePrimary : const Color(0xFFD1D5DB),
+            color: selected ? kPageAccent : const Color(0xFFD1D5DB),
             borderRadius: BorderRadius.circular(999),
           ),
         );
@@ -7588,7 +8516,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       children: [
         Text(
           _memoPageIndex == 0 ? '메모 1/2' : 'MORE 포커스 2/2',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: kPageMuted,
@@ -7655,7 +8583,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           width: selected ? 18 : 6,
           height: 6,
           decoration: BoxDecoration(
-            color: selected ? kPagePrimary : const Color(0xFFD1D5DB),
+            color: selected ? kPageAccent : const Color(0xFFD1D5DB),
             borderRadius: BorderRadius.circular(999),
           ),
         );
@@ -7674,7 +8602,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
           width: selected ? 18 : 6,
           height: 6,
           decoration: BoxDecoration(
-            color: selected ? kPagePrimary : const Color(0xFFD1D5DB),
+            color: selected ? kPageAccent : const Color(0xFFD1D5DB),
             borderRadius: BorderRadius.circular(999),
           ),
         );
@@ -7719,7 +8647,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final total = int.tryParse(_totalSessionsC.text) ?? 0;
     final remain = int.tryParse(_remainSessionsC.text) ?? 0;
 
-    if (total >= 100) {
+    // 받은 레슨 횟수(총 − 잔여) 기준: 재등록을 합산해 총 횟수가 누적돼도 정확하다.
+    if ((total - remain).clamp(0, total) >= 100) {
       items.add('100번째 레슨');
     }
 
@@ -7998,13 +8927,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   '기본 제공 종류는 유지되고, 직접 추가한 종류만 삭제할 수 있어요.',
                   style: TextStyle(color: kPageMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
                 if (_customLessonTypes.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Text(
                       '추가한 레슨 종류가 없어요.',
@@ -8345,14 +9274,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
+        color: kPageWarnBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFFDE68A)),
+        border: Border.all(color: kPageWarnBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(
                 Icons.info_outline_rounded,
@@ -8366,7 +9295,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF92400E),
+                    color: kPageWarnText,
                   ),
                 ),
               ),
@@ -8378,7 +9307,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF92400E).withOpacity(0.84),
+              color: kPageWarnText.withOpacity(0.84),
               height: 1.35,
             ),
           ),
@@ -8394,16 +9323,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: kPageCard,
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: const Color(0xFFFCD34D)),
                     ),
                     child: Text(
                       item,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF92400E),
+                        color: kPageWarnText,
                       ),
                     ),
                   );
@@ -8424,9 +9353,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
         );
       case 'VIP':
         return const _MemberGradeTheme(
-          gradient: [Color(0xFF4338CA), Color(0xFF7C3AED)],
-          accent: Color(0xFFC4B5FD),
-          border: Color(0xFFD8B4FE),
+          gradient: [Color(0xFF1F2937), Color(0xFF475569)],
+          accent: Color(0xFFD1D5DB),
+          border: Color(0xFF9CA3AF),
         );
       case 'GOLD':
         return const _MemberGradeTheme(
@@ -8523,14 +9452,14 @@ class _ClientCardPageState extends State<ClientCardPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFE4E6),
+        color: kPageErrorBg,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: const Color(0xFFFDA4AF)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Color(0xFFB91C1C),
+        style: TextStyle(
+          color: kPageErrorText,
           fontSize: 10.8,
           fontWeight: FontWeight.w800,
         ),
@@ -8780,7 +9709,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
               label: const Text('지난 레슨계약서'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: kPageText,
-                side: const BorderSide(color: kPageBorder),
+                side: BorderSide(color: kPageBorder),
                 minimumSize: const Size(0, 46),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -9074,7 +10003,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                       double.infinity,
                                       56,
                                     ),
-                                    side: const BorderSide(color: kPageBorder),
+                                    side: BorderSide(color: kPageBorder),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
@@ -9094,7 +10023,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Align(
+                          Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
                               '주소를 입력하면 상담과 방문 관리에 도움이 돼요. 나중에 입력해도 돼요.',
@@ -9196,7 +10125,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               ],
                               onChanged: (v) {
                                 setState(() {
-                                  _membershipGrade = v ?? 'GOLD';
+                                  _membershipGrade = v ?? 'BRONZE';
                                 });
                               },
                             ),
@@ -9272,7 +10201,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       ],
                       if (_isLegacyCurrentLessonType) ...[
                         const SizedBox(height: 8),
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             '현재 회원이 사용 중인 기존 종류예요.',
@@ -9339,7 +10268,11 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    _headerGroupLabel,
+                                    _memberStatus == '휴면'
+                                        ? '휴면회원'
+                                        : _memberStatus == '만료'
+                                        ? '만료회원'
+                                        : _headerGroupLabel,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -9610,7 +10543,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -9635,20 +10568,24 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           ),
                         ),
                         Switch.adaptive(
+                          key: const Key('client_card_lesson_register_switch'),
                           value: !_lessonsNotRegistered,
-                          onChanged: (isRegistered) {
-                            setState(() {
-                              _lessonsNotRegistered = !isRegistered;
+                          onChanged:
+                              _registrationLockedByContract
+                                  ? null
+                                  : (isRegistered) {
+                                    setState(() {
+                                      _lessonsNotRegistered = !isRegistered;
 
-                              if (!isRegistered) {
-                                _lessonType = '미입력';
-                                _customLessonTypeC.clear();
-                                _totalSessionsC.text = '0';
-                                _remainSessionsC.text = '0';
-                              }
-                            });
-                          },
-                          activeColor: kPagePrimary,
+                                      if (!isRegistered) {
+                                        _lessonType = '미입력';
+                                        _customLessonTypeC.clear();
+                                        _totalSessionsC.text = '0';
+                                        _remainSessionsC.text = '0';
+                                      }
+                                    });
+                                  },
+                          activeColor: kPageAccent,
                         ),
                       ],
                     ),
@@ -9661,7 +10598,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _totalSessionsC,
-                            enabled: !_lessonsNotRegistered,
+                            enabled:
+                                !_lessonsNotRegistered &&
+                                !_registrationLockedByContract,
                             keyboardType: TextInputType.number,
                             decoration: _inputDecoration('총 횟수'),
                             onChanged: (_) => setState(() {}),
@@ -9671,7 +10610,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         Expanded(
                           child: TextFormField(
                             controller: _remainSessionsC,
-                            enabled: !_lessonsNotRegistered,
+                            enabled:
+                                !_lessonsNotRegistered &&
+                                !_registrationLockedByContract,
                             keyboardType: TextInputType.number,
                             decoration: _inputDecoration('잔여 횟수'),
                             onChanged: (_) => setState(() {}),
@@ -9680,19 +10621,74 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                    child: Row(
-                      children: [
-                        _SoftInfoChip(
-                          label:
-                              _lessonsNotRegistered
-                                  ? '레슨 미등록'
-                                  : '레슨 등록 · 완료 $done회',
+                  if (_registrationLockedByContract)
+                    Padding(
+                      key: const Key('client_card_registration_locked_note'),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '레슨계약서로 등록된 횟수예요. 횟수를 바꾸려면 새 레슨계약서(재계약)를 써 주세요.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: kPageMuted,
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        _SoftInfoChip(label: '총 $total / 잔여 $remain'),
-                      ],
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                    // 두 줄로 나뉘지 않도록 칩 대신 한 줄 글자로 보여 주고, 좁은 화면에서는 글자를 줄여 맞춘다.
+                    child: Builder(
+                      builder: (context) {
+                        const base = TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        );
+                        if (_lessonsNotRegistered) {
+                          return Text(
+                            '레슨 미등록',
+                            key: const Key('client_card_session_chip'),
+                            style: base.copyWith(color: kPageMuted),
+                          );
+                        }
+                        final style = registrationChipStyle(
+                          total: total,
+                          remain: remain,
+                          notRegistered: _lessonsNotRegistered,
+                          added: _lastRegistrationAdded,
+                          addedAt: _lastRegistrationAt,
+                        );
+                        return FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text.rich(
+                            key: const Key('client_card_session_chip'),
+                            TextSpan(
+                              style: base,
+                              children: [
+                                TextSpan(
+                                  text: '재등록 · 총소진레슨 $done회',
+                                  style: TextStyle(color: kPageMuted),
+                                ),
+                                TextSpan(
+                                  text: '  /  ',
+                                  style: TextStyle(color: kPageBorder),
+                                ),
+                                TextSpan(
+                                  text: style.label,
+                                  style: TextStyle(
+                                    color: style.color ?? kPageText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -9715,7 +10711,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 '멤버십 등록',
                                 style: TextStyle(
                                   fontSize: 13,
@@ -9728,7 +10724,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 _lastRegisteredAt == null
                                     ? '마지막 등록일 없음'
                                     : '마지막 등록일 ${DateFormat('yyyy-MM-dd').format(_lastRegisteredAt!)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: kPageMuted,
@@ -9751,7 +10747,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               }
                             });
                           },
-                          activeColor: kPagePrimary,
+                          activeColor: kPageAccent,
                         ),
                       ],
                     ),
@@ -9922,8 +10918,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                               decoration: BoxDecoration(
                                 color:
                                     _membershipPaused
-                                        ? const Color(0xFFFFF1F2)
-                                        : const Color(0xFFF8FAFC),
+                                        ? kPageErrorBg
+                                        : kPageFieldBg,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color:
@@ -9970,7 +10966,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                           style: TextStyle(
                                             color:
                                                 _membershipPaused
-                                                    ? const Color(0xFFB91C1C)
+                                                    ? kPageErrorText
                                                     : kPageText,
                                             fontSize: 12.8,
                                             fontWeight: FontWeight.w900,
@@ -10009,8 +11005,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                               key: const ValueKey<String>(
                                                 'pause_resume_countdown',
                                               ),
-                                              style: const TextStyle(
-                                                color: Color(0xFFB45309),
+                                              style: TextStyle(
+                                                color: kPageWarnIcon,
                                                 fontSize: 11.2,
                                                 height: 1.35,
                                                 fontWeight: FontWeight.w900,
@@ -10024,13 +11020,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                               ) !=
                                               null) ...[
                                             const SizedBox(height: 6),
-                                            const Text(
+                                            Text(
                                               '정지 기간이 끝났어요. 곧 자동으로 재개돼요. 바로 바꾸려면 재개를 눌러주세요.',
                                               key: ValueKey<String>(
                                                 'pause_overdue_notice',
                                               ),
                                               style: TextStyle(
-                                                color: Color(0xFFB91C1C),
+                                                color: kPageErrorText,
                                                 fontSize: 11.2,
                                                 height: 1.35,
                                                 fontWeight: FontWeight.w900,
@@ -10039,7 +11035,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                           ],
                                         ] else ...[
                                           const SizedBox(height: 3),
-                                          const Text(
+                                          Text(
                                             '진행중',
                                             style: TextStyle(
                                               color: kPageMuted,
@@ -10062,7 +11058,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                                       ? const Color(
                                                         0xFFB91C1C,
                                                       ).withOpacity(0.72)
-                                                      : kPagePrimary,
+                                                      : kPageAccent,
                                               fontSize: 10.8,
                                               height: 1.3,
                                               fontWeight: FontWeight.w800,
@@ -10081,15 +11077,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor:
                                           _membershipPaused
-                                              ? const Color(0xFFB91C1C)
-                                              : kPagePrimary,
+                                              ? kPageErrorText
+                                              : kPageAccent,
                                       side: BorderSide(
                                         color:
                                             _membershipPaused
                                                 ? const Color(0xFFFCA5A5)
-                                                : kPagePrimary.withOpacity(
-                                                  0.24,
-                                                ),
+                                                : kPageAccent.withOpacity(0.24),
                                       ),
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 12,
@@ -10126,9 +11120,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     label: const Text('정지/재개 이력'),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: kPageText,
-                                      side: const BorderSide(
-                                        color: kPageBorder,
-                                      ),
+                                      side: BorderSide(color: kPageBorder),
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 13,
                                       ),
@@ -10151,9 +11143,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     ),
                                     label: const Text('회원권계약서'),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: kPagePrimary,
+                                      foregroundColor: kPageAccent,
                                       side: BorderSide(
-                                        color: kPagePrimary.withOpacity(0.24),
+                                        color: kPageAccent.withOpacity(0.24),
                                       ),
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 13,
@@ -10186,8 +11178,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: kPageCard,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
@@ -10493,8 +11485,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) {
             return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: kPageCard,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: SafeArea(
@@ -10510,7 +11502,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '인바디 인식 결과 확인',
                         style: TextStyle(
                           fontSize: 16,
@@ -10519,7 +11511,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
+                      Text(
                         '인식된 수치를 확인하고 회원카드에 반영해요.',
                         style: TextStyle(
                           fontSize: 11.5,
@@ -10541,9 +11533,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       const SizedBox(height: 12),
                       SwitchListTile.adaptive(
                         value: saveImage,
-                        activeColor: kPagePrimary,
+                        activeColor: kPageAccent,
                         contentPadding: EdgeInsets.zero,
-                        title: const Text(
+                        title: Text(
                           '인바디 이미지도 저장',
                           style: TextStyle(
                             fontSize: 13,
@@ -10551,7 +11543,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                             color: kPageText,
                           ),
                         ),
-                        subtitle: const Text(
+                        subtitle: Text(
                           '이미지를 저장하면 나중에 원본 용지도 다시 확인할 수 있어요.',
                           style: TextStyle(
                             fontSize: 11,
@@ -10711,7 +11703,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: kPageFieldBg,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: kPageBorder),
       ),
@@ -10720,9 +11712,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
         children: [
           SwitchListTile.adaptive(
             value: _femaleConditionEnabled,
-            activeColor: kPagePrimary,
+            activeColor: kPageAccent,
             contentPadding: EdgeInsets.zero,
-            title: const Text(
+            title: Text(
               '컨디션주기 체크',
               style: TextStyle(
                 fontSize: 13,
@@ -10730,7 +11722,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 color: kPageText,
               ),
             ),
-            subtitle: const Text(
+            subtitle: Text(
               '회원 동의 후 필요한 경우에만 기록해 주세요. 레슨 강도와 컨디션 체크 용도로만 사용됩니다.',
               style: TextStyle(
                 fontSize: 11,
@@ -10754,7 +11746,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 labelText: '최근 컨디션 시작일',
                 hintText: '예: 2026-06-01',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: kPageFieldBg,
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.date_range_rounded),
                   onPressed: () async {
@@ -10792,7 +11784,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 hintText: '예: 28',
                 suffixText: '일',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: kPageFieldBg,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -10807,7 +11799,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 labelText: '강도 조절 메모',
                 hintText: '예: 해당 주간은 복부 압박/고강도 하체운동 확인',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: kPageFieldBg,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -10856,8 +11848,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
               icon: const Icon(Icons.document_scanner_outlined),
               label: const Text('인바디 사진 읽기'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: kPagePrimary,
-                side: BorderSide(color: kPagePrimary.withOpacity(0.22)),
+                foregroundColor: kPageAccent,
+                side: BorderSide(color: kPageAccent.withOpacity(0.22)),
                 minimumSize: const Size(0, 44),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -10876,7 +11868,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                     '최근 인바디 ${DateFormat('yyyy-MM-dd').format(_latestInbodyMeasuredAt!)}',
                   if (_latestInbodyImageUrl != null) '이미지 저장됨',
                 ].join(' · '),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: kPageMuted,
@@ -10936,7 +11928,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'BMI',
                                     style: TextStyle(
                                       fontSize: 12,
@@ -10948,10 +11940,10 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                     (_inbodyNotProvided || bmi <= 0)
                                         ? '-'
                                         : bmi.toStringAsFixed(2),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w900,
-                                      color: kPagePrimary,
+                                      color: kPageAccent,
                                     ),
                                   ),
                                 ],
@@ -10965,7 +11957,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                         value: _inbodyNotProvided,
                         onChanged:
                             (v) => setState(() => _inbodyNotProvided = v),
-                        activeColor: kPagePrimary,
+                        activeColor: kPageAccent,
                         contentPadding: EdgeInsets.zero,
                         title: const Text(
                           '인바디 미기입',
@@ -11034,7 +12026,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
       trailing: Switch.adaptive(
         value: _inbodyNotProvided,
         onChanged: (v) => setState(() => _inbodyNotProvided = v),
-        activeColor: kPagePrimary,
+        activeColor: kPageAccent,
       ),
       child: AbsorbPointer(
         absorbing: _inbodyNotProvided,
@@ -11070,7 +12062,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'BMI (자동 계산)',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
@@ -11081,9 +12073,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                       (_inbodyNotProvided || bmi <= 0)
                           ? '-'
                           : bmi.toStringAsFixed(2),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: kPagePrimary,
+                        color: kPageAccent,
                       ),
                     ),
                   ],
@@ -11117,7 +12109,8 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final remain = _lessonsNotRegistered ? 0 : rawRemain;
     final lessonType = _lessonsNotRegistered ? '미입력' : _lessonType;
 
-    if (total >= 100) {
+    // 받은 레슨 횟수(총 − 잔여) 기준: 재등록을 합산해 총 횟수가 누적돼도 정확하다.
+    if ((total - remain).clamp(0, total) >= 100) {
       items.add('100번째 레슨');
     }
 
@@ -11169,7 +12162,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final hasAny = autoItems.isNotEmpty || firestoreItems.isNotEmpty;
 
     if (!hasAny) {
-      return const Text(
+      return Text(
         '표시할 MORE 포커스 없음',
         style: TextStyle(
           fontSize: 11.5,
@@ -11401,9 +12394,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 });
                                 await _saveMilestoneSettings();
                               },
-                              activeColor: kPagePrimary,
+                              activeColor: kPageAccent,
                               contentPadding: EdgeInsets.zero,
-                              title: const Text(
+                              title: Text(
                                 '자동 MORE 포커스',
                                 style: TextStyle(
                                   fontSize: 13,
@@ -11411,7 +12404,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   color: kPageText,
                                 ),
                               ),
-                              subtitle: const Text(
+                              subtitle: Text(
                                 '100번째 레슨, 재등록 10회, 잔여 5회 이하 등을 자동 표시',
                                 style: TextStyle(
                                   fontSize: 11,
@@ -11429,9 +12422,9 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                 });
                                 await _saveMilestoneSettings();
                               },
-                              activeColor: kPagePrimary,
+                              activeColor: kPageAccent,
                               contentPadding: EdgeInsets.zero,
-                              title: const Text(
+                              title: Text(
                                 'D-DAY 후속 케어',
                                 style: TextStyle(
                                   fontSize: 13,
@@ -11439,7 +12432,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                                   color: kPageText,
                                 ),
                               ),
-                              subtitle: const Text(
+                              subtitle: Text(
                                 '목표형 D-DAY 완료 후 필요한 MORE 포커스를 자동으로 만들어요',
                                 style: TextStyle(
                                   fontSize: 11,
@@ -11509,13 +12502,13 @@ class _ClientCardPageState extends State<ClientCardPage> {
                           children: [
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.auto_awesome_rounded,
                                   size: 15,
-                                  color: kPagePrimary,
+                                  color: kPageAccent,
                                 ),
                                 const SizedBox(width: 6),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
                                     'MORE 포커스',
                                     style: TextStyle(
@@ -11619,7 +12612,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: kPagePrimary.withOpacity(0.10),
+              color: kPageAccent.withOpacity(0.10),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -11627,7 +12620,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   ? Icons.event_available_rounded
                   : Icons.event_note_rounded,
               size: 19,
-              color: kPagePrimary,
+              color: kPageAccent,
             ),
           ),
           const SizedBox(width: 10),
@@ -11635,7 +12628,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '다음 예약일 · 자동',
                   style: TextStyle(
                     fontSize: 12.5,
@@ -11654,7 +12647,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   '홈 스케줄러에 이 회원이 연결된 일정 기준으로 자동 갱신돼요.',
                   style: TextStyle(
                     fontSize: 11,
@@ -11843,16 +12836,16 @@ class _ClientCardPageState extends State<ClientCardPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
+            color: kPageFieldBg,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
+            border: Border.all(color: kPageBorder),
           ),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF6B7280),
+              color: kPageMuted,
             ),
           ),
         ),
@@ -11927,6 +12920,47 @@ class _ClientCardPageState extends State<ClientCardPage> {
     }
   }
 
+  void _syncCardHeaderToScroll() {
+    if (_cardHeaderLocked || !_formScrollController.hasClients) return;
+    final position = _formScrollController.position;
+    final offset = position.pixels;
+    if (!_cardHeaderCollapsed) {
+      // 접으면 폼 영역이 커져 스크롤 범위가 줄어든다. 접은 뒤에도 같은 자리가 남을 때만 접어서
+      // 짧은 폼에서 접힘·펼침이 번갈아 일어나지 않게 한다.
+      if (offset > _cardHeaderCollapseOffset &&
+          offset <= position.maxScrollExtent - _cardHeaderShrink) {
+        _setCardHeaderCollapsed(true);
+      }
+    } else if (offset <= _cardHeaderExpandOffset) {
+      _setCardHeaderCollapsed(false);
+    }
+  }
+
+  void _setCardHeaderCollapsed(bool collapsed) {
+    if (!mounted || collapsed == _cardHeaderCollapsed) return;
+    setState(() {
+      _cardHeaderCollapsed = collapsed;
+      _cardHeaderLocked = true;
+    });
+    // 접힘·펼침 애니메이션이 끝나기 전에는 스크롤 변화로 다시 바꾸지 않는다.
+    Future<void>.delayed(const Duration(milliseconds: 320), () {
+      if (!mounted) return;
+      _cardHeaderLocked = false;
+      _syncCardHeaderToScroll();
+    });
+  }
+
+  void _expandCardHeaderFromBar() {
+    if (_formScrollController.hasClients) {
+      _formScrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    }
+    _setCardHeaderCollapsed(false);
+  }
+
   void _showComingSoonSnack(String label) {
     if (!mounted) return;
 
@@ -11934,12 +12968,23 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Widget _buildClientCardLoadingHeader() {
-    return Container(
-      height: 280,
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: MembershipCardFlip.statusBarStyle(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(height: MediaQuery.paddingOf(context).top),
+          Container(
+            height: MembershipCardFlip.cardHeight,
+            decoration: BoxDecoration(
+              gradient: context.mtfHeaderGradient,
+              borderRadius: BorderRadius.circular(
+                MembershipCardFlip.headerBottomRadius,
+              ),
+            ),
+          ),
+        ],
       ),
-      child: const SizedBox.shrink(),
     );
   }
 
@@ -11969,6 +13014,7 @@ class _ClientCardPageState extends State<ClientCardPage> {
   }
 
   Widget _buildClientCardContent(BuildContext context) {
+    PagePalette.sync(Theme.of(context));
     if (!_newCardAccessResolved) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -12001,140 +13047,183 @@ class _ClientCardPageState extends State<ClientCardPage> {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          border: Border(top: BorderSide(color: colors.outline)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: [
-              Expanded(
-                child: _ClientCardBottomActionButton(
-                  icon: Icons.edit_note_rounded,
-                  label: '레슨일지',
-                  onTap: _openTrainingLogWithConsent,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ClientCardBottomActionButton(
-                  icon: Icons.description_outlined,
-                  label: '레슨계약서',
-                  onTap: _openContract,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ClientCardBottomActionButton(
-                  icon: Icons.save_outlined,
-                  label:
-                      _isSaving
-                          ? '저장 중…'
-                          : _isEditMode
-                          ? '수정 저장'
-                          : '회원 저장',
-                  filled: true,
-                  onTap: _isSaving ? null : _submitAndStay,
-                ),
-              ),
-            ],
+      body: ScrollRevealBottomBar(
+        forceVisible: _isSaving,
+        bar: Container(
+          key: const Key('client_card_bottom_bar'),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            border: Border(top: BorderSide(color: colors.outline)),
           ),
-        ),
-      ),
-      body: Column(
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeOutCubic,
-            child:
-                !_isClientCardLoaded
-                    ? _buildClientCardLoadingHeader()
-                    : MembershipCardFlip(
-                      key: ValueKey('membership_card_${widget.memberId}'),
-                      onBackTap: () => Navigator.of(context).maybePop(),
-                      onMoreSelected: _handleMembershipCardMoreSelected,
-                      gradientColors: _resolveCardGradient(
-                        _membershipGrade,
-                        _memberStatus,
-                      ),
-                      icChipColors: _resolveIcChipColors(_membershipGrade),
-                      representativeBadge: _representativeBadge,
-                      badges: _achievementBadges,
-                      onBadgeTap: _showBadgeBubble,
-                      avatarImage: _headerAvatarImage(),
-                      name:
-                          _nameC.text.trim().isEmpty
-                              ? '이름 미입력'
-                              : _nameC.text.trim(),
-                      phone: _prettyPhone(_phoneC.text),
-                      lessonType: _headerLessonTypeText(),
-                      totalSessions: _totalSessionValue,
-                      remainSessions: _remainSessionValue,
-                      membershipLabel: _headerMembershipLabelText(),
-                      membershipPeriod: _headerMembershipPeriodText(),
-                      daysLeft: _headerDaysLeft(),
-                      groupLabel: _membershipCardGroupLabelText(),
-                      memoText: _noteC.text.trim(),
-                      reregisterCount: _reregisterCount,
-                      noShowDeductedCount: _noShowDeductedCount,
-                      noShowUndeductedCount: _noShowUndeductedCount,
-                      serviceCount: _serviceSessionCount,
-                      firstRegisteredAt: _passStart,
-                      anniversaryLabel: _anniversaryLabelText(),
-                      anniversaryDate: _anniversaryDate,
-                      birthdayDate: _birthDate,
-                      contractSigned: _contractSigned,
-                      contractSignedAt: _contractSignedAt,
-                      consentAgreed: _trainingLogConsentAgreed,
-                      confirmTalkEnabled: _confirmTalkEnabled,
-                      onAvatarTap: _pickProfileImage,
-                      onAvatarLongPress: _clearProfileImage,
-                      onMemoTap: _jumpToNoteEditor,
-                      onContractTap: _openContract,
-                      onConsentTap: _handleConsentTapFromCard,
-                      onConfirmTalkToggle: _setConfirmTalkEnabledFromCard,
-                    ),
-          ),
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 100),
-                children: [
-                  if (!_hideTopActionCards && !_usesInlineConsentCard) ...[
-                    _trainingLogConsentCard(),
-                    const SizedBox(height: 8),
-                  ],
-                  _buildRequiredFieldsNoticeCard(),
-                  if (_missingRequiredFields().isNotEmpty)
-                    const SizedBox(height: 8),
-                  _basicInfoSection(),
-                  const SizedBox(height: 8),
-                  if (_usesInlineConsentCard &&
-                      _isClientCardLoaded &&
-                      _missingRequiredFields().isEmpty) ...[
-                    _trainingLogConsentCard(),
-                    const SizedBox(height: 8),
-                  ],
-                  _memberSetupSection(),
-                  const SizedBox(height: 8),
-                  _lessonMembershipSection(),
-                  const SizedBox(height: 8),
-                  _healthSection(),
-                  const SizedBox(height: 8),
-                  _etcSection(),
-                  const SizedBox(height: 8),
-                ],
-              ),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _ClientCardBottomActionButton(
+                    icon: Icons.description_outlined,
+                    label: '레슨계약서',
+                    onTap: _openNewLessonContract,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ClientCardBottomActionButton(
+                    icon: Icons.edit_note_rounded,
+                    label: '레슨일지',
+                    onTap: _openTrainingLogWithConsent,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ClientCardBottomActionButton(
+                    icon: Icons.save_outlined,
+                    label:
+                        _isSaving
+                            ? '저장 중…'
+                            : _isEditMode
+                            ? '수정 저장'
+                            : '회원 저장',
+                    filled: true,
+                    onTap: _isSaving ? null : _submitAndStay,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+        body: Column(
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeOutCubic,
+              child:
+                  !_isClientCardLoaded
+                      ? _buildClientCardLoadingHeader()
+                      : AnimatedCrossFade(
+                        key: ValueKey(
+                          'membership_card_header_${widget.memberId}',
+                        ),
+                        duration: const Duration(milliseconds: 260),
+                        sizeCurve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        crossFadeState:
+                            _cardHeaderCollapsed
+                                ? CrossFadeState.showSecond
+                                : CrossFadeState.showFirst,
+                        secondChild: MembershipCardCollapsedBar(
+                          gradientColors: _resolveCardGradient(
+                            _membershipGrade,
+                            _memberStatus,
+                          ),
+                          icChipColors: _resolveIcChipColors(_membershipGrade),
+                          representativeBadge: _representativeBadge,
+                          avatarImage: _headerAvatarImage(),
+                          name:
+                              _nameC.text.trim().isEmpty
+                                  ? '이름 미입력'
+                                  : _nameC.text.trim(),
+                          phone: _prettyPhone(_phoneC.text),
+                          lessonLine: membershipCardLessonLine(
+                            lessonType: _headerLessonTypeText(),
+                            totalSessions: _totalSessionValue,
+                            remainSessions: _remainSessionValue,
+                          ),
+                          onBackTap: () => Navigator.of(context).maybePop(),
+                          onExpandTap: _expandCardHeaderFromBar,
+                        ),
+                        firstChild: MembershipCardFlip(
+                          key: ValueKey('membership_card_${widget.memberId}'),
+                          onBackTap: () => Navigator.of(context).maybePop(),
+                          onMoreSelected: _handleMembershipCardMoreSelected,
+                          gradientColors: _resolveCardGradient(
+                            _membershipGrade,
+                            _memberStatus,
+                          ),
+                          icChipColors: _resolveIcChipColors(_membershipGrade),
+                          representativeBadge: _representativeBadge,
+                          badges: _achievementBadges,
+                          onBadgeTap: _showBadgeBubble,
+                          avatarImage: _headerAvatarImage(),
+                          name:
+                              _nameC.text.trim().isEmpty
+                                  ? '이름 미입력'
+                                  : _nameC.text.trim(),
+                          phone: _prettyPhone(_phoneC.text),
+                          lessonType: _headerLessonTypeText(),
+                          totalSessions: _totalSessionValue,
+                          remainSessions: _remainSessionValue,
+                          membershipLabel: _headerMembershipLabelText(),
+                          membershipPeriod: _headerMembershipPeriodText(),
+                          daysLeft: _headerDaysLeft(),
+                          groupLabel: _membershipCardGroupLabelText(),
+                          memoText: _noteC.text.trim(),
+                          reregisterCount: _reregisterCount,
+                          noShowDeductedCount: _noShowDeductedCount,
+                          noShowUndeductedCount: _noShowUndeductedCount,
+                          serviceCount: _serviceSessionCount,
+                          firstRegisteredAt: _passStart,
+                          anniversaryLabel: _anniversaryLabelText(),
+                          anniversaryDate: _anniversaryDate,
+                          birthdayDate: _birthDate,
+                          contractSigned: _contractSigned,
+                          contractSignedAt: _contractSignedAt,
+                          consentAgreed: _trainingLogConsentAgreed,
+                          confirmTalkEnabled: _confirmTalkEnabled,
+                          onAvatarTap: _pickProfileImage,
+                          onAvatarLongPress: _clearProfileImage,
+                          onMemoTap: _jumpToNoteEditor,
+                          onContractTap: _openContractChooser,
+                          onConsentTap: _handleConsentTapFromCard,
+                          onConfirmTalkToggle: _setConfirmTalkEnabledFromCard,
+                        ),
+                      ),
+            ),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  controller: _formScrollController,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    14,
+                    16,
+                    96 + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  children: [
+                    if (!_hideTopActionCards && !_usesInlineConsentCard) ...[
+                      _trainingLogConsentCard(),
+                      const SizedBox(height: 8),
+                    ],
+                    _buildRequiredFieldsNoticeCard(),
+                    if (_missingRequiredFields().isNotEmpty)
+                      const SizedBox(height: 8),
+                    _basicInfoSection(),
+                    const SizedBox(height: 8),
+                    if (_usesInlineConsentCard &&
+                        _isClientCardLoaded &&
+                        _missingRequiredFields().isEmpty) ...[
+                      _trainingLogConsentCard(),
+                      const SizedBox(height: 8),
+                    ],
+                    _memberSetupSection(),
+                    const SizedBox(height: 8),
+                    _lessonMembershipSection(),
+                    const SizedBox(height: 8),
+                    _healthSection(),
+                    const SizedBox(height: 8),
+                    _etcSection(),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -12240,13 +13329,13 @@ class _DaumPostcodeSearchPageState extends State<_DaumPostcodeSearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: kPageCard,
       appBar: AppBar(
         title: const Text(
           '우편번호 찾기',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: kPageCard,
         foregroundColor: kPageText,
         elevation: 0,
       ),
@@ -12526,15 +13615,7 @@ class _EmptyAchievementSlot extends StatelessWidget {
       height: 30,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
-        color: Colors.white.withOpacity(0.045),
-        border: Border.all(color: Colors.white.withOpacity(0.14), width: 0.8),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.add_rounded,
-          size: 13,
-          color: Colors.white.withValues(alpha: 0.16),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.20), width: 0.8),
       ),
     );
   }
@@ -13009,7 +14090,7 @@ class _SectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: kPageCard,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: kPageBorder),
         boxShadow: [
@@ -13029,10 +14110,10 @@ class _SectionCard extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: kPagePrimary.withOpacity(0.10),
+                  color: kPageAccent.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: kPagePrimary, size: 20),
+                child: Icon(icon, color: kPageAccent, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -13041,7 +14122,7 @@ class _SectionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
                         color: kPageText,
@@ -13051,7 +14132,7 @@ class _SectionCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: kPageMuted,
@@ -13319,13 +14400,13 @@ class _SoftInfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
+        color: kPageFieldBg,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: kPageBorder),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
           color: kPageMuted,
@@ -13391,28 +14472,33 @@ class _ClientCardBottomActionButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Ink(
-          height: 58,
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: borderColor),
           ),
-          child: Column(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 19, color: fgColor),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10.6,
-                  height: 1.05,
-                  fontWeight: FontWeight.w900,
-                  color: fgColor,
-                  letterSpacing: -0.2,
+              Icon(icon, size: 18, color: fgColor),
+              const SizedBox(width: 6),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.1,
+                      fontWeight: FontWeight.w900,
+                      color: fgColor,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
                 ),
               ),
             ],

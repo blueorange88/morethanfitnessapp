@@ -56,7 +56,87 @@ void main() {
     );
   });
 
-  test('상태·그룹·태그는 AND로 결합되고 서로 초기화하지 않는다', () {
+  test('그룹·태그를 고르면 활성 회원만, 전체에서는 휴면·만료도 보인다', () {
+    bool matches(
+      String status, {
+      String? group,
+      String? tag,
+      PersonalMemberStatusFilter filter = PersonalMemberStatusFilter.all,
+    }) {
+      return matchesPersonalMemberListClassification(
+        memberStatus: status,
+        memberGroupId: 'group-gym',
+        memberTagIds: const ['tag-vip'],
+        statusFilter: filter,
+        selectedGroupId: group,
+        defaultGroupId: '__ungrouped__',
+        selectedTagId: tag,
+      );
+    }
+
+    expect(matches('활성', group: 'group-gym'), isTrue);
+    expect(matches('만료', group: 'group-gym'), isFalse);
+    expect(matches('휴면', group: 'group-gym'), isFalse);
+    expect(matches('만료', tag: 'tag-vip'), isFalse);
+    expect(matches('만료'), isTrue);
+    expect(matches('휴면'), isTrue);
+    expect(matches('만료', filter: PersonalMemberStatusFilter.expired), isTrue);
+  });
+
+  test('휴면·만료 칩은 그룹·태그 선택을 풀고 그룹·태그 칩은 상태를 푼다', () {
+    final source = File('lib/pages/client_list_page.dart').readAsStringSync();
+    final start = source.indexOf('void _selectPersonalStatusExclusively(');
+    final end = source.indexOf('Future<bool> _guardPersonalTaxonomyFeature(');
+    final helper = source.substring(start, end);
+    expect(helper, contains('_selectedPersonalTagIdNotifier.value = null'));
+    expect(helper, contains('_setSelectedGroupId(null)'));
+    expect(helper, contains('_setSelectedPersonalStatusFilter(status)'));
+
+    final handlerStart = source.indexOf(
+      'Future<void> _handlePersonalTaxonomyFilterEntry(',
+    );
+    final handler = source.substring(handlerStart, start);
+    expect(
+      handler,
+      contains(
+        '_selectPersonalStatusExclusively(PersonalMemberStatusFilter.dormant)',
+      ),
+    );
+    expect(
+      handler,
+      contains(
+        '_selectPersonalStatusExclusively(PersonalMemberStatusFilter.expired)',
+      ),
+    );
+    expect(
+      handler.substring(handler.indexOf('_handleGroupFilter(entry.id)')),
+      contains(
+        '_setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.all)',
+      ),
+    );
+  });
+
+  test('휴면·만료는 회원 블럭 그룹 메뉴에서 상태 전환으로 옮긴다', () {
+    final source = File('lib/pages/client_list_page.dart').readAsStringSync();
+    final start = source.indexOf('Future<void> _handleMemberQuickGroupChange(');
+    final end = source.indexOf('void _handleGroupFilter(', start);
+    final handler = source.substring(start, end);
+    expect(handler, contains("_updateMemberStatus(member, '휴면')"));
+    expect(handler, contains("_updateMemberStatus(member, '만료')"));
+    expect(handler, contains("nextState: 'active'"));
+    final menuStart = source.indexOf(
+      'List<_MemberCardGroupMenuItem> _buildMemberCardGroupMenuItems()',
+    );
+    final menu = source.substring(
+      menuStart,
+      source.indexOf('Future<void> _handleMemberQuickGroupChange(', menuStart),
+    );
+    expect(menu, isNot(contains('_isPersonalWorkspace')));
+    expect(menu, contains('_systemDormantGroupId'));
+    expect(menu, contains('_systemExpiredGroupId'));
+  });
+
+  test('상태·그룹·태그는 AND로 결합된다(상태 칩 선택 중)', () {
     expect(
       matchesPersonalMemberListClassification(
         memberStatus: '만료',
@@ -161,9 +241,10 @@ void main() {
     expect(source, contains('SystemUiOverlayStyle.light'));
     expect(source, contains('foreground = AppColors.lightSurface'));
     expect(source, contains('height: 44'));
-    expect(source, contains('dimension: 42'));
+    // 뒤로가기는 공용 버튼(42×42)을 쓴다.
+    expect(source, contains('MtfBackButton(onTap: onBackTap'));
     expect(source, contains('fontSize: 20'));
-    expect(source, contains('bottom: Radius.circular(30)'));
+    expect(source, contains('bottom: Radius.circular(kMtfHeaderBottomRadius)'));
     expect(source, isNot(contains('appBar: AppBar(')));
     expect(source, contains('tokens.memberListBackground'));
     expect(source, contains('tokens.cardSurface'));

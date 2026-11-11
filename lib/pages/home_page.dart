@@ -15,6 +15,8 @@ import 'personal_training_log_page.dart';
 import 'stats_page.dart';
 import 'client_list_page.dart';
 import 'contract_page.dart';
+import 'lesson_contract/lesson_contract_form_page.dart';
+import 'lesson_contract/member_contracts_page.dart';
 import 'settings_page.dart';
 import 'my_page.dart';
 import '../services/notification_service.dart';
@@ -39,6 +41,7 @@ import '../utils/home_today_schedule_focus.dart';
 import '../utils/personal_tier_parser.dart';
 
 import '../models/lesson_type_item.dart';
+import '../widgets/lesson_type_color_picker.dart';
 import '../models/home_lesson_editor_result.dart';
 import '../models/home_lesson_save_request.dart';
 import '../models/home_lesson_save_result.dart';
@@ -70,6 +73,7 @@ import '../widgets/home/lesson_editor/home_lesson_editor_header.dart';
 import '../widgets/home/lesson_editor/home_lesson_day_selector.dart';
 import '../widgets/home/lesson_editor/home_lesson_type_selector.dart';
 import '../widgets/home/lesson_editor/home_member_connection_hint.dart';
+import '../widgets/home/lesson_editor/home_member_session_caption.dart';
 import '../widgets/home/lesson_editor/home_recent_members_section.dart';
 import '../widgets/home/lesson_editor/home_lesson_footer_actions.dart';
 import '../widgets/home/lesson_editor/home_lesson_quick_actions_section.dart';
@@ -168,16 +172,6 @@ enum HomeAction {
 }
 
 const List<String> kSeedLessonTypeNames = ['PT', '필라테스', '그룹레슨', 'OT상담'];
-
-const List<Color> kLessonTypePalette = [
-  Color(0xFF4F46E5), // indigo
-  Color(0xFF7C3AED), // purple
-  Color(0xFF2563EB), // blue
-  Color(0xFF0F766E), // teal
-  Color(0xFF16A34A), // green
-  Color(0xFFF97316), // orange
-  Color(0xFFDB2777), // pink
-];
 
 @visibleForTesting
 Widget buildHomeMyPageDestination({String? personalOwnerUid}) =>
@@ -330,6 +324,8 @@ class _HomePageState extends State<HomePage>
   bool _bannerMembersReady = false;
   bool _bannerProductsReady = false;
   bool _scheduleStreamReady = false;
+  final Set<String> _deletedMemberCleanupBlockedDocIds = <String>{};
+  bool _deletedMemberCleanupRunning = false;
   bool _bannerTierReadFailed = false;
   String _lastHeaderWorkloadLogSignature = '';
 
@@ -471,6 +467,8 @@ class _HomePageState extends State<HomePage>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
+        // 다크 모드에서도 읽히도록 테마 색을 쓴다(하드코딩 흰색/회색 금지).
+        final colors = Theme.of(sheetContext).colorScheme;
         return SafeArea(
           top: false,
           child: Padding(
@@ -480,7 +478,7 @@ class _HomePageState extends State<HomePage>
                 maxHeight: MediaQuery.of(sheetContext).size.height * 0.82,
               ),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
@@ -497,26 +495,23 @@ class _HomePageState extends State<HomePage>
                     width: 42,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE5E7EB),
+                      color: colors.outlineVariant,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(18, 16, 18, 10),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.assignment_outlined,
-                          color: Color(0xFF4F46E5),
-                        ),
-                        SizedBox(width: 8),
+                        Icon(Icons.assignment_outlined, color: colors.primary),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '회원권계약서 작성할 회원 선택',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF111827),
+                              color: colors.onSurface,
                             ),
                           ),
                         ),
@@ -545,11 +540,11 @@ class _HomePageState extends State<HomePage>
                           child: Container(
                             padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: const Color(0xFFE5E7EB),
+                              color: colors.surfaceContainerHighest.withValues(
+                                alpha: 0.5,
                               ),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: colors.outlineVariant),
                             ),
                             child: Row(
                               children: [
@@ -557,12 +552,14 @@ class _HomePageState extends State<HomePage>
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEEF2FF),
+                                    color: colors.primary.withValues(
+                                      alpha: 0.12,
+                                    ),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.person_rounded,
-                                    color: Color(0xFF4F46E5),
+                                    color: colors.primary,
                                   ),
                                 ),
                                 const SizedBox(width: 11),
@@ -575,10 +572,10 @@ class _HomePageState extends State<HomePage>
                                         member.name,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w900,
-                                          color: Color(0xFF111827),
+                                          color: colors.onSurface,
                                         ),
                                       ),
                                       const SizedBox(height: 3),
@@ -586,10 +583,10 @@ class _HomePageState extends State<HomePage>
                                         periodText,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w700,
-                                          color: Color(0xFF6B7280),
+                                          color: colors.onSurfaceVariant,
                                         ),
                                       ),
                                       const SizedBox(height: 3),
@@ -597,18 +594,18 @@ class _HomePageState extends State<HomePage>
                                         '잔여 ${member.remainingSessions}회 / 총 ${member.totalSessions}회',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
-                                          color: Color(0xFF9CA3AF),
+                                          color: colors.onSurfaceVariant,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.chevron_right_rounded,
-                                  color: Color(0xFF9CA3AF),
+                                  color: colors.onSurfaceVariant,
                                 ),
                               ],
                             ),
@@ -874,7 +871,7 @@ class _HomePageState extends State<HomePage>
   Future<void> _loadLessonTypePrefs() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final raw = prefs.getString('home_lesson_types_v3');
+    final raw = prefs.getString(kHomeLessonTypesPrefsKey);
     final lastId = prefs.getString('home_last_lesson_type_id') ?? '';
 
     List<LessonTypeItem> nextItems = [];
@@ -898,7 +895,7 @@ class _HomePageState extends State<HomePage>
     if (nextItems.isEmpty) {
       nextItems = _buildSeedLessonTypes();
       await prefs.setString(
-        'home_lesson_types_v3',
+        kHomeLessonTypesPrefsKey,
         jsonEncode(nextItems.map((e) => e.toMap()).toList()),
       );
     }
@@ -917,7 +914,7 @@ class _HomePageState extends State<HomePage>
   Future<void> _saveLessonTypePrefs() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'home_lesson_types_v3',
+      kHomeLessonTypesPrefsKey,
       jsonEncode(_lessonTypes.map((e) => e.toMap()).toList()),
     );
     await prefs.setString(
@@ -1647,13 +1644,29 @@ class _HomePageState extends State<HomePage>
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     required Set<String> deletedMemberIds,
   }) async {
+    if (_deletedMemberCleanupRunning) return;
+    final targetIds = deletedMemberCleanupTargetDocIds(
+      memberIdByDocId: {
+        for (final doc in docs)
+          doc.id: (doc.data()['memberId'] ?? '').toString(),
+      },
+      deletedMemberIds: deletedMemberIds,
+      blockedDocIds: _deletedMemberCleanupBlockedDocIds,
+    );
+    if (targetIds.isEmpty) return;
+
+    _deletedMemberCleanupRunning = true;
     try {
       await HomeDeletedMemberScheduleService.cleanupDeletedMemberScheduleLinks(
-        docs: docs,
+        docs: docs.where((doc) => targetIds.contains(doc.id)).toList(),
         deletedMemberIds: deletedMemberIds,
       );
     } catch (e) {
+      // 거부된 쓰기는 롤백 스냅샷을 다시 불러 같은 정리를 무한 반복하므로 이번 실행에서는 접는다.
+      _deletedMemberCleanupBlockedDocIds.addAll(targetIds);
       debugPrint('삭제 회원 스케줄 연결 정리 실패: $e');
+    } finally {
+      _deletedMemberCleanupRunning = false;
     }
   }
 
@@ -4501,7 +4514,31 @@ class _HomePageState extends State<HomePage>
     await prefs.setBool(_contractFirstEntryCelebratedPrefsKey, true);
   }
 
-  Future<void> _openContractStartChatSheet() async {
+  /// 일반 워크스페이스의 햄버거 `계약서 관리`: 모든 회원의 레슨계약서를 검색·필터로 모아 보고, 새
+  /// 레슨계약서·회원권계약서 작성도 이 화면에서 시작한다. 등급 확인과 최초 1회 축하 시트는
+  /// [_openContractStartChatSheet]를 그대로 거친다.
+  Future<void> _openContractManageFromHome() {
+    return _openContractStartChatSheet(opener: _openContractManagePage);
+  }
+
+  Future<void> _openContractManagePage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => MemberContractsPage(
+              personalOwnerUid: _personalOwnerUid,
+              memberId: null,
+              autoStartWhenEmpty: false,
+              onOpenMembership: _openMembershipContractFromHome,
+            ),
+      ),
+    );
+  }
+
+  Future<void> _openContractStartChatSheet({
+    Future<void> Function()? opener,
+  }) async {
+    final open = opener ?? _openNewContractPage;
     String trainerName = '강사님';
 
     try {
@@ -4560,11 +4597,11 @@ class _HomePageState extends State<HomePage>
 
         if (!mounted) return;
 
-        await _openNewContractPage();
+        await open();
         return;
       }
 
-      await _openNewContractPage();
+      await open();
       return;
     }
 
@@ -4572,6 +4609,16 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _openNewContractPage() async {
+    if (_isPersonalWorkspace) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder:
+              (_) =>
+                  LessonContractFormPage(personalOwnerUid: _personalOwnerUid),
+        ),
+      );
+      return;
+    }
     final newMemberId =
         FirebaseFirestore.instance.collection('members').doc().id;
 
@@ -5559,8 +5606,48 @@ class _HomePageState extends State<HomePage>
         (session['memberDeleteStatus'] ?? '').toString() == 'pending_delete';
   }
 
-  Future<void> _refreshScheduleCountsFromMembers() async {
+  Future<void>? _scheduleCountsRefreshInFlight;
+  bool _scheduleCountsRefreshDirty = false;
+
+  /// 횟수 새로고침은 일정이 바뀔 때마다(저장 직후 스냅샷이 두 번 오기도 한다) 불린다.
+  /// 이미 도는 중이면 겹쳐서 또 돌리지 않고, 끝난 뒤 한 번만 다시 돌아 최신 상태를 반영한다.
+  /// 기다리는 호출자는 그 재실행까지 끝난 뒤에 이어진다.
+  Future<void> _refreshScheduleCountsFromMembers() {
+    final running = _scheduleCountsRefreshInFlight;
+    if (running != null) {
+      _scheduleCountsRefreshDirty = true;
+      return running;
+    }
+
+    final run = () async {
+      do {
+        _scheduleCountsRefreshDirty = false;
+        await _refreshScheduleCountsFromMembersOnce();
+      } while (_scheduleCountsRefreshDirty && mounted);
+    }();
+    final tracked = run.whenComplete(() {
+      _scheduleCountsRefreshInFlight = null;
+    });
+    _scheduleCountsRefreshInFlight = tracked;
+    return tracked;
+  }
+
+  Future<void> _refreshScheduleCountsFromMembersOnce() async {
     if (scheduleData.isEmpty) return;
+
+    // 같은 회원의 레슨이 여러 칸이어도 회원마다 한 번만 읽는다.
+    final deletedMemberMemo = <String, Future<bool>>{};
+    final smartFieldsMemoMap = <String, Future<Map<String, dynamic>>>{};
+    final countFieldsMemoMap = <String, Future<Map<String, String>>>{};
+    Future<bool> isDeletedMemo(String id) =>
+        deletedMemberMemo.putIfAbsent(id, () => _isDeletedMemberId(id));
+    Future<Map<String, dynamic>> smartFieldsMemo(String id) =>
+        smartFieldsMemoMap.putIfAbsent(
+          id,
+          () => _loadMemberSmartAlarmFields(id),
+        );
+    Future<Map<String, String>> countFieldsMemo(String id) => countFieldsMemoMap
+        .putIfAbsent(id, () => _loadMemberSessionCountFields(id));
 
     final upsert = <String, Map<String, dynamic>>{};
 
@@ -5589,7 +5676,7 @@ class _HomePageState extends State<HomePage>
       final memberId = (raw['memberId'] ?? '').toString().trim();
       if (memberId.isEmpty) continue;
 
-      final memberDeleted = await _isDeletedMemberId(memberId);
+      final memberDeleted = await isDeletedMemo(memberId);
 
       if (memberDeleted) {
         upsert[entry.key] = {
@@ -5601,7 +5688,7 @@ class _HomePageState extends State<HomePage>
         continue;
       }
 
-      final latestSmartFields = await _loadMemberSmartAlarmFields(memberId);
+      final latestSmartFields = await smartFieldsMemo(memberId);
 
       if (_isScheduleLessonConfirmed(raw)) {
         if (latestSmartFields.isEmpty) continue;
@@ -5615,7 +5702,7 @@ class _HomePageState extends State<HomePage>
         continue;
       }
 
-      final latestCountFields = await _loadMemberSessionCountFields(memberId);
+      final latestCountFields = await countFieldsMemo(memberId);
 
       final currentRemain = (raw['remainingSessions'] ?? '').toString();
       final currentTotal = (raw['totalSessions'] ?? '').toString();
@@ -5664,6 +5751,18 @@ class _HomePageState extends State<HomePage>
         upsert[entry.key] = next;
       }
     }
+
+    // 위 루프는 회원 조회를 await 하는 동안 오래 걸릴 수 있습니다. 그 사이 사용자가
+    // 레슨을 삭제했다면 옛 복사본을 다시 넣어 지운 블록이 되살아나므로,
+    // 지금도 같은 레슨이 그 칸에 남아 있는 항목만 반영합니다.
+    upsert.removeWhere((key, value) {
+      final current = scheduleData[key];
+      if (current is! Map) return true;
+      final currentDocId = (current['docId'] ?? '').toString().trim();
+      final nextDocId = (value['docId'] ?? '').toString().trim();
+      if (currentDocId != nextDocId) return true;
+      return nextDocId.isNotEmpty && _isScheduleDocTemporarilyHidden(nextDocId);
+    });
 
     if (upsert.isEmpty) return;
 
@@ -5759,6 +5858,10 @@ class _HomePageState extends State<HomePage>
       phone: phone,
       memo: memo,
       ownerUid: _isPersonalWorkspace ? _personalOwnerUid : null,
+      onLateFailure: (_) {
+        if (!mounted) return;
+        _showError('레슨 저장을 서버가 받아주지 않았어요. 일정을 다시 확인해 주세요.');
+      },
     );
   }
 
@@ -5920,6 +6023,14 @@ class _HomePageState extends State<HomePage>
     if (cleanDocId.isEmpty) return;
 
     _recentlyDeletedScheduleDocIds.remove(cleanDocId);
+    // 삭제 표시는 실제 문서 ID(개인 작업공간은 uid 접두사 포함)로 걸리는데, 저장·붙여넣기는
+    // 접두사 없는 ID로 지우려 해서 방금 지운 자리에 다시 저장한 레슨이 한동안 가려졌다.
+    _recentlyDeletedScheduleDocIds.remove(
+      homeScheduleScopedDocumentId(
+        cleanDocId,
+        _isPersonalWorkspace ? _personalOwnerUid : null,
+      ),
+    );
     if (kDebugMode) {
       debugPrint('[MTF_SCHEDULE_TOMBSTONE] cleared docId=$cleanDocId');
     }
@@ -7431,6 +7542,20 @@ class _HomePageState extends State<HomePage>
       entryPoint: 'linked_member_lesson_contract',
     );
     if (!mounted || !canUse) return;
+
+    if (_isPersonalWorkspace) {
+      // 일반 워크스페이스는 서버가 상태·증빙을 소유하는 레슨계약서 v2로 작성한다.
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder:
+              (_) => LessonContractFormPage(
+                personalOwnerUid: _personalOwnerUid,
+                initialMemberId: cleanMemberId,
+              ),
+        ),
+      );
+      return;
+    }
 
     String trainerName =
         _bannerTrainerName.trim().isEmpty ? '강사님' : _bannerTrainerName.trim();
@@ -9303,6 +9428,8 @@ class _HomePageState extends State<HomePage>
     final nameController = TextEditingController(
       text: existingSession?['name']?.toString() ?? '',
     );
+    // 저장할 때 이름이 비어 있으면 이 칸으로 커서를 옮긴다(시트 안정성을 위해 controller처럼 정리하지 않음).
+    final nameFocusNode = FocusNode();
 
     final sessionCountController = TextEditingController(
       text: _buildSessionCountText(existingSession),
@@ -9894,7 +10021,7 @@ class _HomePageState extends State<HomePage>
                                   16,
                                   12,
                                   16,
-                                  20,
+                                  0,
                                 ),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -9962,6 +10089,30 @@ class _HomePageState extends State<HomePage>
                                             editingColorHex = hex;
                                           });
                                         },
+                                        onCustomColorTap: () async {
+                                          final picked = await showDialog<
+                                            Color
+                                          >(
+                                            context: context,
+                                            builder:
+                                                (_) => LessonTypeColorDialog(
+                                                  title: '색 직접 고르기',
+                                                  initial:
+                                                      lessonTypeColorTryParse(
+                                                        editingColorHex,
+                                                      ) ??
+                                                      kLessonTypePalette.first,
+                                                ),
+                                          );
+                                          if (picked == null || !sheetAlive) {
+                                            return;
+                                          }
+                                          setModalState(() {
+                                            editingColorHex = _colorToHex(
+                                              picked,
+                                            );
+                                          });
+                                        },
                                         onClose: () {
                                           FocusManager.instance.primaryFocus
                                               ?.unfocus();
@@ -10018,11 +10169,23 @@ class _HomePageState extends State<HomePage>
                                     lockEditableArea(
                                       HomeLessonMemberInputSection(
                                         nameController: nameController,
+                                        nameFocusNode: nameFocusNode,
                                         sessionCountController:
                                             sessionCountController,
                                         hasLinkedMember:
                                             hasLinkedMember ||
                                             isConfirmedLesson,
+                                        // 이름 옆 칸에 연결된 회원의 `총 N / 잔여 M (+횟수)`(회원카드·계약서와 같은 값).
+                                        sessionCountBuilder:
+                                            (context, defaultField) =>
+                                                HomeMemberSessionCaption(
+                                                  memberId: selectedMemberId,
+                                                  ownerUid:
+                                                      _isPersonalWorkspace
+                                                          ? _personalOwnerUid
+                                                          : null,
+                                                  fallback: defaultField,
+                                                ),
                                         onNameTap: showMemberInputHintOnce,
                                         showAutocompleteDropdown:
                                             shouldShowHomeMemberSearchSuggestions(
@@ -10448,16 +10611,27 @@ class _HomePageState extends State<HomePage>
                                       ),
                                     ],
                                     const SizedBox(height: 10),
-                                    HomeRecentMembersSection(
-                                      ownerUid:
-                                          _isPersonalWorkspace
-                                              ? _personalOwnerUid
-                                              : null,
-                                      onOpenAllMembersTap:
-                                          openAllMemberSuggestions,
-                                      onPicked: pickSuggestedMember,
-                                    ),
-                                    const SizedBox(height: 18),
+                                    // 이미 저장된 레슨을 열었을 때는 회원 추천을 보여주지 않고,
+                                    // 빈 칸에 새 레슨을 등록할 때만 보여준다.
+                                    if (!isEditMode)
+                                      HomeRecentMembersSection(
+                                        ownerUid:
+                                            _isPersonalWorkspace
+                                                ? _personalOwnerUid
+                                                : null,
+                                        slotDay:
+                                            selectionState
+                                                    .selectedDays
+                                                    .isNotEmpty
+                                                ? selectionState
+                                                    .selectedDays
+                                                    .first
+                                                : day,
+                                        slotTime: editableTime,
+                                        onOpenAllMembersTap:
+                                            openAllMemberSuggestions,
+                                        onPicked: pickSuggestedMember,
+                                      ),
                                     HomeLessonFooterActions(
                                       isEditMode: isEditMode,
                                       isLocked: isConfirmedLesson,
@@ -10822,6 +10996,11 @@ class _HomePageState extends State<HomePage>
                                             setModalState,
                                             saveResult.failureMessage,
                                           );
+                                          // 이름이 비어 있어 저장하지 못했다면 이름 칸에 커서를 놓는다.
+                                          if (saveResult.errorCode ==
+                                              'name_required') {
+                                            nameFocusNode.requestFocus();
+                                          }
                                           return;
                                         }
 
@@ -11870,6 +12049,11 @@ class _HomePageState extends State<HomePage>
                 onMembers: _openMembersPage,
                 onContract: _openContractStartChatSheet,
                 onMembershipContract: _openMembershipContractFromHome,
+                // 일반 워크스페이스는 두 항목 대신 `계약서 관리` 하나로 모아 보여 준다.
+                onContractManage:
+                    _isPersonalWorkspace && _personalOwnerUid.isNotEmpty
+                        ? _openContractManageFromHome
+                        : null,
                 onStats: _openThisWeekStats,
                 onSettings: _openLegacySettingsPage,
                 onUpgrade: () {
@@ -11900,7 +12084,7 @@ class _HomePageState extends State<HomePage>
                     bottomOffset: 110,
                   );
                 },
-                onLiveBeta: () => _showComingSoon('MORE WELLNESS 회원관리'),
+                onLiveBeta: () => _showComingSoon('MORE THAN wellness 회원관리'),
               ),
               body: Center(
                 child: SizedBox(
@@ -11910,7 +12094,10 @@ class _HomePageState extends State<HomePage>
                     children: [
                       SingleChildScrollView(
                         controller: _homeScrollController,
-                        padding: const EdgeInsets.only(bottom: 120),
+                        // 하단 바 눈에 보이는 높이(74)+기기 내비게이션 높이 위로 14만 비운다.
+                        padding: EdgeInsets.only(
+                          bottom: 88 + MediaQuery.paddingOf(context).bottom,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -11925,7 +12112,7 @@ class _HomePageState extends State<HomePage>
                             _buildWeeklyGoal(),
                             const SizedBox(height: 24),
                             _buildRecentClients(),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 12),
                           ],
                         ),
                       ),

@@ -363,10 +363,9 @@ class HomeHeaderSection extends StatelessWidget {
 
     return MtfHeaderNeonOverlay(
       isExpanded: isExpanded,
-      bottomRadius: 32,
-      lineColor: const Color(0xFFD8B4FE),
-      glowColor: const Color(0xFF7C3AED),
-      strokeWidth: 2.3,
+      bottomRadius: kMtfHeaderBottomRadius,
+      intensity: kMtfHeaderGlowIntensityExpandable,
+      strokeWidth: kMtfHeaderGlowStrokeExpandable,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: EdgeInsets.only(

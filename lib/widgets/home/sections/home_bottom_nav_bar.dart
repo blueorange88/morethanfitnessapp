@@ -141,13 +141,35 @@ class HomeBottomNavBar extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '빠른 등록',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: primaryColor,
+                // 다른 탭 라벨과 같은 높이로 내린다(원형 버튼 바로 밑에 붙어 떠 보이지 않게).
+                const SizedBox(height: 16),
+                // 앱의 핵심 기능이라 다른 라벨(11)보다 크고 굵게, 글자 아래에 옅은 골드 그림자를
+                // 깔아 스티커처럼 도드라지게 한다. 글자도 눌러서 등록할 수 있다.
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onCenterTap,
+                  child: Text(
+                    '빠른 등록',
+                    key: const Key('home_quick_register_label'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.3,
+                      // 연한 골드가 흰 바 위에서 안 보이지 않게 대비를 맞춘다.
+                      color: mtfReadableAccent(
+                        primaryColor,
+                        tokens.navigationSheetBackground,
+                      ),
+                      shadows: [
+                        Shadow(
+                          color:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.black.withValues(alpha: 0.45)
+                                  : primaryColor.withValues(alpha: 0.55),
+                          offset: const Offset(0, 1.5),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

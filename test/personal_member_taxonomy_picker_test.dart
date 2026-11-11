@@ -64,6 +64,66 @@ void main() {
     });
   }
 
+  testWidgets('group picker는 옵션을 켜면 휴면·만료를 상태로 반환한다', (tester) async {
+    PersonalGroupPickerResult? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async {
+                    result = await showPersonalGroupPicker(
+                      context: context,
+                      defaultGroupLabel: 'MORE THAN GYM',
+                      groups: const [],
+                      selectedGroupId: null,
+                      showStatusOptions: true,
+                      currentState: 'dormant',
+                    );
+                  },
+                  child: const Text('열기'),
+                ),
+              ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('열기'));
+    await tester.pumpAndSettle();
+    expect(find.text('휴면회원'), findsOneWidget);
+    expect(find.text('만료회원'), findsOneWidget);
+    await tester.tap(find.text('만료회원'));
+    await tester.pumpAndSettle();
+    expect(result?.nextState, 'expired');
+  });
+
+  testWidgets('group picker는 기본값에서 휴면·만료를 보이지 않는다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder:
+              (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () {
+                    showPersonalGroupPicker(
+                      context: context,
+                      defaultGroupLabel: 'MORE THAN GYM',
+                      groups: const [],
+                      selectedGroupId: null,
+                    );
+                  },
+                  child: const Text('열기'),
+                ),
+              ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('열기'));
+    await tester.pumpAndSettle();
+    expect(find.text('휴면회원'), findsNothing);
+    expect(find.text('만료회원'), findsNothing);
+  });
+
   testWidgets('tag picker는 복수 선택 후 정렬된 ID를 반환한다', (tester) async {
     List<String>? result;
     await tester.pumpWidget(

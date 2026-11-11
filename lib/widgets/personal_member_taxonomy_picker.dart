@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import '../models/personal_member_taxonomy.dart';
 
 class PersonalGroupPickerResult {
-  const PersonalGroupPickerResult(this.personalGroupId);
+  const PersonalGroupPickerResult(this.personalGroupId, {this.nextState});
 
   final String? personalGroupId;
+
+  /// 휴면·만료를 골랐을 때만 `dormant`/`expired`. 그룹을 고르면 null이다.
+  final String? nextState;
 }
 
 Future<PersonalGroupPickerResult?> showPersonalGroupPicker({
@@ -13,6 +16,8 @@ Future<PersonalGroupPickerResult?> showPersonalGroupPicker({
   required String defaultGroupLabel,
   required List<PersonalMemberTaxonomyItem> groups,
   required String? selectedGroupId,
+  bool showStatusOptions = false,
+  String currentState = 'active',
 }) {
   return showModalBottomSheet<PersonalGroupPickerResult>(
     context: context,
@@ -34,7 +39,7 @@ Future<PersonalGroupPickerResult?> showPersonalGroupPicker({
                   title: Text(defaultGroupLabel),
                   leading: const Icon(Icons.home_work_outlined),
                   trailing:
-                      selectedGroupId == null
+                      selectedGroupId == null && currentState == 'active'
                           ? const Icon(Icons.check_rounded)
                           : null,
                   onTap:
@@ -52,7 +57,7 @@ Future<PersonalGroupPickerResult?> showPersonalGroupPicker({
                     ),
                     leading: const Icon(Icons.folder_open_rounded),
                     trailing:
-                        selectedGroupId == group.id
+                        selectedGroupId == group.id && currentState == 'active'
                             ? const Icon(Icons.check_rounded)
                             : null,
                     onTap:
@@ -62,6 +67,41 @@ Future<PersonalGroupPickerResult?> showPersonalGroupPicker({
                         ),
                   ),
                 ),
+                if (showStatusOptions) ...[
+                  const Divider(height: 20),
+                  ListTile(
+                    title: const Text('휴면회원'),
+                    leading: const Icon(Icons.bedtime_outlined),
+                    trailing:
+                        currentState == 'dormant'
+                            ? const Icon(Icons.check_rounded)
+                            : null,
+                    onTap:
+                        () => Navigator.pop(
+                          context,
+                          PersonalGroupPickerResult(
+                            selectedGroupId,
+                            nextState: 'dormant',
+                          ),
+                        ),
+                  ),
+                  ListTile(
+                    title: const Text('만료회원'),
+                    leading: const Icon(Icons.warning_amber_rounded),
+                    trailing:
+                        currentState == 'expired'
+                            ? const Icon(Icons.check_rounded)
+                            : null,
+                    onTap:
+                        () => Navigator.pop(
+                          context,
+                          PersonalGroupPickerResult(
+                            selectedGroupId,
+                            nextState: 'expired',
+                          ),
+                        ),
+                  ),
+                ],
               ],
             ),
           ),

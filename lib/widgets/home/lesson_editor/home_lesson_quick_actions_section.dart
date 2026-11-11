@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../contract_chooser_sheet.dart';
+import 'home_sign_action_sheet.dart';
+
 class HomeLessonQuickActionsSection extends StatelessWidget {
   const HomeLessonQuickActionsSection({
     super.key,
@@ -191,13 +194,21 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       }
 
       if (hasContract) {
+        // 빠른 서명과 서명 요청하기를 `서명요청` 버튼 하나로 합치고, 누르면 방법을 고른다.
         return buildQuickAction(
-          label: '빠른 서명',
+          actionKey: const Key('aifc_sign_action'),
+          label: '서명요청',
           icon: Icons.draw_rounded,
           foregroundColor: const Color(0xFF059669),
           enabled: canUseConfirmActions,
           disabledMessage: linkedMemberDisabledMessage,
-          onTap: onOpenLessonConfirm,
+          onTap: () async {
+            final choice = await showHomeSignActionSheet(context);
+            if (choice == null) return;
+            await (choice == HomeSignAction.quickSign
+                ? onOpenLessonConfirm()
+                : onOpenSignRequest());
+          },
         );
       }
 
@@ -211,48 +222,45 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
       );
     }
 
-    Widget buildLessonContractAction() {
-      final hasCallback = onOpenLessonContract != null;
+    /// 레슨계약서·회원권계약서를 `신규계약서` 칩 하나로 합친다. 누르면 둘 중 하나를 고르는 시트가 뜬다.
+    /// 하나만 쓸 수 있으면 고르지 않고 바로 연다.
+    Future<void> openContractChooser({
+      required Future<void> Function()? lesson,
+      required Future<void> Function()? membership,
+    }) async {
+      if (lesson == null && membership == null) {
+        onShowToast('계약서를 열 수 없어요.');
+        return;
+      }
+      if (lesson == null) {
+        await membership!();
+        return;
+      }
+      if (membership == null) {
+        await lesson();
+        return;
+      }
+      final choice = await showContractChooserSheet(context);
+      if (choice == null) return;
+      await (choice == ContractKind.lesson ? lesson() : membership());
+    }
 
+    Widget buildContractManageAction({
+      required Future<void> Function()? lesson,
+      required Future<void> Function()? membership,
+      bool enabled = true,
+      String disabledMessage = '계약서를 열 수 없어요.',
+    }) {
       return buildQuickAction(
-        actionKey: const Key('aifc_lesson_contract_action'),
-        label: '레슨계약서',
+        actionKey: const Key('aifc_contract_manage_action'),
+        label: '신규계약서',
+        // 레슨계약서의 아이콘을 그대로 쓴다.
         icon: Icons.description_outlined,
         isContractTask: true,
-        enabled: canUseLinkedMemberActions && hasCallback,
-        disabledMessage:
-            canUseLinkedMemberActions
-                ? '레슨계약서를 열 수 없어요.'
-                : linkedMemberDisabledMessage,
-        onTap: onOpenLessonContract ?? () async {},
-      );
-    }
-
-    Widget buildMembershipManageAction() {
-      final hasCallback = onOpenMembershipManage != null;
-
-      return buildQuickAction(
-        actionKey: const Key('aifc_membership_contract_action'),
-        label: '회원권계약서',
-        icon: Icons.card_membership_rounded,
-        isContractTask: true,
-        enabled: canUseLinkedMemberActions && hasCallback,
-        disabledMessage:
-            canUseLinkedMemberActions
-                ? '회원권계약서를 열 수 없어요.'
-                : linkedMemberDisabledMessage,
-        onTap: onOpenMembershipManage ?? () async {},
-      );
-    }
-
-    Widget buildSignRequestAction() {
-      return buildQuickAction(
-        label: '서명 요청',
-        icon: Icons.qr_code_2_rounded,
-        foregroundColor: const Color(0xFF2563EB),
-        enabled: canUseConfirmActions,
-        disabledMessage: linkedMemberDisabledMessage,
-        onTap: onOpenSignRequest,
+        enabled: enabled && (lesson != null || membership != null),
+        disabledMessage: disabledMessage,
+        onTap:
+            () => openContractChooser(lesson: lesson, membership: membership),
       );
     }
 
@@ -293,22 +301,10 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
               await onRegisterManualMember();
             },
           ),
-          if (onOpenLessonContractFromUnregistered != null)
-            buildQuickAction(
-              actionKey: const Key('aifc_lesson_contract_action'),
-              label: '레슨계약서',
-              icon: Icons.description_outlined,
-              isContractTask: true,
-              onTap: onOpenLessonContractFromUnregistered!,
-            ),
-          if (onOpenMembershipContractFromUnregistered != null)
-            buildQuickAction(
-              actionKey: const Key('aifc_membership_contract_action'),
-              label: '회원권계약서',
-              icon: Icons.assignment_outlined,
-              isContractTask: true,
-              onTap: onOpenMembershipContractFromUnregistered!,
-            ),
+          buildContractManageAction(
+            lesson: onOpenLessonContractFromUnregistered,
+            membership: onOpenMembershipContractFromUnregistered,
+          ),
         ],
       );
     }
@@ -328,6 +324,15 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
         spacing: 5,
         runSpacing: 7,
         children: [
+          // 엄지가 닿기 쉬운 순서: 신규계약서 → 회원카드 → 레슨일지 → 레슨확정(과 그 관련 버튼).
+          buildContractManageAction(
+            lesson: onOpenLessonContract,
+            membership: onOpenMembershipManage,
+            enabled: canUseLinkedMemberActions,
+            disabledMessage: linkedMemberDisabledMessage,
+          ),
+          buildMemberCardAction(),
+          if (isPersistedSchedule) buildWorkoutLogAction(),
           if (isPersistedSchedule)
             buildLessonConfirmAction(hasContract: hasContract),
           if (isPersistedSchedule && isConfirmedLesson)
@@ -342,12 +347,6 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
               disabledMessage: cancelDisabledMessage,
               onTap: onCancelConfirmedLesson,
             ),
-          if (isPersistedSchedule && hasContract && !isConfirmedLesson)
-            buildSignRequestAction(),
-          if (isPersistedSchedule) buildWorkoutLogAction(),
-          buildMemberCardAction(),
-          if (onOpenLessonContract != null) buildLessonContractAction(),
-          if (onOpenMembershipManage != null) buildMembershipManageAction(),
         ],
       );
     }
@@ -377,6 +376,8 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
                   spacing: 5,
                   runSpacing: 7,
                   children: [
+                    buildMemberCardAction(),
+                    buildWorkoutLogAction(),
                     buildQuickAction(
                       label: '확인중',
                       icon: Icons.hourglass_empty_rounded,
@@ -384,8 +385,6 @@ class HomeLessonQuickActionsSection extends StatelessWidget {
                       disabledMessage: '회원 정보를 확인하고 있어요.',
                       onTap: () async {},
                     ),
-                    buildMemberCardAction(),
-                    buildWorkoutLogAction(),
                   ],
                 );
               }

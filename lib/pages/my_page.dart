@@ -1,4 +1,8 @@
 import 'dart:io';
+import '../utils/disk_cached_network_image.dart';
+import '../widgets/mtf_back_button.dart';
+import 'lesson_contract/my_contract_products_section.dart';
+import 'lesson_contract/member_contracts_page.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -29,6 +33,7 @@ import '../services/managed_member_workspace_service.dart';
 import '../services/app_environment.dart';
 import '../services/dev_tier_fixture.dart';
 import '../services/my_page_draft_store.dart';
+import '../utils/form_error_focus.dart';
 import '../utils/personal_tier_parser.dart';
 import '../utils/member_input_validation.dart';
 import '../utils/personal_trainer_profile_validation.dart';
@@ -39,6 +44,7 @@ import '../models/personal_tier_progress.dart';
 import '../widgets/aifc_tier_guide_chat_sheet.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
 import '../widgets/aifc_interaction.dart';
+import '../widgets/center_logo_field.dart';
 import '../widgets/aifc_confirm_chat_sheet.dart';
 import '../widgets/aifc_option_chat_sheet.dart';
 import '../widgets/aifc_info_chat_sheet.dart';
@@ -56,14 +62,84 @@ import '../aifc/core/aifc_avatar.dart';
 
 import 'package:flutter/services.dart';
 
+/// 버튼 바탕·그라데이션처럼 흰 글씨와 함께 쓰는 색. 글자·아이콘·테두리는 [kMyAccent].
 const Color kMyPrimary = Color(0xFF4F46E5);
 const Color kMyPrimary2 = Color(0xFF9333EA);
-const Color kMyBg = Color(0xFFF3F4F6);
-const Color kMyCard = Colors.white;
-const Color kMyBorder = Color(0xFFE5E7EB);
-const Color kMyText = Color(0xFF111827);
-const Color kMyMuted = Color(0xFF6B7280);
 const double kMyMaxContentWidth = 480;
+
+/// 마이페이지 색상. 밝은 모드는 기존 값 그대로 쓰고, 어두운 모드는 앱 테마를 따른다.
+/// 마이페이지 `build`에서 [MyPalette.sync]로 현재 테마를 반영한다.
+abstract final class MyPalette {
+  static ThemeData? _theme;
+
+  static void sync(ThemeData theme) => _theme = theme;
+
+  static bool get dark => _theme?.brightness == Brightness.dark;
+
+  static ColorScheme get scheme => (_theme ?? ThemeData()).colorScheme;
+
+  static Color get scaffold =>
+      _theme?.scaffoldBackgroundColor ?? scheme.surface;
+
+  static Color get inputFill =>
+      _theme?.inputDecorationTheme.fillColor ?? scheme.surfaceContainerHighest;
+}
+
+Color get kMyBg =>
+    MyPalette.dark ? MyPalette.scaffold : const Color(0xFFF3F4F6);
+Color get kMyCard => MyPalette.dark ? MyPalette.scheme.surface : Colors.white;
+Color get kMyBorder =>
+    MyPalette.dark ? MyPalette.scheme.outlineVariant : const Color(0xFFE5E7EB);
+Color get kMyText =>
+    MyPalette.dark ? MyPalette.scheme.onSurface : const Color(0xFF111827);
+Color get kMyMuted =>
+    MyPalette.dark
+        ? MyPalette.scheme.onSurfaceVariant
+        : const Color(0xFF6B7280);
+Color get kMySoft =>
+    MyPalette.dark
+        ? MyPalette.scheme.onSurfaceVariant.withValues(alpha: 0.75)
+        : const Color(0xFF9CA3AF);
+Color get kMyFill =>
+    MyPalette.dark ? MyPalette.inputFill : const Color(0xFFF8FAFC);
+Color get kMyAccent =>
+    MyPalette.dark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5);
+Color get kMyActiveBg =>
+    MyPalette.dark
+        ? const Color(0xFFA5B4FC).withValues(alpha: 0.18)
+        : const Color(0xFFEEF2FF);
+Color get kMyInfoBg =>
+    MyPalette.dark
+        ? const Color(0xFFA5B4FC).withValues(alpha: 0.14)
+        : const Color(0xFFF5F3FF);
+Color get kMyInfoBorder =>
+    MyPalette.dark
+        ? const Color(0xFFA5B4FC).withValues(alpha: 0.40)
+        : const Color(0xFFDDD6FE);
+Color get kMyWarnBg =>
+    MyPalette.dark
+        ? const Color(0xFFFFC107).withValues(alpha: 0.14)
+        : const Color(0xFFFFFBEB);
+Color get kMyWarnBorder =>
+    MyPalette.dark
+        ? const Color(0xFFFFC107).withValues(alpha: 0.45)
+        : const Color(0xFFFDE68A);
+Color get kMyWarnIcon =>
+    MyPalette.dark ? const Color(0xFFFFCA28) : const Color(0xFFB45309);
+Color get kMyWarnText =>
+    MyPalette.dark ? const Color(0xFFFFD98A) : const Color(0xFF92400E);
+Color get kMyErrorBg =>
+    MyPalette.dark
+        ? const Color(0xFFF87171).withValues(alpha: 0.16)
+        : const Color(0xFFFFF1F2);
+Color get kMyErrorBorder =>
+    MyPalette.dark
+        ? const Color(0xFFF87171).withValues(alpha: 0.50)
+        : const Color(0xFFFCA5A5);
+Color get kMyErrorText =>
+    MyPalette.dark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C);
+Color get kMyDanger =>
+    MyPalette.dark ? const Color(0xFFF87171) : const Color(0xFFDC2626);
 
 String myPageProfileDocumentPath(String? personalOwnerUid) {
   final uid = (personalOwnerUid ?? '').trim();
@@ -253,6 +329,7 @@ class _MyPageState extends State<MyPage> {
   final _displayNameController = TextEditingController();
   final _gymNameController = TextEditingController();
   final _centerLocationController = TextEditingController();
+  String _centerLogoPath = '';
   final _activityAreaController = TextEditingController();
   final _positionController = TextEditingController();
   final _birthController = TextEditingController();
@@ -263,6 +340,10 @@ class _MyPageState extends State<MyPage> {
   final _businessCardPicker = ImagePicker();
   final _businessCardCaptureKey = GlobalKey();
   Uint8List? _businessCardPhotoBytes;
+
+  /// 방금 올린 사진. 서버 사진(URL)을 내려받아 준비될 때까지 이걸로 계속 보여 줘서 저장 직후에
+  /// 사진이 사라졌다가 다시 뜨지 않게 한다.
+  Uint8List? _businessCardPhotoShownBytes;
   String? _businessCardPhotoUrl;
   double _businessCardPhotoAlignX = 0;
   double _businessCardPhotoAlignY = 0;
@@ -464,34 +545,29 @@ class _MyPageState extends State<MyPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               decoration: BoxDecoration(
-                color:
-                    active ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
+                color: active ? kMyActiveBg : kMyFill,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: active ? kMyPrimary : kMyBorder,
+                  color: active ? kMyAccent : kMyBorder,
                   width: active ? 1.3 : 1,
                 ),
               ),
               child: Row(
                 children: [
-                  Icon(icon, color: active ? kMyPrimary : kMyMuted, size: 20),
+                  Icon(icon, color: active ? kMyAccent : kMyMuted, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       label,
                       style: TextStyle(
-                        color: active ? kMyPrimary : kMyText,
+                        color: active ? kMyAccent : kMyText,
                         fontSize: 13.5,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                       ),
                     ),
                   ),
                   if (active)
-                    const Icon(
-                      Icons.check_rounded,
-                      color: kMyPrimary,
-                      size: 20,
-                    ),
+                    Icon(Icons.check_rounded, color: kMyAccent, size: 20),
                 ],
               ),
             ),
@@ -505,7 +581,7 @@ class _MyPageState extends State<MyPage> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: kMyCard,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
@@ -522,12 +598,12 @@ class _MyPageState extends State<MyPage> {
                     width: 38,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE5E7EB),
+                      color: kMyBorder,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       '성별 선택',
@@ -578,18 +654,18 @@ class _MyPageState extends State<MyPage> {
           labelText: '성별',
           floatingLabelBehavior: FloatingLabelBehavior.always,
           filled: true,
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: kMyFill,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 16,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: kMyBorder),
+            borderSide: BorderSide(color: kMyBorder),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: kMyBorder),
+            borderSide: BorderSide(color: kMyBorder),
           ),
         ),
         child: Row(
@@ -599,14 +675,14 @@ class _MyPageState extends State<MyPage> {
                 _genderLabel(_gender),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: kMyText,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            const Icon(Icons.keyboard_arrow_down_rounded, color: kMyMuted),
+            Icon(Icons.keyboard_arrow_down_rounded, color: kMyMuted),
           ],
         ),
       ),
@@ -629,6 +705,20 @@ class _MyPageState extends State<MyPage> {
   }
 
   void _openContractListPage() {
+    // 개인 워크스페이스는 새 레슨계약서만 모아 보는 전체 목록(예전 계약서는 회원카드의 `지난 레슨계약서`).
+    if (_isPersonalWorkspace) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder:
+              (_) => MemberContractsPage(
+                personalOwnerUid: widget.personalOwnerUid!.trim(),
+                memberId: null,
+                autoStartWhenEmpty: false,
+              ),
+        ),
+      );
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder:
@@ -797,6 +887,7 @@ class _MyPageState extends State<MyPage> {
         _gymNameController.text = (data['gymName'] ?? '').toString();
         _centerLocationController.text =
             (data['centerLocation'] ?? data['activityArea'] ?? '').toString();
+        _centerLogoPath = (data['centerLogoPath'] ?? '').toString().trim();
         _selectedActivityRegions
           ..clear()
           ..addAll(
@@ -1042,6 +1133,29 @@ class _MyPageState extends State<MyPage> {
     _handleProfileInputChanged();
   }
 
+  /// 저장 뒤에 등급을 다시 계산하고 화면의 등급 상태를 갱신한다. 저장 흐름을 막지 않는다.
+  /// 재계산이 실패해도 저장에는 영향이 없고, 상태 갱신은 그래도 시도한다.
+  Future<void> _reconcileTierThenRefresh(String uid) async {
+    try {
+      await FirebaseManagedMemberWorkspaceGateway(
+        uid: uid,
+      ).reconcilePersonalTier();
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint(
+          '[MTF_TIER_RECONCILE] '
+          'environment=${AppEnvironmentConfig.environmentName} '
+          'currentTier=unknown scheduleCount=unknown scheduleGoal=10 '
+          'scheduleMissionCompleted=false teacherInfoCompleted=false '
+          'completedMissionCount=unknown eligible=false action=skip '
+          'result=failure errorCode=${managedMemberSafeErrorCode(error)}',
+        );
+      }
+    }
+    if (!mounted) return;
+    await _loadTierStatus();
+  }
+
   Future<void> _loadTierStatus() async {
     try {
       if (_isPersonalWorkspace) {
@@ -1256,7 +1370,7 @@ class _MyPageState extends State<MyPage> {
   }
 
   Color get _moreBusinessStatusColor {
-    if (_isMoreBusinessOwnerTier) return kMyPrimary;
+    if (_isMoreBusinessOwnerTier) return kMyAccent;
     return _moreBusinessLinked
         ? const Color(0xFF059669)
         : const Color(0xFFF97316);
@@ -1348,7 +1462,7 @@ class _MyPageState extends State<MyPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
+                      Text(
                         '모어댄이 부를 이름이 필요해요.\n입력한 실명을 닉네임으로 사용할까요?',
                         style: TextStyle(
                           color: kMyText,
@@ -1515,6 +1629,8 @@ class _MyPageState extends State<MyPage> {
         final uid = widget.personalOwnerUid!.trim();
 
         var businessCardPhotoUrl = _businessCardPhotoUrl;
+        var businessCardPhotoUploadFailed = false;
+        final uploadingPhotoBytes = _businessCardPhotoBytes;
         if (_businessCardPhotoBytes != null) {
           try {
             final path =
@@ -1531,6 +1647,8 @@ class _MyPageState extends State<MyPage> {
             businessCardPhotoUrl = await photoRef.getDownloadURL();
           } catch (_) {
             // 명함 사진 업로드에 실패해도 나머지 프로필 저장은 계속 진행한다.
+            // 다만 사진은 버리지 않고 남겨 두어 다시 저장할 수 있게 하고, 실패를 알린다.
+            businessCardPhotoUploadFailed = true;
           }
         }
 
@@ -1566,24 +1684,30 @@ class _MyPageState extends State<MyPage> {
               '${_businessCardPhotoAlignY.toStringAsFixed(2)},'
               '${_businessCardPhotoScale.toStringAsFixed(2)}',
         );
-        _businessCardPhotoUrl = businessCardPhotoUrl;
-        _businessCardPhotoBytes = null;
-        try {
-          await FirebaseManagedMemberWorkspaceGateway(
-            uid: uid,
-          ).reconcilePersonalTier();
-        } catch (error) {
-          if (kDebugMode) {
-            debugPrint(
-              '[MTF_TIER_RECONCILE] '
-              'environment=${AppEnvironmentConfig.environmentName} '
-              'currentTier=unknown scheduleCount=unknown scheduleGoal=10 '
-              'scheduleMissionCompleted=false teacherInfoCompleted=false '
-              'completedMissionCount=unknown eligible=false action=skip '
-              'result=failure errorCode=${managedMemberSafeErrorCode(error)}',
+        if (businessCardPhotoUploadFailed) {
+          // 올리지 못한 사진은 그대로 두어(저장 때 다시 시도) 사라지지 않게 한다.
+          if (mounted) {
+            _showActionToast('명함 사진을 올리지 못했어요. 네트워크를 확인하고 다시 저장해 주세요.');
+          }
+        } else {
+          _businessCardPhotoUrl = businessCardPhotoUrl;
+          _businessCardPhotoBytes = null;
+          if (uploadingPhotoBytes != null && businessCardPhotoUrl != null) {
+            // 서버 사진이 준비될 때까지는 방금 고른 사진으로 계속 보여 준다.
+            _businessCardPhotoShownBytes = uploadingPhotoBytes;
+            // 올린 사진을 폰에도 저장해 두면 다운로드 없이 바로 뜨고 다음 실행에도 빠르다.
+            unawaited(
+              DiskImageCache.instance.write(
+                businessCardPhotoUrl,
+                uploadingPhotoBytes,
+              ),
             );
+            unawaited(_swapBusinessCardPhotoToServer(businessCardPhotoUrl));
           }
         }
+        // 등급 재계산은 저장 결과를 확인하는 데 필요 없는 뒷정리라 기다리지 않고 뒤에서 처리한다
+        // (서버 호출 1~2초를 저장 시간에서 뺀다). 끝나면 화면의 등급 상태를 갱신한다.
+        unawaited(_reconcileTierThenRefresh(uid));
         if (kDebugMode) {
           debugPrint(
             '[MTF_MY_PAGE_SAVE_STEP] step=profile '
@@ -1669,7 +1793,6 @@ class _MyPageState extends State<MyPage> {
           debugPrint('[MTF_MY_PAGE_SAVE_DONE] result=success failedStep=none');
         }
         activeSaveStep = 'none';
-        await _loadTierStatus();
       } else {
         await _profileRef.set(updateData, SetOptions(merge: true));
       }
@@ -1750,42 +1873,9 @@ class _MyPageState extends State<MyPage> {
     }
   }
 
+  /// 틀린 칸 중 맨 위 칸으로 이동하고 커서를 놓는다.
   Future<void> _scrollToFirstInvalidProfileField() async {
-    await WidgetsBinding.instance.endOfFrame;
-    if (!mounted) return;
-
-    final formContext = _formKey.currentContext;
-    if (formContext == null) return;
-
-    Element? firstInvalidElement;
-    double? firstInvalidDy;
-
-    void inspect(Element element) {
-      if (element is StatefulElement &&
-          element.state is FormFieldState<dynamic>) {
-        final state = element.state as FormFieldState<dynamic>;
-        final renderObject = element.renderObject;
-        if (state.hasError && renderObject is RenderBox) {
-          final dy = renderObject.localToGlobal(Offset.zero).dy;
-          if (firstInvalidDy == null || dy < firstInvalidDy!) {
-            firstInvalidDy = dy;
-            firstInvalidElement = element;
-          }
-        }
-      }
-      element.visitChildren(inspect);
-    }
-
-    formContext.visitChildElements(inspect);
-    final invalidContext = firstInvalidElement;
-    if (invalidContext == null) return;
-
-    await Scrollable.ensureVisible(
-      invalidContext,
-      alignment: 0.2,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
+    await focusFirstInvalidFormField(_formKey.currentContext);
   }
 
   Future<void> _requestExit() async {
@@ -2279,12 +2369,43 @@ class _MyPageState extends State<MyPage> {
     _showSnack('$label 기능은 준비중입니다.');
   }
 
+  /// 방금 올린 사진을 서버 사진(URL)으로 바꿔 보여 준다. 서버 사진을 다 받은 뒤에 바꿔서 그 사이에
+  /// 사진이 비는 순간이 없다. 받지 못하면 계속 방금 올린 사진을 보여 준다.
+  Future<void> _swapBusinessCardPhotoToServer(String url) async {
+    try {
+      await precacheImage(
+        DiskCachedNetworkImage(url),
+        context,
+      ).timeout(const Duration(seconds: 15));
+    } catch (_) {
+      return;
+    }
+    if (!mounted || _businessCardPhotoUrl != url) return;
+    setState(() => _businessCardPhotoShownBytes = null);
+  }
+
   Future<void> _shareBusinessCard() async {
     final canUse = await _guardBusinessCardFeature();
 
     if (!mounted || !canUse) return;
 
     try {
+      // 서버 사진을 아직 받아오는 중이면 기다린다(안 기다리면 공유 이미지에 사진이 빠진다).
+      final photoUrl = (_businessCardPhotoUrl ?? '').trim();
+      if (_businessCardPhotoBytes == null &&
+          _businessCardPhotoShownBytes == null &&
+          photoUrl.isNotEmpty) {
+        try {
+          await precacheImage(
+            DiskCachedNetworkImage(photoUrl),
+            context,
+          ).timeout(const Duration(seconds: 10));
+        } catch (_) {
+          // 받지 못해도 공유는 진행한다(사진 없는 명함).
+        }
+        if (!mounted) return;
+        await WidgetsBinding.instance.endOfFrame;
+      }
       final boundary =
           _businessCardCaptureKey.currentContext?.findRenderObject()
               as RenderRepaintBoundary?;
@@ -2558,23 +2679,23 @@ class _MyPageState extends State<MyPage> {
         hintText: hint,
         floatingLabelBehavior: FloatingLabelBehavior.always,
         filled: true,
-        fillColor: selected ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
+        fillColor: selected ? kMyActiveBg : kMyFill,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 16,
         ),
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           color: kMyMuted,
           fontSize: 11.5,
           fontWeight: FontWeight.w800,
         ),
-        floatingLabelStyle: const TextStyle(
-          color: kMyPrimary,
+        floatingLabelStyle: TextStyle(
+          color: kMyAccent,
           fontSize: 11.5,
           fontWeight: FontWeight.w900,
         ),
-        hintStyle: const TextStyle(
-          color: Color(0xFF9CA3AF),
+        hintStyle: TextStyle(
+          color: kMySoft,
           fontSize: 11.2,
           height: 1.25,
           fontWeight: FontWeight.w600,
@@ -2606,7 +2727,7 @@ class _MyPageState extends State<MyPage> {
                   style: TextStyle(
                     fontSize: 10.8,
                     fontWeight: FontWeight.w900,
-                    color: selected ? kMyPrimary : const Color(0xFF9CA3AF),
+                    color: selected ? kMyAccent : kMySoft,
                   ),
                 ),
                 const SizedBox(width: 5),
@@ -2615,7 +2736,7 @@ class _MyPageState extends State<MyPage> {
                       ? Icons.check_box_rounded
                       : Icons.check_box_outline_blank_rounded,
                   size: 17,
-                  color: selected ? kMyPrimary : const Color(0xFF9CA3AF),
+                  color: selected ? kMyAccent : kMySoft,
                 ),
               ],
             ),
@@ -2628,20 +2749,20 @@ class _MyPageState extends State<MyPage> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: selected ? kMyPrimary : kMyBorder,
+            color: selected ? kMyAccent : kMyBorder,
             width: selected ? 1.3 : 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: selected ? kMyPrimary : kMyBorder,
+            color: selected ? kMyAccent : kMyBorder,
             width: selected ? 1.3 : 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyPrimary, width: 1.5),
+          borderSide: BorderSide(color: kMyAccent, width: 1.5),
         ),
         isDense: true,
       ),
@@ -2680,6 +2801,7 @@ class _MyPageState extends State<MyPage> {
   // ── 빌드 ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    MyPalette.sync(Theme.of(context));
     final previewName =
         _displayNameController.text.trim().isNotEmpty
             ? _displayNameController.text.trim()
@@ -2708,8 +2830,8 @@ class _MyPageState extends State<MyPage> {
                 width: width,
                 child:
                     _isLoading
-                        ? const Center(
-                          child: CircularProgressIndicator(color: kMyPrimary),
+                        ? Center(
+                          child: CircularProgressIndicator(color: kMyAccent),
                         )
                         : Column(
                           children: [
@@ -2755,6 +2877,22 @@ class _MyPageState extends State<MyPage> {
                                       _buildProfileFormCard(),
                                       const SizedBox(height: 14),
                                       if (_isPersonalWorkspace) ...[
+                                        // 레슨계약서에서 불러오는 상품(이름·횟수·금액)을 미리 만들어 둔다.
+                                        _MySectionCard(
+                                          key: const Key(
+                                            'my_page_contract_products_card',
+                                          ),
+                                          title: '내 수업 상품',
+                                          subtitle:
+                                              '레슨계약서를 쓸 때 상품명·횟수·금액을 바로 불러와요',
+                                          icon: Icons.sell_outlined,
+                                          child: MyContractProductsSection(
+                                            personalOwnerUid:
+                                                (widget.personalOwnerUid ?? '')
+                                                    .trim(),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
                                         _buildEmailVerificationCard(),
                                         const SizedBox(height: 14),
                                       ],
@@ -3039,9 +3177,9 @@ class _MyPageState extends State<MyPage> {
   }) async {
     final file = await _businessCardPicker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 90,
-      maxWidth: 1600,
-      maxHeight: 1600,
+      imageQuality: 85,
+      maxWidth: 1200,
+      maxHeight: 1200,
     );
     if (file == null || !mounted) return;
 
@@ -3169,6 +3307,7 @@ class _MyPageState extends State<MyPage> {
 
     setState(() {
       _businessCardPhotoBytes = null;
+      _businessCardPhotoShownBytes = null;
       _businessCardPhotoAlignX = 0;
       _businessCardPhotoAlignY = 0;
       _businessCardPhotoScale = 1.0;
@@ -3215,7 +3354,7 @@ class _MyPageState extends State<MyPage> {
         specialty: specialty,
         phone: phone,
         address: address,
-        photoBytes: _businessCardPhotoBytes,
+        photoBytes: _businessCardPhotoBytes ?? _businessCardPhotoShownBytes,
         photoUrl: _businessCardPhotoUrl,
         photoAlignX: _businessCardPhotoAlignX,
         photoAlignY: _businessCardPhotoAlignY,
@@ -3349,8 +3488,8 @@ class _MyPageState extends State<MyPage> {
 
     return MtfHeaderNeonOverlay(
       isExpanded: _isHeaderCardExpanded,
-      intensity: 0.52,
-      strokeWidth: 1.6,
+      intensity: kMtfHeaderGlowIntensityExpandable,
+      strokeWidth: kMtfHeaderGlowStrokeExpandable,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onVerticalDragEnd: (details) {
@@ -3383,19 +3522,8 @@ class _MyPageState extends State<MyPage> {
             children: [
               Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => unawaited(_requestExit()),
-                    child: const SizedBox(
-                      width: 34,
-                      height: 34,
-                      child: Icon(
-                        Icons.arrow_back_rounded,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
+                  MtfBackButton(onTap: () => unawaited(_requestExit())),
+                  const SizedBox(width: 6),
                   const Expanded(
                     child: Text(
                       '마이페이지',
@@ -3793,6 +3921,20 @@ class _MyPageState extends State<MyPage> {
           hint: '센터 위치를 알려주세요.',
           focusHint: '예: 서울특별시 강남구 테헤란로',
         ),
+        if (_isPersonalWorkspace) ...[
+          const SizedBox(height: 12),
+          CenterLogoField(
+            key: ValueKey<String>('my_center_logo_$_centerLogoPath'),
+            uid: widget.personalOwnerUid!.trim(),
+            initialPath: _centerLogoPath,
+            textColor: kMyText,
+            mutedColor: kMyMuted,
+            borderColor: kMyBorder,
+            onToast:
+                (message) =>
+                    AifcInteraction.toast(context: context, message: message),
+          ),
+        ],
       ],
     );
   }
@@ -3810,11 +3952,11 @@ class _MyPageState extends State<MyPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: kMyFill,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: kMyBorder),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -3825,7 +3967,7 @@ class _MyPageState extends State<MyPage> {
                         style: TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    Text('입력하기 ›', style: TextStyle(color: kMyPrimary)),
+                    Text('입력하기 ›', style: TextStyle(color: kMyAccent)),
                   ],
                 ),
                 SizedBox(height: 5),
@@ -3913,7 +4055,7 @@ class _MyPageState extends State<MyPage> {
           (field) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Row(
+              Row(
                 children: [
                   Expanded(
                     child: Text(
@@ -3941,18 +4083,18 @@ class _MyPageState extends State<MyPage> {
                         vertical: 9,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F3FF),
+                        color: kMyInfoBg,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                        border: Border.all(color: kMyInfoBorder),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (index == 0) ...[
-                            const Text(
+                            Text(
                               '대표 · ',
                               style: TextStyle(
-                                color: kMyPrimary,
+                                color: kMyAccent,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -3976,7 +4118,7 @@ class _MyPageState extends State<MyPage> {
                   ),
                 )
               else
-                const Text(
+                Text(
                   '최대 3곳까지 등록할 수 있어요.',
                   style: TextStyle(color: kMyMuted, fontSize: 12),
                 ),
@@ -4156,7 +4298,7 @@ class _MyPageState extends State<MyPage> {
           ),
 
           // ── 구분선 ────────────────────────────────────────────────────────
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Divider(height: 1, color: kMyBorder),
           ),
@@ -4205,7 +4347,7 @@ class _MyPageState extends State<MyPage> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kMyCard,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: kMyBorder),
           boxShadow: [
@@ -4218,12 +4360,12 @@ class _MyPageState extends State<MyPage> {
         ),
         child:
             _isTierLoading
-                ? const SizedBox(
+                ? SizedBox(
                   height: 56,
                   child: Center(
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: kMyPrimary,
+                      color: kMyAccent,
                     ),
                   ),
                 )
@@ -4253,7 +4395,7 @@ class _MyPageState extends State<MyPage> {
                         children: [
                           Row(
                             children: [
-                              const Text(
+                              Text(
                                 '현재 등급',
                                 style: TextStyle(
                                   color: kMyMuted,
@@ -4268,13 +4410,13 @@ class _MyPageState extends State<MyPage> {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEEF2FF),
+                                  color: kMyActiveBg,
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
                                   _currentTierName,
-                                  style: const TextStyle(
-                                    color: kMyPrimary,
+                                  style: TextStyle(
+                                    color: kMyAccent,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -4285,7 +4427,7 @@ class _MyPageState extends State<MyPage> {
                           const SizedBox(height: 6),
                           Text(
                             _tierMessage,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: kMyText,
                               fontSize: 12.5,
                               height: 1.35,
@@ -4295,7 +4437,7 @@ class _MyPageState extends State<MyPage> {
                           const SizedBox(height: 4),
                           Text(
                             '회원 $_memberCountForTier명 · 레슨 $_lessonCountForTier건',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: kMyMuted,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -4305,10 +4447,7 @@ class _MyPageState extends State<MyPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Color(0xFF9CA3AF),
-                    ),
+                    Icon(Icons.chevron_right_rounded, color: kMySoft),
                   ],
                 ),
       ),
@@ -4455,25 +4594,25 @@ class _MyPageState extends State<MyPage> {
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFBEB),
+          color: kMyWarnBg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFFDE68A)),
+          border: Border.all(color: kMyWarnBorder),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.info_outline_rounded, color: Color(0xFFB45309)),
+            Icon(Icons.info_outline_rounded, color: kMyWarnIcon),
             SizedBox(width: 10),
             Expanded(
               child: Text(
                 '선생님 정보 중 확인이 필요한 항목이 있어요.',
                 style: TextStyle(
-                  color: Color(0xFF92400E),
+                  color: kMyWarnText,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Color(0xFFB45309)),
+            Icon(Icons.chevron_right_rounded, color: kMyWarnIcon),
           ],
         ),
       ),
@@ -4498,7 +4637,7 @@ class _MyPageState extends State<MyPage> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: kMyCard,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: kMyBorder),
           boxShadow: [
@@ -4527,7 +4666,7 @@ class _MyPageState extends State<MyPage> {
                 children: [
                   Row(
                     children: [
-                      const Flexible(
+                      Flexible(
                         child: Text(
                           'MORE 비즈니스',
                           maxLines: 1,
@@ -4573,7 +4712,7 @@ class _MyPageState extends State<MyPage> {
                     subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: kMyMuted,
                       fontSize: 11.8,
                       height: 1.35,
@@ -4584,11 +4723,7 @@ class _MyPageState extends State<MyPage> {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF9CA3AF),
-              size: 22,
-            ),
+            Icon(Icons.chevron_right_rounded, color: kMySoft, size: 22),
           ],
         ),
       ),
@@ -4610,7 +4745,7 @@ class _MyPageState extends State<MyPage> {
             children: [
               _MyMenuTile(item: item),
               if (index != items.length - 1)
-                const Divider(height: 1, color: kMyBorder),
+                Divider(height: 1, color: kMyBorder),
             ],
           );
         }),
@@ -4625,6 +4760,7 @@ class _MyPageState extends State<MyPage> {
 
 class _MySectionCard extends StatelessWidget {
   const _MySectionCard({
+    super.key,
     required this.title,
     required this.child,
     this.subtitle,
@@ -4663,10 +4799,10 @@ class _MySectionCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
+                    color: kMyActiveBg,
                     borderRadius: BorderRadius.circular(13),
                   ),
-                  child: Icon(icon, size: 19, color: kMyPrimary),
+                  child: Icon(icon, size: 19, color: kMyAccent),
                 ),
                 const SizedBox(width: 10),
               ],
@@ -4676,7 +4812,7 @@ class _MySectionCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: kMyText,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
@@ -4686,7 +4822,7 @@ class _MySectionCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: kMyMuted,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
@@ -4732,8 +4868,8 @@ class _MyMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.danger ? const Color(0xFFDC2626) : kMyPrimary;
-    final titleColor = item.danger ? const Color(0xFFDC2626) : kMyText;
+    final color = item.danger ? kMyDanger : kMyAccent;
+    final titleColor = item.danger ? kMyDanger : kMyText;
 
     return InkWell(
       onTap: item.onTap,
@@ -4767,7 +4903,7 @@ class _MyMenuTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     item.subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: kMyMuted,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
@@ -4781,14 +4917,14 @@ class _MyMenuTile extends StatelessWidget {
             if (item.trailingText != null)
               Text(
                 item.trailingText!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: kMyMuted,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                 ),
               )
             else
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF9CA3AF)),
+              Icon(Icons.chevron_right_rounded, color: kMySoft),
           ],
         ),
       ),
@@ -4813,10 +4949,10 @@ class _TierInfoRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: active ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
+        color: active ? kMyActiveBg : kMyFill,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: active ? kMyPrimary : kMyBorder,
+          color: active ? kMyAccent : kMyBorder,
           width: active ? 1.2 : 1,
         ),
       ),
@@ -4826,7 +4962,7 @@ class _TierInfoRow extends StatelessWidget {
             active
                 ? Icons.radio_button_checked_rounded
                 : Icons.radio_button_unchecked_rounded,
-            color: active ? kMyPrimary : const Color(0xFF9CA3AF),
+            color: active ? kMyAccent : kMySoft,
             size: 18,
           ),
           const SizedBox(width: 9),
@@ -4835,7 +4971,7 @@ class _TierInfoRow extends StatelessWidget {
             child: Text(
               name,
               style: TextStyle(
-                color: active ? kMyPrimary : kMyText,
+                color: active ? kMyAccent : kMyText,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w900,
               ),
@@ -4845,7 +4981,7 @@ class _TierInfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               description,
-              style: const TextStyle(
+              style: TextStyle(
                 color: kMyMuted,
                 fontSize: 11.5,
                 height: 1.3,
@@ -4991,14 +5127,14 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
         hintText: hint,
         suffixText: suffix,
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: kMyFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyBorder),
+          borderSide: BorderSide(color: kMyBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyBorder),
+          borderSide: BorderSide(color: kMyBorder),
         ),
       ),
     );
@@ -5012,20 +5148,18 @@ class _GoalSettingSectionState extends State<_GoalSettingSection> {
       icon: Icons.flag_outlined,
       child:
           _isLoading
-              ? const Center(
-                child: CircularProgressIndicator(color: kMyPrimary),
-              )
+              ? Center(child: CircularProgressIndicator(color: kMyAccent))
               : Column(
                 children: [
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(13),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: kMyFill,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: kMyBorder),
                     ),
-                    child: const Text(
+                    child: Text(
                       '목표는 정확하지 않아도 괜찮아요.\n대략적인 숫자만 알려주시면 제가 진행 흐름을 같이 확인해볼게요.',
                       style: TextStyle(
                         color: kMyMuted,
@@ -5094,7 +5228,7 @@ class _ProductManagementSection extends StatelessWidget {
       final saved = await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.white,
+        backgroundColor: kMyCard,
         showDragHandle: true,
         builder:
             (_) => _ProductEditSheet(
@@ -5193,7 +5327,7 @@ class _ProductManagementSection extends StatelessWidget {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: kMyCard,
       showDragHandle: true,
       builder:
           (_) => _ProductEditSheet(
@@ -5220,7 +5354,7 @@ class _ProductManagementSection extends StatelessWidget {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: kMyCard,
       showDragHandle: true,
       builder:
           (_) => _ProductEditSheet(
@@ -5363,14 +5497,14 @@ class _ProductManagementSection extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
+                color: kMyErrorBg,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFFCA5A5)),
+                border: Border.all(color: kMyErrorBorder),
               ),
-              child: const Text(
+              child: Text(
                 '레슨 상품을 불러오지 못했어요. 저장 경로나 권한을 확인해주세요.',
                 style: TextStyle(
-                  color: Color(0xFFB91C1C),
+                  color: kMyErrorText,
                   fontSize: 12,
                   height: 1.4,
                   fontWeight: FontWeight.w700,
@@ -5384,9 +5518,7 @@ class _ProductManagementSection extends StatelessWidget {
           final categoryNames = groupedProducts.keys.toList();
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: kMyPrimary),
-            );
+            return Center(child: CircularProgressIndicator(color: kMyAccent));
           }
           return Column(
             children: [
@@ -5395,11 +5527,11 @@ class _ProductManagementSection extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: kMyFill,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: kMyBorder),
                   ),
-                  child: const Text(
+                  child: Text(
                     '아직 알려주신 레슨 상품이 없어요.\n상품을 추가하시면, 계약서 작성할 때 바로 적용 할 수 있어요.',
                     style: TextStyle(
                       color: kMyMuted,
@@ -5445,9 +5577,9 @@ class _ProductManagementSection extends StatelessWidget {
                   icon: const Icon(Icons.add_rounded),
                   label: const Text('레슨 분야 추가'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: kMyPrimary,
+                    foregroundColor: kMyAccent,
                     padding: const EdgeInsets.symmetric(vertical: 13),
-                    side: const BorderSide(color: kMyBorder),
+                    side: BorderSide(color: kMyBorder),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -5550,7 +5682,7 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: kMyFill,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: kMyBorder),
       ),
@@ -5569,12 +5701,12 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: kMyPrimary.withOpacity(0.09),
+                    color: kMyAccent.withOpacity(0.09),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     _lessonCategoryIcon(widget.categoryName),
-                    color: kMyPrimary,
+                    color: kMyAccent,
                     size: 18,
                   ),
                 ),
@@ -5584,7 +5716,7 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
                     widget.categoryName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: kMyText,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w900,
@@ -5598,13 +5730,13 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: kMyCard,
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: kMyBorder),
                   ),
                   child: Text(
                     '${widget.products.length}개',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: kMyMuted,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -5620,25 +5752,18 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
                     height: 30,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: kMyCard,
                       shape: BoxShape.circle,
                       border: Border.all(color: kMyBorder),
                     ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: kMyPrimary,
-                      size: 19,
-                    ),
+                    child: Icon(Icons.add_rounded, color: kMyAccent, size: 19),
                   ),
                 ),
                 const SizedBox(width: 4),
                 PopupMenuButton<String>(
                   tooltip: '레슨 분야 더보기',
                   padding: EdgeInsets.zero,
-                  icon: const Icon(
-                    Icons.more_vert_rounded,
-                    color: Color(0xFF9CA3AF),
-                  ),
+                  icon: Icon(Icons.more_vert_rounded, color: kMySoft),
                   onSelected: (value) {
                     if (value == 'deleteCategory') {
                       widget.onDeleteCategory();
@@ -5656,7 +5781,7 @@ class _ProductCategoryGroupState extends State<_ProductCategoryGroup> {
                   _expanded
                       ? Icons.keyboard_arrow_up_rounded
                       : Icons.keyboard_arrow_down_rounded,
-                  color: const Color(0xFF9CA3AF),
+                  color: kMySoft,
                 ),
               ],
             ),
@@ -5716,7 +5841,7 @@ class _ProductTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: kMyFill,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: kMyBorder),
       ),
@@ -5726,12 +5851,12 @@ class _ProductTile extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: kMyPrimary.withOpacity(0.09),
+              color: kMyAccent.withOpacity(0.09),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
               _lessonCategoryIcon(product.categoryName),
-              color: kMyPrimary,
+              color: kMyAccent,
               size: 20,
             ),
           ),
@@ -5742,7 +5867,7 @@ class _ProductTile extends StatelessWidget {
               children: [
                 Text(
                   product.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: kMyText,
                     fontSize: 13.5,
                     fontWeight: FontWeight.w900,
@@ -5751,7 +5876,7 @@ class _ProductTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${product.categoryName} · ${product.lessonType} · ${product.sessionCount}회 · 회당 ${_formatMoney(product.unitPrice)}원',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: kMyMuted,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
@@ -5760,7 +5885,7 @@ class _ProductTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   '총 ${_formatMoney(product.totalPrice)}원 · ${product.vatIncluded ? 'VAT 포함' : 'VAT 별도'}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: kMyMuted,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -5925,7 +6050,10 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      await focusFirstInvalidFormField(_formKey.currentContext);
+      return;
+    }
     if (_isSaving) return;
 
     setState(() => _isSaving = true);
@@ -5992,14 +6120,14 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
         suffixText: suffixText,
         prefixText: prefixText,
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: kMyFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyBorder),
+          borderSide: BorderSide(color: kMyBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyBorder),
+          borderSide: BorderSide(color: kMyBorder),
         ),
       ),
     );
@@ -6035,7 +6163,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                             widget.product == null
                                 ? '레슨 상품을 추가해볼까요?'
                                 : '레슨 상품을 수정할게요',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: kMyText,
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
@@ -6043,7 +6171,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                             ),
                           ),
                           const SizedBox(height: 3),
-                          const Text(
+                          Text(
                             '등록해두면 계약서와 회원관리에서 바로 불러올 수 있어요.',
                             style: TextStyle(
                               color: kMyMuted,
@@ -6110,13 +6238,13 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(13, 10, 13, 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: kMyFill,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: kMyBorder),
                   ),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'VAT 설정',
                           style: TextStyle(
@@ -6137,7 +6265,7 @@ class _ProductEditSheetState extends State<_ProductEditSheet> {
                       const SizedBox(width: 8),
                       Switch.adaptive(
                         value: _vatIncluded,
-                        activeColor: kMyPrimary,
+                        activeColor: kMyAccent,
                         onChanged: (v) {
                           setState(() => _vatIncluded = v);
                           _syncTotalPrice();
@@ -6212,7 +6340,7 @@ class _VersionInfoCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'MORE THAN',
             style: TextStyle(
               fontSize: 12,
@@ -6223,10 +6351,10 @@ class _VersionInfoCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
+              color: kMyFill,
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
+            child: Text(
               'Ver. v1.0.0',
               style: TextStyle(
                 fontSize: 11,
@@ -6280,7 +6408,7 @@ class _HandleBar extends StatelessWidget {
         width: 36,
         height: 4,
         decoration: BoxDecoration(
-          color: const Color(0xFFE0DEFF),
+          color: kMyActiveBg,
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -6380,39 +6508,39 @@ class _AifcSmartTextFieldState extends State<_AifcSmartTextField> {
         hintText: hint,
         suffixIcon: widget.suffixIcon,
         floatingLabelBehavior: FloatingLabelBehavior.always,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           color: kMyMuted,
           fontSize: 11.5,
           fontWeight: FontWeight.w800,
         ),
-        floatingLabelStyle: const TextStyle(
-          color: kMyPrimary,
+        floatingLabelStyle: TextStyle(
+          color: kMyAccent,
           fontSize: 11.5,
           fontWeight: FontWeight.w900,
         ),
-        hintStyle: const TextStyle(
-          color: Color(0xFF9CA3AF),
+        hintStyle: TextStyle(
+          color: kMySoft,
           fontSize: 11.2,
           height: 1.25,
           fontWeight: FontWeight.w600,
         ),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: kMyFill,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyBorder),
+          borderSide: BorderSide(color: kMyBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyBorder),
+          borderSide: BorderSide(color: kMyBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: kMyPrimary, width: 1.3),
+          borderSide: BorderSide(color: kMyAccent, width: 1.3),
         ),
         isDense: true,
       ),

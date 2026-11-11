@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/app_colors.dart';
 
 class HomeLessonFooterActions extends StatelessWidget {
   const HomeLessonFooterActions({
@@ -27,6 +28,7 @@ class HomeLessonFooterActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final lockedGuideText =
         isCustomerSignedConfirmedLesson
             ? '회원서명이 들어간 레슨확정은 임의로 확정취소 할 수 없어요.'
@@ -159,7 +161,7 @@ class HomeLessonFooterActions extends StatelessWidget {
                       dimension: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: colors.onSecondary,
+                        color: isDark ? colors.onSecondary : Colors.white,
                       ),
                     )
                     : const Icon(Icons.check_rounded, size: 16),
@@ -168,6 +170,9 @@ class HomeLessonFooterActions extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
             style: ElevatedButton.styleFrom(
+              // 밝은 모드는 앱 메인색(네이비)+흰 글씨, 어두운 모드는 테마 기본(노랑)을 쓴다.
+              backgroundColor: isDark ? null : AppColors.deepNavy,
+              foregroundColor: isDark ? null : Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),

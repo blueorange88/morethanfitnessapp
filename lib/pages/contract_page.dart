@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/mtf_back_button.dart';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -202,6 +203,14 @@ class _ContractPageState extends State<ContractPage>
 
   final ScrollController _scrollController = ScrollController();
   final FocusNode _productNameFocusNode = FocusNode();
+
+  /// 입력 칸별 포커스. 저장·서명 전 비어 있는 필수 칸에 커서를 놓는 데 쓴다.
+  final Map<TextEditingController, FocusNode> _fieldFocusNodes = {};
+
+  FocusNode _focusNodeFor(TextEditingController controller) =>
+      controller == _productNameController
+          ? _productNameFocusNode
+          : _fieldFocusNodes.putIfAbsent(controller, FocusNode.new);
 
   final GlobalKey _basicInfoSectionKey = GlobalKey();
   final GlobalKey _paymentSectionKey = GlobalKey();
@@ -1837,6 +1846,9 @@ class _ContractPageState extends State<ContractPage>
     _livePulseController.dispose();
     _scrollController.dispose();
     _productNameFocusNode.dispose();
+    for (final node in _fieldFocusNodes.values) {
+      node.dispose();
+    }
 
     _memberNameController.dispose();
     _memberBirthController.dispose();
@@ -1931,8 +1943,6 @@ class _ContractPageState extends State<ContractPage>
 
     return MtfHeaderNeonOverlay(
       isExpanded: false,
-      intensity: 0.52,
-      strokeWidth: 1.6,
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.only(
@@ -1952,19 +1962,8 @@ class _ContractPageState extends State<ContractPage>
           children: [
             Row(
               children: [
-                GestureDetector(
-                  onTap: _closeContractPage,
-                  child: const SizedBox(
-                    width: 34,
-                    height: 34,
-                    child: Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
+                MtfBackButton(onTap: _closeContractPage),
+                const SizedBox(width: 4),
                 const Expanded(
                   child: Text(
                     '개인레슨 계약서',
@@ -2776,11 +2775,12 @@ class _ContractPageState extends State<ContractPage>
   Widget _buildEditView() {
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(
+      // 맨 아래 문구가 시스템 내비게이션 바 밑에 가리지 않도록 하단 안전 영역만큼 더 띄운다.
+      padding: EdgeInsets.fromLTRB(
         kContractPageHorizontalPadding,
         16,
         kContractPageHorizontalPadding,
-        24,
+        24 + MediaQuery.of(context).padding.bottom,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2820,6 +2820,7 @@ class _ContractPageState extends State<ContractPage>
           const SizedBox(height: 12),
           TextField(
             controller: _memberBirthController,
+            focusNode: _focusNodeFor(_memberBirthController),
             keyboardType: TextInputType.number,
             enabled: !_isFormLocked,
             inputFormatters: const [_BirthDateInputFormatter()],
@@ -3874,7 +3875,7 @@ class _ContractPageState extends State<ContractPage>
                         const SizedBox(height: 12),
                         _buildTextField(
                           controller: _lessonDelayMinutesController,
-                          label: '레슨 진행이 어려울 수 있는 기준 (분)',
+                          label: '레슨 진행 불가 기준 (시작시간 후 몇 분)',
                           hint: '30',
                           keyboardType: TextInputType.number,
                           enabled: !_isFormLocked,
@@ -4959,7 +4960,7 @@ class _ContractPageState extends State<ContractPage>
                       ),
                       SizedBox(height: 6),
                       Text(
-                        '본인은 수업 운영 기준, 예약/취소 및 노쇼 기준, 환불·중도해지 기준, 건강고지 및 최종 계약내용을 모두 확인하고 이에 동의하여 서명합니다.\n\n아래 서명은 현재 화면의 계약내용이 안전하게 저장되며, 선택한 수령 방식으로 계약서 사본이 제공될 수 있음에 대한 최종 확인을 의미합니다.',
+                        '본인은 수업 운영 기준, 예약/취소 및 노쇼 기준, 환불·중도해지 기준, 건강고지 및 최종 계약내용을 모두 확인하고 이에 동의하여 서명합니다.\n\n아래 서명은 현재 화면의 계약내용이 안전하게 저장되며, 선택한 수령 방식으로 계약서 사본이 제공됨에 대한 최종 확인을 의미합니다.',
                         style: TextStyle(
                           height: 1.5,
                           fontWeight: FontWeight.w700,
@@ -5779,6 +5780,7 @@ class _ContractPageState extends State<ContractPage>
 
     return TextField(
       controller: controller,
+      focusNode: _focusNodeFor(controller),
       maxLines: maxLines,
       keyboardType: keyboardType,
       enabled: enabled,
@@ -6753,7 +6755,7 @@ class _ContractPageState extends State<ContractPage>
   }
 
   String get _reservationClauseText {
-    return '예약 변경 및 취소는 레슨 ${_valueOrDash(_cancelHoursController.text)}시간 전까지 가능합니다. 레슨 약속시간 ${_valueOrDash(_lessonDelayMinutesController.text)}분 이후는 레슨 진행이 어려울 수 있습니다.';
+    return '예약 변경 및 취소는 레슨 ${_valueOrDash(_cancelHoursController.text)}시간 전까지 가능합니다. 레슨 시작시간 ${_valueOrDash(_lessonDelayMinutesController.text)}분 이후는 레슨 진행이 불가합니다.';
   }
 
   String get _holdClauseText {
@@ -8405,6 +8407,55 @@ class _ContractPageState extends State<ContractPage>
       curve: Curves.easeInOutCubic,
       alignment: 0.08,
     );
+
+    // 기본정보·결제정보 영역은 비어 있는(또는 형식이 틀린) 첫 입력 칸에 커서를 놓는다.
+    if (!mounted) return;
+    final TextEditingController? target;
+    if (key == _basicInfoSectionKey) {
+      target = _firstIncompleteBasicField;
+    } else if (key == _paymentSectionKey) {
+      target = _firstIncompletePaymentField;
+    } else {
+      target = null;
+    }
+    if (target == null) return;
+    final node = _focusNodeFor(target);
+    if (node.context?.mounted == true && node.canRequestFocus) {
+      node.requestFocus();
+    }
+  }
+
+  /// 기본정보에서 비어 있거나 형식이 틀린 첫 입력 칸(없으면 null). 위에서부터 차례로 본다.
+  TextEditingController? get _firstIncompleteBasicField {
+    if (_memberNameController.text.trim().isEmpty) return _memberNameController;
+    if (_memberBirthController.text.trim().isEmpty ||
+        !_isMemberBirthFormatValid) {
+      return _memberBirthController;
+    }
+    if (_memberPhoneController.text.trim().isEmpty ||
+        !_isMemberPhoneFormatValid) {
+      return _memberPhoneController;
+    }
+    if (_memberEmailController.text.trim().isEmpty ||
+        !_isMemberEmailFormatValid) {
+      return _memberEmailController;
+    }
+    if (_centerNameController.text.trim().isEmpty) return _centerNameController;
+    if (_trainerNameController.text.trim().isEmpty) {
+      return _trainerNameController;
+    }
+    return null;
+  }
+
+  /// 결제정보에서 비어 있는 첫 글자 입력 칸(날짜 칸은 제외, 없으면 null).
+  TextEditingController? get _firstIncompletePaymentField {
+    if (!_usePaymentSection) return null;
+    if (_productNameController.text.trim().isEmpty)
+      return _productNameController;
+    if (_unitPriceValue <= 0) return _unitPriceController;
+    if (_sessionCountValue <= 0) return _sessionCountController;
+    if (_priceValue <= 0) return _priceController;
+    return null;
   }
 
   Future<Uint8List> _buildContractPdfBytes() async {
@@ -8779,7 +8830,7 @@ class _ContractPageState extends State<ContractPage>
             signatureGroup(
               groupTitle: '최종 동의 서명',
               description:
-                  '계약조건, 환불·중도해지 기준, 예약/노쇼 기준, 건강고지 및 최종 계약내용에 동의합니다. 선택한 수령 방식으로 계약서 사본이 제공될 수 있습니다.',
+                  '계약조건, 환불·중도해지 기준, 예약/노쇼 기준, 건강고지 및 최종 계약내용에 동의합니다. 선택한 수령 방식으로 계약서 사본이 제공됩니다.',
               memberLabel: '회원 최종 동의',
               staffLabel: '강사 최종 확인',
               memberImage: memberFinalSign,
@@ -8974,7 +9025,7 @@ class _ContractPageState extends State<ContractPage>
     _showFloatingTip(
       title: '예약/지연 TIP',
       message:
-          '예약 변경·취소는 24시간 전 기준을 많이 사용해요. 지연은 30분 이상부터 진행이 어렵다는 문구를 자주 씁니다.',
+          '예약 변경·취소는 24시간 전 기준을 많이 사용해요. 지연은 시작시간 30분 이후 진행 불가로 정하는 경우가 많아요.',
       icon: Icons.lightbulb_outline,
     );
   }

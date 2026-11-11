@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../widgets/mtf_back_button.dart';
+
 // ============================================================
 //  AppColors — MORE THAN 브랜드 색상 시스템
 //  일반 UI는 네이비·웜 옐로우를 사용하고 AIFC 퍼플은 별도 팔레트로 유지한다.
@@ -897,6 +899,40 @@ class MtfThemeTokens extends ThemeExtension<MtfThemeTokens> {
   }
 }
 
+double _mtfContrastRatio(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  final hi = la > lb ? la : lb;
+  final lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/// 강조색 [accent]를 [background] 위 글자·선에 쓸 때 읽히도록, 대비가 [minContrast]에
+/// 모자라면 같은 색상(hue)을 어둡게 해서 맞춘다. 이미 충분하면 그대로 돌려준다.
+/// (연한 골드는 흰 배경에서 1.5:1 정도라 글씨로 쓰면 거의 안 보인다.)
+Color mtfReadableAccent(
+  Color accent,
+  Color background, {
+  double minContrast = 4.5,
+}) {
+  if (_mtfContrastRatio(accent, background) >= minContrast) return accent;
+  final hsl = HSLColor.fromColor(accent);
+  var lightness = hsl.lightness;
+  var candidate = accent;
+  while (lightness > 0.05 &&
+      _mtfContrastRatio(candidate, background) < minContrast) {
+    lightness -= 0.01;
+    candidate = hsl.withLightness(lightness).toColor();
+  }
+  return candidate;
+}
+
+extension MtfAccentColorScheme on ColorScheme {
+  /// `secondary` 강조색을 글자·아이콘·테두리선으로 쓸 때의 색. 다크는 그대로, 라이트에서
+  /// 연한 골드는 진한 골드로 바뀐다. 배경으로 칠할 때는 계속 `secondary`를 쓴다.
+  Color get accentText => mtfReadableAccent(secondary, surface);
+}
+
 extension MtfThemeBuildContext on BuildContext {
   MtfThemeTokens get mtfThemeTokens {
     return Theme.of(this).extension<MtfThemeTokens>() ?? MtfThemeTokens.light;
@@ -921,6 +957,16 @@ extension MtfThemeBuildContext on BuildContext {
 // ============================================================
 //  ThemeData
 // ============================================================
+
+final ActionIconThemeData _mtfActionIconTheme = ActionIconThemeData(
+  backButtonIconBuilder:
+      (context) => Text(
+        '<',
+        style: MtfBackButton.glyphStyle(
+          IconTheme.of(context).color ?? Colors.black,
+        ),
+      ),
+);
 
 ThemeData lightTheme() {
   final scheme = ColorScheme.fromSeed(
@@ -958,6 +1004,8 @@ ThemeData lightTheme() {
       surfaceTintColor: Colors.transparent,
       systemOverlayStyle: SystemUiOverlayStyle.dark,
     ),
+    // 앱바를 쓰는 페이지의 기본 뒤로가기도 헤더들과 같은 `<` 모양으로 맞춘다.
+    actionIconTheme: _mtfActionIconTheme,
     cardTheme: CardThemeData(
       color: AppColors.lightSurface,
       elevation: 0,
@@ -1091,6 +1139,8 @@ ThemeData darkTheme() {
       surfaceTintColor: Colors.transparent,
       systemOverlayStyle: SystemUiOverlayStyle.light,
     ),
+    // 앱바를 쓰는 페이지의 기본 뒤로가기도 헤더들과 같은 `<` 모양으로 맞춘다.
+    actionIconTheme: _mtfActionIconTheme,
     cardTheme: CardThemeData(
       color: AppColors.darkSurface,
       elevation: 0,
@@ -1224,6 +1274,8 @@ ThemeData lululalaTheme() {
       surfaceTintColor: Colors.transparent,
       systemOverlayStyle: SystemUiOverlayStyle.dark,
     ),
+    // 앱바를 쓰는 페이지의 기본 뒤로가기도 헤더들과 같은 `<` 모양으로 맞춘다.
+    actionIconTheme: _mtfActionIconTheme,
     cardTheme: CardThemeData(
       color: AppColors.lululalaSurface,
       elevation: 0,

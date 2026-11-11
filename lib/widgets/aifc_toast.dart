@@ -13,6 +13,7 @@ class AifcToast {
     required String message,
     Duration duration = const Duration(milliseconds: 1400),
     double bottomOffset = 76,
+    double keyboardGap = 16,
   }) {
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
@@ -23,7 +24,7 @@ class AifcToast {
       builder: (context) {
         final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
         final effectiveBottom =
-            keyboardInset > 0 ? keyboardInset + 16 : bottomOffset;
+            keyboardInset > 0 ? keyboardInset + keyboardGap : bottomOffset;
         return Positioned.fill(
           child: IgnorePointer(
             child: SafeArea(

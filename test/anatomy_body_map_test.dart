@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:mtf_app/widgets/mtf_back_button.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mtf_app/pages/personal_training_log_anatomy/anatomy_page.dart';
 import 'package:mtf_app/pages/personal_training_log_anatomy/models/anatomy_log.dart';
@@ -2329,9 +2330,53 @@ void main() {
       await openPage(tester);
       expect(find.text('김회원 님 아나토미 레슨일지'), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.tap(find.byType(MtfBackButton));
       await tester.pumpAndSettle();
       expect(find.text('열기'), findsOneWidget);
+    });
+
+    testWidgets('기록을 추가한 뒤 나가려 하면 확인하고, 계속 작성하면 기록이 그대로 있다', (tester) async {
+      await openPage(tester);
+      await tapZone(tester, front, 'quad', BodySide.left);
+      await addExercise(tester, '스쿼트', weight: '60', reps: '10');
+      await tester.tap(find.byKey(const ValueKey('record_finish')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(MtfBackButton));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('leave_draft_dialog')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('leave_draft_stay')));
+      await tester.pumpAndSettle();
+      expect(find.text('열기'), findsNothing);
+      expect(find.text('스쿼트'), findsWidgets);
+    });
+
+    testWidgets('삭제하고 나가기는 저장하지 않고 나간다', (tester) async {
+      final service = await openPage(tester);
+      await tapZone(tester, front, 'quad', BodySide.left);
+      await addExercise(tester, '스쿼트', weight: '60', reps: '10');
+      await tester.tap(find.byKey(const ValueKey('record_finish')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(MtfBackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('leave_draft_discard')));
+      await tester.pumpAndSettle();
+      expect(find.text('열기'), findsOneWidget);
+      expect(service.saved, isEmpty);
+    });
+
+    testWidgets('저장하고 나가기는 기록을 저장하고 나간다', (tester) async {
+      final service = await openPage(tester);
+      await tapZone(tester, front, 'quad', BodySide.left);
+      await addExercise(tester, '스쿼트', weight: '60', reps: '10');
+      await tester.tap(find.byKey(const ValueKey('record_finish')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(MtfBackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('leave_draft_save')));
+      await tester.pumpAndSettle();
+      expect(find.text('열기'), findsOneWidget);
+      expect(service.saved, hasLength(1));
+      expect(service.saved.single.exerciseName, '스쿼트');
     });
   });
 }

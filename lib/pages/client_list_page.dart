@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/mtf_back_button.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
@@ -16,6 +17,7 @@ import '../services/personal_member_preferences_service.dart';
 import '../services/personal_member_taxonomy_service.dart';
 import 'personal_member_taxonomy_management_page.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/card_expand_route.dart';
 import '../widgets/personal_training_log_entry_guard.dart';
 import '../theme/app_colors.dart';
 
@@ -35,6 +37,7 @@ import '../widgets/mtf_floating_more_menu.dart';
 import '../widgets/mtf_header_neon_overlay.dart';
 
 import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
 import 'dart:async';
 
 const Color kClientBgColor = Color(0xFFF3F4F6);
@@ -99,6 +102,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   final ValueNotifier<String?> _highlightNotifier = ValueNotifier<String?>(
     null,
   );
+
+  /// 월렛 카드 중 지금 펼쳐진 회원(한 번에 하나만 펼친다).
+  final ValueNotifier<String?> _expandedMemberIdNotifier =
+      ValueNotifier<String?>(null);
+
+  /// 아직 화면에 만들어지지 않은 회원까지 스크롤할 때 쓰는 목록 시작 기준 추정 위치.
+  final Map<String, double> _memberListEstimatedOffsets = <String, double>{};
   int _highlightRequestToken = 0;
 
   bool _sortAscending = true;
@@ -251,6 +261,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     _searchKeywordNotifier.dispose();
     _scrollController.dispose();
     _highlightNotifier.dispose();
+    _expandedMemberIdNotifier.dispose();
     _pinnedMemberIdsNotifier.dispose();
     _isListViewNotifier.dispose();
     _selectedGroupIdNotifier.dispose();
@@ -824,6 +835,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
       if (!isAllowed) return;
 
+      // 휴면·만료 칩과 그룹 칩은 함께 선택하지 않으므로 휴면·만료가 저장돼 있으면 그쪽을 우선한다.
+      if (_isPersonalWorkspace &&
+          _selectedPersonalStatusFilterNotifier.value !=
+              PersonalMemberStatusFilter.all) {
+        return;
+      }
+
       _selectedGroupIdNotifier.value = normalized;
     } catch (_) {
       // 저장값 복원 실패는 무시합니다.
@@ -961,6 +979,27 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     await scrollToMember(cleanMemberId);
   }
 
+  /// 월렛 목록은 화면 근처만 만들기 때문에, 아직 없는 회원은 추정 위치로 먼저 이동해 만들어지게 한다.
+  void _jumpNearMemberInList(String memberId) {
+    final estimate = _memberListEstimatedOffsets[memberId];
+    final header = _headerKey.currentContext?.findRenderObject();
+    if (estimate == null ||
+        header is! RenderBox ||
+        !header.attached ||
+        !_scrollController.hasClients) {
+      return;
+    }
+    final position = _scrollController.position;
+    // 목록은 파란 헤더와 고정 검색 헤더(148/136) 뒤에서 시작한다.
+    final listStart = header.size.height + (_isPersonalWorkspace ? 148 : 136);
+    _scrollController.jumpTo(
+      (listStart + estimate - 180).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      ),
+    );
+  }
+
   Future<void> scrollToMember(String memberId) async {
     final int token = _issueHighlightToken();
 
@@ -983,6 +1022,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
 
       if (targetContext != null) {
         break;
+      }
+
+      if (i == 1) {
+        _jumpNearMemberInList(memberId);
       }
     }
 
@@ -1345,35 +1388,34 @@ class _MemberDashboardPageState extends State<ClientListPage> {
                         ),
                       ),
                     ),
-                    SliverToBoxAdapter(
-                      child: ListenableBuilder(
-                        listenable: Listenable.merge([
-                          _pinnedMemberIdsNotifier,
-                          _memberGroupMapNotifier,
-                          _groupNamesVersionNotifier,
-                          _selectedGroupIdNotifier,
-                          _selectedPersonalTagIdNotifier,
-                          _selectedPersonalStatusFilterNotifier,
-                          _dashboardCareFilterNotifier,
-                          _alertFilterMemberIdsNotifier,
-                          _isListViewNotifier,
-                        ]),
-                        builder: (context, _) {
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                              kClientPageHorizontalPadding,
-                              0,
-                              kClientPageHorizontalPadding,
-                              28,
-                            ),
-                            child: _buildMemberListContent(
-                              allMembers: allMembers,
-                              searchKeyword: searchKeyword,
-                              membershipMetaById: membershipMetaById,
-                            ),
-                          );
-                        },
-                      ),
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _pinnedMemberIdsNotifier,
+                        _memberGroupMapNotifier,
+                        _groupNamesVersionNotifier,
+                        _selectedGroupIdNotifier,
+                        _selectedPersonalTagIdNotifier,
+                        _selectedPersonalStatusFilterNotifier,
+                        _dashboardCareFilterNotifier,
+                        _alertFilterMemberIdsNotifier,
+                        _isListViewNotifier,
+                        _expandedMemberIdNotifier,
+                      ]),
+                      builder: (context, _) {
+                        return SliverPadding(
+                          padding: EdgeInsets.fromLTRB(
+                            kClientPageHorizontalPadding,
+                            0,
+                            kClientPageHorizontalPadding,
+                            28 + MediaQuery.viewPaddingOf(context).bottom,
+                          ),
+                          sliver: _buildMemberListContent(
+                            allMembers: allMembers,
+                            searchKeyword: searchKeyword,
+                            membershipMetaById: membershipMetaById,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1481,28 +1523,42 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     );
 
     if (filteredMembers.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          selectedDivider,
-          Padding(
-            padding: const EdgeInsets.only(top: 28),
-            child: Center(
-              child: Text(
-                '${_activeFilterTitle()}에 표시할 회원이 없어요',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
+      _memberListEstimatedOffsets.clear();
+      return SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            selectedDivider,
+            Padding(
+              padding: const EdgeInsets.only(top: 28),
+              child: Center(
+                child: Text(
+                  '${_activeFilterTitle()}에 표시할 회원이 없어요',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            MemberAddCard(
+              key: const ValueKey<String>('member_add_card'),
+              onTap: (rect, face) {
+                _closeHeaderOverlayIfNeeded();
+                return _openCreate(fromRect: rect, face: face);
+              },
+            ),
+          ],
+        ),
       );
     }
 
-    final Widget content = _buildListViewContent(
+    // SliverMainAxisGroup 안에서는 탭 위치가 어긋나 카드가 눌리지 않아서,
+    // 맨 위 '필터 · 총 N명' 줄도 목록의 첫 항목으로 넣는다.
+    return _buildListViewContent(
+      headerLabel: '${_activeFilterTitle()} · 총 ${filteredMembers.length}명',
       members: filteredMembers,
       duplicateNameMap: duplicateNameMap,
       membershipMetaById: membershipMetaById,
@@ -1510,11 +1566,6 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           selectedCareFilter == null &&
           _selectedGroupId == null &&
           !_isAlertFilterActive,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [selectedDivider, content],
     );
   }
 
@@ -1640,6 +1691,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Widget _buildListViewContent({
+    required String headerLabel,
     required List<Member> members,
     required Map<String, bool> duplicateNameMap,
     required Map<String, _MemberMembershipMeta> membershipMetaById,
@@ -1651,7 +1703,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       displayMembers.sort(_compareGroupLabelForSection);
     }
 
-    final children = <Widget>[];
+    // 회원이 많아도 화면 근처만 만들도록 항목 목록으로 먼저 정리한다.
+    final entries = <_MemberListEntry>[_MemberListEntry.divider(headerLabel)];
     String? lastGroupLabel;
 
     for (final member in displayMembers) {
@@ -1663,30 +1716,87 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       if (showGroupSectionDividers &&
           _sortOption == SortOption.group &&
           currentGroupLabel != lastGroupLabel) {
-        children.add(_buildGroupSectionDivider(currentGroupLabel));
+        entries.add(_MemberListEntry.divider(currentGroupLabel));
         lastGroupLabel = currentGroupLabel;
       }
 
-      final itemKey = _memberItemKeys.putIfAbsent(member.id, () => GlobalKey());
+      entries.add(_MemberListEntry.member(member));
+    }
+    entries.add(_MemberListEntry.addCard());
 
-      final displayName = _duplicateDisplayNameOrNull(
-        member: member,
-        duplicateNameMap: duplicateNameMap,
-      );
+    final expandedId = _expandedMemberIdNotifier.value;
+    final estimatedOffsets = <String, double>{};
+    var runningOffset = 0.0;
+    for (var i = 0; i < entries.length; i++) {
+      final entry = entries[i];
+      final member = entry.member;
+      if (member == null) {
+        runningOffset += 34;
+        continue;
+      }
+      estimatedOffsets[member.id] = runningOffset;
+      // 다음이 구분선이거나 목록 끝일 때만 구간의 마지막 카드다(등록 카드는 위에 겹쳐 꽂힌다).
+      final bool isLast =
+          i == entries.length - 1 || entries[i + 1].dividerLabel != null;
+      entry.isLastInSection = isLast;
+      runningOffset += MemberWalletCard.collapsedHeight;
+      if (member.id == expandedId) {
+        runningOffset += MemberWalletCard.expandedExtraHeight;
+      }
+      if (isLast && member.id != expandedId) {
+        runningOffset += MemberWalletCard.overlap;
+      }
+    }
+    _memberListEstimatedOffsets
+      ..clear()
+      ..addAll(estimatedOffsets);
 
-      children.add(
-        KeyedSubtree(
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final entry = entries[index];
+        final member = entry.member;
+        if (entry.isAddCard) {
+          return MemberAddCard(
+            key: const ValueKey<String>('member_add_card'),
+            onTap: (rect, face) {
+              _closeHeaderOverlayIfNeeded();
+              return _openCreate(fromRect: rect, face: face);
+            },
+          );
+        }
+        if (member == null) {
+          return _buildGroupSectionDivider(entry.dividerLabel!);
+        }
+
+        final itemKey = _memberItemKeys.putIfAbsent(
+          member.id,
+          () => GlobalKey(),
+        );
+
+        final displayName = _duplicateDisplayNameOrNull(
+          member: member,
+          duplicateNameMap: duplicateNameMap,
+        );
+
+        return KeyedSubtree(
           key: itemKey,
-          child: MemberListRow(
-            key: ValueKey('member_list_row_${member.id}'),
+          child: MemberWalletCard(
+            key: ValueKey('member_wallet_card_${member.id}'),
             member: member,
             membershipMeta: membershipMetaById[member.id],
             displayName: displayName,
             displayGroupLabel: _memberDisplayGroupLabel(member),
-            displayGroupAccentColor: _memberDisplayGroupAccentColor(member),
-            displayGroupTextColor: _memberDisplayGroupTextColor(member),
             groupMenuItems: _buildMemberCardGroupMenuItems(),
             isPinned: _pinnedMemberIds.contains(member.id),
+            isExpanded: _expandedMemberIdNotifier.value == member.id,
+            isLastInSection: entry.isLastInSection,
+            onToggleExpanded: () {
+              _closeHeaderOverlayIfNeeded();
+              _expandedMemberIdNotifier.value =
+                  _expandedMemberIdNotifier.value == member.id
+                      ? null
+                      : member.id;
+            },
             onPinTap: () => _togglePin(member),
             onEditTap: () => _openEdit(member),
             onLogTap: () => _openLog(member),
@@ -1695,13 +1805,8 @@ class _MemberDashboardPageState extends State<ClientListPage> {
             },
             onAnyInteraction: _closeHeaderOverlayIfNeeded,
           ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
+        );
+      }, childCount: entries.length),
     );
   }
 
@@ -2370,10 +2475,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   String _memberDisplayGroupLabel(Member member) {
-    if (!_isPersonalWorkspace && _isExpiredMember(member)) {
+    if (_isExpiredMember(member)) {
       return _groupLabel(_systemExpiredGroupId);
     }
-    if (!_isPersonalWorkspace && _isDormantMember(member)) {
+    if (_isDormantMember(member)) {
       return _groupLabel(_systemDormantGroupId);
     }
     final groupId = _memberCanonicalGroupId(member);
@@ -2386,10 +2491,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Color _memberDisplayGroupAccentColor(Member member) {
-    if (!_isPersonalWorkspace && _isExpiredMember(member)) {
+    if (_isExpiredMember(member)) {
       return const Color(0xFF6B7280);
     }
-    if (!_isPersonalWorkspace && _isDormantMember(member)) {
+    if (_isDormantMember(member)) {
       return const Color(0xFFD1D5DB);
     }
     final groupId = _memberCanonicalGroupId(member);
@@ -2411,10 +2516,10 @@ class _MemberDashboardPageState extends State<ClientListPage> {
   }
 
   Color _memberDisplayGroupTextColor(Member member) {
-    if (!_isPersonalWorkspace && _isExpiredMember(member)) {
+    if (_isExpiredMember(member)) {
       return const Color(0xFFF9FAFB);
     }
-    if (!_isPersonalWorkspace && _isDormantMember(member)) {
+    if (_isDormantMember(member)) {
       return const Color(0xFF4B5563);
     }
     final groupId = _memberCanonicalGroupId(member);
@@ -2508,18 +2613,16 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           icon: Icons.folder_open_rounded,
         ),
       ),
-      if (!_isPersonalWorkspace) ...[
-        _MemberCardGroupMenuItem(
-          id: _systemDormantGroupId,
-          label: _groupLabel(_systemDormantGroupId),
-          icon: Icons.bedtime_rounded,
-        ),
-        _MemberCardGroupMenuItem(
-          id: _systemExpiredGroupId,
-          label: _groupLabel(_systemExpiredGroupId),
-          icon: Icons.warning_amber_rounded,
-        ),
-      ],
+      _MemberCardGroupMenuItem(
+        id: _systemDormantGroupId,
+        label: _groupLabel(_systemDormantGroupId),
+        icon: Icons.bedtime_rounded,
+      ),
+      _MemberCardGroupMenuItem(
+        id: _systemExpiredGroupId,
+        label: _groupLabel(_systemExpiredGroupId),
+        icon: Icons.warning_amber_rounded,
+      ),
     ];
   }
 
@@ -2528,6 +2631,19 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     String targetGroupId,
   ) async {
     _closeHeaderOverlayIfNeeded();
+
+    // 개인 워크스페이스의 휴면·만료는 그룹이 아니라 활동상태라 상태 전환으로 옮긴다.
+    // 원래 그룹(personalGroupId)은 그대로 남아 활성으로 돌리면 다시 보인다.
+    if (_isPersonalWorkspace && targetGroupId == _systemDormantGroupId) {
+      if (_isDormantMember(member)) return;
+      await _updateMemberStatus(member, '휴면');
+      return;
+    }
+    if (_isPersonalWorkspace && targetGroupId == _systemExpiredGroupId) {
+      if (_isExpiredMember(member)) return;
+      await _updateMemberStatus(member, '만료');
+      return;
+    }
 
     if (_isPersonalWorkspace && !_systemGroupIds.contains(targetGroupId)) {
       final allowed = await _guardPersonalTaxonomyFeature(
@@ -2547,6 +2663,13 @@ class _MemberDashboardPageState extends State<ClientListPage> {
           ),
         );
         if (!mounted) return;
+        // 휴면·만료 회원을 일반 그룹으로 옮기면 활성으로 돌려 그 그룹 목록에 보이게 한다.
+        if (!_isActiveMember(member)) {
+          await PersonalMemberCardSaveService(
+            uid: widget.personalOwnerUid!.trim(),
+          ).transitionStateAndVerify(memberId: member.id, nextState: 'active');
+          if (!mounted) return;
+        }
         _showSnack('${aifcPersonLabel(member.name)} 그룹이 변경됐어요.');
       } catch (_) {
         if (!mounted) return;
@@ -2727,11 +2850,11 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       return;
     }
     if (entry.role == PersonalTaxonomyFilterRole.statusDormant) {
-      _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.dormant);
+      _selectPersonalStatusExclusively(PersonalMemberStatusFilter.dormant);
       return;
     }
     if (entry.role == PersonalTaxonomyFilterRole.statusExpired) {
-      _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.expired);
+      _selectPersonalStatusExclusively(PersonalMemberStatusFilter.expired);
       return;
     }
     if (entry.role == PersonalTaxonomyFilterRole.tag) {
@@ -2739,6 +2862,14 @@ class _MemberDashboardPageState extends State<ClientListPage> {
       return;
     }
     _handleGroupFilter(entry.id);
+    _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.all);
+  }
+
+  // 휴면·만료도 그룹처럼 하나만 고르도록 그룹·태그 선택을 풀어 준다.
+  void _selectPersonalStatusExclusively(PersonalMemberStatusFilter status) {
+    _selectedPersonalTagIdNotifier.value = null;
+    _setSelectedGroupId(null);
+    _setSelectedPersonalStatusFilter(status);
   }
 
   Future<bool> _guardPersonalTaxonomyFeature(
@@ -2797,6 +2928,9 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     );
     if (!allowed || !mounted) return;
     _selectedPersonalTagIdNotifier.value = tagId;
+    if (tagId != null) {
+      _setSelectedPersonalStatusFilter(PersonalMemberStatusFilter.all);
+    }
     _scrollListToTop();
   }
 
@@ -2910,7 +3044,7 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     );
   }
 
-  Future<void> _openCreate() async {
+  Future<void> _openCreate({Rect? fromRect, Widget? face}) async {
     final owner = widget.personalOwnerUid?.trim() ?? '';
     if (owner.isNotEmpty) {
       final allowed = await AifcTierFeatureGateSheet.guard(
@@ -2925,15 +3059,24 @@ class _MemberDashboardPageState extends State<ClientListPage> {
     }
     final newId = FirebaseFirestore.instance.collection('members').doc().id;
 
+    Widget buildPage(BuildContext _) => ClientCardPage.newMember(
+      memberId: newId,
+      personalOwnerUid: owner.isEmpty ? null : owner,
+    );
+    final useFlip =
+        fromRect != null &&
+        face != null &&
+        !fromRect.isEmpty &&
+        !MediaQuery.disableAnimationsOf(context);
     final result = await Navigator.push<PersonalMemberCardSaveResult>(
       context,
-      MaterialPageRoute(
-        builder:
-            (_) => ClientCardPage.newMember(
-              memberId: newId,
-              personalOwnerUid: owner.isEmpty ? null : owner,
-            ),
-      ),
+      useFlip
+          ? CardExpandRoute<PersonalMemberCardSaveResult>(
+            builder: buildPage,
+            originRect: fromRect,
+            originFace: face,
+          )
+          : MaterialPageRoute<PersonalMemberCardSaveResult>(builder: buildPage),
     );
     if (!mounted) return;
     if (_isPersonalWorkspace) {
@@ -4109,9 +4252,9 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
 
     return MtfHeaderNeonOverlay(
       isExpanded: _expanded,
-      intensity: 0.52,
-      bottomRadius: _expanded ? 22 : 28,
-      strokeWidth: 1.6,
+      intensity: kMtfHeaderGlowIntensityExpandable,
+      bottomRadius: _expanded ? 22 : kMtfHeaderBottomRadius,
+      strokeWidth: kMtfHeaderGlowStrokeExpandable,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onVerticalDragUpdate: _handleHeaderDragUpdate,
@@ -4128,7 +4271,7 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
           decoration: BoxDecoration(
             gradient: gradient,
             borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(_expanded ? 22 : 28),
+              bottom: Radius.circular(_expanded ? 22 : kMtfHeaderBottomRadius),
             ),
             boxShadow: [
               BoxShadow(
@@ -4151,33 +4294,8 @@ class _DashboardBlueHeaderState extends State<DashboardBlueHeader>
                     height: 44,
                     child: Row(
                       children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 2,
-                            ),
-                          ),
-                          child: InkWell(
-                            onTap: widget.onBackTap,
-                            borderRadius: BorderRadius.circular(999),
-                            child: const Center(
-                              child: Text(
-                                '<',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.0,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
+                        MtfBackButton(onTap: widget.onBackTap),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: const Text(
                             '내 회원 관리',
@@ -6311,6 +6429,242 @@ Color _memberGroupMenuItemColor(BuildContext context, String groupId) {
   return const Color(0xFF4B5563);
 }
 
+List<_IssueChipData> _memberMembershipIssueChips(
+  Member member,
+  _MemberMembershipMeta? membershipMeta,
+) {
+  final items = <_IssueChipData>[];
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+
+  final expireAt = member.expireAt ?? membershipMeta?.endAt;
+  final expireDate =
+      expireAt == null
+          ? null
+          : DateTime(expireAt.year, expireAt.month, expireAt.day);
+
+  int? daysLeft;
+  if (expireDate != null) {
+    daysLeft = expireDate.difference(today).inDays;
+  }
+
+  final bool membershipPaused = membershipMeta?.isPaused == true;
+
+  if (membershipPaused) {
+    items.add(
+      const _IssueChipData(
+        label: '정지중',
+        bgColor: Color(0xFFF3F4F6),
+        textColor: Color(0xFF4B5563),
+      ),
+    );
+  }
+
+  final riskDaysLeft = _expiryRiskDaysLeft(member, expireAt);
+  if (riskDaysLeft != null) {
+    items.add(
+      _IssueChipData(
+        label: _expiryRiskLabel(member.remainingSessions, riskDaysLeft),
+        bgColor: const Color(0xFFFEF2F2),
+        textColor: const Color(0xFFDC2626),
+      ),
+    );
+  }
+
+  if (riskDaysLeft == null &&
+      _isActiveMember(member) &&
+      member.totalSessions > 0 &&
+      member.remainingSessions >= 0 &&
+      member.remainingSessions <= 3) {
+    items.add(
+      _IssueChipData(
+        // 횟수를 모두 쓴 회원은 자동으로 옮기지 않고(선생님이 직접 옮긴다) 소진으로만 표시한다.
+        label:
+            member.remainingSessions == 0
+                ? '소진'
+                : '잔여 ${member.remainingSessions}회',
+        bgColor: const Color(0xFFFAEEDA),
+        textColor: const Color(0xFFBA7517),
+      ),
+    );
+  }
+
+  if (daysLeft != null && riskDaysLeft == null) {
+    if (daysLeft < 0) {
+      items.add(
+        _IssueChipData(
+          label: membershipExpiryLabel(daysLeft),
+          bgColor: const Color(0xFFFEF2F2),
+          textColor: const Color(0xFFDC2626),
+        ),
+      );
+    } else if (daysLeft <= 30) {
+      final bool urgent = daysLeft <= 10;
+
+      items.add(
+        _IssueChipData(
+          label: membershipExpiryLabel(daysLeft),
+          bgColor: urgent ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
+          textColor: urgent ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
+        ),
+      );
+    }
+  }
+
+  final termLabel = membershipMeta?.termLabel;
+  if (termLabel != null && items.isNotEmpty) {
+    items.add(
+      _IssueChipData(
+        label: termLabel,
+        bgColor: const Color(0xFFF5F3FF),
+        textColor: const Color(0xFF6D28D9),
+      ),
+    );
+  }
+
+  if (membershipMeta?.needsContractSignature == true) {
+    items.add(
+      const _IssueChipData(
+        label: '계약서 미서명',
+        bgColor: Color(0xFFFFF7ED),
+        textColor: Color(0xFFC2410C),
+      ),
+    );
+  }
+
+  return items;
+}
+
+/// 회원에게 붙는 이슈 칩 전체(리스트 행은 앞의 2개만, 월렛 카드는 개수와 펼친 목록에 쓴다).
+List<_IssueChipData> _memberAllIssueChips(
+  Member member,
+  _MemberMembershipMeta? membershipMeta,
+) {
+  final now = DateTime.now();
+  final items = <_IssueChipData>[
+    ..._memberMembershipIssueChips(member, membershipMeta),
+  ];
+
+  if (!_isActiveMember(member)) {
+    return items;
+  }
+
+  final birthdayDaysLeft = _daysUntilNextMonthDay(member.birthDate, now);
+
+  if (birthdayDaysLeft != null &&
+      birthdayDaysLeft >= 0 &&
+      birthdayDaysLeft <= 7) {
+    items.add(
+      _IssueChipData(
+        label:
+            birthdayDaysLeft == 0
+                ? '🎂 D-DAY'
+                : '🎂 ${_dDayText(birthdayDaysLeft)}',
+        bgColor: const Color(0xFFFBEAF0),
+        textColor: const Color(0xFF993556),
+      ),
+    );
+  }
+
+  final anniversaryDaysLeft = _daysUntilNextMonthDay(
+    member.anniversaryDate,
+    now,
+  );
+
+  if (anniversaryDaysLeft != null &&
+      anniversaryDaysLeft >= 0 &&
+      anniversaryDaysLeft <= 14) {
+    final label =
+        (member.anniversaryLabel ?? '').trim().isEmpty
+            ? 'Focus'
+            : member.anniversaryLabel!.trim();
+
+    items.add(
+      _IssueChipData(
+        label:
+            anniversaryDaysLeft == 0
+                ? '$label D-DAY'
+                : '$label ${_dDayText(anniversaryDaysLeft)}',
+        bgColor: const Color(0xFFE6F1FB),
+        textColor: const Color(0xFF185FA5),
+      ),
+    );
+  }
+
+  final femaleConditionDaysLeft = _femaleConditionDaysLeft(member, now);
+
+  if (femaleConditionDaysLeft != null &&
+      femaleConditionDaysLeft >= -2 &&
+      femaleConditionDaysLeft <= 3) {
+    items.add(
+      _IssueChipData(
+        label: '여성컨디션 체크 ${_conditionDdayText(femaleConditionDaysLeft)}',
+        bgColor: const Color(0xFFEAF3DE),
+        textColor: const Color(0xFF3B6D11),
+      ),
+    );
+  }
+
+  final nextMoreDayDaysLeft =
+      member.nextMoreDayAt == null
+          ? null
+          : _daysBetween(now, member.nextMoreDayAt!);
+
+  if (nextMoreDayDaysLeft != null &&
+      nextMoreDayDaysLeft >= -7 &&
+      nextMoreDayDaysLeft <= 14) {
+    final label =
+        (member.nextMoreDayLabel ?? '').trim().isEmpty
+            ? 'D-DAY'
+            : member.nextMoreDayLabel!.trim();
+
+    items.add(
+      _IssueChipData(
+        label: '$label ${_dDayText(nextMoreDayDaysLeft)}',
+        bgColor: const Color(0xFFF3E8FF),
+        textColor: const Color(0xFF6D28D9),
+      ),
+    );
+  }
+
+  final total = member.totalSessions <= 0 ? 0 : member.totalSessions;
+  final used =
+      total <= 0 ? 0 : (total - member.remainingSessions).clamp(0, total);
+
+  final baseDate = member.recentReg ?? member.firstDate;
+  final firstLessonDays = baseDate == null ? null : _daysBetween(baseDate, now);
+
+  if (firstLessonDays != null &&
+      firstLessonDays >= 93 &&
+      firstLessonDays <= 103) {
+    items.add(
+      _IssueChipData(
+        label:
+            firstLessonDays == 100
+                ? '100일'
+                : firstLessonDays < 100
+                ? '100일 D-${100 - firstLessonDays}'
+                : '100일 D+${firstLessonDays - 100}',
+        bgColor: const Color(0xFFE6F1FB),
+        textColor: const Color(0xFF185FA5),
+      ),
+    );
+  }
+
+  if (used >= 93 && used <= 100) {
+    items.add(
+      _IssueChipData(
+        label: used == 100 ? '100회' : '100회까지 ${100 - used}회',
+        bgColor: const Color(0xFFE6F1FB),
+        textColor: const Color(0xFF185FA5),
+      ),
+    );
+  }
+
+  return items;
+}
+
 class MemberListRow extends StatelessWidget {
   const MemberListRow({
     super.key,
@@ -6403,218 +6757,8 @@ class MemberListRow extends StatelessWidget {
     return '총 ${total}회 / ${remain}회 남음$expiryText';
   }
 
-  List<_IssueChipData> _membershipIssueChips() {
-    final items = <_IssueChipData>[];
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    final expireAt = member.expireAt ?? membershipMeta?.endAt;
-    final expireDate =
-        expireAt == null
-            ? null
-            : DateTime(expireAt.year, expireAt.month, expireAt.day);
-
-    int? daysLeft;
-    if (expireDate != null) {
-      daysLeft = expireDate.difference(today).inDays;
-    }
-
-    final bool membershipPaused = membershipMeta?.isPaused == true;
-
-    if (membershipPaused) {
-      items.add(
-        const _IssueChipData(
-          label: '정지중',
-          bgColor: Color(0xFFF3F4F6),
-          textColor: Color(0xFF4B5563),
-        ),
-      );
-    }
-
-    if (_isActiveMember(member) &&
-        member.totalSessions > 0 &&
-        member.remainingSessions >= 0 &&
-        member.remainingSessions <= 3) {
-      items.add(
-        _IssueChipData(
-          label: '잔여 ${member.remainingSessions}회',
-          bgColor: const Color(0xFFFAEEDA),
-          textColor: const Color(0xFFBA7517),
-        ),
-      );
-    }
-
-    if (daysLeft != null) {
-      if (daysLeft < 0) {
-        items.add(
-          _IssueChipData(
-            label: membershipExpiryLabel(daysLeft),
-            bgColor: const Color(0xFFFEF2F2),
-            textColor: const Color(0xFFDC2626),
-          ),
-        );
-      } else if (daysLeft <= 30) {
-        final bool urgent = daysLeft <= 10;
-
-        items.add(
-          _IssueChipData(
-            label: membershipExpiryLabel(daysLeft),
-            bgColor: urgent ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
-            textColor:
-                urgent ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
-          ),
-        );
-      }
-    }
-
-    final termLabel = membershipMeta?.termLabel;
-    if (termLabel != null && items.isNotEmpty) {
-      items.add(
-        _IssueChipData(
-          label: termLabel,
-          bgColor: const Color(0xFFF5F3FF),
-          textColor: const Color(0xFF6D28D9),
-        ),
-      );
-    }
-
-    if (membershipMeta?.needsContractSignature == true) {
-      items.add(
-        const _IssueChipData(
-          label: '계약서 미서명',
-          bgColor: Color(0xFFFFF7ED),
-          textColor: Color(0xFFC2410C),
-        ),
-      );
-    }
-
-    return items;
-  }
-
-  List<_IssueChipData> _listEventChips() {
-    final now = DateTime.now();
-    final items = <_IssueChipData>[..._membershipIssueChips()];
-
-    if (!_isActiveMember(member)) {
-      return items.take(2).toList();
-    }
-
-    final birthdayDaysLeft = _daysUntilNextMonthDay(member.birthDate, now);
-
-    if (birthdayDaysLeft != null &&
-        birthdayDaysLeft >= 0 &&
-        birthdayDaysLeft <= 7) {
-      items.add(
-        _IssueChipData(
-          label:
-              birthdayDaysLeft == 0
-                  ? '🎂 D-DAY'
-                  : '🎂 ${_dDayText(birthdayDaysLeft)}',
-          bgColor: const Color(0xFFFBEAF0),
-          textColor: const Color(0xFF993556),
-        ),
-      );
-    }
-
-    final anniversaryDaysLeft = _daysUntilNextMonthDay(
-      member.anniversaryDate,
-      now,
-    );
-
-    if (anniversaryDaysLeft != null &&
-        anniversaryDaysLeft >= 0 &&
-        anniversaryDaysLeft <= 14) {
-      final label =
-          (member.anniversaryLabel ?? '').trim().isEmpty
-              ? 'Focus'
-              : member.anniversaryLabel!.trim();
-
-      items.add(
-        _IssueChipData(
-          label:
-              anniversaryDaysLeft == 0
-                  ? '$label D-DAY'
-                  : '$label ${_dDayText(anniversaryDaysLeft)}',
-          bgColor: const Color(0xFFE6F1FB),
-          textColor: const Color(0xFF185FA5),
-        ),
-      );
-    }
-
-    final femaleConditionDaysLeft = _femaleConditionDaysLeft(member, now);
-
-    if (femaleConditionDaysLeft != null &&
-        femaleConditionDaysLeft >= -2 &&
-        femaleConditionDaysLeft <= 3) {
-      items.add(
-        _IssueChipData(
-          label: '여성컨디션 체크 ${_conditionDdayText(femaleConditionDaysLeft)}',
-          bgColor: const Color(0xFFEAF3DE),
-          textColor: const Color(0xFF3B6D11),
-        ),
-      );
-    }
-
-    final nextMoreDayDaysLeft =
-        member.nextMoreDayAt == null
-            ? null
-            : _daysBetween(now, member.nextMoreDayAt!);
-
-    if (nextMoreDayDaysLeft != null &&
-        nextMoreDayDaysLeft >= -7 &&
-        nextMoreDayDaysLeft <= 14) {
-      final label =
-          (member.nextMoreDayLabel ?? '').trim().isEmpty
-              ? 'D-DAY'
-              : member.nextMoreDayLabel!.trim();
-
-      items.add(
-        _IssueChipData(
-          label: '$label ${_dDayText(nextMoreDayDaysLeft)}',
-          bgColor: const Color(0xFFF3E8FF),
-          textColor: const Color(0xFF6D28D9),
-        ),
-      );
-    }
-
-    final total = member.totalSessions <= 0 ? 0 : member.totalSessions;
-    final used =
-        total <= 0 ? 0 : (total - member.remainingSessions).clamp(0, total);
-
-    final baseDate = member.recentReg ?? member.firstDate;
-    final firstLessonDays =
-        baseDate == null ? null : _daysBetween(baseDate, now);
-
-    if (firstLessonDays != null &&
-        firstLessonDays >= 93 &&
-        firstLessonDays <= 103) {
-      items.add(
-        _IssueChipData(
-          label:
-              firstLessonDays == 100
-                  ? '100일'
-                  : firstLessonDays < 100
-                  ? '100일 D-${100 - firstLessonDays}'
-                  : '100일 D+${firstLessonDays - 100}',
-          bgColor: const Color(0xFFE6F1FB),
-          textColor: const Color(0xFF185FA5),
-        ),
-      );
-    }
-
-    if (used >= 93 && used <= 100) {
-      items.add(
-        _IssueChipData(
-          label: used == 100 ? '100회' : '100회까지 ${100 - used}회',
-          bgColor: const Color(0xFFE6F1FB),
-          textColor: const Color(0xFF185FA5),
-        ),
-      );
-    }
-
-    return items.take(2).toList();
-  }
+  List<_IssueChipData> _listEventChips() =>
+      _memberAllIssueChips(member, membershipMeta).take(2).toList();
 
   Color _sessionSummaryTextColor(BuildContext context) {
     return _isMembershipExpiryWithinDays(member, 10)
@@ -6676,35 +6820,59 @@ class MemberListRow extends StatelessWidget {
                         child: Row(
                           children: [
                             Expanded(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.max,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      _resolvedName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 14.8,
-                                        fontWeight: FontWeight.w900,
-                                        color: scheme.onSurface,
-                                        letterSpacing: -0.2,
-                                        height: 1.0,
-                                      ),
-                                    ),
-                                  ),
-                                  if (eventChips.isNotEmpty) ...[
-                                    const SizedBox(width: 6),
-                                    ...eventChips.map((chip) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 4,
+                              // 칩이 길어져도(예: 소멸 위험) 이름 칸을 남기도록 칩 묶음은 너비의 62%까지만
+                              // 쓰고, 넘치면 글자를 줄여 맞춘다.
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.max,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          _resolvedName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 14.8,
+                                            fontWeight: FontWeight.w900,
+                                            color: scheme.onSurface,
+                                            letterSpacing: -0.2,
+                                            height: 1.0,
+                                          ),
                                         ),
-                                        child: _TinyIssueChip(data: chip),
-                                      );
-                                    }),
-                                  ],
-                                ],
+                                      ),
+                                      if (eventChips.isNotEmpty) ...[
+                                        const SizedBox(width: 6),
+                                        ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                            maxWidth:
+                                                constraints.maxWidth * 0.62,
+                                          ),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                ...eventChips.map((chip) {
+                                                  return Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          right: 4,
+                                                        ),
+                                                    child: _TinyIssueChip(
+                                                      data: chip,
+                                                    ),
+                                                  );
+                                                }),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -6857,27 +7025,39 @@ class MemberListRow extends StatelessWidget {
                                 horizontal: 11,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F3FF),
+                                color: memberLogChipBackground(
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark,
+                                ),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color: const Color(0xFFE9D5FF),
+                                  color: memberLogChipBorder(
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark,
+                                  ),
                                 ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     Icons.edit_note_rounded,
                                     size: 16,
-                                    color: Color(0xFF6D28D9),
+                                    color: memberLogChipIconColor(
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark,
+                                    ),
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Text(
                                     '레슨일지',
                                     style: TextStyle(
                                       fontSize: 11.2,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF6D28D9),
+                                      color: memberLogChipTextColor(
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -6894,6 +7074,977 @@ class MemberListRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 회원 리스트 한 줄(또는 구분선) 항목.
+class _MemberListEntry {
+  _MemberListEntry.divider(String label)
+    : dividerLabel = label,
+      member = null,
+      isAddCard = false;
+
+  _MemberListEntry.member(Member this.member)
+    : dividerLabel = null,
+      isAddCard = false;
+
+  /// 목록 맨 끝의 '새로운 회원 등록하기' 카드.
+  _MemberListEntry.addCard()
+    : dividerLabel = null,
+      member = null,
+      isAddCard = true;
+
+  final String? dividerLabel;
+  final Member? member;
+  final bool isAddCard;
+
+  /// 같은 구간의 마지막 카드는 아래로 겹쳐 내려온 부분을 비워 둬야 한다.
+  bool isLastInSection = false;
+}
+
+/// 등록 카드를 눌렀을 때 넘기는 값: 카드의 화면상 위치(알 수 없으면 null)와 누른 순간의 카드 얼굴.
+/// 등록이 끝나(돌아올) 때까지 기다리는 Future를 돌려주면 카드가 그동안 떠 있다가 돌아온다.
+typedef MemberAddCardTap = FutureOr<void> Function(Rect? rect, Widget face);
+
+/// 목록 맨 끝(또는 빈 화면)에 꽂힌 황금색 카드: 눌러서 새 회원을 등록한다(상단 헤더의 회원 추가와 같은 동작).
+/// 덮이지 않은 카드 한 장 크기로 보이고, 안내 문구가 몇 초마다 바뀐다.
+/// 누르면 바로 떠오르며 금빛이 번지고 광택이 지나가며, 곧바로 화면 전환이 이어진다.
+class MemberAddCard extends StatefulWidget {
+  const MemberAddCard({super.key, required this.onTap});
+
+  static const double height =
+      MemberWalletCard.collapsedHeight + MemberWalletCard.overlap;
+
+  static const List<String> messages = <String>[
+    '회원카드를 등록해서 관리해보세요',
+    '회원카드를 등록하면 AIFC가 회원관리에 도움을 드릴 수 있어요',
+    '선생님의 VIP 회원님들을 등록해보세요',
+    '선생님의 VIP 회원님들을 관리해보세요',
+  ];
+
+  static const Duration rotateEvery = Duration(seconds: 4);
+
+  /// 광택이 지나가는 시간.
+  static const Duration shineDuration = Duration(milliseconds: 420);
+
+  final MemberAddCardTap onTap;
+
+  @override
+  State<MemberAddCard> createState() => _MemberAddCardState();
+}
+
+class _MemberAddCardState extends State<MemberAddCard>
+    with SingleTickerProviderStateMixin {
+  static const Color _ink = Color(0xFF3A2704);
+
+  late final AnimationController _shine = AnimationController(
+    vsync: this,
+    duration: MemberAddCard.shineDuration,
+  );
+
+  Timer? _timer;
+  int _messageIndex = 0;
+  bool _pressed = false;
+  bool _lifted = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(MemberAddCard.rotateEvery, (_) {
+      if (!mounted) return;
+      setState(() {
+        _messageIndex = (_messageIndex + 1) % MemberAddCard.messages.length;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _shine.dispose();
+    super.dispose();
+  }
+
+  void _setPressed(bool value) {
+    if (_pressed == value || !mounted) return;
+    setState(() => _pressed = value);
+  }
+
+  Future<void> _handleTap() async {
+    if (_busy) return;
+    _busy = true;
+    setState(() {
+      _pressed = false;
+      _lifted = true;
+    });
+    _shine.forward(from: 0);
+
+    final box = context.findRenderObject();
+    final rect =
+        box is RenderBox && box.hasSize
+            ? MatrixUtils.transformRect(
+              box.getTransformTo(null),
+              Offset.zero & box.size,
+            )
+            : null;
+    final face = _face(
+      Center(child: _messageText(MemberAddCard.messages[_messageIndex])),
+    );
+
+    try {
+      await widget.onTap(rect, face);
+    } finally {
+      _busy = false;
+      if (mounted) setState(() => _lifted = false);
+    }
+  }
+
+  Widget _messageText(String text, {Key? key}) {
+    return Text(
+      text,
+      key: key,
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+        color: _ink.withValues(alpha: 0.74),
+      ),
+    );
+  }
+
+  /// 카드 얼굴(질감 + 아이콘·제목·문구). 화면 전환에서도 같은 얼굴을 쓴다.
+  Widget _face(Widget message) {
+    return Stack(
+      children: [
+        const MembershipCardTexture(),
+        Positioned.fill(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _ink.withValues(alpha: 0.14),
+                    ),
+                    child: const Icon(
+                      Icons.person_add_alt_1_rounded,
+                      size: 28,
+                      color: _ink,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '새로운 회원 등록하기',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: _ink,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(height: 34, child: message),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(MemberWalletCard._radius);
+
+    return AnimatedScale(
+      scale: _pressed ? 0.975 : (_lifted ? 1.02 : 1.0),
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+      child: AnimatedBuilder(
+        animation: _shine,
+        builder: (context, card) {
+          final pulse = math.sin(math.pi * _shine.value);
+          return Container(
+            height: MemberAddCard.height,
+            decoration: BoxDecoration(
+              gradient: kMemberAddCardGradient,
+              borderRadius: radius,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.20),
+                  blurRadius: 8,
+                  offset: const Offset(0, -3),
+                ),
+                BoxShadow(
+                  color: kMemberAddCardGlow.withValues(
+                    alpha: 0.28 + 0.5 * pulse,
+                  ),
+                  blurRadius: 22 + 14 * pulse,
+                  spreadRadius: 1 + 2 * pulse,
+                ),
+              ],
+            ),
+            child: card,
+          );
+        },
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Stack(
+              children: [
+                _face(
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 450),
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.25),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: _messageText(
+                      MemberAddCard.messages[_messageIndex],
+                      key: ValueKey<int>(_messageIndex),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: InkWell(
+                    onTap: _handleTap,
+                    onTapDown: (_) => _setPressed(true),
+                    onTapCancel: () => _setPressed(false),
+                  ),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _shine,
+                      builder: (context, _) {
+                        return CustomPaint(
+                          painter: _GoldShinePainter(progress: _shine.value),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 카드 위를 왼쪽에서 오른쪽으로 비스듬히 한 번 지나가는 밝은 띠.
+class _GoldShinePainter extends CustomPainter {
+  const _GoldShinePainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0 || progress >= 1) return;
+
+    final eased = Curves.easeInOut.transform(progress);
+    final bandWidth = size.width * 0.24;
+    final centerX = lerpDouble(-size.width * 0.35, size.width * 1.35, eased)!;
+    final band = Rect.fromLTRB(
+      centerX - bandWidth / 2,
+      -size.height,
+      centerX + bandWidth / 2,
+      size.height * 2,
+    );
+
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.rotate(-0.38);
+    canvas.translate(-size.width / 2, -size.height / 2);
+    canvas.drawRect(
+      band,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0),
+            Colors.white.withValues(alpha: 0.72),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ).createShader(band),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _GoldShinePainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+/// 회원 리스트의 월렛식 카드.
+/// 접힘(고객카드 접힌 헤더와 같은 색·모양, 겹쳐 꽂힘) → 윗줄을 누르면 펼침 → 아랫부분을 누르면 고객카드.
+class MemberWalletCard extends StatelessWidget {
+  const MemberWalletCard({
+    super.key,
+    required this.member,
+    this.membershipMeta,
+    this.displayName,
+    required this.displayGroupLabel,
+    required this.groupMenuItems,
+    required this.isPinned,
+    required this.isExpanded,
+    required this.isLastInSection,
+    required this.onToggleExpanded,
+    required this.onPinTap,
+    required this.onEditTap,
+    required this.onLogTap,
+    required this.onQuickGroupChanged,
+    required this.onAnyInteraction,
+  });
+
+  /// 접힌 카드가 차지하는 높이(윗줄만 보이는 부분).
+  static const double collapsedHeight = 62;
+
+  /// 다음 카드가 위로 겹쳐 덮는 높이. 덮이지 않았을 때 카드 한 장 크기(62 + 138 = 200)가 된다.
+  static const double overlap = 138;
+
+  /// 펼쳤을 때 아래로 늘어나는 기본 높이(이슈 칩이 있으면 더 늘어난다).
+  static const double expandedExtraHeight = 92;
+
+  static const double _chipRowExtra = 23;
+  static const double _radius = 18;
+
+  final Member member;
+  final _MemberMembershipMeta? membershipMeta;
+  final String? displayName;
+  final String displayGroupLabel;
+  final List<_MemberCardGroupMenuItem> groupMenuItems;
+  final bool isPinned;
+  final bool isExpanded;
+  final bool isLastInSection;
+  final VoidCallback onToggleExpanded;
+  final VoidCallback onPinTap;
+  final VoidCallback onEditTap;
+  final VoidCallback onLogTap;
+  final ValueChanged<String> onQuickGroupChanged;
+  final VoidCallback onAnyInteraction;
+
+  String get _resolvedName {
+    final trimmed = (displayName ?? member.name ?? '이름없음').trim();
+    return trimmed.isEmpty ? '이름없음' : trimmed;
+  }
+
+  String get _groupLabel {
+    final label = displayGroupLabel.trim();
+    return label.isEmpty ? 'MORE THAN GYM' : label;
+  }
+
+  double get _groupLetterSpacing =>
+      RegExp(r'^[A-Za-z0-9\s\-_]+$').hasMatch(_groupLabel) ? 2.2 : 0.6;
+
+  bool get _isActive => _isActiveMember(member);
+
+  String get _gradeName {
+    final grade = (member.grade ?? '').trim().toUpperCase();
+    return grade.isEmpty ? 'BRONZE' : grade;
+  }
+
+  String _sessionSummaryText() {
+    final total = member.totalSessions;
+    final remain = member.remainingSessions;
+    final dDaySuffix = _membershipExpiryDDaySuffix(member);
+    final expiryText = dDaySuffix == null ? '' : ' · $dDaySuffix';
+
+    if (total <= 0 && remain <= 0) {
+      return '회차 미등록$expiryText';
+    }
+    return '총 $total회 / $remain회 남음$expiryText';
+  }
+
+  String _lessonDatesText() {
+    final next =
+        member.nextLessonAt == null
+            ? '다음 미정'
+            : '다음 ${_formatDate(member.nextLessonAt!)}';
+    final last =
+        member.lastLogAt == null
+            ? '레슨 기록 없음'
+            : '최근 ${_formatDate(member.lastLogAt!)}';
+    return '$next · $last';
+  }
+
+  /// 접힌 줄에 보이는 요약: 남은 레슨 · 회원권. 회차를 등록하지 않았으면 레슨은 빼고,
+  /// 기준을 넘긴 항목만 알약 배경으로 눈에 띄게 한다.
+  List<Widget> _summaryParts() {
+    final parts = <Widget>[];
+
+    if (!_isActive) {
+      parts.add(_summaryText(_isExpiredMember(member) ? '만료' : '휴면'));
+    }
+
+    // 레슨이 남았는데 기간이 곧 끝나면 두 알약 대신 소멸 위험 알약 하나로 알린다.
+    final riskDaysLeft = _expiryRiskDaysLeft(
+      member,
+      member.expireAt ?? membershipMeta?.endAt,
+    );
+    if (riskDaysLeft != null) {
+      return [
+        _summaryText(
+          _expiryRiskLabel(member.remainingSessions, riskDaysLeft),
+          warnKey: 'risk',
+        ),
+      ];
+    }
+
+    if (member.totalSessions > 0) {
+      final remain = member.remainingSessions;
+      parts.add(
+        _summaryText(
+          '잔여 $remain회',
+          warnKey: _isActive && remain >= 0 && remain < 5 ? 'lesson' : null,
+        ),
+      );
+    }
+
+    final expireAt = member.expireAt ?? membershipMeta?.endAt;
+    if (expireAt != null) {
+      final daysLeft = _daysBetween(DateTime.now(), expireAt);
+      parts.add(
+        _summaryText(
+          membershipExpiryLabel(daysLeft),
+          warnKey: _isActive && daysLeft <= 10 ? 'membership' : null,
+        ),
+      );
+    }
+
+    return [
+      for (var i = 0; i < parts.length; i++) ...[
+        if (i > 0) const SizedBox(width: 6),
+        parts[i],
+      ],
+    ];
+  }
+
+  Widget _summaryText(String text, {String? warnKey}) {
+    if (warnKey != null) {
+      return Container(
+        key: ValueKey<String>('member_wallet_card_warning_$warnKey'),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFFDC2626),
+            height: 1.15,
+          ),
+        ),
+      );
+    }
+    return Text(
+      text,
+      maxLines: 1,
+      style: TextStyle(
+        fontSize: 11.5,
+        fontWeight: FontWeight.w700,
+        color: Colors.white.withValues(alpha: 0.92),
+        height: 1.15,
+      ),
+    );
+  }
+
+  Widget _strip(int issueCount) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 6, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 24,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _groupLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white.withValues(alpha: 0.86),
+                      letterSpacing: _groupLetterSpacing,
+                    ),
+                  ),
+                ),
+                if (issueCount > 0)
+                  Container(
+                    key: const ValueKey<String>('member_wallet_card_issues'),
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.24),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '+$issueCount',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.15,
+                      ),
+                    ),
+                  ),
+                InkWell(
+                  onTap: () {
+                    onAnyInteraction();
+                    onPinTap();
+                  },
+                  borderRadius: BorderRadius.circular(999),
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: Icon(
+                      isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      size: 17,
+                      color: Colors.white.withValues(
+                        alpha: isPinned ? 1.0 : 0.55,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            height: 20,
+            child: Row(
+              children: [
+                Flexible(
+                  flex: 3,
+                  child: Text(
+                    '$_resolvedName님',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.2,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  flex: 2,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: _summaryParts(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(
+    BuildContext context,
+    List<_IssueChipData> chips,
+    double bodyHeight,
+  ) {
+    // 그룹 선택 목록은 카드 등급색(GOLD면 금색 계열, VIP면 VIP색)으로 깔고 글자는 흰색으로 쓴다.
+    final menuColor =
+        Color.lerp(
+          memberWalletCardGradient(
+            grade: member.grade,
+            status: member.memberStatus,
+          ).colors[1],
+          Colors.black,
+          0.12,
+        )!;
+
+    return SizedBox(
+      height: bodyHeight,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 2, 12, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 16,
+              child: Text(
+                _sessionSummaryText(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            SizedBox(
+              height: 15,
+              child: Text(
+                _lessonDatesText(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.82),
+                  height: 1.2,
+                ),
+              ),
+            ),
+            if (chips.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              SizedBox(
+                height: 20,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final chip in chips.take(3))
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: _TinyIssueChip(data: chip),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            const Spacer(),
+            Row(
+              children: [
+                PopupMenuButton<String>(
+                  onSelected: onQuickGroupChanged,
+                  color: menuColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  itemBuilder: (context) {
+                    return groupMenuItems.map((item) {
+                      return PopupMenuItem<String>(
+                        value: item.id,
+                        child: Row(
+                          children: [
+                            Icon(item.icon, size: 17, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12.2,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList();
+                  },
+                  child: Container(
+                    key: const ValueKey<String>('member_wallet_card_group'),
+                    constraints: const BoxConstraints(maxWidth: 170),
+                    padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _groupLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_drop_down_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                InkWell(
+                  onTap: () {
+                    onAnyInteraction();
+                    onLogTap();
+                  },
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    key: const ValueKey<String>('member_wallet_card_log'),
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.edit_note_rounded,
+                          size: 16,
+                          color: Colors.black87,
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          '레슨일지',
+                          style: TextStyle(
+                            fontSize: 11.2,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 윗줄·아랫부분이 하나의 카드로 보이도록 눌림 효과(물결)를 카드 전체에 한 번만 깔고,
+    // 접힌 카드는 펼치고 펼친 카드는 고객카드로 보낸다.
+    final chips = _memberAllIssueChips(member, membershipMeta);
+    final bodyHeight =
+        expandedExtraHeight + (chips.isEmpty ? 0 : _chipRowExtra);
+    final gradient = memberWalletCardGradient(
+      grade: member.grade,
+      status: member.memberStatus,
+    );
+    final radius = BorderRadius.circular(_radius);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: isExpanded ? 1 : 0),
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, _) {
+        final visibleHeight = collapsedHeight + bodyHeight * t;
+        // 마지막 카드는 다음 카드에 덮이지 않으므로 접혔을 때 아래까지 온전한 카드로 보이고,
+        // 펼치면 아래 여백 없이 본문에서 끝난다.
+        final tail = isLastInSection ? overlap * (1 - t) : overlap;
+        final cardHeight = visibleHeight + tail;
+        final boxHeight = isLastInSection ? cardHeight : visibleHeight;
+
+        return SizedBox(
+          height: boxHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: cardHeight,
+                child: DecoratedBox(
+                  key: ValueKey<String>('member_wallet_card_face_${member.id}'),
+                  decoration: BoxDecoration(
+                    gradient: gradient,
+                    borderRadius: radius,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.20),
+                        blurRadius: 8,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: radius,
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        onTap: () {
+                          onAnyInteraction();
+                          // 접힌 카드는 어디를 눌러도 펼치고, 펼친 카드는 어디를 눌러도 고객카드로 간다
+                          // (다른 카드를 누르면 열린 카드는 저절로 닫힌다).
+                          if (!isExpanded) {
+                            onToggleExpanded();
+                          } else {
+                            onEditTap();
+                          }
+                        },
+                        child: Stack(
+                          children: [
+                            const MembershipCardTexture(),
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: collapsedHeight,
+                              child: _strip(chips.length),
+                            ),
+                            if (isLastInSection && t < 1)
+                              Positioned(
+                                top: collapsedHeight,
+                                left: 0,
+                                right: 0,
+                                height: overlap,
+                                child: IgnorePointer(
+                                  child: Opacity(
+                                    opacity: 1 - t,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        2,
+                                        12,
+                                        8,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          SizedBox(
+                                            height: 16,
+                                            child: Text(
+                                              _sessionSummaryText(),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.white,
+                                                height: 1.2,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          SizedBox(
+                                            height: 15,
+                                            child: Text(
+                                              _lessonDatesText(),
+                                              key: const ValueKey<String>(
+                                                'member_wallet_card_last_info',
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.82,
+                                                ),
+                                                height: 1.2,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (isLastInSection && t < 1)
+                              Positioned(
+                                left: 16,
+                                bottom: 14,
+                                child: IgnorePointer(
+                                  child: Opacity(
+                                    opacity: 1 - t,
+                                    child: Text(
+                                      _gradeName,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 3,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.55,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (t > 0 || isExpanded)
+                              Positioned(
+                                top: collapsedHeight,
+                                left: 0,
+                                right: 0,
+                                height: bodyHeight,
+                                child: IgnorePointer(
+                                  ignoring: !isExpanded,
+                                  child: Opacity(
+                                    opacity: t,
+                                    child: _body(context, chips, bodyHeight),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -7613,6 +8764,21 @@ class _MoreChip extends StatelessWidget {
   }
 }
 
+/// 내 회원 관리의 `레슨일지` 칩 색. 배경은 홈 레슨 등록 화면의 `레슨계약서` 칩과 같은 색
+/// (밝은 모드 `FFF1C2`, 어두운 모드 `4A401F`)이다. 어두운 모드에서는 바뀐 배경 위에서
+/// 읽히도록 글씨·아이콘·테두리도 그 칩과 같은 색을 쓴다.
+Color memberLogChipBackground(bool dark) =>
+    dark ? const Color(0xFF4A401F) : const Color(0xFFFFF1C2);
+
+Color memberLogChipBorder(bool dark) =>
+    dark ? const Color(0xFFEFCB62) : const Color(0xFFE9D5FF);
+
+Color memberLogChipIconColor(bool dark) =>
+    dark ? const Color(0xFFEFCB62) : const Color(0xFF6D28D9);
+
+Color memberLogChipTextColor(bool dark) =>
+    dark ? const Color(0xFFFFF4CF) : const Color(0xFF6D28D9);
+
 class _SideQuickButton extends StatelessWidget {
   const _SideQuickButton({required this.label, required this.onTap, this.icon});
 
@@ -8218,6 +9384,22 @@ String _dDayText(int daysLeft) {
   if (daysLeft > 0) return 'D-$daysLeft';
   return 'D+${daysLeft.abs()}';
 }
+
+/// 남은 레슨이 있는데 사용 기간이 이 일수 안에 끝나면 '소멸 위험'으로 알린다.
+const int _kExpiryRiskDays = 14;
+
+/// 활성 회원이 레슨을 남기고 사용 기간이 곧 끝나면 남은 일수(0 이상)를, 아니면 null.
+/// 기간 끝에 남은 레슨이 소멸하므로 잔여 회차와 기간을 따로 보여 주지 않고 한 번에 알린다.
+int? _expiryRiskDaysLeft(Member member, DateTime? expireAt) {
+  if (!_isActiveMember(member)) return null;
+  if (member.totalSessions <= 0 || member.remainingSessions <= 0) return null;
+  if (expireAt == null) return null;
+  final daysLeft = _daysBetween(DateTime.now(), expireAt);
+  return daysLeft >= 0 && daysLeft <= _kExpiryRiskDays ? daysLeft : null;
+}
+
+String _expiryRiskLabel(int remain, int daysLeft) =>
+    daysLeft == 0 ? '잔여 $remain회 · 오늘 소멸' : '잔여 $remain회 · D-$daysLeft 소멸';
 
 @visibleForTesting
 String membershipExpiryLabel(int daysLeft) {

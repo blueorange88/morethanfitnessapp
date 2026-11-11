@@ -1,6 +1,16 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
+/// 모든 머리말(헤더)의 아래쪽 둥근 정도. 화면마다 다르게 쓰지 않는다.
+const double kMtfHeaderBottomRadius = 32;
+
+/// 빛의 굵기·세기. 아래로 열리는 머리말(홈·마이페이지·회원리스트·레슨일지)은 강하게,
+/// 열리지 않는 머리말(통계·계약서 등)은 한 단계 약하게 쓴다.
+const double kMtfHeaderGlowStrokeExpandable = 2.3;
+const double kMtfHeaderGlowIntensityExpandable = 1.0;
+
 class MtfHeaderNeonOverlay extends StatefulWidget {
   const MtfHeaderNeonOverlay({
     super.key,
@@ -8,13 +18,13 @@ class MtfHeaderNeonOverlay extends StatefulWidget {
     required this.isExpanded,
     this.entryKey,
     this.autoPlay = true,
-    this.bottomRadius = 32,
+    this.bottomRadius = kMtfHeaderBottomRadius,
     this.drawDuration = const Duration(milliseconds: 950),
     this.fadeDuration = const Duration(milliseconds: 180),
-    this.lineColor = const Color(0xFFEDE9FE),
-    this.glowColor = const Color(0xFF7C3AED),
-    this.strokeWidth = 2.2,
-    this.intensity = 1,
+    this.lineColor = AppColors.goldLight,
+    this.glowColor = AppColors.warmYellow,
+    this.strokeWidth = 1.9,
+    this.intensity = 0.75,
     this.enabled = true,
   });
 

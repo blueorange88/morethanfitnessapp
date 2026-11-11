@@ -356,7 +356,7 @@ void main() {
     );
     expect(
       RegExp(
-        r'Future<void> _openCreate\(\) async[\s\S]*?'
+        r'Future<void> _openCreate\((\{[^}]*\})?\) async[\s\S]*?'
         r'ClientCardPage\.newMember\([\s\S]*?personalOwnerUid: owner\.isEmpty \? null : owner',
       ).hasMatch(list),
       isTrue,

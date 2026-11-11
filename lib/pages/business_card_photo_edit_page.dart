@@ -131,9 +131,9 @@ class _BusinessCardPhotoEditSheetState
   Future<void> _pickDifferentPhoto() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 90,
-      maxWidth: 1600,
-      maxHeight: 1600,
+      imageQuality: 85,
+      maxWidth: 1200,
+      maxHeight: 1200,
     );
     if (file == null || !mounted) return;
 

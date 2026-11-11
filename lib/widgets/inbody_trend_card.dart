@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../pages/inbody_trend_page.dart';
 import '../services/inbody_history.dart';
 
 /// 레슨일지 헤더(어두운 배경)에 보여주는 인바디 추이 카드.
@@ -28,6 +29,17 @@ class _InbodyTrendCardState extends State<InbodyTrendCard> {
     return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
   }
 
+  /// 큰 차트 화면(두 손가락 줌·이동·기간 칩)을 연다.
+  void _openLarge() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder:
+            (_) =>
+                InbodyTrendPage(points: widget.points, initialMetric: _metric),
+      ),
+    );
+  }
+
   Widget _title({required bool hasData}) {
     return Row(
       children: [
@@ -41,6 +53,18 @@ class _InbodyTrendCardState extends State<InbodyTrendCard> {
             ),
           ),
         ),
+        if (hasData)
+          TextButton.icon(
+            key: const Key('inbody_trend_expand'),
+            onPressed: _openLarge,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            icon: const Icon(Icons.open_in_full_rounded, size: 14),
+            label: const Text('크게 보기', style: TextStyle(fontSize: 11.5)),
+          ),
         if (hasData)
           TextButton.icon(
             key: const Key('inbody_trend_add'),
@@ -198,10 +222,14 @@ class _InbodyTrendCardState extends State<InbodyTrendCard> {
                     height: 52,
                     child:
                         series.length >= 2
-                            ? CustomPaint(
-                              key: const Key('inbody_trend_chart'),
-                              painter: _TrendPainter(series),
-                              child: const SizedBox.expand(),
+                            ? GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _openLarge,
+                              child: CustomPaint(
+                                key: const Key('inbody_trend_chart'),
+                                painter: _TrendPainter(series),
+                                child: const SizedBox.expand(),
+                              ),
                             )
                             : Center(
                               child: Text(

@@ -28,10 +28,16 @@ bool matchesPersonalMemberListClassification({
   required String defaultGroupId,
   required String? selectedTagId,
 }) {
-  final matchesStatus = matchesPersonalMemberStatusFilter(
-    memberStatus: memberStatus,
-    filter: statusFilter,
-  );
+  // 휴면·만료는 하나의 분류처럼 보인다: 그룹·태그를 고르면 활성 회원만 나오고,
+  // 휴면·만료 회원은 해당 칩이나 전체에서 본다.
+  final isGroupOrTagSelected = selectedGroupId != null || selectedTagId != null;
+  final matchesStatus =
+      statusFilter == PersonalMemberStatusFilter.all && isGroupOrTagSelected
+          ? memberStatus != '휴면' && memberStatus != '만료'
+          : matchesPersonalMemberStatusFilter(
+            memberStatus: memberStatus,
+            filter: statusFilter,
+          );
   final matchesGroup = switch (selectedGroupId) {
     null => true,
     String id when id == defaultGroupId => memberGroupId == null,

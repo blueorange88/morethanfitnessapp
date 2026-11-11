@@ -1,5 +1,6 @@
 // lib/pages/personal_training_log_page.dart
 import 'dart:convert';
+import '../widgets/mtf_back_button.dart';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui show ImageByteFormat;
@@ -2257,20 +2258,15 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     final lastLessonText =
         latestLessonDate == null ? '기록없음' : _fmtDotYmd(latestLessonDate);
 
-    final recentIssue =
-        (widget.recentIssue ?? '').trim().isNotEmpty
-            ? widget.recentIssue!.trim()
-            : '최근 이슈 · 무릎 통증 호소';
-
-    final reRegistrationLabel =
-        (widget.reRegistrationLabel ?? '').trim().isNotEmpty
-            ? widget.reRegistrationLabel!.trim()
-            : '3회차';
-
+    // 값을 넘기는 곳이 없을 때 예시 문구를 대신 보여주지 않는다. 최근 이슈는 머리말이 아니라
+    // MORE 레슨브리핑의 `지난 레슨 통증·주의`로 보여주고, 시작 멘트는 지난 레슨에 적어 둔
+    // 다음 수업 체크포인트를 쓴다.
+    final recentIssue = (widget.recentIssue ?? '').trim();
+    final reRegistrationLabel = (widget.reRegistrationLabel ?? '').trim();
     final openingMent =
         (widget.openingMent ?? '').trim().isNotEmpty
             ? widget.openingMent!.trim()
-            : '지난레슨에 상체근력 트레이닝 진행하여, 오늘은 하체근력 트레이닝을 진행해볼게요.';
+            : _briefingOpeningMent();
     final headerInitialGoal = _initialGoalLabel();
     final headerGoalDday = _goalDdayLabel();
 
@@ -2687,8 +2683,10 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
           child: OutlinedButton.icon(
             onPressed: _openMemberSignRequestSheetFromLogPage,
             style: OutlinedButton.styleFrom(
-              foregroundColor: scheme.secondary,
-              side: BorderSide(color: scheme.secondary.withValues(alpha: 0.44)),
+              foregroundColor: scheme.accentText,
+              side: BorderSide(
+                color: scheme.accentText.withValues(alpha: 0.44),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -3930,6 +3928,14 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
   }
 
   Future<void> _openAnatomyLogPage(_TrainingLogItem log) async {
+    // 아나토미 기록은 부모 레슨일지(서버 초안)가 있어야 읽고 쓸 수 있다. 체크리스트를 끄거나
+    // 닫아서 아직 서버에 초안이 없으면, Firestore가 없는 문서 읽기를 permission-denied로
+    // 거절하므로 열기 전에 초안부터 만든다. 못 만들면 화면을 열지 않는다(안내는 저장 쪽에서).
+    if (_isPersonalWorkspace && log.trainingLogDocId.trim().isEmpty) {
+      final persisted = await _persistPersonalLogDraft(log);
+      if (!persisted || !mounted) return;
+    }
+
     final lessonLogId = _firestoreLogDocIdFromLog(log).trim();
     final scheduleDocId = log.scheduleDocId.trim();
     final memberId = (widget.memberId ?? '').trim();
@@ -5177,6 +5183,13 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
     return null;
   }
 
+  /// 브리핑의 `다음 레슨 시작 멘트 및 체크포인트`: 지난 레슨에 적어 둔 다음 수업 체크포인트.
+  /// 없으면 빈 글자(카드를 보여주지 않는다).
+  String _briefingOpeningMent() {
+    final last = _briefingLastLog();
+    return last == null ? '' : last.nextLessonCheckpoint.trim();
+  }
+
   String _briefingLastLesson() {
     final last = _briefingLastLog();
     if (last == null) return '아직 지난 레슨 기록이 없어요';
@@ -5202,8 +5215,17 @@ class _PersonalTrainingLogPageState extends State<PersonalTrainingLogPage> {
             .map((value) => value.trim())
             .where((value) => value.isNotEmpty)
             .toList();
-    if (details.isNotEmpty) return '통증 ${details.join(', ')}';
-    return last.prePain == '있음' ? '레슨 전 통증이 있었어요' : '';
+    final chips = last.issueChips
+        .map((c) => c.trim())
+        .where((c) => c.isNotEmpty);
+    final parts = <String>[
+      if (details.isNotEmpty)
+        '통증 ${details.join(', ')}'
+      else if (last.prePain == '있음')
+        '레슨 전 통증이 있었어요',
+      if (chips.isNotEmpty) '특이사항 ${chips.join(', ')}',
+    ];
+    return parts.join(' · ');
   }
 
   /// 아나토미 기록으로 본 최근 4주 동안 운동하지 않은 큰 부위. 기록이 없으면 빈 글자.
@@ -5526,8 +5548,8 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
 
     return MtfHeaderNeonOverlay(
       isExpanded: isExpanded,
-      intensity: 0.52,
-      strokeWidth: 1.6,
+      intensity: kMtfHeaderGlowIntensityExpandable,
+      strokeWidth: kMtfHeaderGlowStrokeExpandable,
       child: GestureDetector(
         // 머리말을 아래로 끌어 내리면 MORE 레슨브리핑을 열고, 열려 있을 때 위로 끌어 올리면 닫는다.
         key: const ValueKey<String>('log_header_swipe'),
@@ -5564,19 +5586,7 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
                 height: 44,
                 child: Row(
                   children: [
-                    InkWell(
-                      onTap: onBackTap,
-                      borderRadius: BorderRadius.circular(999),
-                      child: const SizedBox(
-                        width: 42,
-                        height: 42,
-                        child: Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                    ),
+                    MtfBackButton(onTap: onBackTap),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -5611,20 +5621,23 @@ class _ExerciseLogBlueHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.only(left: 46),
-                child: Text(
-                  recentIssue.isEmpty ? '최근 이슈' : recentIssue,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.88),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
+              if (recentIssue.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.only(left: 46),
+                  child: Text(
+                    recentIssue,
+                    key: const ValueKey<String>('log_header_recent_issue'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.88),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -5773,15 +5786,18 @@ class _HeaderMemberInfoBoxState extends State<_HeaderMemberInfoBox> {
     final pages = <Widget>[
       Column(
         children: [
-          _HeaderMessageCard(
-            title: '다음 레슨 시작 멘트 및 체크포인트',
-            value: widget.openingMent,
-          ),
-          Divider(
-            height: 20,
-            thickness: 1,
-            color: Colors.white.withOpacity(0.14),
-          ),
+          if (widget.openingMent.trim().isNotEmpty) ...[
+            _HeaderMessageCard(
+              key: const ValueKey<String>('briefing_opening'),
+              title: '다음 레슨 시작 멘트 및 체크포인트',
+              value: widget.openingMent,
+            ),
+            Divider(
+              height: 20,
+              thickness: 1,
+              color: Colors.white.withOpacity(0.14),
+            ),
+          ],
           Divider(
             height: 20,
             thickness: 1,

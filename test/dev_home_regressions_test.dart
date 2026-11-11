@@ -55,9 +55,13 @@ void main() {
   test('MyPage 저장 오류는 특정 필드 특례 없이 첫 오류 필드를 찾는다', () {
     final source = File('lib/pages/my_page.dart').readAsStringSync();
 
+    // 첫 오류 칸을 찾는 공통 로직은 form_error_focus.dart로 옮겼고, 마이페이지는 그것을 쓴다.
+    final helper = File('lib/utils/form_error_focus.dart').readAsStringSync();
+
     expect(source, contains('_scrollToFirstInvalidProfileField()'));
-    expect(source, contains('state.hasError'));
-    expect(source, contains('Scrollable.ensureVisible('));
+    expect(source, contains('focusFirstInvalidFormField('));
+    expect(helper, contains('state.hasError'));
+    expect(helper, contains('Scrollable.ensureVisible('));
     expect(
       source,
       isNot(

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -259,43 +261,63 @@ class HomeRecentClientsSection extends StatelessWidget {
                 );
               }
 
-              return GridView.count(
-                crossAxisCount: 4,
-                shrinkWrap: true,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                physics: const NeverScrollableScrollPhysics(),
-                children: List.generate(docs.length, (index) {
-                  final data = docs[index].data();
-                  final name = (data['name'] ?? '').toString().trim();
-                  final safeName = name.isEmpty ? '회원' : name;
-
-                  return GestureDetector(
-                    onTap: () => onMemberTap(docs[index].id),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        HomeRecentClientAvatar(index: index),
-                        const SizedBox(height: 6),
-                        Text(
-                          safeName,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: scheme.onSurface,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+              // 글자 크기를 키우면 이름 줄이 높아지므로 칸 높이를 아바타+이름 높이에 맞춰 늘린다.
+              // 기본 글자 크기에서는 예전처럼 정사각형 칸(가로=세로)을 유지한다.
+              final nameHeight =
+                  MediaQuery.textScalerOf(context).scale(11) * 1.4;
+              final neededHeight = 48 + 6 + nameHeight + 2;
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final cellWidth = (constraints.maxWidth - 12 * 3) / 4;
+                  return GridView(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      mainAxisExtent: math.max(cellWidth, neededHeight),
                     ),
+                    shrinkWrap: true,
+                    // 기본값이면 상태 표시줄·내비게이션 높이만큼 위아래 여백이 자동으로 붙는다.
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: _memberTiles(context, docs, scheme),
                   );
-                }),
+                },
               );
             },
           ),
         ],
       ),
     );
+  }
+
+  List<Widget> _memberTiles(
+    BuildContext context,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    ColorScheme scheme,
+  ) {
+    return List.generate(docs.length, (index) {
+      final data = docs[index].data();
+      final name = (data['name'] ?? '').toString().trim();
+      final safeName = name.isEmpty ? '회원' : name;
+
+      return GestureDetector(
+        onTap: () => onMemberTap(docs[index].id),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HomeRecentClientAvatar(index: index),
+            const SizedBox(height: 6),
+            Text(
+              safeName,
+              style: TextStyle(fontSize: 11, color: scheme.onSurface),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      );
+    });
   }
 }

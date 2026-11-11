@@ -62,6 +62,11 @@ class HomeNextLessonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    // 어두운 모드에서는 네이비 강조색이 배경에 묻히므로 `빠른 등록`과 같은 앱의 강조색(secondary)을 쓴다.
+    final accent =
+        Theme.of(context).brightness == Brightness.dark
+            ? colors.secondary
+            : primaryColor;
     final bool alreadyHasNim = name.trim().endsWith('님');
     final String displayName = alreadyHasNim ? name.trim() : '${name.trim()} 님';
     final String memoText = memo.trim();
@@ -73,7 +78,7 @@ class HomeNextLessonCard extends StatelessWidget {
 
     final Color leftLineColor =
         showLeftLine
-            ? primaryColor.withValues(alpha: isOngoing ? 1.0 : 0.82)
+            ? accent.withValues(alpha: isOngoing ? 1.0 : 0.82)
             : Colors.transparent;
 
     final double leftLineWidth = showLeftLine ? 4.0 : 0.0;
@@ -96,29 +101,26 @@ class HomeNextLessonCard extends StatelessWidget {
 
     final Color badgeBg = switch (emphasis) {
       3 => const Color(0xFFD1FAE5),
-      2 => primaryColor.withValues(alpha: 0.18),
-      1 => primaryColor.withValues(alpha: 0.12),
+      2 => accent.withValues(alpha: 0.18),
+      1 => accent.withValues(alpha: 0.12),
       _ => const Color(0xFFDBEAFE),
     };
 
     final Color badgeText = switch (emphasis) {
       3 => const Color(0xFF047857),
-      2 => primaryColor,
-      1 => primaryColor,
+      2 => accent,
+      1 => accent,
       _ => const Color(0xFF1E40AF),
     };
 
     final Color cardColor =
         isOngoing
-            ? Color.alphaBlend(
-              primaryColor.withValues(alpha: 0.08),
-              colors.surface,
-            )
+            ? Color.alphaBlend(accent.withValues(alpha: 0.08), colors.surface)
             : colors.surface;
 
     final Color outerBorderColor =
         showPriorityStyle
-            ? primaryColor.withValues(alpha: isOngoing ? 0.48 : 0.38)
+            ? accent.withValues(alpha: isOngoing ? 0.48 : 0.38)
             : Colors.transparent;
 
     final double outerBorderWidth = showPriorityStyle ? 1.1 : 0.0;
@@ -144,7 +146,7 @@ class HomeNextLessonCard extends StatelessWidget {
             color: cardColor,
             boxShadow: [
               BoxShadow(
-                color: primaryColor.withValues(alpha: shadowOpacity),
+                color: accent.withValues(alpha: shadowOpacity),
                 blurRadius: showPriorityStyle ? 12 : 5,
                 spreadRadius: showPriorityStyle ? 0.2 : 0,
                 offset: Offset(0, showPriorityStyle ? 5 : 2),
@@ -168,7 +170,7 @@ class HomeNextLessonCard extends StatelessWidget {
                 height: 42,
                 margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: iconOpacity),
+                  color: accent.withValues(alpha: iconOpacity),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
@@ -187,7 +189,7 @@ class HomeNextLessonCard extends StatelessWidget {
                     Text(
                       time,
                       style: TextStyle(
-                        color: primaryColor,
+                        color: accent,
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                       ),

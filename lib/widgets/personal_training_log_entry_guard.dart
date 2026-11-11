@@ -6,6 +6,7 @@ import '../pages/training_log_consent_page.dart';
 import '../services/app_tier_access_service.dart';
 import '../services/personal_member_consent_service.dart';
 import 'aifc_tier_feature_gate_sheet.dart';
+import 'aifc_toast.dart';
 
 enum PersonalTrainingLogMemberAccess { allowed, consentRequired, denied }
 
@@ -48,7 +49,6 @@ class PersonalTrainingLogEntryGuard {
     bool checkTier = true,
   }) async {
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.maybeOf(context);
     if (checkTier) {
       final tierAllowed = await AifcTierFeatureGateSheet.guard(
         context: context,
@@ -81,7 +81,7 @@ class PersonalTrainingLogEntryGuard {
       );
       if (initialAccess == PersonalTrainingLogMemberAccess.denied) {
         _log(entryPoint: entryPoint, result: 'deny', reason: 'owner_mismatch');
-        _showFailure(messenger);
+        if (context.mounted) _showFailure(context);
         return false;
       }
       if (initialAccess == PersonalTrainingLogMemberAccess.allowed) {
@@ -125,7 +125,7 @@ class PersonalTrainingLogEntryGuard {
         result: allowed ? 'allow' : 'deny',
         reason: allowed ? 'consent_readback' : 'consent_readback_mismatch',
       );
-      if (!allowed) _showFailure(messenger);
+      if (!allowed && context.mounted) _showFailure(context);
       return allowed;
     } catch (error) {
       final code =
@@ -133,15 +133,31 @@ class PersonalTrainingLogEntryGuard {
               ? error.code
               : error.runtimeType.toString();
       _log(entryPoint: entryPoint, result: 'error', reason: code);
-      _showFailure(messenger);
+      if (context.mounted) {
+        _showFailure(context, network: isNetworkFailureCode(code));
+      }
       return false;
     }
   }
 
-  static void _showFailure(ScaffoldMessengerState? messenger) {
-    if (messenger == null || !messenger.mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('회원의 레슨일지 사용 상태를 확인하지 못했어요. 다시 시도해주세요.')),
+  /// 인터넷이 없거나 불안정해서 서버에서 읽지 못한 경우의 오류 코드.
+  @visibleForTesting
+  static bool isNetworkFailureCode(String code) =>
+      code == 'unavailable' ||
+      code == 'deadline-exceeded' ||
+      code == 'network-request-failed';
+
+  /// 실패 안내는 앱 전체와 같은 AIFC 알림(토스트)으로 보여 준다.
+  static void _showFailure(BuildContext context, {bool network = false}) {
+    if (!context.mounted) return;
+    AifcToast.show(
+      context: context,
+      message:
+          network
+              ? '네트워크가 불안정해요. 연결을 확인하고 다시 시도해 주세요.'
+              : '회원의 레슨일지 사용 상태를 확인하지 못했어요. 다시 시도해주세요.',
+      bottomOffset: 110,
+      duration: const Duration(milliseconds: 2600),
     );
   }
 

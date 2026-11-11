@@ -3,6 +3,17 @@ import 'package:flutter/services.dart';
 
 import '../../../theme/app_colors.dart';
 
+// 밝은 모드는 앱 메인색(네이비), 어두운 모드는 기존 테마 강조색(노랑)을 쓴다.
+Color _timeDialogAccent(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+        ? context.mtfThemeTokens.gradeSheetAccent
+        : AppColors.deepNavy;
+
+Color _timeDialogOnAccent(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).colorScheme.onSecondary
+        : Colors.white;
+
 class HomeTimeDialogHeader extends StatelessWidget {
   const HomeTimeDialogHeader({
     super.key,
@@ -165,7 +176,6 @@ class HomeDialWheel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tokens = context.mtfThemeTokens;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -190,7 +200,7 @@ class HomeDialWheel extends StatelessWidget {
                 top: 43,
                 child: Container(
                   height: 1,
-                  color: tokens.gradeSheetAccent.withOpacity(0.28),
+                  color: _timeDialogAccent(context).withOpacity(0.28),
                 ),
               ),
               Positioned(
@@ -199,7 +209,7 @@ class HomeDialWheel extends StatelessWidget {
                 bottom: 43,
                 child: Container(
                   height: 1,
-                  color: tokens.gradeSheetAccent.withOpacity(0.28),
+                  color: _timeDialogAccent(context).withOpacity(0.28),
                 ),
               ),
               ListWheelScrollView.useDelegate(
@@ -232,7 +242,7 @@ class HomeDialWheel extends StatelessWidget {
                             letterSpacing: isSelected ? 0.7 : 0,
                             color:
                                 isSelected
-                                    ? tokens.gradeSheetAccent
+                                    ? _timeDialogAccent(context)
                                     : theme.colorScheme.onSurfaceVariant,
                           ),
                           child: Text(labelBuilder(index)),
@@ -297,7 +307,7 @@ class HomeDialogFooter extends StatelessWidget {
             flex: 2,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: tokens.gradeSheetAccent,
+                color: _timeDialogAccent(context),
                 borderRadius: BorderRadius.circular(9),
               ),
               child: ElevatedButton(
@@ -305,7 +315,7 @@ class HomeDialogFooter extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  foregroundColor: theme.colorScheme.onSecondary,
+                  foregroundColor: _timeDialogOnAccent(context),
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(9),

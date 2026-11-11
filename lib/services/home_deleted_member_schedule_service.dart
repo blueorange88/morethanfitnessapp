@@ -31,6 +31,22 @@ bool shouldCleanupDeletedMemberScheduleLinks({
   return hasDeletedMemberIds && !isFromCache && !hasPendingWrites;
 }
 
+/// 삭제 회원 정리 대상 스케줄 문서 ID.
+/// 서버 규칙이 거부한 문서는 [blockedDocIds]로 넘겨 다시 시도하지 않는다.
+/// 거부된 쓰기가 롤백될 때마다 새 스냅샷이 와서 같은 쓰기를 무한 반복하기 때문이다.
+Set<String> deletedMemberCleanupTargetDocIds({
+  required Map<String, String> memberIdByDocId,
+  required Set<String> deletedMemberIds,
+  required Set<String> blockedDocIds,
+}) {
+  return {
+    for (final entry in memberIdByDocId.entries)
+      if (deletedMemberIds.contains(entry.value.trim()) &&
+          !blockedDocIds.contains(entry.key))
+        entry.key,
+  };
+}
+
 class HomeDeletedMemberScheduleService {
   HomeDeletedMemberScheduleService._();
 

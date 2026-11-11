@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
 import 'package:flutter/material.dart';
 
 import 'dart:math' as math;
@@ -1590,7 +1592,7 @@ class _PersonalTrainingQuickLogSignPageState
                   Icon(
                     signed ? Icons.check_circle_rounded : Icons.draw_rounded,
                     size: 20,
-                    color: signed ? const Color(0xFF059669) : scheme.secondary,
+                    color: signed ? const Color(0xFF059669) : scheme.accentText,
                   ),
                   const SizedBox(width: 7),
                   Expanded(
@@ -1826,256 +1828,244 @@ class _PersonalTrainingQuickLogSignPageState
     final topInset = MediaQuery.of(context).padding.top;
     final gradient = context.mtfHeaderGradient;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(18, topInset + 6, 18, 14),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              InkWell(
-                onTap: () => Navigator.of(context).pop(),
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.16),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(0.18)),
-                  ),
-                  child: const Icon(
-                    Icons.chevron_left_rounded,
-                    color: Colors.white,
-                    size: 25,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  '빠른 서명',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              InkWell(
-                onTap: _openMemberSignRequestSheet,
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.16),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(0.18)),
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_2_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
+    return MtfHeaderNeonOverlay(
+      isExpanded: false,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 260),
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(18, topInset + 6, 18, 14),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(32),
           ),
-          const SizedBox(height: 16),
-
-          // 하나의 헤더 블럭
-          Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                MtfBackButton(onTap: () => Navigator.of(context).pop()),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    '빠른 서명',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: _openMemberSignRequestSheet,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(13),
+                      color: Colors.white.withOpacity(0.16),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.18)),
                     ),
                     child: const Icon(
-                      Icons.person_outline_rounded,
+                      Icons.qr_code_2_rounded,
                       color: Colors.white,
-                      size: 18,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '$_cleanMemberName 님',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // 하나의 헤더 블럭
+            Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: const Icon(
+                        Icons.person_outline_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$_cleanMemberName 님',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${_displayDateLabel(_effectiveStartAt)} · ${_displayTimeRangeLabel()} · ${widget.lessonType}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_loadingMember)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          countLabel,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 11,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '${_displayDateLabel(_effectiveStartAt)} · ${_displayTimeRangeLabel()} · ${widget.lessonType}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (_loadingMember)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
                       ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.14),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        countLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              InkWell(
-                onTap: () {
-                  if (_isModeLockedBySignature) {
-                    _showToast('서명 완료 후에는 처리방식을 변경할 수 없어요.');
-                    return;
-                  }
+                  ],
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () {
+                    if (_isModeLockedBySignature) {
+                      _showToast('서명 완료 후에는 처리방식을 변경할 수 없어요.');
+                      return;
+                    }
 
-                  setState(() {
-                    _modeExpanded = !_modeExpanded;
-                  });
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.12)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.fact_check_outlined,
-                        color: Colors.white,
-                        size: 17,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _modeLabel,
-                        style: const TextStyle(
+                    setState(() {
+                      _modeExpanded = !_modeExpanded;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.fact_check_outlined,
                           color: Colors.white,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w900,
+                          size: 17,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _modeHelperLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(width: 8),
+                        Text(
+                          _modeLabel,
                           style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                      ),
-                      AnimatedRotation(
-                        turns: _modeExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 180),
-                        child: const Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: Colors.white,
-                          size: 22,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _modeHelperLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              ClipRect(
-                child: AnimatedAlign(
-                  alignment: Alignment.topCenter,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  heightFactor: _modeExpanded ? 1 : 0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Column(
-                      children: [
-                        _buildHeaderModeChip(
-                          mode: _QuickLogMode.normalDeduct,
-                          label: '출석완료',
-                          helper: '강사/회원 서명 후 잔여 레슨 1회 소진',
-                          icon: Icons.check_circle_outline_rounded,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildHeaderModeChip(
-                          mode: _QuickLogMode.serviceNoDeduct,
-                          label: '서비스 레슨',
-                          helper: '서명은 저장 후 잔여 레슨은 소진하지 않음',
-                          icon: Icons.volunteer_activism_outlined,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildHeaderModeChip(
-                          mode: _QuickLogMode.noShowDeduct,
-                          label: '노쇼(차감)',
-                          helper: '강사 서명 후 저장하고 잔여 레슨 1회 차감',
-                          icon: Icons.person_off_outlined,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildHeaderModeChip(
-                          mode: _QuickLogMode.noShowNoDeduct,
-                          label: '노쇼(미차감)',
-                          helper: '강사 서명 후 저장하고 잔여 레슨은 유지',
-                          icon: Icons.undo_rounded,
+                        AnimatedRotation(
+                          turns: _modeExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 180),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                ClipRect(
+                  child: AnimatedAlign(
+                    alignment: Alignment.topCenter,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    heightFactor: _modeExpanded ? 1 : 0,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Column(
+                        children: [
+                          _buildHeaderModeChip(
+                            mode: _QuickLogMode.normalDeduct,
+                            label: '출석완료',
+                            helper: '강사/회원 서명 후 잔여 레슨 1회 소진',
+                            icon: Icons.check_circle_outline_rounded,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildHeaderModeChip(
+                            mode: _QuickLogMode.serviceNoDeduct,
+                            label: '서비스 레슨',
+                            helper: '서명은 저장 후 잔여 레슨은 소진하지 않음',
+                            icon: Icons.volunteer_activism_outlined,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildHeaderModeChip(
+                            mode: _QuickLogMode.noShowDeduct,
+                            label: '노쇼(차감)',
+                            helper: '강사 서명 후 저장하고 잔여 레슨 1회 차감',
+                            icon: Icons.person_off_outlined,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildHeaderModeChip(
+                            mode: _QuickLogMode.noShowNoDeduct,
+                            label: '노쇼(미차감)',
+                            helper: '강사 서명 후 저장하고 잔여 레슨은 유지',
+                            icon: Icons.undo_rounded,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

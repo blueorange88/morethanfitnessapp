@@ -21,12 +21,14 @@ class AifcInteraction {
     required String message,
     double bottomOffset = 76,
     Duration duration = const Duration(milliseconds: 1400),
+    double keyboardGap = 16,
   }) {
     AifcToast.show(
       context: context,
       message: message,
       bottomOffset: bottomOffset,
       duration: duration,
+      keyboardGap: keyboardGap,
     );
   }
 

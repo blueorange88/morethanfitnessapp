@@ -162,6 +162,30 @@ class HomeMemberLookupService {
     return '/$remain';
   }
 
+  // 홈이 회원 목록을 실시간으로 구독하고 있어 문서가 캐시에 있으면 서버를 기다리지 않는다.
+  // 캐시에 없거나 읽기에 실패하면 기존처럼 서버에서 읽는다.
+  static Future<DocumentSnapshot<Map<String, dynamic>>> _getMemberDocCacheFirst(
+    String memberId,
+  ) async {
+    final ref = _members.doc(memberId);
+    try {
+      final cached = await ref.get(const GetOptions(source: Source.cache));
+      if (cached.exists) return cached;
+    } catch (_) {}
+    return ref.get();
+  }
+
+  static Future<bool> _hasCachedOwnedMember(String? ownerUid) async {
+    try {
+      final snap = await _ownedMembers(
+        ownerUid,
+      ).limit(1).get(const GetOptions(source: Source.cache));
+      return snap.docs.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<String> loadMemberSessionCountText(
     String memberId, {
     String? ownerUid,
@@ -170,7 +194,7 @@ class HomeMemberLookupService {
     if (cleanId.isEmpty) return '';
 
     try {
-      final snap = await _members.doc(cleanId).get();
+      final snap = await _getMemberDocCacheFirst(cleanId);
       final data = snap.data();
 
       if (data == null || !_matchesOwner(data, ownerUid)) return '';
@@ -252,6 +276,20 @@ class HomeMemberLookupService {
     final results = <Map<String, dynamic>>[];
     final seenIds = <String>{};
 
+    // 홈이 회원 목록을 구독해 이 기기 캐시에 회원이 있으면 캐시로 찾고,
+    // 캐시가 비어 있으면(첫 실행 등) 기존처럼 서버에서 찾는다.
+    final useCache = await _hasCachedOwnedMember(ownerUid);
+    Future<QuerySnapshot<Map<String, dynamic>>> runQuery(
+      Query<Map<String, dynamic>> query,
+    ) async {
+      if (useCache) {
+        try {
+          return await query.get(const GetOptions(source: Source.cache));
+        } catch (_) {}
+      }
+      return query.get();
+    }
+
     void addDocs(QuerySnapshot<Map<String, dynamic>> snapshot) {
       for (final doc in snapshot.docs) {
         if (seenIds.contains(doc.id)) continue;
@@ -305,19 +343,19 @@ class HomeMemberLookupService {
     }
 
     if (normalizedDigits.length >= 9) {
-      final byPhone =
-          await _ownedMembers(
-            ownerUid,
-          ).where('phone', isEqualTo: normalizedDigits).limit(10).get();
+      final byPhone = await runQuery(
+        _ownedMembers(
+          ownerUid,
+        ).where('phone', isEqualTo: normalizedDigits).limit(10),
+      );
 
       addDocs(byPhone);
     }
 
     if (cleanText.isNotEmpty) {
-      final byName =
-          await _ownedMembers(
-            ownerUid,
-          ).where('name', isEqualTo: cleanText).limit(10).get();
+      final byName = await runQuery(
+        _ownedMembers(ownerUid).where('name', isEqualTo: cleanText).limit(10),
+      );
 
       addDocs(byName);
     }

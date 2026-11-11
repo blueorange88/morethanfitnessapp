@@ -8,6 +8,7 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
     required this.selectedColorHex,
     required this.paletteColorHexes,
     required this.onColorSelected,
+    this.onCustomColorTap,
     required this.onClose,
     required this.onSubmit,
     this.onDelete,
@@ -18,6 +19,9 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
   final String selectedColorHex;
   final List<String> paletteColorHexes;
   final ValueChanged<String> onColorSelected;
+
+  /// 팔레트에 없는 색을 직접 고르는 `+` 버튼. 없으면 버튼을 그리지 않는다.
+  final VoidCallback? onCustomColorTap;
   final VoidCallback onClose;
   final VoidCallback onSubmit;
   final VoidCallback? onDelete;
@@ -35,6 +39,43 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
     }
 
     return Color(parsed);
+  }
+
+  Widget _swatch(String hex, {required bool selected, VoidCallback? onTap}) {
+    final color = _colorFromHex(hex);
+    return GestureDetector(
+      key: ValueKey<String>('lesson_type_color_${hex.toUpperCase()}'),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? Colors.white : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow:
+              selected
+                  ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.55),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 2),
+                    ),
+                    const BoxShadow(
+                      color: Color(0xFF111827),
+                      blurRadius: 0,
+                      spreadRadius: 0.6,
+                    ),
+                  ]
+                  : null,
+        ),
+      ),
+    );
   }
 
   @override
@@ -185,48 +226,53 @@ class HomeLessonTypeEditorPanel extends StatelessWidget {
                 Wrap(
                   spacing: 7,
                   runSpacing: 7,
-                  children:
-                      paletteColorHexes.map((hex) {
-                        final color = _colorFromHex(hex);
-                        final selected =
-                            selectedColorHex.toUpperCase() == hex.toUpperCase();
-
-                        return GestureDetector(
-                          onTap: () => onColorSelected(hex),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 140),
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color:
-                                    selected
-                                        ? Colors.white
-                                        : Colors.transparent,
-                                width: 2,
-                              ),
-                              boxShadow:
-                                  selected
-                                      ? [
-                                        BoxShadow(
-                                          color: color.withOpacity(0.55),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                        const BoxShadow(
-                                          color: Color(0xFF111827),
-                                          blurRadius: 0,
-                                          spreadRadius: 0.6,
-                                        ),
-                                      ]
-                                      : null,
+                  children: [
+                    if (onCustomColorTap != null)
+                      GestureDetector(
+                        key: const ValueKey<String>('lesson_type_color_custom'),
+                        onTap: onCustomColorTap,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const SweepGradient(
+                              colors: [
+                                Color(0xFFFF4D4D),
+                                Color(0xFFFFD84D),
+                                Color(0xFF4DFF88),
+                                Color(0xFF4DC8FF),
+                                Color(0xFF8A4DFF),
+                                Color(0xFFFF4DC8),
+                                Color(0xFFFF4D4D),
+                              ],
+                            ),
+                            border: Border.all(
+                              color: const Color(0xFFE5E7EB),
+                              width: 0.8,
                             ),
                           ),
-                        );
-                      }).toList(),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    // 팔레트에 없는 색(직접 고른 색)이면 선택된 원으로 따로 보여 준다.
+                    if (!paletteColorHexes.any(
+                      (hex) =>
+                          hex.toUpperCase() == selectedColorHex.toUpperCase(),
+                    ))
+                      _swatch(selectedColorHex, selected: true),
+                    for (final hex in paletteColorHexes)
+                      _swatch(
+                        hex,
+                        selected:
+                            selectedColorHex.toUpperCase() == hex.toUpperCase(),
+                        onTap: () => onColorSelected(hex),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 11),
                 Row(

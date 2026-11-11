@@ -1,5 +1,6 @@
 // lib/pages/binder_card_page.dart
 import 'dart:async';
+import '../widgets/mtf_back_button.dart';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -717,24 +718,8 @@ class _ModernHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              GestureDetector(
-                onTap: onBack,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: kBorderColor),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back,
-                    size: 18,
-                    color: kTextPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
+              MtfBackButton(onTap: onBack, color: kTextPrimary),
+              const SizedBox(width: 6),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

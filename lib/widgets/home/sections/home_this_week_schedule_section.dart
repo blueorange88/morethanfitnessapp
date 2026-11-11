@@ -89,17 +89,38 @@ class HomeThisWeekScheduleSection extends StatelessWidget {
                         onLongPress: () async {
                           await onWeekActionMenu(weekOffset);
                         },
-                        child: Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: true,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: colors.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child:
+                            homeWeekTitleIsDateRange(title)
+                                // "MM월DD일부터 MM월DD일까지"는 한 줄로, 자리가 모자라면 글씨를
+                                // 줄여서 표가 아래로 밀리지 않게 한다.
+                                ? FittedBox(
+                                  key: const ValueKey<String>(
+                                    'home_week_title_one_line',
+                                  ),
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    homeWeekTitleOneLine(title),
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: colors.onSurface,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                )
+                                : Text(
+                                  title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: true,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: colors.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                       ),
                     ),
                     const SizedBox(width: 6),

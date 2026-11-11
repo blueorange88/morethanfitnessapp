@@ -206,6 +206,54 @@ void main() {
       expect(store.updatedParentCount, 0);
     });
 
+    test('서버에 부모가 없어 Rules가 읽기를 거절해도 부모 없음으로 안내한다(불러오기)', () async {
+      store.deniesMissingParentRead = true;
+
+      await expectLater(
+        service.load(
+          lessonLogId: 'lesson-1',
+          trainerId: 'trainer-1',
+          memberId: 'member-1',
+        ),
+        _failsWith(AnatomyLogErrorCode.parentNotFound),
+      );
+    });
+
+    test('서버에 부모가 없어 Rules가 읽기를 거절해도 부모 없음으로 안내한다(저장)', () async {
+      store.deniesMissingParentRead = true;
+
+      await expectLater(
+        service.save(
+          lessonLogId: 'lesson-1',
+          trainerId: 'trainer-1',
+          memberId: 'member-1',
+          records: [record()],
+          deletedRecordIds: const {},
+        ),
+        _failsWith(AnatomyLogErrorCode.parentNotFound),
+      );
+      expect(store.createdRecordCount, 0);
+    });
+
+    test('부모가 있는데 다른 읽기가 permission-denied면 그대로 권한 오류다', () async {
+      store.seedParent();
+      final denying = _DenyingRecordsStore(store);
+      service = AnatomyLogService(
+        store: denying,
+        currentUid: () => 'trainer-1',
+      );
+
+      await expectLater(
+        service.load(
+          lessonLogId: 'lesson-1',
+          trainerId: 'trainer-1',
+          memberId: 'member-1',
+          scheduleDocId: 'schedule-1',
+        ),
+        _failsWith(AnatomyLogErrorCode.permissionDenied),
+      );
+    });
+
     test('로그인 uid와 trainerId가 다르면 저장을 거부한다', () async {
       store.seedParent();
       service = AnatomyLogService(
@@ -427,12 +475,42 @@ Matcher _failsWith(AnatomyLogErrorCode code) => throwsA(
   isA<AnatomyLogException>().having((error) => error.code, 'code', code),
 );
 
+/// 부모는 읽히지만 하위 기록 목록 읽기가 거절되는 저장소.
+class _DenyingRecordsStore implements AnatomyLogStore {
+  _DenyingRecordsStore(this._inner);
+
+  final _FakeAnatomyLogStore _inner;
+
+  @override
+  String newRecordId(String lessonLogId) => _inner.newRecordId(lessonLogId);
+
+  @override
+  Future<Map<String, dynamic>?> getParent(String lessonLogId) =>
+      _inner.getParent(lessonLogId);
+
+  @override
+  Future<List<AnatomyLogDocument>> getRecords(String lessonLogId) async {
+    throw FirebaseException(
+      plugin: 'cloud_firestore',
+      code: 'permission-denied',
+    );
+  }
+
+  @override
+  Future<T> runTransaction<T>(
+    Future<T> Function(AnatomyLogTransaction transaction) action,
+  ) => _inner.runTransaction(action);
+}
+
 class _FakeAnatomyLogStore implements AnatomyLogStore, AnatomyLogTransaction {
   final Map<String, Map<String, dynamic>> parents = {};
   final Map<String, Map<String, Map<String, dynamic>>> records = {};
   int createdRecordCount = 0;
   int updatedParentCount = 0;
   int _nextId = 1;
+
+  /// 실제 Firestore처럼, 서버에 없는 부모 문서를 읽으면 permission-denied로 거절한다.
+  bool deniesMissingParentRead = false;
 
   void seedParent({
     String trainerId = 'trainer-1',
@@ -455,10 +533,19 @@ class _FakeAnatomyLogStore implements AnatomyLogStore, AnatomyLogTransaction {
   String newRecordId(String lessonLogId) => 'generated-${_nextId++}';
 
   @override
-  Future<Map<String, dynamic>?> getParent(String lessonLogId) async =>
-      parents[lessonLogId] == null
-          ? null
-          : Map<String, dynamic>.from(parents[lessonLogId]!);
+  Future<Map<String, dynamic>?> getParent(String lessonLogId) async {
+    final parent = parents[lessonLogId];
+    if (parent == null) {
+      if (deniesMissingParentRead) {
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
+        );
+      }
+      return null;
+    }
+    return Map<String, dynamic>.from(parent);
+  }
 
   @override
   Future<List<AnatomyLogDocument>> getRecords(String lessonLogId) async =>

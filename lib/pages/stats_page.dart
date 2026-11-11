@@ -1,4 +1,5 @@
 import 'dart:ui';
+import '../widgets/mtf_back_button.dart';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../services/app_tier_access_service.dart';
 import '../utils/lesson_insights_stats.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
+import '../widgets/lesson_trend_card.dart';
 import '../widgets/mtf_floating_more_menu.dart';
 import 'monthly_lesson_history_page.dart';
 import '../theme/app_colors.dart';
@@ -54,6 +56,14 @@ class _LessonInsightsPageState extends State<StatsPage> {
   _StatsPeriod _period = _StatsPeriod.month;
   DateTimeRange? _customRange;
 
+  // 레슨 추이 차트용 데이터(조회 기간과 따로 최근 3개월을 불러오고, 월별로 내려가면 12개월).
+  List<LessonInsightEntry> _trendLessons = const [];
+  List<DateTime> _memberCreatedAts = const [];
+  DateTime? _trendFrom;
+  bool _trendYear = false;
+  bool _trendFailed = false;
+  bool _lockScroll = false;
+
   bool get _isPersonalWorkspace =>
       (widget.personalOwnerUid ?? '').trim().isNotEmpty;
   String get _personalOwnerUid => widget.personalOwnerUid!.trim();
@@ -81,6 +91,7 @@ class _LessonInsightsPageState extends State<StatsPage> {
         _isTierAccessLoading = false;
       });
       if (!_isPersonalWorkspace || access.tierRank >= 3) {
+        _loadTrend(year: false);
         await _loadStats();
       } else if (mounted) {
         setState(() => _isStatsLoading = false);
@@ -226,6 +237,14 @@ class _LessonInsightsPageState extends State<StatsPage> {
             );
           });
 
+      final createdAts =
+          memberSnapshot.docs
+              .map((doc) => doc.data())
+              .where((data) => !_isDeleted(data))
+              .map((data) => _dateFromAny(data['createdAt']))
+              .whereType<DateTime>()
+              .toList();
+
       final stats = LessonInsightStats.calculate(
         lessons: lessons,
         members: members,
@@ -236,6 +255,7 @@ class _LessonInsightsPageState extends State<StatsPage> {
       if (!mounted) return;
       setState(() {
         _stats = stats;
+        _memberCreatedAts = createdAts;
         _isStatsLoading = false;
       });
     } catch (error) {
@@ -245,6 +265,80 @@ class _LessonInsightsPageState extends State<StatsPage> {
         _loadError = error.toString();
       });
     }
+  }
+
+  /// 레슨 추이 차트용으로 최근 기간의 레슨을 불러온다([year]면 12개월, 아니면 약 3개월).
+  /// 이미 12개월을 불러왔으면 다시 읽지 않는다.
+  Future<void> _loadTrend({required bool year}) async {
+    if (_trendYear && _trendFrom != null) return;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final from =
+        year
+            ? DateTime(today.year, today.month - 11, 1)
+            : DateTime(today.year, today.month, today.day - 90);
+    final to = DateTime(today.year, today.month, today.day + 1);
+    try {
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+          .collection('schedules')
+          .where('startAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+          .where('startAt', isLessThan: Timestamp.fromDate(to));
+      if (_isPersonalWorkspace) {
+        query = query
+            .where('trainerId', isEqualTo: _personalOwnerUid)
+            .where('workspaceType', isEqualTo: 'personal');
+      }
+      final snapshot = await query.get();
+      final lessons =
+          snapshot.docs
+              .map((doc) => doc.data())
+              .where((data) => !_isDeleted(data))
+              .map((data) {
+                final startAt = _dateFromAny(data['startAt']);
+                if (startAt == null) return null;
+                return LessonInsightEntry(
+                  startAt: startAt,
+                  status: (data['lessonConfirmStatus'] ?? '').toString().trim(),
+                  type: (data['typeName'] ?? data['type'] ?? '기타').toString(),
+                );
+              })
+              .whereType<LessonInsightEntry>()
+              .toList();
+      if (!mounted) return;
+      setState(() {
+        _trendLessons = lessons;
+        _trendFrom = from;
+        _trendYear = year;
+        _trendFailed = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _trendFailed = true);
+    }
+  }
+
+  Widget _buildTrendCard() {
+    if (_trendFailed && _trendFrom == null) {
+      return const _EmptyMetricText('추이 데이터를 불러오지 못했어요.\n아래로 당겨 새로고침해 주세요.');
+    }
+    final from = _trendFrom;
+    if (from == null) {
+      return const SizedBox(
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return LessonTrendCard(
+      lessons: _trendLessons,
+      memberCreatedAts: _memberCreatedAts,
+      dataStart: from,
+      hasYearData: _trendYear,
+      onNeedYearData: () => _loadTrend(year: true),
+      onMultiTouchChanged: (locked) {
+        if (_lockScroll != locked && mounted) {
+          setState(() => _lockScroll = locked);
+        }
+      },
+    );
   }
 
   static bool _isDeleted(Map<String, dynamic> data) {
@@ -374,10 +468,24 @@ class _LessonInsightsPageState extends State<StatsPage> {
               ),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: _loadStats,
+                  onRefresh:
+                      () => Future.wait<void>([
+                        _loadStats(),
+                        _loadTrend(year: _trendYear),
+                      ]),
                   child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                    // 차트에 두 손가락이 닿아 있는 동안은 세로 스크롤을 잠근다.
+                    physics:
+                        _lockScroll
+                            ? const NeverScrollableScrollPhysics()
+                            : const AlwaysScrollableScrollPhysics(),
+                    // 맨 아래 글자가 시스템 내비게이션 바 밑에 가리지 않도록 하단 안전 영역만큼 더 띄운다.
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      14,
+                      16,
+                      28 + MediaQuery.of(context).padding.bottom,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -519,7 +627,6 @@ class _LessonInsightsPageState extends State<StatsPage> {
 
   Widget _buildSummary() {
     final stats = _stats!;
-    final palette = context.mtfChartPalette;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -538,28 +645,24 @@ class _LessonInsightsPageState extends State<StatsPage> {
               value: '${stats.completedLessons}회',
               subtitle: '선택 기간 확정 완료',
               icon: Icons.task_alt_rounded,
-              colors: [palette.primarySeries, palette.tertiarySeries],
             ),
             _KpiCard(
               title: '예정 레슨',
               value: '${stats.upcomingLessons}회',
               subtitle: '현재 시각 이후 미확정',
               icon: Icons.upcoming_rounded,
-              colors: [palette.secondarySeries, palette.primarySeries],
             ),
             _KpiCard(
               title: '실제 수업률',
               value: _rateText(stats.actualLessonRate),
               subtitle: '확정 결과 기준',
               icon: Icons.insights_rounded,
-              colors: [palette.warningSeries, palette.tertiarySeries],
             ),
             _KpiCard(
               title: '활성 회원',
               value: '${stats.activeMembers}명',
               subtitle: '현재 회원 상태 기준',
               icon: Icons.groups_rounded,
-              colors: [palette.positiveSeries, palette.secondarySeries],
             ),
           ],
         ),
@@ -586,6 +689,8 @@ class _LessonInsightsPageState extends State<StatsPage> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        _DashboardCard(title: '레슨 추이', child: _buildTrendCard()),
         const SizedBox(height: 12),
         _DashboardCard(
           title: '요일별 등록 레슨',
@@ -758,9 +863,7 @@ class _StatsHeader extends StatelessWidget {
 
     return MtfHeaderNeonOverlay(
       isExpanded: false,
-      intensity: 0.52,
-      bottomRadius: 28,
-      strokeWidth: 1.6,
+      bottomRadius: kMtfHeaderBottomRadius,
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.only(
@@ -770,9 +873,10 @@ class _StatsHeader extends StatelessWidget {
           bottom: 14,
         ),
         decoration: BoxDecoration(
-          color: tokens.drawerHeaderBackground,
+          // 내 회원 관리 헤더와 같은 그라데이션을 쓴다.
+          gradient: context.mtfHeaderGradient,
           borderRadius: const BorderRadius.vertical(
-            bottom: Radius.circular(28),
+            bottom: Radius.circular(kMtfHeaderBottomRadius),
           ),
           boxShadow: [
             BoxShadow(
@@ -788,33 +892,8 @@ class _StatsHeader extends StatelessWidget {
               height: 44,
               child: Row(
                 children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 2,
-                      ),
-                    ),
-                    child: InkWell(
-                      onTap: onBackTap,
-                      borderRadius: BorderRadius.circular(999),
-                      child: const Center(
-                        child: Text(
-                          '<',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w500,
-                            height: 1.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+                  MtfBackButton(onTap: onBackTap),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       title,
@@ -911,33 +990,27 @@ class _KpiCard extends StatelessWidget {
     required this.value,
     required this.subtitle,
     required this.icon,
-    required this.colors,
   });
 
   final String title;
   final String value;
   final String subtitle;
   final IconData icon;
-  final List<Color> colors;
 
   @override
   Widget build(BuildContext context) {
-    final foreground =
-        ThemeData.estimateBrightnessForColor(colors.first) == Brightness.dark
-            ? Colors.white
-            : const Color(0xFF0B1E32);
+    // 네 카드 모두 머리말과 같은 네이비 그라데이션을 쓰고, 브랜드 골드는 숫자와 아이콘에만 쓴다.
+    final accent = AppColors.warmYellow;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: context.mtfHeaderGradient,
         borderRadius: BorderRadius.circular(18),
+        // 다크에서는 그라데이션 끝이 화면 배경과 같아져서 얇은 테두리로 카드 경계를 잡는다.
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -956,9 +1029,9 @@ class _KpiCard extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: foreground,
+                      color: Colors.white,
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -967,8 +1040,8 @@ class _KpiCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: foreground,
-                      fontSize: 18,
+                      color: accent,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -976,7 +1049,7 @@ class _KpiCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: foreground.withValues(alpha: 0.86),
+                      color: Colors.white.withValues(alpha: 0.78),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -987,13 +1060,13 @@ class _KpiCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Container(
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: foreground.withOpacity(0.18),
+              color: accent.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: foreground, size: 24),
+            child: Icon(icon, color: accent, size: 22),
           ),
         ],
       ),

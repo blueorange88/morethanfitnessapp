@@ -207,40 +207,42 @@ void main() {
   });
 
   test('오늘 위젯 Android parser는 schema v2 revision과 서울 날짜를 사용한다', () {
+    // 데이터 읽기·검증은 오늘 레슨 위젯과 지금·다음 위젯이 함께 쓰는 공용 파일에 있다.
+    final parser =
+        File(
+          'android/app/src/main/kotlin/com/morethanfitness/app/'
+          'MtfTodayRollupSource.kt',
+        ).readAsStringSync();
     final source =
         File(
           'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfTodayLessonRollupWidget.kt',
         ).readAsStringSync();
-    expect(source, contains('root.optInt("schemaVersion", 1)'));
-    expect(source, contains('root.optLong("payloadRevision", 0L)'));
-    expect(source, contains('"startAtEpochMs"'));
-    expect(source, contains('"displayName"'));
-    expect(source, contains('ZoneId.of(TIMEZONE_SEOUL)'));
+    expect(parser, contains('root.optInt("schemaVersion", 1)'));
+    expect(parser, contains('root.optLong("payloadRevision", 0L)'));
+    expect(parser, contains('"startAtEpochMs"'));
+    expect(parser, contains('"displayName"'));
+    expect(parser, contains('ZoneId.of(TIMEZONE_SEOUL)'));
+    expect(source, contains('MtfTodayRollupSource.load('));
     expect(source, contains('TAG_PARSE'));
     expect(source, contains('appWidgetId=\$appWidgetId payloadRevision='));
   });
 
-  test('오늘 위젯 하단 일정은 중첩 Column으로 Glance 최상위 10개 제한을 넘지 않는다', () {
+  test('오늘 위젯 목록은 묶음 Column으로 Glance 컨테이너 자식 10개 제한을 넘지 않는다', () {
     final source =
         File(
           'android/app/src/main/kotlin/com/morethanfitness/app/'
           'MtfTodayLessonRollupWidget.kt',
         ).readAsStringSync();
+    final limit = RegExp(r'MAX_CHILDREN_PER_COLUMN = (\d+)').firstMatch(source);
+
+    expect(limit, isNotNull);
+    expect(int.parse(limit!.group(1)!), lessThanOrEqualTo(9));
     expect(
       source,
       contains(
-        'Column(modifier = GlanceModifier.fillMaxWidth()) {\n'
-        '                    remaining.take(visibleRemainingCount)'
-        '.forEach { CompactLesson(it) }',
-      ),
-    );
-    expect(source, contains('lessons.size in 3..6'));
-    expect(source, contains('minOf(sizeRemainingCapacity, 3)'));
-    expect(
-      source,
-      contains(
-        'hiddenCount = maxOf(0, remaining.size - visibleRemainingCount)',
+        '.chunked(MAX_CHILDREN_PER_COLUMN).forEach { chunk ->\n'
+        '                Column(modifier = GlanceModifier.fillMaxWidth()) {',
       ),
     );
   });

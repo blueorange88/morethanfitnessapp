@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../aifc/home/aifc_smart_notification_chat_sheet.dart';
@@ -617,115 +619,104 @@ class _NotificationHeader extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     final gradient = context.mtfHeaderGradient;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 20),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 44,
-            child: Row(
+    return MtfHeaderNeonOverlay(
+      isExpanded: false,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 20),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(kMtfHeaderBottomRadius),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  MtfBackButton(onTap: onBackTap),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text(
+                      '알림 설정',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                InkWell(
-                  onTap: onBackTap,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    width: 42,
-                    height: 42,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.14),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                    ),
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    lessonEnabled
+                        ? smartAlarmEnabled && canUseSmartAlarm
+                            ? Icons.auto_awesome_rounded
+                            : Icons.notifications_active_rounded
+                        : Icons.notifications_off_outlined,
+                    color: Colors.white,
+                    size: 25,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    '알림 설정',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _headline,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          _message,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11.7,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.16),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  lessonEnabled
-                      ? smartAlarmEnabled && canUseSmartAlarm
-                          ? Icons.auto_awesome_rounded
-                          : Icons.notifications_active_rounded
-                      : Icons.notifications_off_outlined,
-                  color: Colors.white,
-                  size: 25,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 1),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _headline,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        _message,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11.7,
-                          fontWeight: FontWeight.w600,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children:
-                _chips.map((chip) {
-                  return _HeaderStatusChip(text: chip);
-                }).toList(),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children:
+                  _chips.map((chip) {
+                    return _HeaderStatusChip(text: chip);
+                  }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -997,7 +988,7 @@ class _ReminderMinuteSelector extends StatelessWidget {
             Text(
               '선택됨: $summary',
               style: TextStyle(
-                color: scheme.secondary,
+                color: scheme.accentText,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -1069,7 +1060,7 @@ class _ChoiceTile<T> extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        color: selected ? scheme.secondary : scheme.onSurface,
+                        color: selected ? scheme.accentText : scheme.onSurface,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -1092,7 +1083,7 @@ class _ChoiceTile<T> extends StatelessWidget {
                 selected
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_unchecked_rounded,
-                color: selected ? scheme.secondary : scheme.onSurfaceVariant,
+                color: selected ? scheme.accentText : scheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -1192,7 +1183,7 @@ class _GapSelector extends StatelessWidget {
             Text(
               '현재 기준: $summary',
               style: TextStyle(
-                color: scheme.secondary,
+                color: scheme.accentText,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -1391,7 +1382,9 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                       statusText(),
                       style: TextStyle(
                         color:
-                            locked ? scheme.onSurfaceVariant : scheme.secondary,
+                            locked
+                                ? scheme.onSurfaceVariant
+                                : scheme.accentText,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
                         height: 1.3,
@@ -1486,7 +1479,7 @@ class _SmartAlarmEntryCard extends StatelessWidget {
                 accessLoading
                     ? Icons.hourglass_empty_rounded
                     : Icons.chevron_right_rounded,
-                color: locked ? scheme.onSurfaceVariant : scheme.secondary,
+                color: locked ? scheme.onSurfaceVariant : scheme.accentText,
               ),
             ],
           ),

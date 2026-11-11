@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -360,6 +362,8 @@ class HomeScheduleFirestoreService {
     String? phone,
     String? memo,
     String? ownerUid,
+    Duration ackWait = const Duration(milliseconds: 800),
+    void Function(Object error)? onLateFailure,
   }) async {
     if (!endAt.isAfter(startAt)) {
       throw Exception('end_before_start');
@@ -395,7 +399,7 @@ class HomeScheduleFirestoreService {
       ..._personalIdentity(ownerUid),
       'updatedAt': FieldValue.serverTimestamp(),
     };
-    await _schedules
+    final write = _schedules
         .doc(targetDocId)
         .set(
           _scheduleWriteData(
@@ -405,6 +409,30 @@ class HomeScheduleFirestoreService {
           ),
           SetOptions(merge: true),
         );
+
+    // Firestore는 쓰기를 기기에 먼저 반영하고(화면 목록에는 바로 보인다) 서버 확인은 뒤에
+    // 끝난다. 확인까지 끝까지 기다리면 약한 네트워크에서 저장 시트가 몇 초씩 안 닫히고, 연속
+    // 저장하면 앞선 쓰기 때문에 더 늦어진다. 그래서 일정 시간만 기다리고, 그 안에 서버
+    // 거부(오류)가 오면 평소처럼 실패로 알린다. 시간이 지나면 기기에 저장된 채로 진행하고,
+    // 나중에 서버가 거부했을 때만 [onLateFailure]로 알린다.
+    await write.timeout(
+      ackWait,
+      onTimeout: () {
+        _logMutation(
+          'mutationId=$mutationId action=createOrUpdate '
+          'ackWaitElapsed=${ackWait.inMilliseconds}ms continuing',
+        );
+        unawaited(
+          write.catchError((Object error) {
+            _logMutation(
+              'mutationId=$mutationId action=createOrUpdate '
+              'lateCommitFailed error=$error',
+            );
+            onLateFailure?.call(error);
+          }),
+        );
+      },
+    );
   }
 
   static Future<void> deleteSchedule(String docId, {String? ownerUid}) async {

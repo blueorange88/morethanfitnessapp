@@ -130,7 +130,9 @@ class AnatomyLogService {
     _validateContext(context);
 
     try {
-      final parent = await _store.getParent(context.lessonLogId);
+      final parent = await _readParent(
+        () => _store.getParent(context.lessonLogId),
+      );
       _validateParent(parent, context);
       final documents = await _store.getRecords(context.lessonLogId);
       final records = <AnatomyLogRecord>[];
@@ -196,7 +198,9 @@ class AnatomyLogService {
 
     try {
       await _store.runTransaction((transaction) async {
-        final parent = await transaction.getParent(context.lessonLogId);
+        final parent = await _readParent(
+          () => transaction.getParent(context.lessonLogId),
+        );
         _validateParent(parent, context);
         final validatedParent = parent!;
 
@@ -473,6 +477,24 @@ class AnatomyLogService {
                 : record.mobilityResult!.name,
         'updatedAt': FieldValue.serverTimestamp(),
       };
+
+  /// 부모 레슨일지 읽기. 서버에 아직 없는 문서는 Rules가 `resource.data`를 평가하지 못해
+  /// "없음"이 아니라 permission-denied로 거절되므로, 이를 부모 없음으로 돌려준다.
+  Future<Map<String, dynamic>?> _readParent(
+    Future<Map<String, dynamic>?> Function() read,
+  ) async {
+    try {
+      return await read();
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied') {
+        throw AnatomyLogException(
+          AnatomyLogErrorCode.parentNotFound,
+          cause: error,
+        );
+      }
+      rethrow;
+    }
+  }
 
   AnatomyLogException _translate(Object error) {
     if (error is AnatomyLogException) return error;

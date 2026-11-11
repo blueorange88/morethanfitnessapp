@@ -56,7 +56,12 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('회원권-7'), findsWidgets, reason: 'width=$width');
+      // 레슨이 많이 남았어도 기간이 7일 뒤 끝나면 소멸 위험으로 한 번에 알린다.
+      expect(
+        find.text('잔여 119회 · D-7 소멸'),
+        findsWidgets,
+        reason: 'width=$width',
+      );
       expect(find.text('바디프로필 D-5'), findsOneWidget, reason: 'width=$width');
       expect(tester.takeException(), isNull, reason: 'width=$width');
     }

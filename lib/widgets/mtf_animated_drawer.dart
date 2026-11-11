@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
@@ -8,13 +9,16 @@ const Color _kPrimary = AppColors.deepNavy;
 const Color _kPrimary2 = Color(0xFF163A54);
 
 // 상단은 흐릿하게, 측면/하단은 진하게
-const Color _kNeonStart = Color(0x55EFCB62);
+const Color _kNeonStart = Color(0xA0EFCB62);
 const Color _kNeonMid = AppColors.warmYellow;
 const Color _kNeonEnd = AppColors.goldLight;
 const Color _kNeonGlow = AppColors.warmYellow;
 
 // LIVE 포인트
 const Color _kLiveDot = Color(0xFFDC2626);
+
+/// 메뉴가 열리는 슬라이드(약 250ms)가 끝난 뒤에 네온선·파형 막대를 시작한다.
+const Duration _kDrawerSettleDelay = Duration(milliseconds: 280);
 
 // ════════════════════════════════════════════════════════════════════════════════
 //  진입점
@@ -31,6 +35,7 @@ class MtfAnimatedDrawer extends StatelessWidget {
     this.onMembers,
     this.onContract,
     this.onMembershipContract,
+    this.onContractManage,
     this.onStats,
     this.onSettings,
     this.onUpgrade,
@@ -48,6 +53,9 @@ class MtfAnimatedDrawer extends StatelessWidget {
   final VoidCallback? onMembers;
   final VoidCallback? onContract;
   final VoidCallback? onMembershipContract;
+
+  /// 있으면 `레슨계약서`·`회원권계약서` 두 항목 대신 `계약서 관리` 항목 하나만 보인다(일반 워크스페이스).
+  final VoidCallback? onContractManage;
   final VoidCallback? onStats;
   final VoidCallback? onSettings;
   final VoidCallback? onUpgrade;
@@ -95,6 +103,7 @@ class MtfAnimatedDrawer extends StatelessWidget {
               onMembers: onMembers,
               onContract: onContract,
               onMembershipContract: onMembershipContract,
+              onContractManage: onContractManage,
               onStats: onStats,
               onSettings: onSettings,
               onUpgrade: onUpgrade,
@@ -123,6 +132,7 @@ class _MtfGlassPanel extends StatefulWidget {
     this.onMembers,
     this.onContract,
     this.onMembershipContract,
+    this.onContractManage,
     this.onStats,
     this.onSettings,
     this.onUpgrade,
@@ -141,6 +151,7 @@ class _MtfGlassPanel extends StatefulWidget {
   final VoidCallback? onMembers;
   final VoidCallback? onContract;
   final VoidCallback? onMembershipContract;
+  final VoidCallback? onContractManage;
   final VoidCallback? onStats;
   final VoidCallback? onSettings;
   final VoidCallback? onUpgrade;
@@ -156,6 +167,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
   // L자 네온라인 (왼쪽 + 하단)
   late final AnimationController _neonCtrl;
   late final Animation<double> _neonAnim;
+  Timer? _neonDelay;
 
   @override
   void initState() {
@@ -167,13 +179,15 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
     );
     _neonAnim = CurvedAnimation(parent: _neonCtrl, curve: Curves.easeOutCubic);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startSequence();
+    // 메뉴가 열리는 동안에는 네온선을 그리지 않고, 다 열린 뒤에 시작한다(열리는 프레임이 무거워 끊기는 것을 막는다).
+    _neonDelay = Timer(_kDrawerSettleDelay, () {
+      if (mounted) _startSequence();
     });
   }
 
   @override
   void dispose() {
+    _neonDelay?.cancel();
     _neonCtrl.dispose();
     super.dispose();
   }
@@ -190,7 +204,8 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _neonAnim,
-      child: _buildBody(),
+      // 네온선이 움직여도 패널 본체(큰 그림자 포함)를 다시 그리지 않도록 층을 나눈다.
+      child: RepaintBoundary(child: _buildBody()),
       builder: (context, child) {
         return Stack(
           children: [
@@ -200,13 +215,15 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
             // ── L자 네온라인 (왼쪽 + 하단) ──────────────────────────────
             Positioned.fill(
               child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _LNeonPainter(
-                    progress: _neonAnim.value,
-                    startColor: _kNeonStart,
-                    midColor: _kNeonMid,
-                    endColor: _kNeonEnd,
-                    glowColor: _kNeonGlow,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _LNeonPainter(
+                      progress: _neonAnim.value,
+                      startColor: _kNeonStart,
+                      midColor: _kNeonMid,
+                      endColor: _kNeonEnd,
+                      glowColor: _kNeonGlow,
+                    ),
                   ),
                 ),
               ),
@@ -292,28 +309,41 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                         widget.onMembers?.call();
                       },
                     ),
+                    if (widget.onContractManage != null)
+                      _buildMenuItem(
+                        index: 3,
+                        icon: Icons.description_outlined,
+                        label: '계약서 관리',
+                        sub: '계약서 검색 · 작성 · 이력',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          widget.onContractManage?.call();
+                        },
+                      )
+                    else ...[
+                      _buildMenuItem(
+                        index: 3,
+                        icon: Icons.description_outlined,
+                        label: '레슨계약서',
+                        sub: '레슨 계약서 작성 및 운영 지원',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          widget.onContract?.call();
+                        },
+                      ),
+                      _buildMenuItem(
+                        index: 4,
+                        icon: Icons.assignment_outlined,
+                        label: '회원권계약서',
+                        sub: '회원권 계약서 작성 및 운영 지원',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          widget.onMembershipContract?.call();
+                        },
+                      ),
+                    ],
                     _buildMenuItem(
-                      index: 3,
-                      icon: Icons.description_outlined,
-                      label: '레슨계약서',
-                      sub: '레슨 계약서 작성 및 운영 지원',
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        widget.onContract?.call();
-                      },
-                    ),
-                    _buildMenuItem(
-                      index: 4,
-                      icon: Icons.assignment_outlined,
-                      label: '회원권계약서',
-                      sub: '회원권 계약서 작성 및 운영 지원',
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        widget.onMembershipContract?.call();
-                      },
-                    ),
-                    _buildMenuItem(
-                      index: 5,
+                      index: widget.onContractManage != null ? 4 : 5,
                       icon: Icons.bar_chart_rounded,
                       label: '인사이트',
                       sub: '레슨 및 회원 운영 분석 지원',
@@ -325,7 +355,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
 
                     // 개발 중 항목 — 글리치 스타일
                     _buildGlitchMenuItem(
-                      index: 6,
+                      index: widget.onContractManage != null ? 5 : 6,
                       icon: Icons.design_services_outlined,
                       label: '브랜딩 굿즈',
                       sub: '퍼스널 브랜딩 굿즈를 만들어보세요',
@@ -636,15 +666,18 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
             child: Row(
               children: [
                 // 파형 아이콘
-                SizedBox(
-                  width: 34,
-                  height: 34,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: List.generate(5, (i) {
-                      return _WaveBar(index: i);
-                    }),
+                // 막대가 끝없이 움직여도 패널 전체를 다시 그리지 않도록 별도 층에 둔다.
+                RepaintBoundary(
+                  child: SizedBox(
+                    width: 34,
+                    height: 34,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: List.generate(5, (i) {
+                        return _WaveBar(index: i);
+                      }),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 11),
@@ -691,7 +724,7 @@ class _MtfGlassPanelState extends State<_MtfGlassPanel>
                       ),
                       const SizedBox(height: 3),
                       const Text(
-                        'MORE WELLNESS 회원관리',
+                        'MORE THAN wellness 회원관리',
                         style: TextStyle(
                           color: Color(0xFFFED7AA),
                           fontSize: 12.5,
@@ -778,6 +811,7 @@ class _WaveBarState extends State<_WaveBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
+  Timer? _startTimer;
 
   static const List<double> _baseHeights = [6, 14, 20, 12, 16];
   static const List<int> _delays = [0, 120, 240, 360, 480];
@@ -790,9 +824,12 @@ class _WaveBarState extends State<_WaveBar>
       duration: const Duration(milliseconds: 900),
     );
 
-    Future.delayed(Duration(milliseconds: _delays[widget.index]), () {
-      if (mounted) _ctrl.repeat(reverse: true);
-    });
+    _startTimer = Timer(
+      _kDrawerSettleDelay + Duration(milliseconds: _delays[widget.index]),
+      () {
+        if (mounted) _ctrl.repeat(reverse: true);
+      },
+    );
 
     _anim = Tween<double>(
       begin: 0.4,
@@ -802,6 +839,7 @@ class _WaveBarState extends State<_WaveBar>
 
   @override
   void dispose() {
+    _startTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
@@ -1069,7 +1107,7 @@ class _LNeonPainter extends CustomPainter {
       begin: Alignment.topRight,
       end: Alignment.bottomRight,
       colors: [
-        glowColor.withOpacity(0.06 * alpha),
+        glowColor.withOpacity(0.16 * alpha),
         glowColor.withOpacity(0.18 * alpha),
         glowColor.withOpacity(0.28 * alpha),
         glowColor.withOpacity(0.34 * alpha),
@@ -1081,7 +1119,7 @@ class _LNeonPainter extends CustomPainter {
       begin: Alignment.topRight,
       end: Alignment.bottomRight,
       colors: [
-        midColor.withOpacity(0.08 * alpha),
+        midColor.withOpacity(0.18 * alpha),
         midColor.withOpacity(0.22 * alpha),
         midColor.withOpacity(0.34 * alpha),
         midColor.withOpacity(0.42 * alpha),

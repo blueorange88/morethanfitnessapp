@@ -375,4 +375,25 @@ void main() {
     expect(source, contains("key: const Key('log_setting_auto_pre_check')"));
     expect(source, contains('TrainingLogPreferences.setAutoOpenPreCheck('));
   });
+
+  test('인터넷 문제로 읽지 못한 경우만 네트워크 안내를 쓰고, 실패 안내는 AIFC 알림으로 보인다', () {
+    expect(
+      PersonalTrainingLogEntryGuard.isNetworkFailureCode('unavailable'),
+      isTrue,
+    );
+    expect(
+      PersonalTrainingLogEntryGuard.isNetworkFailureCode('deadline-exceeded'),
+      isTrue,
+    );
+    expect(
+      PersonalTrainingLogEntryGuard.isNetworkFailureCode('permission-denied'),
+      isFalse,
+    );
+    final source =
+        File(
+          'lib/widgets/personal_training_log_entry_guard.dart',
+        ).readAsStringSync();
+    expect(source, contains('AifcToast.show('));
+    expect(source, isNot(contains('showSnackBar')));
+  });
 }

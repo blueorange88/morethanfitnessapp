@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
 import 'package:flutter/material.dart';
 
 import 'contract_page.dart';
+import 'lesson_contract/lesson_contract_form_page.dart';
+import 'lesson_contract/lesson_contract_settings_page.dart';
 import '../services/app_tier_access_service.dart';
 import '../widgets/aifc_tier_feature_gate_sheet.dart';
 
@@ -232,6 +236,24 @@ class _ContractListPageState extends State<ContractListPage> {
     }
   }
 
+  Future<void> _openContractSettings(BuildContext context) async {
+    final ownerUid = (widget.personalOwnerUid ?? '').trim();
+    final allowed = await AifcTierFeatureGateSheet.guard(
+      context: context,
+      access: null,
+      feature: AppTierFeatureKey.contract,
+      loadAccess:
+          () => AppTierAccessService.loadPersonalTrainerAccess(uid: ownerUid),
+      entryPoint: 'contract_list_settings',
+    );
+    if (!allowed || !context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LessonContractSettingsPage(personalOwnerUid: ownerUid),
+      ),
+    );
+  }
+
   Future<void> _openNewContract(BuildContext context) async {
     final ownerUid = (widget.personalOwnerUid ?? '').trim();
     if (ownerUid.isNotEmpty) {
@@ -244,6 +266,13 @@ class _ContractListPageState extends State<ContractListPage> {
         entryPoint: 'contract_list_create',
       );
       if (!allowed || !context.mounted) return;
+      // 일반 워크스페이스는 서버가 상태·증빙을 소유하는 레슨계약서 v2로 작성한다.
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LessonContractFormPage(personalOwnerUid: ownerUid),
+        ),
+      );
+      return;
     }
     final newMemberId =
         FirebaseFirestore.instance.collection('members').doc().id;
@@ -549,6 +578,10 @@ class _ContractListPageState extends State<ContractListPage> {
                   _ContractListHeader(
                     onBack: () => Navigator.of(context).maybePop(),
                     onNew: () => _openNewContract(context),
+                    onSettings:
+                        (widget.personalOwnerUid ?? '').trim().isEmpty
+                            ? null
+                            : () => _openContractSettings(context),
                   ),
                   _buildFilterTabs(),
                   Expanded(
@@ -620,7 +653,12 @@ class _ContractListPageState extends State<ContractListPage> {
                         }
 
                         return ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            16,
+                            16,
+                            28 + MediaQuery.paddingOf(context).bottom,
+                          ),
                           itemCount: docs.length,
                           separatorBuilder:
                               (_, __) => const SizedBox(height: 10),
@@ -657,86 +695,108 @@ class _ContractListPageState extends State<ContractListPage> {
 }
 
 class _ContractListHeader extends StatelessWidget {
-  const _ContractListHeader({required this.onBack, required this.onNew});
+  const _ContractListHeader({
+    required this.onBack,
+    required this.onNew,
+    this.onSettings,
+  });
 
   final VoidCallback onBack;
   final VoidCallback onNew;
+
+  /// 일반 워크스페이스에서만 연결되는 `계약 설정`(당사자·내 기본 조건) 진입.
+  final VoidCallback? onSettings;
 
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
     final gradient = context.mtfHeaderGradient;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(
-        top: topInset + 16,
-        left: 24,
-        right: 24,
-        bottom: 18,
-      ),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onBack,
-            child: const SizedBox(
-              width: 34,
-              height: 34,
-              child: Icon(
-                Icons.arrow_back_rounded,
-                color: Colors.white,
-                size: 26,
+    return MtfHeaderNeonOverlay(
+      isExpanded: false,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.only(
+          top: topInset + 16,
+          left: 24,
+          right: 24,
+          bottom: 18,
+        ),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(32),
+          ),
+        ),
+        child: Row(
+          children: [
+            MtfBackButton(onTap: onBack),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '계약서 관리',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    '임시저장, 작성완료, 전송 계약서를 확인합니다',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '계약서 관리',
-                  style: TextStyle(
+            if (onSettings != null) ...[
+              GestureDetector(
+                key: const ValueKey<String>('contract_list_settings'),
+                onTap: onSettings,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.20)),
+                  ),
+                  child: const Icon(
+                    Icons.tune_rounded,
                     color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
+                    size: 20,
                   ),
                 ),
-                SizedBox(height: 3),
-                Text(
-                  '임시저장, 작성완료, 전송 계약서를 확인합니다',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                  ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            GestureDetector(
+              onTap: onNew,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.20)),
                 ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onNew,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.18),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.20)),
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 22,
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

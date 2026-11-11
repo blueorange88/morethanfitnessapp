@@ -49,26 +49,77 @@ void main() {
     );
   }
 
-  testWidgets('원형 사람 아이콘과 이름 전화번호 뒤 4자리를 표시한다', (tester) async {
+  testWidgets('원형 아바타 아래에 이름과 추천 이유를 보여 주고 전화번호는 숨긴다', (tester) async {
     await tester.pumpWidget(buildChip());
 
-    expect(find.byIcon(Icons.person_outline_rounded), findsOneWidget);
+    expect(find.byKey(const Key('home_recent_member_avatar')), findsOneWidget);
+    expect(find.byIcon(Icons.person_rounded), findsOneWidget);
     expect(find.text('홍길동'), findsOneWidget);
-    expect(find.text(' · '), findsOneWidget);
-    expect(find.text('5678'), findsOneWidget);
+    expect(find.text('최근 등록'), findsOneWidget);
+    // 번호는 정보 전달에 도움이 안 되어 기본으로 보이지 않는다.
+    expect(find.text('5678'), findsNothing);
+    expect(find.text(' · '), findsNothing);
   });
 
-  testWidgets('긴 이름만 ellipsis 처리하고 전화번호는 별도 표시한다', (tester) async {
+  testWidgets('추천 이유마다 다른 아이콘과 글자로 알려 준다', (tester) async {
+    for (final entry
+        in {
+          HomeAiRecommendationReason.recent: ('최근 등록', Icons.fiber_new_rounded),
+          HomeAiRecommendationReason.frequent: (
+            '자주 레슨',
+            Icons.local_fire_department_rounded,
+          ),
+          HomeAiRecommendationReason.absent: ('오랜만', Icons.event_busy_rounded),
+          HomeAiRecommendationReason.sameSlot: (
+            '이 시간대',
+            Icons.schedule_rounded,
+          ),
+        }.entries) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: HomeRecentMemberChip(
+                name: '회원',
+                phone: '',
+                reason: entry.key,
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text(entry.value.$1), findsOneWidget);
+      expect(find.byIcon(entry.value.$2), findsOneWidget);
+    }
+  });
+
+  testWidgets('같은 이름이 둘 이상일 때만 이름 뒤에 뒤 4자리를 붙이고 긴 이름은 줄임표 처리한다', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      buildChip(name: '매우긴회원이름테스트', phone: '01099991234'),
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 80,
+              child: HomeRecentMemberChip(
+                name: '매우긴회원이름테스트',
+                phone: '01099991234',
+                showPhoneSuffix: true,
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
     );
 
-    final nameText = tester.widget<Text>(find.text('매우긴회원이름테스트'));
-    final phoneText = tester.widget<Text>(find.text('1234'));
-
+    final nameText = tester.widget<Text>(find.textContaining('매우긴회원이름테스트'));
+    expect(nameText.data, '매우긴회원이름테스트·1234');
     expect(nameText.maxLines, 1);
     expect(nameText.overflow, TextOverflow.ellipsis);
-    expect(phoneText.overflow, isNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('칩을 탭한 경우에만 선택 callback을 실행한다', (tester) async {
@@ -463,6 +514,8 @@ void main() {
       candidatesByRecency: candidates,
       recentLessonCounts: const {'freq': 4},
       now: now,
+      totalSlots: 6,
+      maxRecentSlots: 4,
     );
 
     expect(result, hasLength(6));
@@ -480,6 +533,60 @@ void main() {
       result.map((e) => e.candidate.id).toSet().length,
       result.length,
       reason: '같은 회원이 두 번 등장하면 안 된다',
+    );
+  });
+
+  test('기본은 4명: 오랜만 1명을 먼저 확보하고 최근 등록 2명, 나머지는 자주 레슨한 회원', () {
+    final now = DateTime(2026, 3, 15);
+    final candidates = [
+      candidate(id: 'm1', name: '회원1', createdAt: DateTime(2026, 3, 14)),
+      candidate(id: 'm2', name: '회원2', createdAt: DateTime(2026, 3, 13)),
+      candidate(id: 'm3', name: '회원3', createdAt: DateTime(2026, 3, 12)),
+      candidate(id: 'freq', name: '열심회원', createdAt: DateTime(2026, 2, 1)),
+      candidate(
+        id: 'absent',
+        name: '뜸한회원',
+        createdAt: DateTime(2026, 1, 1),
+        lastLessonAt: DateTime(2026, 2, 20),
+      ),
+    ];
+
+    final result = buildAiRecommendedMembers(
+      candidatesByRecency: candidates,
+      recentLessonCounts: const {'freq': 4},
+      now: now,
+    );
+
+    expect(result.map((e) => e.candidate.id), ['m1', 'm2', 'freq', 'absent']);
+    expect(result.map((e) => e.reason), [
+      HomeAiRecommendationReason.recent,
+      HomeAiRecommendationReason.recent,
+      HomeAiRecommendationReason.frequent,
+      HomeAiRecommendationReason.absent,
+    ]);
+  });
+
+  test('자주 레슨한 회원이 없으면 남는 칸은 신규 등록자로 채워 최대 4명이다', () {
+    final now = DateTime(2026, 3, 15);
+    final candidates = [
+      for (var i = 1; i <= 6; i++)
+        candidate(
+          id: 'm$i',
+          name: '회원$i',
+          createdAt: DateTime(2026, 3, 15 - i),
+        ),
+    ];
+
+    final result = buildAiRecommendedMembers(
+      candidatesByRecency: candidates,
+      recentLessonCounts: const {},
+      now: now,
+    );
+
+    expect(result.map((e) => e.candidate.id), ['m1', 'm2', 'm3', 'm4']);
+    expect(
+      result.every((e) => e.reason == HomeAiRecommendationReason.recent),
+      isTrue,
     );
   });
 
@@ -595,5 +702,101 @@ void main() {
     expect(source, contains('b.createdAt?.millisecondsSinceEpoch'));
     expect(source, isNot(contains('SharedPreferences')));
     expect(source, isNot(contains('recentMemberIds')));
+  });
+
+  test('저장된 레슨을 열었을 때(수정)는 회원 추천을 보여주지 않는다', () {
+    final source = File('lib/pages/home_page.dart').readAsStringSync();
+    final index = source.indexOf('HomeRecentMembersSection(');
+    expect(index, greaterThan(0));
+    final before = source.substring(index - 80, index);
+    expect(before, contains('if (!isEditMode)'));
+  });
+
+  group('같은 요일·비슷한 시간대 추천', () {
+    final now = DateTime(2026, 3, 15);
+
+    test('시간대 횟수가 많은 회원이 맨 앞에 오고 다른 칸에서 중복되지 않는다', () {
+      final candidates = [
+        candidate(id: 'new1', name: '신규1', createdAt: DateTime(2026, 3, 14)),
+        candidate(id: 'slotA', name: '수요일A', createdAt: DateTime(2026, 1, 1)),
+        candidate(id: 'slotB', name: '수요일B', createdAt: DateTime(2026, 1, 2)),
+        candidate(id: 'freq', name: '자주', createdAt: DateTime(2026, 1, 3)),
+      ];
+
+      final result = buildAiRecommendedMembers(
+        candidatesByRecency: candidates,
+        recentLessonCounts: const {'slotA': 5, 'freq': 4},
+        slotLessonCounts: const {'slotA': 6, 'slotB': 3},
+        now: now,
+      );
+
+      expect(result.take(2).map((e) => e.candidate.id), ['slotA', 'slotB']);
+      expect(
+        result.take(2).map((e) => e.reason),
+        everyElement(HomeAiRecommendationReason.sameSlot),
+      );
+      expect(result.map((e) => e.candidate.id).toSet().length, result.length);
+      expect(result.map((e) => e.candidate.id), contains('new1'));
+      expect(result.map((e) => e.candidate.id), contains('freq'));
+      expect(result.length, lessThanOrEqualTo(4));
+    });
+
+    test('시간대 횟수가 기준 미만이면 기존 추천 그대로', () {
+      final candidates = [
+        candidate(id: 'm1', name: '회원1', createdAt: DateTime(2026, 3, 14)),
+        candidate(id: 'x', name: '한번', createdAt: DateTime(2026, 1, 1)),
+      ];
+      final withSlot = buildAiRecommendedMembers(
+        candidatesByRecency: candidates,
+        recentLessonCounts: const {},
+        slotLessonCounts: const {'x': 1},
+        now: now,
+      );
+      final without = buildAiRecommendedMembers(
+        candidatesByRecency: candidates,
+        recentLessonCounts: const {},
+        now: now,
+      );
+      expect(
+        withSlot.map((e) => (e.candidate.id, e.reason)).toList(),
+        without.map((e) => (e.candidate.id, e.reason)).toList(),
+      );
+    });
+
+    test('같은 요일이고 앞뒤 1시간 안인 레슨만 회원별로 센다', () {
+      // 2026-03-11은 수요일.
+      DateTime at(int day, int hour, int minute) =>
+          DateTime(2026, 3, day, hour, minute);
+      final docs = <Map<String, dynamic>>[
+        {'memberId': 'a', 'startAt': at(11, 10, 0)},
+        {'memberId': 'a', 'startAt': at(4, 10, 30)},
+        {'memberId': 'a', 'startAt': at(4, 11, 0)},
+        {'memberId': 'a', 'startAt': at(4, 12, 0)}, // 2시간 차이 → 제외
+        {'memberId': 'a', 'startAt': at(12, 10, 0)}, // 목요일 → 제외
+        {'memberId': 'b', 'startAt': at(11, 9, 0)},
+        {'memberId': 'b', 'startAt': at(11, 10, 0), 'isDeleted': true},
+        {'memberId': '', 'startAt': at(11, 10, 0)},
+        {'memberId': 'c'},
+      ];
+
+      final counts = slotLessonCountsFromScheduleDocs(
+        docs,
+        weekday: DateTime.wednesday,
+        minutesOfDay: 10 * 60,
+      );
+      expect(counts, {'a': 3, 'b': 1});
+    });
+
+    test('요일과 시간 문자열을 안전하게 읽는다', () {
+      expect(homeWeekdayFromKoreanDay('월'), 1);
+      expect(homeWeekdayFromKoreanDay('일'), 7);
+      expect(homeWeekdayFromKoreanDay('x'), isNull);
+      expect(homeWeekdayFromKoreanDay(null), isNull);
+      expect(homeMinutesFromTimeText('09:30'), 570);
+      expect(homeMinutesFromTimeText('9:05'), 545);
+      expect(homeMinutesFromTimeText('24:00'), isNull);
+      expect(homeMinutesFromTimeText(''), isNull);
+      expect(homeMinutesFromTimeText(null), isNull);
+    });
   });
 }

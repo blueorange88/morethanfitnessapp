@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../theme/app_colors.dart';
 
 class HomeLessonEditorHeader extends StatelessWidget {
   const HomeLessonEditorHeader({
@@ -22,17 +23,38 @@ class HomeLessonEditorHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 라이트 모드는 다른 화면 헤더와 같은 앱 메인 네이비 그라데이션에 흰 글씨,
+    // 다크 모드는 저장 버튼과 같은 색(테마의 secondary)에 그 위에 쓰는 색(onSecondary) 글씨를 쓴다.
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = scheme.secondary;
+    final fg = isDark ? scheme.onSecondary : Colors.white;
     return Container(
       width: double.infinity,
       constraints: const BoxConstraints(minHeight: 52),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF9333EA)],
-          stops: [0.0, 0.55, 1.0],
+          colors:
+              isDark
+                  ? [
+                    Color.lerp(base, Colors.white, 0.10)!,
+                    base,
+                    Color.lerp(base, Colors.black, 0.10)!,
+                  ]
+                  : [
+                    AppColors.lightGradientStart,
+                    Color.lerp(
+                      AppColors.lightGradientStart,
+                      AppColors.lightGradientEnd,
+                      0.5,
+                    )!,
+                    AppColors.lightGradientEnd,
+                  ],
+          stops: const [0.0, 0.55, 1.0],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Stack(
         children: [
@@ -52,11 +74,11 @@ class HomeLessonEditorHeader extends StatelessWidget {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: Divider(height: 1, color: Color(0x2EFFFFFF)),
+            child: Divider(height: 1, color: fg.withValues(alpha: 0.18)),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 13, 24, 13),
@@ -68,19 +90,19 @@ class HomeLessonEditorHeader extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.20),
+                    color: fg.withValues(alpha: 0.20),
                     borderRadius: BorderRadius.circular(5),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.25),
+                      color: fg.withValues(alpha: 0.25),
                       width: 0.5,
                     ),
                   ),
                   child: Text(
                     '$day요일',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: fg,
                       height: 1.5,
                     ),
                   ),
@@ -102,10 +124,10 @@ class HomeLessonEditorHeader extends StatelessWidget {
                               startTimeLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                                color: fg,
                                 letterSpacing: -0.2,
                                 height: 1.0,
                               ),
@@ -120,7 +142,7 @@ class HomeLessonEditorHeader extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white.withOpacity(0.50),
+                            color: fg.withValues(alpha: 0.50),
                             height: 1.0,
                           ),
                         ),
@@ -143,8 +165,8 @@ class HomeLessonEditorHeader extends StatelessWidget {
                                 fontWeight: FontWeight.w900,
                                 color:
                                     endTimeIsEmpty
-                                        ? Colors.white.withOpacity(0.40)
-                                        : Colors.white.withOpacity(0.80),
+                                        ? fg.withValues(alpha: 0.40)
+                                        : fg.withValues(alpha: 0.80),
                                 height: 1.0,
                               ),
                             ),
@@ -163,7 +185,7 @@ class HomeLessonEditorHeader extends StatelessWidget {
                     child: Icon(
                       Icons.close_rounded,
                       size: 24,
-                      color: Colors.white.withOpacity(0.72),
+                      color: fg.withValues(alpha: 0.72),
                     ),
                   ),
                 ),

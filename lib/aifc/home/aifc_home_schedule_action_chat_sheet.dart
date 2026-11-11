@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../theme/app_colors.dart';
 import '../core/aifc_avatar.dart';
 
 enum AifcHomeScheduleAction {
@@ -13,6 +14,27 @@ enum AifcHomeScheduleAction {
 }
 
 enum _ScheduleMenuPage { main, bulk, time }
+
+/// 일괄관리 시트 색상. 앱의 네이비·아이보리 톤을 따르고 어두운 모드에서는 앱 어두운 표면색을 쓴다.
+/// `_ScheduleActionSheetBodyState.build`에서 현재 테마를 반영한다.
+bool _sheetDark = false;
+
+Color get sheetBg => _sheetDark ? AppColors.darkSurface : AppColors.warmIvory;
+Color get sheetCard => _sheetDark ? AppColors.darkSurface2 : Colors.white;
+Color get sheetBorder =>
+    _sheetDark ? AppColors.darkBorder : AppColors.lightBorder;
+Color get sheetHandle =>
+    _sheetDark ? AppColors.darkBorder : const Color(0xFFD5CFC0);
+Color get sheetText =>
+    _sheetDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+Color get sheetSub =>
+    _sheetDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+Color get sheetDanger =>
+    _sheetDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C);
+Color get sheetDangerBorder =>
+    _sheetDark ? const Color(0x66FCA5A5) : const Color(0xFFFECACA);
+Color get sheetHint =>
+    _sheetDark ? AppColors.darkTextTertiary : AppColors.lightTextHint;
 
 class AifcHomeScheduleActionChatSheet {
   const AifcHomeScheduleActionChatSheet._();
@@ -28,6 +50,11 @@ class AifcHomeScheduleActionChatSheet {
     required Color primaryColor,
   }) {
     final safeName = _nicknameLabel(nickname);
+    // 어두운 모드에서는 네이비 강조색이 표면에 묻히므로 앱의 골드 계열로 바꾼다.
+    final accent =
+        Theme.of(context).brightness == Brightness.dark
+            ? AppColors.goldLight
+            : primaryColor;
 
     return showModalBottomSheet<AifcHomeScheduleAction>(
       context: context,
@@ -40,7 +67,7 @@ class AifcHomeScheduleActionChatSheet {
           hasCopiedSchedules: hasCopiedSchedules,
           copiedSourceLabel: copiedSourceLabel,
           copiedCount: copiedCount,
-          primaryColor: primaryColor,
+          primaryColor: accent,
           openBulkFirst: openBulkFirst,
         );
       },
@@ -108,6 +135,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
 
   @override
   Widget build(BuildContext context) {
+    _sheetDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       top: false,
       child: Padding(
@@ -116,9 +144,9 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.84,
           ),
-          decoration: const BoxDecoration(
-            color: Color(0xFFF5F4FF),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -152,8 +180,8 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
             children: [
               Text(
                 '${widget.nicknameLabel}, 스케줄표 조정이 필요하시면 제가 도와드릴게요.',
-                style: const TextStyle(
-                  color: Color(0xFF1E1B4B),
+                style: TextStyle(
+                  color: sheetText,
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                   height: 1.35,
@@ -163,7 +191,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
               Text(
                 '어떤 작업이 먼저 필요하세요?',
                 style: TextStyle(
-                  color: const Color(0xFF1E1B4B).withOpacity(0.64),
+                  color: sheetText.withOpacity(0.64),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   height: 1.45,
@@ -219,10 +247,10 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '스케줄 일괄관리를 도와드릴게요.',
                 style: TextStyle(
-                  color: Color(0xFF1E1B4B),
+                  color: sheetText,
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                   height: 1.35,
@@ -233,7 +261,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
                 '스케줄표의 복사, 붙여넣기, 미확정 일정 전체삭제를 여기서 할 수 있어요.\n'
                 '‘이번 주 스케줄’ 글씨를 길게 눌러도 바로 열 수 있어요.',
                 style: TextStyle(
-                  color: const Color(0xFF1E1B4B).withOpacity(0.62),
+                  color: sheetText.withOpacity(0.62),
                   fontSize: 11.3,
                   fontWeight: FontWeight.w600,
                   height: 1.45,
@@ -303,10 +331,10 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '시간표 설정을 도와드릴게요.',
                 style: TextStyle(
-                  color: Color(0xFF1E1B4B),
+                  color: sheetText,
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                   height: 1.35,
@@ -317,7 +345,7 @@ class _ScheduleActionSheetBodyState extends State<_ScheduleActionSheetBody> {
                 '스케줄표의 시작/끝 시간과 전체 시작 분을 정리할 수 있어요.\n'
                 '위젯 미리보기 기준에도 함께 반영돼요.',
                 style: TextStyle(
-                  color: const Color(0xFF1E1B4B).withOpacity(0.62),
+                  color: sheetText.withOpacity(0.62),
                   fontSize: 11.3,
                   fontWeight: FontWeight.w600,
                   height: 1.45,
@@ -367,7 +395,7 @@ class _Handle extends StatelessWidget {
       width: 44,
       height: 4,
       decoration: BoxDecoration(
-        color: const Color(0xFFD8D4FF),
+        color: sheetHandle,
         borderRadius: BorderRadius.circular(999),
       ),
     );
@@ -375,7 +403,7 @@ class _Handle extends StatelessWidget {
 }
 
 class _PlainHeader extends StatelessWidget {
-  const _PlainHeader({required this.title, required this.primaryColor});
+  _PlainHeader({required this.title, required this.primaryColor});
 
   final String title;
   final Color primaryColor;
@@ -401,8 +429,8 @@ class _PlainHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF111827),
+            style: TextStyle(
+              color: sheetText,
               fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
@@ -414,7 +442,7 @@ class _PlainHeader extends StatelessWidget {
 }
 
 class _BackHeader extends StatelessWidget {
-  const _BackHeader({
+  _BackHeader({
     required this.title,
     required this.primaryColor,
     required this.onBack,
@@ -435,9 +463,9 @@ class _BackHeader extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: sheetCard,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: sheetBorder),
             ),
             child: Icon(
               Icons.chevron_left_rounded,
@@ -450,8 +478,8 @@ class _BackHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF111827),
+            style: TextStyle(
+              color: sheetText,
               fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
@@ -463,7 +491,7 @@ class _BackHeader extends StatelessWidget {
 }
 
 class _FcBubble extends StatelessWidget {
-  const _FcBubble({required this.child, required this.primaryColor});
+  _FcBubble({required this.child, required this.primaryColor});
 
   final Widget child;
   final Color primaryColor;
@@ -473,24 +501,20 @@ class _FcBubble extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AifcAvatar(
-          size: 34,
-          isAnimating: true,
-          backgroundColor: Colors.white,
-        ),
+        AifcAvatar(size: 34, isAnimating: true, backgroundColor: sheetCard),
         const SizedBox(width: 9),
         Expanded(
           child: Container(
             padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: sheetCard,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(6),
                 topRight: Radius.circular(18),
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
               ),
-              border: Border.all(color: const Color(0xFFE0DEFF)),
+              border: Border.all(color: sheetBorder),
               boxShadow: [
                 BoxShadow(
                   color: primaryColor.withOpacity(0.06),
@@ -560,7 +584,7 @@ class _ActionTile extends StatelessWidget {
       icon: icon,
       title: title,
       subtitle: subtitle,
-      primaryColor: danger ? const Color(0xFFDC2626) : primaryColor,
+      primaryColor: danger ? sheetDanger : primaryColor,
       onTap: disabled ? null : onTap,
       disabled: disabled,
       danger: danger,
@@ -570,7 +594,7 @@ class _ActionTile extends StatelessWidget {
 }
 
 class _BaseTile extends StatelessWidget {
-  const _BaseTile({
+  _BaseTile({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -594,10 +618,10 @@ class _BaseTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final titleColor =
         danger
-            ? const Color(0xFFB91C1C)
+            ? sheetDanger
             : disabled
-            ? const Color(0xFF9CA3AF)
-            : const Color(0xFF111827);
+            ? sheetHint
+            : sheetText;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -610,11 +634,10 @@ class _BaseTile extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: sheetCard,
               borderRadius: BorderRadius.circular(17),
               border: Border.all(
-                color:
-                    danger ? const Color(0xFFFECACA) : const Color(0xFFE5E7EB),
+                color: danger ? sheetDangerBorder : sheetBorder,
               ),
               boxShadow: [
                 BoxShadow(
@@ -652,10 +675,7 @@ class _BaseTile extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color:
-                              disabled
-                                  ? const Color(0xFF9CA3AF)
-                                  : const Color(0xFF6B7280),
+                          color: disabled ? sheetHint : sheetSub,
                           fontSize: 11.2,
                           fontWeight: FontWeight.w600,
                           height: 1.35,
@@ -667,7 +687,7 @@ class _BaseTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 Icon(
                   trailingIcon,
-                  color: disabled ? const Color(0xFFD1D5DB) : primaryColor,
+                  color: disabled ? sheetHint : primaryColor,
                   size: 20,
                 ),
               ],
@@ -680,7 +700,7 @@ class _BaseTile extends StatelessWidget {
 }
 
 class _CopiedInfo extends StatelessWidget {
-  const _CopiedInfo({required this.primaryColor, required this.text});
+  _CopiedInfo({required this.primaryColor, required this.text});
 
   final Color primaryColor;
   final String text;
@@ -709,7 +729,7 @@ class _CopiedInfo extends StatelessWidget {
 }
 
 class _TipBox extends StatelessWidget {
-  const _TipBox({required this.primaryColor, required this.text});
+  _TipBox({required this.primaryColor, required this.text});
 
   final Color primaryColor;
   final String text;
@@ -720,9 +740,9 @@ class _TipBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(11, 9, 11, 9),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.72),
+        color: sheetCard.withOpacity(0.72),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: sheetBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -736,8 +756,8 @@ class _TipBox extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                color: Color(0xFF6B7280),
+              style: TextStyle(
+                color: sheetSub,
                 fontSize: 10.8,
                 fontWeight: FontWeight.w600,
                 height: 1.35,
@@ -756,12 +776,12 @@ class _CloseButtonText extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.of(context).pop(),
-      child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(
           '닫기',
           style: TextStyle(
-            color: Color(0xFF9CA3AF),
+            color: sheetHint,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
+import '../theme/app_colors.dart';
 
 import '../widgets/more_care_slot_request_panel.dart';
 
@@ -41,67 +44,53 @@ class MoreCareAdminPage extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF4F46E5), Color(0xFF9333EA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return MtfHeaderNeonOverlay(
+      isExpanded: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        decoration: BoxDecoration(
+          // 다른 화면 머리말과 같은 네이비 그라데이션·같은 곡선을 쓴다.
+          gradient: context.mtfHeaderGradient,
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(kMtfHeaderBottomRadius),
+          ),
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: () => Navigator.of(context).maybePop(),
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.18),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_back_rounded,
-                color: Colors.white,
-                size: 22,
+        child: Row(
+          children: [
+            MtfBackButton(onTap: () => Navigator.of(context).maybePop()),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'MORE 비즈니스',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    isBusinessOwner
+                        ? '센터와 선생님들의 MORE 비즈니스 흐름을 운영합니다.'
+                        : isCompanyLinked
+                        ? '연결된 회사와 MORE 비즈니스 흐름을 관리합니다.'
+                        : '회사 연결 후 MORE 비즈니스 흐름을 사용할 수 있어요.',
+                    style: TextStyle(
+                      color: Color(0xFFEDE9FE),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'MORE 비즈니스',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  isBusinessOwner
-                      ? '센터와 선생님들의 MORE 비즈니스 흐름을 운영합니다.'
-                      : isCompanyLinked
-                      ? '연결된 회사와 MORE 비즈니스 흐름을 관리합니다.'
-                      : '회사 연결 후 MORE 비즈니스 흐름을 사용할 수 있어요.',
-                  style: TextStyle(
-                    color: Color(0xFFEDE9FE),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

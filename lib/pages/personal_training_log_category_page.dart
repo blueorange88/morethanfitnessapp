@@ -1,3 +1,6 @@
+import 'dart:convert';
+import '../widgets/mtf_back_button.dart';
+import '../widgets/mtf_header_neon_overlay.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -6,6 +9,7 @@ import '../services/personal_custom_exercise_service.dart';
 import '../services/training_log_preferences.dart';
 import '../widgets/training_log_pre_check.dart';
 import '../theme/app_colors.dart';
+import '../widgets/leave_draft_guard.dart';
 
 class _CategoryExerciseMemory {
   static final Map<String, List<String>> customExercisesByPart = {};
@@ -230,6 +234,15 @@ class _PersonalTrainingLogCategoryPageState
   @override
   void initState() {
     super.initState();
+    // 처음 값은 첫 프레임 뒤에 기록한다(입력 칸이 초기값으로 채워진 다음).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _baseline = jsonEncode(_resultMap());
+      } catch (_) {
+        _baseline = '';
+      }
+    });
 
     _titleC.text = widget.initialTitle ?? '';
     _memoC.text = widget.initialMemo ?? '';
@@ -1043,65 +1056,67 @@ class _PersonalTrainingLogCategoryPageState
             : '$_memberName 님 $sessionLabel 수업일지';
     final gradient = context.mtfHeaderGradient;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.only(top: 14, left: 16, right: 16, bottom: 18),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+    return MtfHeaderNeonOverlay(
+      isExpanded: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.only(
+          top: 14,
+          left: 16,
+          right: 16,
+          bottom: 18,
+        ),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(32),
           ),
-        ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: SizedBox(
-          height: 46,
-          child: Row(
-            children: [
-              InkWell(
-                onTap: () => Navigator.of(context).maybePop(),
-                borderRadius: BorderRadius.circular(999),
-                child: const SizedBox(
-                  width: 42,
-                  height: 42,
-                  child: Icon(Icons.arrow_back, color: Colors.white, size: 28),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 46,
+            child: Row(
+              children: [
+                MtfBackButton(onTap: () => Navigator.of(context).maybePop()),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: Colors.white.withOpacity(0.18)),
+                const SizedBox(width: 6),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white.withOpacity(0.18)),
+                  ),
+                  child: const Icon(
+                    Icons.grid_view_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.grid_view_rounded,
-                  size: 20,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1378,11 +1393,6 @@ class _PersonalTrainingLogCategoryPageState
 
   void _save() {
     final title = _titleC.text.trim();
-    final name =
-        (widget.initialName ?? '').trim().isEmpty
-            ? '회원 미지정'
-            : (widget.initialName ?? '').trim();
-    final memo = _memoC.text.trim();
 
     if (title.isEmpty) {
       ScaffoldMessenger.of(
@@ -1398,7 +1408,18 @@ class _PersonalTrainingLogCategoryPageState
       return;
     }
 
-    Navigator.pop(context, {
+    Navigator.pop(context, _resultMap());
+  }
+
+  /// 저장할 때 돌려주는 값 전체. 저장하지 않은 변경이 있는지 비교하는 데도 쓴다.
+  Map<String, dynamic> _resultMap() {
+    final title = _titleC.text.trim();
+    final name =
+        (widget.initialName ?? '').trim().isEmpty
+            ? '회원 미지정'
+            : (widget.initialName ?? '').trim();
+    final memo = _memoC.text.trim();
+    return {
       'title': title,
       'name': name,
       'memo': memo,
@@ -1435,11 +1456,31 @@ class _PersonalTrainingLogCategoryPageState
       'publicGood': _publicGoodC.text.trim(),
       'publicHomeworkNote': _publicHomeworkC.text.trim(),
       'publicCaution': _publicCautionC.text.trim(),
-    });
+    };
+  }
+
+  /// 처음 열었을 때의 값(`_resultMap`을 문자열로 만든 것). 달라졌으면 저장하지 않은 변경이 있다.
+  String _baseline = '';
+
+  bool _hasUnsavedChanges() {
+    if (_baseline.isEmpty) return false;
+    try {
+      return jsonEncode(_resultMap()) != _baseline;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    return LeaveDraftGuard(
+      isDirty: _hasUnsavedChanges,
+      onSave: _save,
+      child: _buildEditorScaffold(context),
+    );
+  }
+
+  Widget _buildEditorScaffold(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,

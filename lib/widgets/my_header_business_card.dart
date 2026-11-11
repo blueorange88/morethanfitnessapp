@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../utils/disk_cached_network_image.dart';
+
 class MyHeaderBusinessCard extends StatelessWidget {
   const MyHeaderBusinessCard({
     required this.name,
@@ -45,13 +47,23 @@ class MyHeaderBusinessCard extends StatelessWidget {
   ImageProvider<Object>? get _photoImage {
     if (photoBytes != null) return MemoryImage(photoBytes!);
     if (photoUrl != null && photoUrl!.isNotEmpty) {
-      return NetworkImage(photoUrl!);
+      // 한 번 받은 사진은 폰에 저장해 두어 다음부터는 바로 뜬다.
+      return DiskCachedNetworkImage(photoUrl!);
     }
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    // 명함은 인쇄물처럼 크기가 고정된 그림이다. 폰의 글자 크기 설정이 커져도 글자만 커져서
+    // 칸 밖으로 넘치지 않도록 이 안에서는 글자 배율을 1로 둔다.
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: _buildCard(context),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     return AspectRatio(
       aspectRatio: 1.78,
       child: ClipRRect(
@@ -88,6 +100,43 @@ class MyHeaderBusinessCard extends StatelessWidget {
                             fit: BoxFit.contain,
                             width: size.width,
                             height: size.height,
+                            // 사진이 들어올 때 부드럽게 나타나고, 받는 중·실패 때는 표시를 보여 준다.
+                            frameBuilder: (context, child, frame, sync) {
+                              if (sync) return child;
+                              return AnimatedOpacity(
+                                opacity: frame == null ? 0 : 1,
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOut,
+                                child: child,
+                              );
+                            },
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  child,
+                                  const SizedBox(
+                                    key: Key('business_card_photo_loading'),
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                            errorBuilder:
+                                (context, error, stack) => const Center(
+                                  child: Icon(
+                                    Icons.broken_image_outlined,
+                                    key: Key('business_card_photo_error'),
+                                    color: Colors.white38,
+                                    size: 28,
+                                  ),
+                                ),
                           ),
                         ),
                       );
