@@ -3559,3 +3559,1337 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 사용자 승인(`테스트 끝나면 PROD 배포 진행해줘`)으로 PROD(`more-than-fitness-f6adb`)에 배포: (1) Firestore 규칙 + 인덱스(`anatomyRecords` collection group 복합 인덱스 포함) 배포 완료, (2) Cloud Functions 전체 배포 완료(소스의 28개 함수가 모두 PROD에 이미 있거나 신규라 삭제된 함수 없음, `--force` 미사용). 신규 생성: `recordManagedMemberInbody`(인바디 기록), `autoResumePausedMemberships`(매일 00:20 Asia/Seoul 자동 재개). 수정: 회원권 정지/재개 등 기존 callable. 배포 끝에 us-central1 Artifact Registry 정리 정책 안내 오류가 떴으나(함수 배포 자체는 성공, 소액 요금 가능) `--force`는 쓰지 않았다.
 - 버전: `pubspec.yaml` 1.0.5+25 → **1.0.6+26**. `flutter build appbundle --flavor prod -t lib/main_prod.dart --release --no-pub` 성공, `build/app/outputs/bundle/prodRelease/app-prod-release.aab` 78.2MB, SHA-256 `7d4f580469e56819a925060cc40e505dbf2a2b6dad8e4507285e2164cbfe3f4c`.
 - 미작업: Play Console 업로드(사용자), git commit/push(임시 파일 제외, 사용자 요청 대기), PROD Cloud Scheduler API는 함수 배포가 자동으로 켰는지 PROD에서 첫 실행(00:20 KST) 확인 필요, PROD Artifact Registry 정리 정책.
+
+- 2026-10-14 사용자 요청으로 `7744027`(release: 1.0.6+26)을 커밋하고 `codex/prod-canary-checkpoint-2026-07-22`를 origin에 푸시했다(`06b77e5..7744027`, 임시 파일 `README_FIRST.md`·`VALIDATION_SUMMARY.md`·`_ProChip`·`callable-body.json`·`mtf_codex_loop_starter.zip`·`prompts/`·`src/` 제외, main 병합 없음).
+- 2026-10-14 사용자 승인으로 PROD(`more-than-fitness-f6adb`)의 `us-central1` Artifact Registry 정리 정책을 설정했다(7일 지난 함수 컨테이너 이미지 자동 삭제). 배포 때 정리 정책이 없다고 안내한 곳은 us-central1뿐이라 `asia-northeast3`는 기존 정책을 그대로 뒀다. DEV(`asia-northeast3`, 7일)와 같은 보관 기간.
+
+- 2026-10-14 `flutter build apk --flavor prod -t lib/main_prod.dart --release --no-pub`로 PROD 릴리스 APK(1.0.6+26, 120MB)를 만들어 Galaxy R3CX40M6EEM의 PROD 앱(`com.morethanfitness.app`, 기존 1.0.5+25) 위에 `adb install -r`로 덮어 설치했다(성공, 서명 충돌 없음). 첫 시도는 폰 USB 디버깅 인증(`unauthorized`) 때문에 실패했고 허용 후 성공. Play Console 업로드는 아직 안 함.
+
+## 2026-10-14 레슨일지 나가기 확인창·머리말/브리핑 예시 문구 제거 (Firestore 변경 없음, 1.0.6+26 이후 변경)
+
+- 나가기 확인: 텍스트·음성/카테고리/아나토미 작성 화면에서 저장하지 않은 내용이 있는데 뒤로 가기(머리말 화살표·시스템 뒤로)로 나가려 하면 `작성 중인 레슨일지가 있어요` 확인창(`LeaveDraftGuard`, `widgets/leave_draft_guard.dart`)을 띄운다: `계속 작성`(남음) / `삭제하고 나가기`(저장 없이 닫힘, 목록은 이전 값 유지) / `저장하고 나가기`(기존 저장 동작 실행 — 제목이 없는 등 검증에 걸리면 화면에 남음). 바뀐 내용이 없으면 확인창 없이 나간다. 텍스트·카테고리는 저장 결과 map(`_resultMap`)을 처음 값과 비교해 변경 여부를 판단하고, 아나토미는 기록을 추가·수정·삭제하면 변경으로 본다(새 기록 추가 경로를 처음에 빠뜨려 테스트에서 발견·수정). **한계**: 앱 프로세스가 강제 종료되는 경우(시스템이 앱을 죽이거나 재시작)는 작성 중 내용이 서버에 임시 저장되지 않아 복구되지 않는다 — 자동 임시 저장은 별도 과제.
+- 머리말 `최근 이슈 · 무릎 통증 호소`, 브리핑 `다음 레슨 시작 멘트`(`지난레슨에 상체근력 트레이닝…`), `재등록 3회차`는 호출하는 곳이 값을 넘기지 않아 **항상 예시 문구가 기본값으로 보이던 가짜 데이터**였다(배포본 1.0.6 포함). 기본 예시를 모두 제거: 머리말 최근 이슈 줄은 값이 있을 때만(현재 호출부는 값을 넘기지 않아 보이지 않음), 시작 멘트는 지난 레슨에 적어 둔 `다음 수업 체크포인트`를 쓰고 없으면 카드를 숨김, `지난 레슨 통증·주의`에 특이사항 칩(피로·PMS 등)도 포함.
+- 검증: 신규 테스트(나가기 확인창 공용 6·텍스트/카테고리 편집 화면 5·아나토미 3·소스 가드), 전체 Flutter 1077개 통과, analyze 오류 0, DEV Debug APK 설치. PROD 앱(1.0.6)에는 아직 반영 안 됨(커밋·PROD 빌드 대기).
+
+## 2026-10-15 레슨계약서 v2 명세서 초안 (문서만, 코드·규칙·서버 변경 없음)
+
+- 계약서 현황 평가(코드·규칙·7월 감사 기준): 일반(personal) 트레이너 계정은 `contracts`·`members` 직접 쓰기·`membership_contracts`·Storage 서명 경로가 규칙상 legacy admin 전용이라 저장이 막혀 있을 가능성이 높음(에뮬레이터 테스트 `contracts personal access remains denied`), 서버 시각·해시·버전 증빙 없음, 1단계 서명만으로 `signed`, 환불불가 토글·환불 산식 부재·노쇼 차감 본문 없음, 센터명 기본값 `MORE THAN FITNESS`, 개인정보·건강정보 별도 동의 없음, 계약 로직 테스트 거의 없음. 실제 PROD 앱에서의 저장 실패는 규칙 기반 추론이며 실기기 확인 필요.
+- 외부 자료 조사: 공정위 헬스장 표준약관 개정(2025-05-26, PT 명시), 공정위 고시 제2019-9호(위약금 총계약대금 10% 상한·소진분 단위대금 약정·사업자 입증), 소비자원 2025-06 조사, 공정위 2025-10 시정(환불 금지·카드수수료 공제·과도한 공제 조항). 한계: 법률 자문 아님, 개인 강사 적용 여부·소비자분쟁해결기준 원문·카드수수료 원문·환급 기한 미확인.
+- 사용자 결정 반영: 서명 회원 2 + 강사 1(핵심 고지 확인 + 계약 동의 / 강사), 설정 기반 당사자, 환불불가 제거, 카드수수료 제외, 정상가 소진 옵션은 조건 강제, 노쇼·취소 선택형, 건강정보 필수 별도 동의.
+- 산출물: `docs/product/lesson-contract-spec.md`(18개 절, 269줄). 다음: 사용자 검토 → §17 결정 목록·§18 법률 확인 목록 확정 → 구현 계획(서버 저장 경로 → 데이터 모델 → 설정 → 조항 → 서명 흐름 → PDF) 수립. Rules·Functions·Storage 변경과 PROD 배포는 DEV 검증 후 별도 승인.
+- 아직 커밋하지 않음(`docs/product/lesson-contract-spec.md`, RUN_LOG 포함 미커밋 변경 있음).
+
+- 2026-10-15 명세서 갱신(사용자 결정): 레슨계약서에서 휴회·홀드 조항 삭제(휴회는 회원권계약서에서만 정의, 서버 정지 한도와 일치), 노쇼·마감 후 취소 차감은 **1회 고정**(개별 예외는 레슨일지 `미차감` 처리, 계약서에 비포기 문구), 위약금 기본 10%(낮추기만 가능), 취소 마감 시간은 선택형 유지. `기본값과 수정 가능 여부` 표 추가. 메모리 `lesson-contract-v2-direction` 갱신 필요 없음(결정 목록만 변경).
+
+- 2026-10-15 레슨계약서 명세서 갱신(사용자 결정): 만료 후 잔여 횟수 소멸 확정, 보존기간 계약 종료 후 3년, 교부 수단은 문자·카톡(링크) 메인 + 이메일 보조(링크 열람 기록이 전달 증빙, 서버 함수·Storage 필요), 정상가 옵션 기본 꺼짐, 건강 설문 최소 항목 6개 초안, 위약금 기본 10%(낮추기만 가능) 확정. **환급 처리 기한은 입력값 `신청 후 6개월`의 의미가 불명확해 보류**(법정 기한 3영업일과 차이가 커서 확인 필요). 레슨계약서를 먼저 끝내고 회원권계약서로 넘어가기로 함.
+
+- 2026-10-15 명세서 §8 변경(사용자 결정): 계약서의 **건강 설문 삭제**, 자가 확인 + 위험 고지(서명 ① 카드 ⑤)로 대체. 건강 정보 수집이 없어 계약서 단계의 민감정보 별도 동의 불필요, 실제 건강 정보는 레슨일지 기록과 기존 `레슨일지 개인정보 동의`가 담당. 다른 센터 계약서의 전면 면책(`회원 부주의·타 회원 행위로 인한 모든 상해·손실에 트레이너 책임 없음`)과 `구두·서면 약정 무효` 문구는 쓰지 않기로 함(소비자원 2025-06 지적 유형·개별약정 우선 원칙 충돌 소지).
+
+- 2026-10-15 환급 처리 기한 확정: 환불 신청일부터 **3영업일 이내**(사용자 결정). 앞서 입력된 `신청 후 6개월`은 철회됨. 레슨계약서 명세서 §17 결정 목록 8개 모두 확정, 남은 것은 §18 법률·전문가 확인 8개(법정 환급 기한 정합성 포함).
+
+## 2026-10-15 레슨계약서 v2 구현 계획 초안 (문서만, 코드·규칙·서버 변경 없음)
+
+- 산출물: `docs/product/lesson-contract-implementation-plan.md`. 새 컬렉션 `personal_contracts`(+ `events` append-only, 서버 계약번호 카운터)와 서버 callable(draft/sign/manage/PDF 첨부) + HTTPS 열람 링크 함수로 계약 상태·증빙을 서버가 소유하고, 앱은 새 모듈 `lib/pages/lesson_contract/`로 조항 선택형 입력·고지 화면·서명 2+1·PDF 링크 교부를 구현. 기존 `contracts`·`ContractPage`·규칙은 무변경(레거시 격리).
+- 근거로 확인한 코드 사실: 서버 함수에 계약 코드 없음, 계약 목록이 `contracts`를 소유자 필터 없이 최근 50건 전체 조회, 회원 자동등록이 클라이언트에서 `members` 직접 병합, 일반 워크스페이스 레슨 확정은 서버 `finalizePersonalTrainingLog`(계약 참조 없음), 레슨 확정 기준은 `contractSigned==true || lessonSync.contractId`.
+- 단계: P0 사전 확인(실측·데이터·법률 확인 착수) → P1 서버 기반 → P2 설정 → P3 입력 화면 → P4 서명 흐름 → P5 PDF·교부 → P6 연동 → P7 통합 검증·PROD. 배포 승인은 P1·P2·P5·P7에서 각각 별도.
+- 확인 필요(권장안 있음): 새 컬렉션 사용, 링크 유효 90일, 서버 티어 재확인.
+
+## 2026-10-15 레슨계약서 v2 P0 사전 확인 (코드·규칙·서버 변경 없음, 테스트/스크립트만 추가)
+
+- **실측(에뮬레이터 6/6 PASS)**: `firebase-emulator-tests/contract_access_probe.test.cjs`. 일반(personal) 트레이너는 `contracts` 생성·읽기·목록 조회, 자기 `members` 문서의 계약 포인터(`contractId`·`contractSigned` 등) 쓰기, `members/{id}/membership_contracts/current` 읽기·쓰기, Storage `membership_contract_signatures/*`·`membership_contract_images/*` 업로드가 모두 거부됨. 대조군 레거시 관리자는 허용. 실행: `npm run test:contract-access-probe-emulators`(package.json 스크립트 추가).
+- **코드 사실**: 화면 노출은 티어로만 막음(`canUseContract` Semi-Pro 이상, `canUseMembershipContract` Pro 이상). 일반 계정도 `ContractPage(personalOwnerUid)` 경로로 계약서 작성 화면에 들어가지만, 저장 대상은 `contracts`·`members` 직접 쓰기라 규칙상 실패함 → 현재 일반 계정의 계약서 저장은 구조적으로 불가능(실기기 DEV 확인은 미실시).
+- **서버 티어 읽기**: 서버는 `trainer_profiles/{uid}.tier`를 `tierRank()`로 읽어 판정(`personal_member_taxonomy.ts`의 프로필 검증 헬퍼와 동일 방식). 새 callable도 같은 헬퍼 패턴 사용 가능.
+- **계약 필드 읽기·쓰기 위치(참조 횟수)**: home_page 80, client_card_page 42, schedule_item 16, app_tier_access_service 11, personal_training_log_quick_sign_page 10, notification_service 9, lesson_confirmation_service 6, client_list_page 5, aifc_lesson_confirm_chat_sheet 4, my_page 3, home_quick_sign_member_state 2. 레슨계약서 v2는 이 필드를 건드리지 않고 별도 컬렉션을 추가하며, 연동은 P6에서 한 곳씩 처리.
+- **미확인**: DEV/PROD `contracts`에 일반 계정 소유 문서가 있는지(규칙상 0건이어야 함, 콘솔 확인 필요), 레거시 관리자 워크스페이스의 `contracts` 실사용 여부, 실기기 DEV에서 일반 계정 저장 실패 재현, 법률·전문가 확인(명세서 §18) 착수.
+
+## 2026-10-15 레슨계약서 v2 P1 서버 기반 (로컬 구현·에뮬레이터 검증만, 배포 0)
+
+- **추가 파일**: `functions/src/personal_contract_rules.ts`(순수 규칙: 입력 검증·상한·금지 문구 가드·정규 JSON 해시·고지 항목·획 검증·상태 전이·계약번호·환불 계산), `functions/src/personal_contracts.ts`(callable 3개), `firebase-emulator-tests/personal_contracts.test.cjs`(19 시나리오).
+- **callable**: `savePersonalContractDraft`(생성/수정, 서버 계약번호 `PT-YYMM-0001` KST 월별 카운터, 멱등 키), `signPersonalContract`(`disclosure`→`member`→`trainer` 순서 강제, 보여준 `contentHash` 일치 필수, 확인 항목 정확 일치, 획 데이터는 이벤트 문서에 저장), `managePersonalContract`(`cancel`, `new_version`). `functions/src/index.ts`에 등록(asia-northeast3).
+- **불변식**: 서명 ①·②만으로는 `completed`가 되지 않고 회원 문서의 `contractSigned`·`lessonSync.contractId`는 강사 서명 완료 트랜잭션에서만 기록. 완료·취소·대체된 계약은 수정·취소·재서명 거부. 서명 후 내용을 바꾸면 `draft`로 되돌리고 서명 무효 이벤트 기록. 고정 값(마감 후 취소·노쇼 1회 차감, 강사 사정 취소 미차감·보강, 만료 후 소멸)은 입력으로 받지 않고(알 수 없는 필드 거부) 서버가 채움. 위약금 0~10, 환급 1~3영업일, 기간 ≤ 1095일, 정상가 기준은 정상가 필수·확인 항목 추가.
+- **규칙·인덱스**: `firestore.rules`에 `personal_contracts`(+`events`) 소유자 읽기만, 쓰기 전부 거부, `personal_contract_counters` 전부 거부. `firestore.indexes.json`에 `(trainerId, updatedAt desc)`, `(trainerId, memberId, updatedAt desc)` 추가. 기존 규칙 변경 없음(추가만).
+- **계획과 달라진 점**: (1) Firestore가 배열 안의 배열을 저장하지 못해 서명 획은 `{points:[x1,y1,...]}` 맵 배열로 저장. (2) 새 버전은 **새 버전이 완료될 때** 원본을 `superseded`로 바꿈(새 버전이 중단돼도 원본이 완료로 남도록). (3) 읽기 규칙에서 `workspaceType` 조건 제거(목록 쿼리가 `trainerId`만으로 규칙을 증명할 수 있도록). (4) `delete_draft`는 데이터 삭제 금지 원칙에 따라 만들지 않음(취소로 대체).
+- **검증**: `npm run test:personal-contracts-emulators` 19/19 PASS, `test:contract-access-probe-emulators` 6/6, `test:legacy-emulators` 28/28, `test:personal-training-log-emulators` 64/64, `test:member-emulators` 94/94, `functions` lint·tsc 무오류.
+- **미검증/남은 일**: DEV 배포 전(함수·규칙·인덱스 미배포), 실제 Functions 에뮬레이터 경유 호출·실기기 호출 미확인(핸들러는 직접 호출로 검증), Dart 쪽 규칙 구현·게이트웨이는 P3 이후, 회원 자동 등록(회원권 횟수·기간 반영)은 P6.
+
+## 2026-10-15 레슨계약서 v2 P1 DEV 배포 (사용자 승인)
+
+- 대상: `more-than-fitness-dev-mft`만. 명령: `firebase deploy --only firestore:rules,firestore:indexes,functions:savePersonalContractDraft,functions:signPersonalContract,functions:managePersonalContract --project more-than-fitness-dev-mft --non-interactive` (기존 함수 미배포·`--force` 미사용).
+- 결과: 규칙 릴리스, 인덱스 2개(`personal_contracts`) 배포, 함수 3개 `asia-northeast3` 신규 생성 확인(`functions:list`). 배포 끝에 us-central1 정리 정책 미설정 경고가 나왔고(DEV에는 asia 정책만 설정돼 있음) 함수 배포 자체는 성공.
+- 미확인: DEV 실제 계정으로 callable 호출(실기기/토큰 필요), 인덱스 빌드 완료 상태. PROD 변경 0.
+
+## 2026-10-15 레슨계약서 v2 P2 설정 (로컬 구현·테스트만, 배포 0)
+
+- **서버**: `savePersonalContractSettings` callable 추가(`functions/src/personal_contracts.ts`, `index.ts` 등록). `contractParty`(당사자)·`contractDefaults`(내 기본 조건)를 `trainer_profiles/{uid}`에 저장하고 `contractSettingsUpdatedAt` 서버 시각을 남김. 기본 조건은 취소 마감·지각 노쇼·위약금(0~10)·환급 기한(1~3영업일)·양도(허용/조건부/불허, 비율 수수료만)·연장 협의·불가피 사유 면제만 받고, 정상가 기준·정액 수수료·추가 특약·고정 값은 거부(`unknown_fields`·`transfer_amount_not_allowed_in_defaults`). 서버 등급(Semi-Pro 이상)·링크 계정 재확인. **계획과 달라진 점**: 계획은 `updatePersonalTrainerProfile` 확장이었으나, 등급 재계산까지 하는 기존 핸들러를 건드리지 않으려고 별도 함수로 분리.
+- **Storage 규칙**: `contract_logos/{uid}/logo_{ms}.png` — 본인·비익명, PNG, 2MB 이하만 생성·수정, 본인만 읽기·삭제.
+- **앱**: `lib/models/lesson_contract/lesson_contract_settings.dart`(당사자·기본 조건 모델, 서버와 같은 상한, `기본안과 다름` 계산, 프로필에서 당사자 제안 — 센터 기본값 없음), `lib/services/personal_contract_gateway.dart`(callable 창구·오류 문구·로고 PNG 변환/업로드/읽기), `lib/pages/lesson_contract/lesson_contract_settings_page.dart`(계약 설정 화면: 당사자·로고·취소 마감·위약금 슬라이더·환급 기한·양도·지각·조항 스위치·고정 기준 안내). 진입점: 일반 워크스페이스의 `계약서 관리`(`ContractListPage`) 머리말 `계약 설정` 아이콘(등급 게이트 통과 시).
+- **검증**: `test:personal-contracts-emulators` 21/21(설정 2개 추가), `test:contract-access-probe-emulators` 8/8(로고 Storage 규칙 2개 추가), `test:storage-member-profile-emulators` 9/9, `test:legacy-emulators` 28/28, functions lint·tsc 무오류. Flutter: 신규 `test/lesson_contract_settings_test.dart` 13개 포함 `flutter test` 1090개 전체 통과. `flutter analyze` 신규 파일은 `withOpacity` deprecated info만(기존 코드 스타일 동일), 전체 1199건은 기존 경고 누적. 빌드: 플레이버 없는 `flutter build apk --debug`는 APK 경로를 못 찾는 기존 현상(Gradle 빌드 자체는 성공), `flutter build apk --debug --flavor dev -t lib/main_dev.dart --no-pub` 성공(244MB).
+- **미검증/남은 일**: 새 함수·Storage 규칙은 DEV 미배포 → 실기기에서 설정 저장은 배포 후에만 동작. 실기기 화면(다크모드·작은 화면·로고 선택) 확인 전. 목록 화면은 여전히 레거시 `contracts`를 조회(P6에서 교체).
+
+## 2026-10-16 레슨계약서 v2 P2 DEV 배포 (사용자 승인)
+
+- 대상: `more-than-fitness-dev-mft`만. `firebase deploy --only storage,functions:savePersonalContractSettings --project more-than-fitness-dev-mft --non-interactive`(기존 함수 미배포, `--force` 미사용). 결과: Storage 규칙(`contract_logos`) 릴리스, `savePersonalContractSettings(asia-northeast3)` 신규 생성 성공. us-central1 정리 정책 경고는 P1 배포 때와 같고 함수 배포에는 영향 없음. PROD 변경 0.
+
+## 2026-10-16 레슨계약서 v2 P3 강사 입력 화면 (서버 변경 0, 배포 0)
+
+- **앱 추가**: `lib/utils/lesson_contract/lesson_contract_rules.dart`(서버와 같은 금지 문구 가드·환불 계산·예시 소진 횟수·원화 표기), `lib/models/lesson_contract/lesson_contract_form.dart`(강사 입력 값: 서버와 같은 상한 검증, `기본안과 다름` 계산, 서버 `content` 변환, 저장된 계약에서 복원), `lib/pages/lesson_contract/lesson_contract_form_page.dart`(한 화면 스크롤: 당사자 요약 → 회원 선택 → 상품·금액·기간 → 계약 조건 → 환불 계산 예시 → 고정 기준 안내 → 초안 저장), `lesson_contract_terms_section.dart`(조건 선택형 입력 + 환불 예시 카드), `lesson_contract_widgets.dart`(공용 머리말·섹션 카드; 설정 화면도 이것으로 교체). 게이트웨이에 `saveDraft`·`loadContract`·`ContractDraftResult`·오류 문구 추가.
+- **동작**: 내 기본 조건이 채워진 상태로 시작, 시작일만 오늘로 미리 채우고 종료일은 직접(시작일 +1/2/3/6개월 빠른 선택). 정상가는 `할인 상품` 스위치를 켠 뒤 입력하고, 정상가가 결제금액보다 클 때만 `정상가 기준 소진분 계산`을 켤 수 있음(끄면 계약 단가 기준). 환불 계산 예시는 입력과 동시에 갱신(첫 수업 전 해지·약 30% 소진 시 계약 단가/정상가 기준). 저장은 처음에는 멱등 키로 만들고 이후에는 같은 `contractId`를 수정. 저장하지 않고 나가면 확인창. 회원은 기존 회원 목록에서 선택(이어쓰기에서는 변경 불가). 당사자 정보가 없으면 `계약 설정 열기` 안내 후 저장 차단.
+- **진입점**: `계약서 관리` 목록의 `+`(일반 워크스페이스, 등급 게이트 통과 후)가 새 입력 화면으로 이동. 레거시(`personalOwnerUid` 없음) 경로는 기존 `ContractPage` 그대로. 홈 빠른 작업·회원카드 등 다른 진입점은 아직 기존 `ContractPage`(일반 계정은 저장 불가) → P6에서 교체.
+- **검증**: Dart 신규 29개(`test/lesson_contract_form_test.dart`: 문구 가드·환불 예시·검증 상한·서버 전송 형식 골든·복원·화면 동작·다크 모드 320dp), `flutter test` 전체 1119개 통과. 서버와의 형식 일치를 `firebase-emulator-tests/fixtures/lesson_contract_content_golden.json` 하나로 양쪽 테스트가 확인(Dart `toContent` 결과 = 골든, 서버 `normalizeContent`가 골든 통과): `test:personal-contracts-emulators` 22/22. `flutter analyze` 변경 파일 신규 경고 없음(기존 `_EmptyContractList` 미사용 경고만). `flutter build apk --debug --flavor dev` 성공.
+- **미검증/남은 일**: 이 단계는 초안 저장까지. 회원 고지·서명 ①②·강사 서명은 P4. 새 계약에서 회원을 새로 등록하는 경로는 없음(기존 회원만, 회원 자동 등록은 P6). 실기기 화면·키보드·날짜 선택기 확인 전. 설정 화면과 입력 화면의 조건 편집 UI가 별도 구현이라 나중에 하나로 합칠 수 있음.
+
+## 2026-10-16 레슨계약서 v2 P3 수정 (사용자 요청 반영, 서버 변경 로컬만·미배포)
+
+- **요청**: 회원 생년월일·연락처는 고객카드에서, 종료일 이름 변경, 필수 칸 이동+토스트(이메일은 필수 제외), 수업 상품 찾기, 다크모드 글씨, 종료일·환불불가 문구 입력 방법.
+- **앱**: 회원 선택 시 `members/{id}` 고객카드에서 이름·연락처·생년월일을 읽어 읽기 전용 카드로 표시(입력 칸 삭제, 카드 연락처가 없으면 저장 차단·안내, 이메일은 선택). 기간 칸 이름을 `사용 가능 기간 / 사용 시작일 / 유효 종료일`로 변경, 오류 문구도 같은 용어. 저장 시 첫 오류 칸으로 스크롤 이동 + 토스트(회원·상품·기간·조건 구역별 앵커). `내 수업 상품 불러오기`·`이 상품을 내 수업 상품으로 저장`(추가·같은 이름 교체)·시트에서 삭제 추가.
+- **서버(로컬만)**: `savePersonalContractSettings`가 `contractProducts`(최대 20개, 이름 중복·금지 문구·상한 검증)를 받도록 확장. 에뮬레이터 23/23. **DEV 미배포 → 배포 전에는 `내 수업 상품으로 저장`이 서버에서 거부됨**(승인 필요).
+- **다크모드 확인**: 앱 실제 `lightTheme()/darkTheme()`로 새 화면을 그려 날짜 칸·입력 칸 글씨와 칸 배경의 명암비를 검사하는 테스트 추가(둘 다 4.5 이상 통과). 새 화면은 테마색을 쓰므로 안 보이는 글씨는 재현되지 않음. 증상이 보이면 새 화면이 아닌 기존 `ContractPage`(홈·회원카드 진입, 고정 색상 사용)일 가능성이 높아 P6에서 교체 예정.
+- **검증**: `flutter test` 전체 1131개 통과, `test:personal-contracts-emulators` 23/23, functions lint 무오류, 변경 파일 analyze 신규 경고 없음, DEV 디버그 APK 빌드·폰 설치 완료.
+
+## 2026-10-16 레슨계약서 v2 P3 DEV 배포 (사용자 승인)
+
+- 대상: `more-than-fitness-dev-mft`만. `firebase deploy --only functions:savePersonalContractSettings --project more-than-fitness-dev-mft --non-interactive`. 결과: `savePersonalContractSettings(asia-northeast3)` 업데이트 성공(`contractProducts` 지원). 기존 함수·규칙 미변경, `--force` 미사용, PROD 변경 0. us-central1 정리 정책 경고는 이전과 같고 배포에는 영향 없음.
+- 폰에는 같은 코드의 DEV 디버그 APK가 이미 설치돼 있음(내 수업 상품 저장은 이제 서버가 받음).
+
+## 2026-10-16 문구 확정·진입점 연결 (사용자 요청, 서버·배포 변경 0)
+
+- **문구**: 기존 계약서(`contract_page.dart`)의 예약 조항 `레슨 약속시간 N분 이후는 레슨 진행이 어려울 수 있습니다` → `레슨 시작시간 N분 이후는 레슨 진행이 불가합니다.`, 입력 칸 이름 `레슨 진행 불가 기준 (시작시간 후 몇 분)`, 도움말 문구, 서명 동의 문구의 `계약서 사본이 제공될 수 있…` → `제공됩니다/제공됨`. 새 화면(v2)도 같은 문장(`lateLimitSentence`)과 기본값 시작 30분 후(`기준 없음` 선택 가능), 조건 화면에 `계약서 문구` 미리보기. 남은 모호 표현은 `이용정지 운영의 예외를 둘 수 있습니다`(기존 홀드 조항 기본 문구, 레슨계약서 v2에서는 홀드 삭제로 사라짐). 문구 회귀 테스트 `test/lesson_contract_wording_test.dart` 추가.
+- **진입점**: 사용자가 본 화면은 홈 스케줄 블록의 계약서 칩 → 기존 `ContractPage`(일반 계정은 저장 불가·고객카드 연동 없음)였음. 일반 워크스페이스에서 (1) 홈 스케줄 칩 `_openLessonContractFromHomeLesson`, (2) 홈 `_openNewContractPage`, (3) 회원카드 `_openContract`가 새 입력 화면(`LessonContractFormPage`)으로 이동하도록 변경. 새 화면은 `initialMemberId`로 그 회원을 미리 선택하고 고객카드에서 이름·연락처·생년월일을 가져옴. 레거시 워크스페이스(`personalOwnerUid` 없음) 경로와 홈 `미등록 회원 계약`(`_openLessonContractRegistrationFromHomeLesson`)은 그대로.
+- **검증**: `flutter test` 1134개 통과, 서버 계약 시나리오 23/23, DEV 디버그 빌드·폰 설치.
+- **미확인**: `레슨일지 칩`에서 생년월일 등이 안 보인다는 증상은 원인을 특정하지 못함(질문 보류).
+
+## 2026-10-16 레슨계약서 v2 입력 화면 양식화 (사용자 피드백: 칩·게이지 중심이라 계약서 느낌이 없다)
+
+- **변경**: 계약 조건을 칩·슬라이더·스위치 대신 **조항 문장 + 문장 안 빈칸 직접 입력**으로 교체. 제1조(예약 변경·취소: 레슨 시작 [ ]시간 전, 당일 취소 불가), 제2조(지각: 레슨 시작시간 [ ]분 이후는 레슨 진행이 불가합니다), 제3조(위약금 [ ]% 최대 10%, 환급 [ ]영업일), 제4조(소진분 계산 기준, 정상가 있을 때만 체크박스), 제5조(양도: 선택 칸 + 수수료 선택 칸·빈칸), 제6조(기타: 체크박스), 제7조(특약). 칩은 빈칸 아래 `빠른 선택`으로만 남김. 위약금 슬라이더 삭제(빈칸 입력 + 0/5/10 빠른 선택, 서버 상한 10).
+- **양식 스타일**: 공용 `contractFormTheme`(각진 4px 테두리·배경 없는 칸), 섹션 카드를 6px 각진 테두리 + 굵은 제목 + 가는 구분선으로, 안내 문구 어투를 `~합니다`로, 할인 상품·조항 선택을 스위치 대신 체크박스, 결제 방법·당사자 구분을 칩/세그먼트 대신 선택 칸으로.
+- **공용화**: 계약 설정 화면도 같은 조항 위젯(`LessonContractTermsSection`, `perContract:false`)을 사용(중복 UI 코드 제거). 모델에 `validateTerms()`·`toDefaults()` 추가.
+- **검증**: `flutter test` 1138개 통과(조항 빈칸 입력·상한 거부·빠른 선택 칩·양도 불허·슬라이더/스위치 없음 테스트 추가), 변경 파일 analyze 신규 경고 없음, DEV 디버그 APK 빌드 성공. 폰 설치는 adb 장치 인식 실패로 미완료(재시도 필요).
+- **미확인**: 실기기에서 실제 글꼴·간격으로 본 모양(테스트는 글씨 대신 상자로 그려 시각 확인 불가).
+
+## 2026-10-17 레슨계약서 v2 입력 화면 2차 정리 (사용자 피드백 반영)
+
+- **빠른 선택**: 화면에 늘어놓지 않고 조항 빈칸(취소 시간·지각 분·위약금·환급 영업일)을 누르면 키보드 바로 위 가로 막대로 표시(OverlayEntry + `TextFieldTapRegion`, 칩을 눌러도 포커스 유지, 빈칸 이동 시 막대 스크롤 초기화). `당일 취소 불가`/`기준 없음` 상태에서는 다시 지정하는 링크 제공.
+- **상품·금액**: `서비스 내용` 힌트·도움말, `총 횟수 | 회당 금액 | 1회 시간` 한 줄, 총 횟수·회당 금액·실결제금액 상호 계산(쉼표 자동 입력), 실결제금액 칸 오른쪽 끝 `VAT` 체크박스(`product.vatIncluded`), 정상가 → `할인율 보기`, 내 수업 상품·회원은 드롭다운 모양 선택 칸, 고객카드 값 탭 시 토스트(탭 위치 근처), `유효기간 종료일`(+ 사용 시작일 기준 빠른 입력 메뉴), `환불 계산 예시 보기`(접힘). `계약 단가` 표현을 `회당 금액`으로 변경.
+- **서버(로컬만)**: `normalizeProduct`에 `vatIncluded`(선택 boolean, 기본 false) 추가. 앱은 VAT를 선택했을 때만 전송하므로 현재 DEV 서버와도 동작하고, VAT 선택 저장은 **DEV 함수 `savePersonalContractDraft` 배포 후** 가능(승인 필요). 에뮬레이터 23/23.
+- **검증**: `flutter test` 1144개 통과, functions lint 무오류, 변경 파일 analyze 신규 경고 없음, DEV 디버그 빌드·폰 설치.
+- **미완료**: 서명(회원 ①②·강사)은 P4 — 입력 화면에는 아직 서명 단계가 없음.
+
+## 2026-10-17 레슨계약서 v2 조항 문구·미리보기 (사용자 피드백)
+
+- **서비스 내용 칸 삭제**: 상품명과 입력값으로 자동 작성(`LessonContractForm.serviceContent` getter). 서버 변경 없이 기존 검증(2~200자)을 통과. 내 수업 상품 저장값도 같은 방식.
+- **조항**: 제목 괄호 제거, `지각`→레슨 시작시간 기준 문장, 제1조에 취소 기한과 레슨 진행 불가 기준 통합(`또한`), `마감 이후`→`취소 가능 시간이 지난 후`, `소진분`→`이용분`, 조항 번호 재정렬(제1조 예약 변경 및 취소 / 제2조 위약금 및 환불 / 제3조 이용분 계산 기준 / 제4조 양도 / 제5조 기타 사항 / 제6조 특약; 설정 화면은 제3조 양도). 문구 조각은 `lesson_contract_document.dart`에 한 번만 정의해 입력 화면·미리보기가 공유. 제3조가 작게 보이던 것은 의도가 아닌 글자 스타일 불일치였고 모두 같은 크기로 맞춤(테스트로 고정).
+- **토스트**: 환불불가·카드수수료 안내 문장을 화면에서 삭제, 환급 영업일 칸을 누르면 법적 근거 토스트(`키보드 위 빠른 선택 막대`와 겹치지 않게 `AifcToast.keyboardGap` 추가), 3영업일 초과 입력 시 안내 토스트(넘기는 순간 한 번). 하단 `바꿀 수 없는 기준` 카드는 입력 화면에서 삭제, 설정 화면은 격식 있는 문구로 교체.
+- **환급 영업일**: 최대 130영업일(약 6개월)까지 입력 가능(앱·서버 상수 동일). **서버 상수 변경 → DEV `savePersonalContractDraft`·`savePersonalContractSettings` 배포 전에는 4영업일 이상 저장이 서버에서 거부됨.**
+- **미리보기**: `lesson_contract_preview_page.dart`(흰 종이·검은 글씨 고정, 제목, 당사자·회원 표, 조항, 별첨, 서명란 3개), 머리말 아이콘 `contract_form_preview`. 문서 구성은 PDF(P5)와 공유할 `buildLessonContractDocument`.
+- **법 조문 확인**: 약관규제법 제9조 제1호(고객의 해제·해지권 배제·제한 조항 무효)·고시 제2019-9호 제4조 제1항(위약금 상한 별표)·제5조 제1항(환급액 산정)은 웹에서 확인. 3영업일 환급 기한, 카드수수료 규정은 해당 고시 본문에서 확인하지 못함(토스트에 법 조항으로 단정하지 않음).
+- **검증**: `flutter test` 1163개 통과, 서버 계약 시나리오 23/23, functions lint·tsc 무오류, 변경 파일 analyze 신규 경고 없음, DEV 디버그 빌드·폰 설치.
+
+## 2026-10-17 로고 마이페이지 이동·확인 불가 안내 삭제
+
+- **삭제**: 환급 영업일 3일 초과 토스트(`kRefundDaysNotice`)와 토스트의 `카드수수료`·`이용분과 위약금만 공제` 표현. 토스트는 확인된 조문(약관규제법 제9조 제1호, 고시 제2019-9호 제4조 제1항·제5조 제1항)만 안내. 계약서 본문의 `카드수수료는 공제하지 않습니다`(앱 계약 조건)는 유지.
+- **로고**: 계약 설정 화면에서 로고 UI 제거, 마이페이지 `센터 위치` 아래에 `CenterLogoField`(`lib/widgets/center_logo_field.dart`: 올리기/바꾸기/지우기, 올리면 바로 저장) 추가(일반 워크스페이스만). 저장은 `savePersonalContractSettings`의 `centerLogoPath`(빈 문자열이면 삭제, 본인 `contract_logos/{uid}/logo_숫자.png`만 허용)로 프로필에 기록하고, 계약 당사자 로고는 프로필 `centerLogoPath`를 기준으로 함(`ContractSettings.fromProfile`). 서버 시나리오 24/24, 로고 위젯 테스트 6개.
+- **서버 변경(로컬만, DEV 미배포)**: `centerLogoPath` 저장, 환급 영업일 상한 130, VAT. 배포 전에는 해당 동작이 서버에서 거부됨. 마이페이지 색상 수정 요청은 범위가 불분명해 확인 질문 보류.
+- **검증**: `flutter test` 1169개 통과, 서버 계약 시나리오 24/24, functions lint·tsc 무오류, DEV 디버그 빌드·폰 설치.
+
+## 2026-10-17 마이페이지 다크모드 색상 정리 (사용자 선택: 앱 테마를 따르는 방식)
+
+- **원인**: 마이페이지가 배경·카드·칸 색을 밝은 고정색(`kMyBg`, `Color(0xFFF8FAFC)` 등 150여 곳)으로 지정했고 글씨·입력 글씨 색만 앱 테마를 따라 다크모드에서 밝은 칸 위에 밝은 글씨가 올라가 안 보였음.
+- **변경(`lib/pages/my_page.dart` 한 파일)**: 색 상수를 `MyPalette`(현재 `ThemeData`를 `build`에서 `MyPalette.sync`로 반영)를 쓰는 getter로 교체. 밝은 모드는 기존 값을 그대로, 어두운 모드는 앱 테마의 배경·카드·글씨·구분선·입력칸 색을 사용. 흩어진 색 리터럴은 이름 있는 색(`kMyFill`, `kMyActiveBg`, `kMySoft`, 안내 노랑/빨강/보라 계열, `kMyDanger`)으로 정리하고, 카드·시트의 `Colors.white` 배경은 `kMyCard`로, 글자·아이콘·테두리용 인디고는 `kMyAccent`(어두운 모드에서 밝은 인디고)로 바꿈. 버튼 바탕·그라데이션(흰 글씨와 함께 쓰는 곳)은 기존 `kMyPrimary` 유지. `const`가 불가능해진 61곳은 분석기 오류 위치 기준으로 자동 제거(1회).
+- **검증**: 신규 `test/my_page_palette_test.dart`(밝은 모드 값이 기존과 동일, 어두운 모드 글씨/바탕 대비 4.5 이상: 본문·보조·강조·안내·오류·입력칸 등), MY 페이지를 읽는 기존 테스트 10개 파일 271개 통과, `flutter test` 전체 1173개 통과, DEV 디버그 빌드·폰 설치.
+- **미검증**: 실기기에서 다크모드로 본 마이페이지 전체 화면(특히 상품 관리 시트, 목표 설정, 명함 영역). 이 화면은 위젯 테스트로 통째로 그리지 못해 팔레트 단위로만 확인함.
+
+## 2026-10-17 내 회원 관리 레슨일지 칩 배경색
+
+- `lib/pages/client_list_page.dart`의 회원 카드 `레슨일지` 칩 배경을 홈 레슨 등록의 `레슨계약서` 칩 배경과 같게 변경(밝은 모드 `FFF1C2`, 어두운 모드 `4A401F`; `memberLogChipBackground`). 어두운 모드에서는 바뀐 배경 위에서 읽히도록 글씨 `FFF4CF`·아이콘/테두리 `EFCB62`(그 칩과 같은 색)로 함께 조정, 밝은 모드는 글씨·아이콘·테두리를 기존 보라색 유지. 오른쪽 `회원카드`·`레슨일지` 사이드 버튼(카드 바탕)은 변경하지 않음.
+- 검증: `test/member_log_chip_color_test.dart`(홈 칩과 배경색 동일, 두 모드 글씨 대비), `flutter test` 전체, DEV 디버그 빌드·폰 설치.
+
+## 2026-10-17 DEV 배포 시도 실패 (결제 플랜)
+
+- 시도: `firebase deploy --only functions:savePersonalContractDraft,functions:savePersonalContractSettings --project more-than-fitness-dev-mft --non-interactive` 2회. 두 번 모두 소스 업로드 직전에 `Extensions require the Blaze plan, but project more-than-fitness-dev-mft is not on the Blaze plan`으로 중단(이전 같은 날 배포들은 성공). 코드 문제가 아니라 프로젝트 결제(Blaze) 상태 문제로 보임. 결제 계정 설정은 AGENTS 규칙상 임의 변경 대상이 아니므로 시도하지 않음.
+- 현재 DEV에는 이전에 배포한 함수 4개(draft/sign/manage/settings 구버전)가 그대로 있음. 구버전 서버에서는 VAT 선택·환급 영업일 4일 이상·센터 로고 저장이 거부됨. PROD 변경 0.
+- 필요한 조치(사용자): Google Cloud 콘솔의 결제 계정 연결 상태 확인(`more-than-fitness-dev-mft`). 해결 후 같은 명령으로 재배포.
+
+## 2026-10-17 DEV 재배포 성공 (결제 해결 후, 사용자 승인)
+
+- `firebase deploy --only functions:savePersonalContractDraft,functions:savePersonalContractSettings --project more-than-fitness-dev-mft --non-interactive` 성공: 두 함수 `asia-northeast3` 업데이트(VAT `product.vatIncluded`, 환급 영업일 상한 130, 센터 로고 `centerLogoPath`, 내 수업 상품·설정 저장). 기존 다른 함수·규칙 미변경, `--force` 미사용, PROD 변경 0. us-central1 정리 정책 경고는 이전과 같고 배포에는 영향 없음.
+- 폰에는 같은 코드의 DEV 앱이 이미 설치돼 있어 재설치 불필요.
+
+## 2026-10-18 레슨계약서 v2 P4 서명 흐름 (앱만, 서버 변경·배포 0)
+
+- **흐름**: 입력 화면 `저장하고 회원 서명 받기`(저장하지 않은 변경은 먼저 저장, 서명 중인 계약이면 `회원 서명 이어서 진행`) → `LessonContractSignFlowPage`: ① 폰을 회원에게 전달 화면 → ② 핵심 고지 5장(① 금액 ② 환불 기준+계산 예시 ③ 사용 가능 기간·소멸 ④ 예약 변경·취소·레슨 진행 ⑤ 건강 상태 확인·위험 고지, 정상가 기준이면 추가 확인 1개) 항목별 체크 → 모두 체크하면 서명판 자동 열림 → 서명 ①(`step: disclosure`, 확인 항목 id 전체) → ③ 나머지 조항(전체 문서 기준 조항 번호) + 동의 2개(`terms`,`privacy`) → 서명 ②(`step: member`) → ④ 폰을 강사에게 돌려주는 화면 → 계약 요약·회원 서명 그림·서명 시각 확인 + 확인 체크 → 강사 서명(`step: trainer`) → ⑤ 완료 화면(완료 시각, 서명 3개, 계약서 보기, 닫기). 단계는 서버 상태가 기준이라 앱이 꺼져도 이어짐(`draft`/`disclosed`→폰 전달부터, `member_signed`→강사 서명, `completed`→완료, 취소·대체→서명 불가). 진행 중 뒤로 가면 확인창(받은 서명은 유지, 체크는 다시).
+- **오류 처리**: 내용 변경(`content_changed`)·순서 오류(`invalid_state`)만 서버 상태를 다시 읽어 처음부터 다시 시작, 네트워크 등 일시 오류는 화면·체크 유지. 오류 문구 추가(`contractErrorCode` 분리).
+- **새 파일**: `lib/pages/lesson_contract/lesson_contract_sign_flow_page.dart`, `lib/widgets/contract_signature_pad.dart`(손가락 서명판, 가로 1000 기준 좌표 변환, 한 점·아주 짧은 서명 불가), `lib/utils/lesson_contract/signature_strokes.dart`(획 변환·서버 저장 형식 복원·서명 그리기 위젯). 문서 유틸에 핵심 고지 카드·나머지 조항 구성과 공유 문구 상수 추가(미리보기와 같은 문구). 미리보기는 받은 서명 그림과 계약일을 서명란에 그림. 게이트웨이에 `signContract`·`loadSignatureStrokes` 추가. 서버 `signPersonalContract`는 P1 그대로 사용(이미 DEV 배포됨).
+- **검증**: 신규 `test/lesson_contract_sign_flow_test.dart` 25개(획 변환, 카드 확인 항목 id가 서버 요구와 같음, 서명판 입력, 전체 순서·서버 인자, 상태별 이어서 진행, 정상가 추가 확인, 서명판 취소, 오류 처리, 뒤로가기 확인창, 320dp 다크, 미리보기 서명, 입력 화면 연동), `flutter test` 전체 1200개 통과, DEV 디버그 빌드·폰 설치.
+- **미검증/남은 일**: 실기기에서 실제 손가락 서명·화면 전환 확인 전(DEV 서버 호출 포함), PDF 생성·회원 전달(링크 교부)은 P5, 계약 목록·회원카드 연동·새 버전은 P6. 서명 그림은 서버에는 획 데이터만 저장하고 PDF 렌더링은 P5에서 같은 획 데이터로 그림.
+
+## 2026-10-18 계약서 고객카드 박스·회원카드 다크 모드·스케줄 일괄관리 시트 색 (앱만, 서버·배포 0)
+
+- **계약서 고객카드 생년월일**: 회원마다 카드의 생년월일 저장 형식이 달라(문자열 `1990-05-17`·`1990.5.7`·`19900517`, 날짜 값, 필드명 `birthDate`/`birth`/`birthday`) 기존 읽기(`birthDate`만, 엄격한 검증)가 빈 값을 냈다. `lesson_contract_form.dart`의 `contractBirthDateFromCard`가 위 형식을 모두 `YYYY-MM-DD`로 바꾸고(1900년 이전·미래·존재하지 않는 날짜는 빈 값) `contractBirthDateFromCardMap`이 세 필드를 차례로 본다. 입력 화면 `_formWithMember`가 이를 사용. 서버에 보내는 `member.birthDate` 형식은 그대로.
+- **고객카드 박스 색**: 회색(`surfaceContainerHighest`) → `계약 설정 열기` 버튼과 같은 primary 계열을 옅게(8%) 깐 바탕 + primary 28% 테두리. 밝은/어두운 모드 모두 테마를 따름.
+- **회원카드 페이지 다크 모드**: `client_card_page.dart`에 `PagePalette`+`kPage*` 색 getter 도입(마이페이지와 같은 방식). 밝은 모드 값은 기존과 동일, 어두운 모드는 앱 테마의 배경·카드·글씨·입력칸 색을 사용. 등급 색·그라데이션은 그대로. 이름·생년월일 등 입력 칸 바탕/글씨가 어두운 모드에서 안 보이던 문제 수정.
+- **스케줄 일괄관리 시트**(`aifc_home_schedule_action_chat_sheet.dart`): 예전 보라 고정색(F5F4FF 바탕·1E1B4B 글씨 등)을 앱 팔레트로 교체. 밝은 모드: 바탕 아이보리·카드 흰색·글씨 네이비·테두리 `lightBorder`. 어두운 모드: 바탕 `darkSurface`·카드 `darkSurface2`·글씨 `darkTextPrimary`, 강조(아이콘·화살표)는 네이비가 묻히므로 `goldLight`. 위험 항목(삭제)은 밝은 모드 기존 빨강, 어두운 모드 연한 빨강. 동작·문구 변경 없음.
+- **검증**: 신규 `test/lesson_contract_birth_test.dart`(생년월일 형식 변환), `test/client_card_palette_test.dart`(밝은 모드 값 불변, 어두운 모드 대비 ≥4.5), `test/home_schedule_action_sheet_palette_test.dart`(시트 바탕·제목 대비). `flutter test` 전체 1211개 통과, `flutter analyze` error 0(전체 1216건은 기존 경고·info 누적), `flutter build apk --debug --flavor dev` 성공 후 Galaxy R3CX40M6EEM 설치.
+- **사고 기록**: 모델 파일 수정 스크립트가 JS `String.replace`의 `$'` 확장 때문에 `lesson_contract_form.dart`를 복제·손상시켰다(미추적 파일이라 git 복구 불가). 중복 꼬리를 잘라 함수 두 개를 새로 써서 복구, 해당 테스트 63개 통과로 확인. 교훈: 치환 문자열에 `$`가 들어가면 함수 replacer를 쓴다.
+- **미검증**: 실기기에서 회원카드 다크 모드 전체 화면, 일괄관리 시트의 실제 모습, 계약서 고객카드 박스 색 — 사용자 확인 필요. 시트의 아이콘 배경·버튼 색 취향은 사용자가 지정하지 않아 앱 팔레트로 통일했다.
+
+## 2026-10-18 계약서 2조 문구·VAT 확인 창·당사자 안내 문구·등급 안내 (앱만, 서버·배포 0)
+
+- **2조 환급 문구**: `…환급은 환불을 신청한 날부터 영업일 [__]일 이내에 처리합니다.`로 변경(`kPenaltyAfter` 끝에 `영업일 `, `kRefundDaysAfter`=`일 이내에 처리합니다.`). 입력 화면·미리보기·서명 화면이 같은 상수를 써서 함께 바뀜. 서버 전송 값은 그대로(`refundBusinessDays`). 오류 문구 `refundBusinessDays_invalid`가 옛 `1~3영업일`이었던 것을 `영업일 1~130일(약 6개월)`로 정정.
+- **VAT 체크**: 금액이 입력된 상태에서 체크하면 확인 창이 뜬다. `○원에 VAT가 포함돼 있어요`(금액 유지) / `VAT를 더해 ○원으로 바꿀게요`(실결제금액 ×1.1 원 단위 반올림, 회당 금액 재계산) / 취소(체크·금액 변경 없음). 금액이 없거나 체크 해제 시에는 묻지 않음. 테스트 3개 추가, 기존 VAT 테스트 보정.
+- **당사자 안내**: `계약 당사자(강사) 정보를 먼저 입력해 주세요. 빠진 항목: 이름(센터명), 연락처…`처럼 어떤 정보인지·무엇이 비었는지 표시(저장·미리보기 모두).
+- **등급 안내 조사**: 초안 저장 시 `semi_pro_required`는 서버가 Firestore `profile.tier`로 판단한다(`personal_contracts.ts requireProfile`, 세미프로 이상). 앱 상단 DEV 배너의 등급 선택(`DevTierFixtureController`)은 화면용이라 서버에 반영되지 않는다 → 배너에서 Pro를 골라도 저장된 `tier`가 낮으면 서버가 거부한다. 같은 이유로 `savePersonalContractSettings`도 거부되어 계약 당사자 정보가 저장되지 않고, 그 결과 초안 저장 시 "당사자 정보" 안내가 뜨는 것으로 추정(실제 DEV 계정의 `tier` 값은 확인하지 않음). 토스트 문구를 `서버에 저장된 등급이 세미프로 이상이어야…` + (DEV 배너 선택 중이면) `화면에만 적용돼요`로 명확히 함.
+- **검증**: `flutter test` 전체 1214개 통과, `flutter analyze` error 0, DEV 디버그 빌드·폰 설치.
+- **미해결**: DEV 계정 `profile.tier` 확인·상향은 Firestore 데이터 변경이라 사용자 승인 필요.
+
+## 2026-10-18 DEV 계약 저장 실패 추적 (앱만)
+
+- 증상: DEV 배너에서 Pro를 골라도 `semi_pro_required` 토스트(서버가 저장된 `trainer_profiles/{uid}.tier`로 판단). 사용자가 콘솔에서 tier를 올린 뒤에도 저장 실패. DEV 함수 로그(`firebase functions:log`, 읽기 전용): `savePersonalContractSettings`가 15:12~15:16 KST에 계속 HTTP 400(failed-precondition 또는 invalid-argument) — 서버가 `HttpsError` 메시지를 로그에 남기지 않아 코드는 로그만으로 확정 불가. App Check 경고는 enforcement 꺼져 있어 무관.
+- 조치: `profile_required` 안내 문구 추가(앱에 매핑이 없어 "저장하지 못했어요"로 뭉개졌음), DEV 앱에서는 모든 계약 오류 토스트 끝에 `[DEV 오류코드]` 덧붙임. 테스트 99개 통과, DEV 빌드·설치.
+- 다음: 사용자가 다시 저장해 토스트의 코드를 알려주면 원인 확정(`profile_required`=문서 없음, `semi_pro_required`=tier 값/문서 불일치, `*_invalid`=입력 검증).
+
+## 2026-10-18 VAT 창 재설계·유효기간 종료일 없음·하단 버튼 여백·서명 비교 복원·등급 불일치 분석
+
+- **원인 정리(등급)**: DEV 계정 `trainer_profiles/{uid}.tier`가 `Amateur`였고, DEV 배너 Pro 선택은 화면에만 적용돼 서버가 `semi_pro_required`로 거부했다. 콘솔에서 `tier`를 `Pro`로 올린 뒤 정상 동작. 운영 앱에는 배너 기능이 없어 같은 증상은 없다. 남은 잠재 불일치: 앱 `parsePersonalTierLabel`은 공백·`_`·`-`를 무시하지만 서버 `tierRank`는 엄격(`semi pro`/`semi_pro`=0) → 필요하면 서버 보강(Functions 배포 승인 필요, BACKLOG 등록).
+- **VAT 창**: 크기가 제각각이던 버튼 3개를 같은 크기(높이 120 고정) 선택 카드 2개 + 취소로 교체(`_VatChoiceDialog`). 테스트에서 카드 크기 동일 확인(처음엔 136 vs 116으로 달라 높이 고정).
+- **유효기간 종료일 없음**: 종료일 칸 안 달력 아이콘 옆에 `없음` 체크박스(`contract_form_no_expiry`). 체크하면 종료일 `종료일 없음` 표시, 달력·`+N개월` 메뉴 잠김. 모델 `periodUnlimited`(체크 시에만 서버로 전송, `periodEnd=''`), 문서·핵심 고지 ③·서명 요약이 `종료일 없음`/`kNoExpiryText`로 바뀌고 종료일 없는 계약에서는 기간 연장 협의 문구를 뺀다. **서버**: `normalizeProduct`가 `periodUnlimited`(boolean)를 받아 true면 `periodEnd`가 비어 있어야 하고(`period_invalid`), `expiryForfeit=false`. 기존 계약의 내용 해시는 그대로(필드는 true일 때만 저장). 서버 에뮬레이터 24/24 통과(종료일 없음 허용·거부 케이스 추가), tsc·lint 무오류. **DEV Functions 배포는 아직 안 함(승인 필요)** — 배포 전에는 `없음`을 체크하면 이전 서버가 `unknown_fields`로 거부한다.
+- **하단 버튼 가림**: 계약 입력·계약 설정 화면의 스크롤 아래 여백에 시스템 내비게이션 바 높이를 더하고, 서명 완료 화면 버튼 여백도 동일 처리. 테스트로 맨 아래 `저장` 버튼이 내비게이션 바 위에 있음을 확인.
+- **서명 비교 복원**: 예전 `contract_page.dart`의 서명 유사도 확인(기준 0.45, 크기·점 수 비교)이 새 서명 흐름에는 없었다 → `signatureSimilarity`를 같은 방식으로 이식해 서명 ② 직후 서명 ①과 비교, 기준 미만이면 `회원 서명을 확인하시겠습니까?`(다시 서명/그대로 사용) 확인창. 서명 ①을 못 읽어 오면 묻지 않음. 강사 서명은 1회뿐이라 비교 대상 없음. 서버에는 확인 응답을 기록하지 않음(필요하면 이벤트 기록은 별도).
+- **검증**: `flutter test` 전체 1221개 통과, `flutter analyze` error 0(1216건 기존 누적 유지), `test:personal-contracts-emulators` 24/24, DEV 디버그 빌드·폰 설치.
+
+## 2026-10-18 계약 당사자 접기·없음 아이콘·VAT 창 한 줄·필수 칸 커서 이동(앱 전체) (앱만, 서버·배포 0)
+
+- **계약 당사자 카드**: 처음에 접혀 있고 제목이 `계약 당사자 (강사 개인)`/`(센터)`. 펼치면 이름·담당 강사·장소·`설정 변경`. 새 `LessonContractCollapsibleCard`.
+- **종료일 없음**: 체크박스 → 원 안의 X 아이콘(`cancel_outlined`, 꺼짐=흐림, 켜짐=밝은 primary). 키 `contract_form_no_expiry` 유지.
+- **VAT 창**: 카드 안 제목·계산식을 각각 한 줄로(`FittedBox`로 글씨 크기를 줄여 맞춤, 줄 높이 고정으로 두 카드 높이 동일), 패딩·창 크기 축소. 넘침 줄무늬(overflow) 없음을 320dp·글씨 1.4배 테스트로 확인.
+- **필수 칸 커서 이동**: 공용 `lib/utils/form_error_focus.dart`(`revealAndFocus`, `focusFirstInvalidFormField`). 적용: 계약 입력 화면(모든 글자 칸 + 조항 안 빈칸, 날짜·회원 선택 칸은 이동만), 계약 설정, 마이페이지 프로필·상품 폼(Form 검증, 기존 스크롤 로직을 공용으로 교체), 홈 레슨 등록 시트(이름 비어 저장 시 이름 칸), 기존 계약서 `contract_page`(기본정보·결제정보의 첫 미완성 칸). 이미 같은 동작이 있던 곳: 회원카드(`client_card_page`), `personal_my_page`. **미적용**: 아나토미 기록 시트·D-DAY 입력 등 시트/대화상자 안의 인라인 오류, 홈의 일부 토스트 검증(회원 이름 선행 입력 안내 등) — 칸이 시트 안이거나 별도 흐름이라 이번엔 제외.
+- **회귀 테스트 수정**: `dev_home_regressions_test`가 마이페이지 소스에서 `state.hasError`·`Scrollable.ensureVisible(`을 찾던 것을, 로직이 공용 도우미로 옮겨져서 도우미 소스를 확인하도록 갱신(의도 동일).
+- **검증**: `flutter test` 1230개 통과, `flutter analyze` error 0(1216건 기존 유지), DEV 디버그 빌드·폰 설치. 신규 테스트: 공용 도우미 4개, 홈 이름 칸 포커스 2개, 계약 입력(접힌 당사자·종료일 없음 아이콘·VAT 창 넘침·필수 칸 커서·조항 빈칸 커서), 기존 계약서 쪽은 대형 페이지라 단위 테스트 없이 분석만.
+- **미검증**: 실기기에서 키보드가 올라올 때 커서·스크롤 위치, 기존 계약서(`contract_page`)·홈 시트의 실제 동작.
+
+## 2026-10-19 DEV Functions 배포 (유효기간 종료일 없음, 사용자 승인)
+
+- `firebase deploy --only functions:savePersonalContractDraft,functions:signPersonalContract,functions:managePersonalContract,functions:savePersonalContractSettings --project more-than-fitness-dev-mft --non-interactive`: 4개 함수 `asia-northeast3` 업데이트 성공(`periodUnlimited`, `expiryForfeit` 조건부). 배포 전 `tsc`·lint 무오류, 에뮬레이터 24/24 통과. 다른 함수·규칙·인덱스 미변경, `--force` 미사용, PROD 변경 0.
+- us-central1 정리 정책 경고(exit code 1)는 이전과 같고 배포에는 영향 없음.
+- 미확인: 실기기에서 `없음` 체크 후 초안 저장.
+
+## 2026-10-19 홈 레슨 시트: 계약서관리 칩 통합·버튼 순서·헤더 색 (앱만, 서버·배포 0)
+
+- **계약서관리 칩**: 홈 레슨 시트의 `레슨계약서`·`회원권계약서` 칩 두 개를 `계약서관리` 하나(레슨계약서 아이콘 `description_outlined`, 기존 계약 칩 노랑 스타일)로 합쳐 시트 높이를 줄였다. 누르면 `어떤 계약서를 열까요?` 선택 시트(레슨계약서/회원권계약서)가 뜨고, 선택하면 시트를 먼저 닫은 뒤 기존 중앙 진입 콜백(`_openLessonContractFromHomeLesson` 등, tier gate 유지)을 호출한다. 한 종류만 쓸 수 있으면 선택 없이 바로 연다. 미연결 회원(연결·등록 칩 옆)도 동일. 선택 시트 안의 옵션 키는 기존 `aifc_lesson_contract_action`/`aifc_membership_contract_action`을 유지.
+- **순서**: `계약서관리 → 회원카드 → 레슨일지 → 레슨확정(확정완료/빠른서명)`, 그 뒤 확정취소·서명요청. 확인중 상태도 같은 순서. (엄지가 닿는 오른손 기준 왼쪽→오른쪽 우선순위는 사용자 요청)
+- **시트 헤더 색**: 라이트·다크 공통이던 보라 그라데이션(`4F46E5→9333EA`)·흰 글씨 → 저장 버튼과 같은 색(`ColorScheme.secondary`, 웜 옐로우)을 바탕으로 한 그라데이션 + 글씨·아이콘은 `onSecondary`(네이비). 다른 테마(레거시 퍼플)에서는 그 테마의 secondary를 따른다.
+- **검증**: 퀵 액션 테스트 재작성(합쳐진 칩·순서·선택 시트·한 종류만 있을 때·미연결·320~411dp overflow 없음), 헤더 색 테스트 신규(밝음/어둠 대비 ≥4.5). `flutter test` 1236개 통과, `flutter analyze` error 0(1210건 기존 누적, 이번에 6건 감소), DEV 디버그 빌드·폰 설치.
+- **미검증**: 실기기에서 시트 높이·헤더 색감, 칩이 한 줄에 들어가는지(폭 좁은 기기).
+
+## 2026-10-19 레슨 추천 회원 아바타·오늘 다음 레슨 색·회원카드 계약서 선택 (앱만, 서버·배포 0)
+
+- **AI 레슨 추천 회원**: 알약(pill) 칩 3열 → 홈 `최근 회원`처럼 원형 아바타 4열 한 줄. 아바타는 추천 이유 색(신규=secondary, 자주=tertiary, 오랜만=error 컨테이너)에 모서리 아이콘(`fiber_new`/불꽃/`event_busy`)과 이름 아래 글자(`최근 등록`/`자주 레슨`/`오랜만`)로 이유를 알린다. **전화번호는 기본으로 숨기고**, 같은 이름이 추천 목록에 둘 이상일 때만 그 회원들에게 `이름·뒤4자리`로 붙인다. 판단: 기존 칩은 이유가 아이콘 하나뿐이고 번호는 구분에 도움이 안 돼 정보 전달이 약했다.
+- **추천 선정**: 기본 4명(`totalSlots 4`, `maxRecentSlots 2`). 오랜만 1명을 먼저 확보하고 최근 등록 2명, 남는 칸은 자주 레슨한 회원, 그래도 남으면 14일 이내 신규 등록자로 채운다. 이전 6칸 동작은 인자(`totalSlots:6, maxRecentSlots:4`)로 그대로 호출 가능(기존 테스트 유지).
+- **오늘 다음 레슨 카드**: 어두운 모드에서 시간·왼쪽 선·아이콘 배경·배지가 네이비(`kPrimaryColor`)라 묻히던 것을, `빠른 등록` 글씨와 같은 `ColorScheme.secondary`로 변경. 밝은 모드는 기존 네이비 유지(노랑 글씨는 흰 카드에서 대비가 낮아서).
+- **계약서 선택**: 공용 `lib/widgets/contract_chooser_sheet.dart`(`ContractKind`, `showContractChooserSheet`)로 분리해 홈 시트와 회원카드가 같이 쓴다. 회원카드 상단 계약서 아이콘은 선택 시트(레슨계약서→`_openContract`, 회원권계약서→`_openMembershipContractDraft`, tier gate 그대로)를 연다. 하단 `레슨계약서` 버튼과 카드 안 링크는 그대로 레슨계약서로 간다.
+- **검증**: 신규 테스트(칩 형태·이유·중복 이름·4명 선정, 카드 색 밝음/어둠, 공용 선택 시트, 회원카드 소스 확인), `flutter test` 1244개 통과, `flutter analyze` error 0(1210건 기존 누적 유지), DEV 빌드·폰 설치.
+- **미검증**: 실기기에서 아바타 칩 4열 폭(320dp)·색감, 회원카드 상단 아이콘 동작.
+
+## 2026-10-19 회원카드 상단 계약서 아이콘 수정·하단 바 한 줄 + 스크롤 숨김 (앱만, 서버·배포 0)
+
+- **상단 아이콘 버그**: 앞서 고친 `_buildHeaderContractButton`은 어디에서도 쓰이지 않는 메서드였고, 실제 상단 카드(`MembershipCardFlip`)의 계약서 아이콘은 `onContractTap: _openContract`로 레슨계약서에 바로 연결돼 있었다. → `onContractTap: _openContractChooser`로 변경(레슨/회원권 선택 시트). 소스 테스트로 고정.
+- **하단 바**: 3개 버튼(레슨일지·레슨계약서·수정 저장)을 `아이콘+글씨` 한 줄 버튼(높이 58→46, 글씨는 `FittedBox`로 줄여 한 줄)로 변경. `Scaffold.bottomNavigationBar` → 본문 위에 겹치는 `ScrollRevealBottomBar`(새 위젯 `lib/widgets/scroll_reveal_bottom_bar.dart`). 내용을 아래로 내리면 숨고 위로 올리면 나타남, 맨 위/맨 아래 끝(여유 8/24dp)에서는 항상 보임, 키보드가 올라오면 숨음, 저장 중(`forceVisible: _isSaving`)에는 항상 보임, 안쪽 가로 목록·페이지 넘김은 무시. 겹치는 방식이라 나타나고 사라질 때 내용이 밀리지 않고, 목록 아래 여백(96+시스템 내비게이션)으로 마지막 항목이 가려지지 않게 함.
+- **발견한 문제**: Scaffold가 본문 쪽 `MediaQuery`에서 키보드 높이를 지워 새 위젯이 키보드를 감지 못함(테스트가 잡음) → `WidgetsBindingObserver`+`View.of(context).viewInsets`로 감지.
+- **검증**: 신규 `test/scroll_reveal_bottom_bar_test.dart` 6개(내림=숨김·올림=나타남, 끝에서 다시 보임, 안쪽 가로 스크롤 무시, 숨은 동안 터치 비가로채기, 키보드·forceVisible), 소스 확인 테스트 2개 추가. `flutter test` 1252개 통과, `flutter analyze` error 0(1210건 유지), DEV 빌드·폰 설치.
+- **미검증**: 실기기에서 숨김/나타남 감도와 키보드·수정 저장 흐름.
+
+## 2026-10-19 인사이트 헤더·뒤로가기 통일·마이페이지 내 수업 상품 (앱만, 서버·배포 0)
+
+- **뒤로가기 통일**: `내 회원 관리` 헤더의 `<`(24sp, w500)에서 원형 테두리만 뺀 공용 위젯 `lib/widgets/mtf_back_button.dart`(`MtfBackButton`, 42×42, 접근성 이름 `뒤로`)를 만들어 적용. 적용 페이지: 내 회원 관리, 인사이트, 레슨계약서 공통 헤더(입력·설정·미리보기·서명), 수업 유형 관리, MORE 케어 관리, 알림 설정, 설정, 위젯 설정, 그룹(분류) 관리, 레슨일지 빠른 서명/아나토미/카테고리/텍스트·음성/레슨일지 목록, 계약 목록, 기존 계약서, 마이페이지, 바인더 카드(밝은 바탕은 `color` 지정), 회원카드 상단 카드(뒤로+흐린 꺾쇠 중복 제거). 앱바를 쓰는 페이지는 `ThemeData.actionIconTheme.backButtonIconBuilder`로 세 테마(라이트·다크·레거시 퍼플)에서 같은 `<`로 통일. 채팅 시트 안의 `뒤로` 버튼(일괄관리 시트 등)과 달력 달 이동 꺾쇠, 버튼 안의 화살표는 페이지 헤더가 아니라 제외.
+- **인사이트 헤더**: 단색(`drawerHeaderBackground`)이던 것을 `내 회원 관리`와 같은 `context.mtfHeaderGradient`로 변경, 뒤로가기도 공용 버튼. 제목·부제·더보기 메뉴 배치는 유지.
+- **내 수업 상품(마이페이지)**: 조사 결과 마이페이지의 `레슨 상품 관리`(`_ProductManagementSection`)는 전체 공용 컬렉션 `lesson_products`(소유자 구분 없음)를 읽는 구버전이고 `!_isPersonalWorkspace`에서만 보여서 개인 워크스페이스에는 없었다. 새 레슨계약서의 `내 수업 상품`(프로필 `contractProducts`, 최대 20개)은 계약서 입력 화면에서만 저장·불러오기가 가능했다. → 마이페이지 `이메일 계정 연결` 카드 위에 `내 수업 상품` 카드를 추가(개인 워크스페이스 전용): 목록(이름·횟수·1회 시간·결제금액·회당 금액·정상가), 추가/수정 시트(이름·총 횟수·1회 시간(기본 50)·결제금액·정상가 선택), 삭제 확인, 서버 저장은 기존 `savePersonalContractSettings`(함수 변경 없음). 서비스 내용은 계약서 입력 화면과 같은 문구로 자동 작성, 입력 검사는 서버 상한과 동일(`contract_product_input.dart`), 같은 이름 불가(대소문자·공백 무시), 틀린 칸으로 이동·커서. 파일: `lib/pages/lesson_contract/my_contract_products_section.dart`, `lib/models/lesson_contract/contract_product_input.dart`, 금액 입력 포맷터를 `lib/utils/lesson_contract/won_input_formatter.dart`로 분리(계약서 입력 화면도 이를 사용).
+- **검증**: 신규 테스트 상품 13개·뒤로가기 6개, 기존 5개 테스트의 옛 아이콘 의존 갱신(의도 동일). `flutter test` 1271개 통과, `flutter analyze` error 0(1195건, 이전보다 15건 감소), DEV 빌드·폰 설치.
+- **미검증**: 실기기에서 각 페이지의 `<` 모양·위치(제목 간격 6dp로 통일), 인사이트 헤더 색감, 마이페이지 상품 카드 동작.
+
+## 2026-10-19 명함 사진이 잘 안 뜨고 늦게 뜨는 문제 (앱만, 서버·배포 0)
+
+- **코드로 확인한 원인**(실기기 재현은 아직 못 함):
+  1. 저장 직후 사진이 잠깐 사라짐: 저장 성공 후 `_businessCardPhotoBytes = null`로 바꾸면서 카드가 이미 보이던 메모리 사진 → 아직 받지 않은 `NetworkImage(URL)`로 바뀌어, 서버 사진을 내려받을 때까지 빈 칸.
+  2. 업로드 실패 무시: `putData`/`getDownloadURL` 예외를 `catch (_) {}`로 삼키고 곧바로 `bytes = null`이라 사진이 알림 없이 버려짐(다시 열면 사진 없음).
+  3. 로딩·실패 표시 없음: `Image(image: NetworkImage)`에 `loadingBuilder`/`errorBuilder`가 없어 느리거나 실패하면 아무 신호 없이 빈 칸.
+  4. 큰 사진 + 디스크 캐시 없음: 1600px·화질 90으로 올려 수백 KB~수 MB, `NetworkImage`는 앱 실행 중 메모리 캐시만 있어 앱을 켤 때마다 다시 내려받음. 프로필을 먼저 읽은 뒤에야 이미지 다운로드가 시작돼 대기가 이어짐.
+  5. 공유 이미지: `toImage` 전에 서버 사진 로드를 기다리지 않아 공유한 명함에 사진이 빠질 수 있음.
+- **수정**: 저장 직후 방금 올린 사진(`_businessCardPhotoShownBytes`)으로 계속 보여 주고 서버 사진을 `precacheImage`로 받은 뒤에 교체 / 업로드 실패 시 토스트로 알리고 사진을 버리지 않아 다시 저장 가능 / 카드 사진에 부드러운 등장(`frameBuilder`)·받는 중 표시·실패 아이콘 / 선택 크기 1200px·화질 85(약 절반 용량) / 공유 전에 서버 사진 미리 받기 / 사진 삭제 시 임시 사진 정리.
+- **하지 않은 것**: 앱 재실행 후에도 남는 디스크 캐시는 새 의존성(`cached_network_image`)이 필요해 승인 없이 추가하지 않음. 이미 올라간 기존 큰 사진은 그대로(새로 올릴 때부터 작아짐).
+- **검증**: 신규 `test/business_card_photo_test.dart` 3개, `flutter test` 1274개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·폰 설치.
+
+## 2026-10-20 명함 사진 폰 저장(디스크 캐시) (앱만, 서버·배포 0, 새 의존성 없음)
+
+- **요청**: 명함 사진이 올려서 저장은 잘 뜨지만 불러오는 데 오래 걸림 → 폰에 저장하면 빨라지나? 답: 예. 원인은 `NetworkImage`가 앱 실행 중 메모리에만 기억해서 앱을 켤 때마다 큰 사진을 다시 내려받는 것.
+- **구현**: `lib/utils/disk_cached_network_image.dart` — `DiskImageCache`(임시 폴더 `image_cache/`에 파일 저장, 키는 URL 끝 파일 이름 `photo_<시각>.jpg`, 올릴 때마다 이름이 달라 새 사진은 자동으로 새로 받음, 최대 20개 넘으면 오래된 것부터 삭제, 쓰기는 `.part` 임시 파일 후 이름 변경, 같은 사진 동시 요청은 1회만 다운로드) + `DiskCachedNetworkImage`(`ImageProvider`: 폰에 있으면 읽고 없으면 `dart:io HttpClient`로 받아 저장, 인터넷이 없어도 저장된 사진은 표시, 깨진 파일은 삭제 후 다음에 새로 받음). 명함 카드(`MyHeaderBusinessCard`)의 `NetworkImage` → `DiskCachedNetworkImage`, 마이페이지 저장 때 올린 사진을 같은 키로 폰에도 저장(다운로드 없이 바로 뜨고 다음 실행도 빠름), 공유·교체용 `precacheImage`도 교체.
+- **발견·수정한 버그(내 구현)**: 다운로드 실패 시 진행 기록을 지우는 `Future.microtask(() => _inFlight.remove(url))`이 실패한 작업을 다시 돌려줘 처리되지 않은 비동기 오류가 한 번 더 발생 → `scheduleMicrotask` 블록으로 수정(테스트가 잡음).
+- **검증**: 신규 `test/disk_cached_network_image_test.dart` 11개(키 만들기, 앱 재실행 후 재다운로드 없음, 올린 사진 즉시 저장, 동시 요청 1회, 오프라인 표시, 실패 시 미저장, 20개 정리, 이미지 로딩·깨진 파일 복구), `flutter test` 1285개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·폰 설치.
+- **한계**: 사진을 처음 보는 기기에서는 1회 다운로드가 필요하고, 이미 올라가 있는 큰 사진은 첫 1회만 느림(그 뒤는 폰에서 바로). 임시 폴더라 폰이 용량 부족 시 OS가 지울 수 있음(그러면 다시 1회 받음).
+
+## 2026-10-20 마이페이지 저장 속도: 등급 재계산을 저장 뒤로 (앱만, 서버·배포 0, 사용자 승인)
+
+- **원인(서버 로그 `firebase functions:log` 읽기 전용으로 확인)**: 저장 흐름이 `updatePersonalTrainerProfile`(0.2~1.9초) → `reconcilePersonalTier`(0.9~1.7초) → 저장 값 서버 재확인 → 등급 상태 재조회를 순서대로 기다린 뒤에야 `저장했어요`가 떴다. 등급 재계산은 저장 확인에 필요 없는 뒷정리인데 매번 1~1.7초를 더하고 있었다.
+- **변경**: 프로필 저장 호출 직후 `unawaited(_reconcileTierThenRefresh(uid))`로 재계산과 등급 상태 갱신(`_loadTierStatus`)을 뒤에서 처리(재계산이 실패해도 상태 갱신은 시도, 화면이 닫혔으면 건너뜀). 저장 값 서버 재확인 읽기(`personal_profile_refresh_failed` 검사)는 그대로 저장 흐름 안에 유지. 저장 데이터는 변하지 않고 등급 표시만 몇 초 뒤에 갱신된다.
+- **검증**: 신규 `test/my_page_save_speed_test.dart`(소스 확인), `flutter test` 1286개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·폰 설치.
+- **미검증**: 실기기 저장 소요 시간 체감, 등급이 바뀌는 저장에서 화면 갱신 타이밍.
+
+## 2026-10-21 레슨계약서 v2 P5: PDF 생성·등록·열람 링크·문자/카톡 공유 (코드·테스트 완료, **DEV 배포는 승인 대기**)
+
+- **설계**: `docs/product/lesson-contract-implementation-plan.md` 부록 "P5 상세 설계"(앱이 PDF 생성 → Storage 업로드 → 서버가 파일 해시 기록·링크 발급 → 공유 시트로 전달 → 회원이 열면 열람 기록).
+- **서버**(`functions/src/personal_contract_delivery.ts` 신규, `index.ts` 내보내기, `personal_contracts.ts` 헬퍼 export + `mark_shared`): `attachPersonalContractPdf`(callable: 완료·본인·형식(`%PDF`/`%%EOF`)·≤10MB 확인, SHA-256·크기 기록, 256비트 토큰 발급·해시만 저장·90일, 재발급하면 이전 링크 무효, 동시 요청 시 먼저 기록된 해시 유지), `viewPersonalContract`(HTTPS GET/HEAD: 형식 불일치는 DB 미조회 404, 틀린 토큰·없는 계약 동일 404, 만료 410, `completed`/`superseded`만, 저장 경로·해시 재검증(바뀐 파일은 내주지 않음), 링크 미리보기 봇(`kakaotalk-scrap` 등)은 열람으로 세지 않음·KAKAOTALK 앱 내 브라우저는 셈, IP·UA 미저장, `no-store`·`nosniff`·`no-referrer` 헤더), `managePersonalContract`의 `mark_shared`(링크 발급 후만, `share_sheet`/`copy_link`, 횟수·`shared` 이벤트). 기존 함수 동작 불변.
+- **Storage 규칙**(`storage.rules` 추가만): `personal_contracts/{uid}/{contractId}/contract_v{버전}.pdf` — 읽기 본인, 생성은 본인·비익명·`pc_…` ID·`application/pdf`·0<크기≤10MB·계약 문서가 본인 소유+`completed`+버전 이름 일치·`resource == null`(덮어쓰기 불가), 수정·삭제 불가. 에뮬레이터가 `create`/`update`를 구분하지 않아 첫 시도에서 덮어쓰기가 통과 → `resource == null`을 명시해 해결.
+- **앱**: `lesson_contract_pdf.dart`(표지·핵심 고지 확인 내용·전체 조항·환불 예시·서명 3개와 KST 시각·내용 해시, 한글 폰트, 카드·조항·서명을 쪽 경계에서 쪼개지 않음, 서명은 마지막 조항과 한 덩어리), 글꼴은 `printing`의 `PdfGoogleFonts`(굵기가 정해진 Noto Sans KR 보통·굵게)를 받고 실패·20초 초과 시 번들 가변 글꼴로 대체(가변 글꼴은 PDF에서 가장 가는 굵기로만 나와 계약서로 읽기 어려움 → 실제 샘플을 pdf.js로 렌더링해 확인), `lesson_contract_delivery_service.dart`(기록으로 PDF 생성 + 순서: 등록 시도 → 없으면 생성·업로드 → 등록), 게이트웨이 `uploadContractPdf`·`attachPdf`·`markShared`·`ContractDeliveryInfo`·새 오류 문구, `lesson_contract_delivery_card.dart`(완료 화면에 `회원에게 계약서 보내기`: 링크 없는 완료 계약은 열자마자 PDF·링크 자동 생성, 이전 링크가 있으면 자동 재발급하지 않고 보낸·열람 현황 + 확인 후 `새 링크 만들어 보내기`, 서명 그림이 하나라도 없으면 PDF를 만들지 않음, 공유·복사 후 기록).
+- **검증**: 서버 에뮬레이터 신규 11개(`test:personal-contract-delivery-emulators`), 기존 24개(`test:personal-contracts-emulators`)·규칙 11개(`test:contract-access-probe-emulators`)·`test:storage-member-profile-emulators` 9·`test:legacy-emulators` 28 통과, tsc·lint 무오류. Flutter 신규 테스트: PDF 7·카드 10·서비스 6, `flutter test` 1309개 통과, `flutter analyze` error 0(1195건 유지), DEV 디버그 빌드 성공.
+- **내가 낸 사고**: `sed -i 's/\`/`/g'`가 `\`` 를 줄 시작으로 해석해 파일 두 개의 모든 줄 앞에 백틱을 붙임 → 줄 앞 백틱만 제거해 복구, 분석·테스트 통과 확인. 교훈: 백틱이 든 치환은 sed가 아니라 파일 편집 도구로.
+- **미검증**: DEV 배포 후 실기기 전체 흐름(PDF 업로드→링크→문자/카톡→열람 기록), `admin.storage().bucket()` 기본 버킷·함수 서비스 계정의 Storage 읽기 권한, 카카오톡 링크 미리보기 동작. **승인 대기**: DEV Functions(`attachPersonalContractPdf`·`viewPersonalContract`·`managePersonalContract`)와 DEV Storage 규칙 배포.
+
+## 2026-10-21 레슨계약서 v2 P5 보완: 서명 유사도 강화 + PDF 종이 양식 한 장 + 위조 방지(문서확인번호·QR) (코드·테스트 완료, **DEV 배포는 승인 대기**)
+
+- **사용자 요청**(종이 계약서 사진·앱 화면 캡처 첨부): ① 종이 "개인 트레이닝 계약서" 틀을 큰 틀로, "계약 당사자" 섹션은 없어도 됨 ② 금액 확인·환불·당일 취소 소진 등 설명을 들었다는 서명을 중간에 ③ 공문서 맨 아래 같은 위조 방지 ④ **한 장**에 들어올 것 ⑤ 캡처처럼 서명 ①·②가 너무 달라도 통과함 → 더 비슷해야 함.
+- **서명 유사도(⑤)**: 거리 기반 비교(획을 호 길이로 같은 점 수로 다시 뽑고 크기 정규화한 뒤 양방향 최근접 거리, `signature_strokes.dart`)로 교체. 판정은 3단계 — 0.60 이상 통과 / 0.35~0.60 `회원 서명을 확인하시겠습니까?`(그대로 사용 가능) / 0.35 미만은 그대로 쓸 수 없고 다시 서명(같은 서명이 3번째 거절되면 `본인 서명임을 확인했어요`로 강사 확인 후 진행). 합성 데이터 보정: 같은 사람 서명 하위 5%≈0.64, 다른 모양 서명 상위 5%≈0.57·중앙값≈0.30, 화면 캡처 모양(화살표↔고리)≈0.22 → 거절. 한계: 실제 손 서명 표본으로 보정한 것이 아니라 합성 변형 기준이라 실기기에서 기준값 조정이 필요할 수 있음.
+- **PDF(①~④)**: `lesson_contract_pdf.dart`를 종이 양식으로 재작성 — 제목 `레슨 계약서`(+영문 부제)·계약번호·버전, `제1조 계약의 내용` 3×4 칸(회원성명·연락처·담당 강사 / 상품명·총 수강횟수·1회 수업 시간 / 사용 기간·센터(상호)·수업 장소 / 강습비 합계 + ■/□ 결제 방법·1회 수강료·정상가 또는 결제일), 계약 당사자 표·핵심 고지 카드 삭제, 조항은 한 줄 요약형, 이용분 계산 기준(없으면 위약금 및 환불) 뒤에 **회원 서명 ①(설명 들었다 확인)**(환불 계산 예시는 사용자 요청으로 PDF에서 제외), 맨 아래 회원 서명(계약 전체 동의)·날짜 / 강사 서명·날짜. 내용이 길면 글자 배율(1.3→…→0.68)을 줄여가며 **한 장**에 맞춤(본문 기본 8.2pt: 일반 계약은 1.0배=8.2pt, 가장 긴 `full` 샘플은 0.95배≈7.8pt에서 한 장, pdf.js 렌더링으로 확인).
+- **위조 방지(③)**: 문서확인번호 = 계약 내용 해시(SHA-256) 앞 16자(대문자, `A1B2-C3D4-E5F6-0718`). PDF 맨 아래 상자에 QR(`pdf` 패키지의 `BarcodeWidget`, 새 의존성 없음)·번호·완료 시각·전체 해시. QR 주소 `https://asia-northeast3-<프로젝트>.cloudfunctions.net/verifyPersonalContract?c=<계약ID>&k=<번호>`. 새 HTTPS 함수 `verifyPersonalContract`(GET/HEAD, `personal_contract_delivery.ts`): 형식 불일치·번호 불일치·없는 문서·취소/미완료는 모두 같은 404(존재 추측 방지), `completed`면 계약번호·완료 시각·상태만 표시(회원·강사 이름·연락처는 싣지 않음), `superseded`는 "이전 버전" 안내, 화면에서 받은 PDF를 고르면 브라우저가 SHA-256을 계산해 서버에 등록된 `delivery.pdfHash`와 같은지 확인(파일은 서버로 보내지 않음, `format=json&h=` 응답은 일치 여부만).
+- **앱 연결**: `buildContractPdfFromRecord`에 `contractId`·`verifyBase`(기본: 연결된 Firebase 프로젝트 기준 주소) 추가, `buildLessonContractPdf`는 `disclosureCards` 대신 `verifyUrl` 필요.
+- **검증**: 서버 에뮬레이터 `test:personal-contract-delivery-emulators` 16개 통과(진위 확인 5개 신규: 번호 규칙·개인정보 미노출·404 통일·상태별·파일 해시 대조), tsc 무오류. Flutter: PDF 테스트(한 장·확인번호·주소), 서비스·카드 테스트 통과, `flutter test` 1321개 통과, `flutter analyze` error 0(1201건; 직전 1195건보다 6건 많음 — 새 파일 기인 여부 미확인, 계약 관련 파일에는 경고 없음), DEV 디버그 빌드 성공(폰 설치는 아직).
+- **미검증**: 실기기에서 PDF 한 장 모양(한글 굵은 글꼴을 인터넷으로 받는 경우)·QR 스캔·확인 화면, 서명 유사도 기준값의 실제 손 서명 적합성. **승인 대기**: DEV Functions(`attachPersonalContractPdf`·`viewPersonalContract`·`verifyPersonalContract`(신규)·`managePersonalContract`)·Storage 규칙 배포.
+
+## 2026-10-21 P5 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, 명시적 `--project`, `--force` 미사용)**: Functions `attachPersonalContractPdf`·`viewPersonalContract`·`verifyPersonalContract` 신규 생성, `managePersonalContract` 업데이트(lint·tsc 통과) / Storage 규칙 `storage.rules` 릴리스 성공. PROD는 건드리지 않음.
+- **배포 확인**: 인터넷에서 `verifyPersonalContract`·`viewPersonalContract`에 잘못된 값으로 요청 시 각각 404 안내 페이지 응답(공개 호출 가능, 존재 여부 미노출).
+- **참고**: 배포 마지막에 `us-central1` 이미지 정리 정책(cleanup policy) 설정 실패 경고가 나왔으나 함수 배포 자체는 성공(자동 설정은 `--force` 필요해 하지 않음, 영향은 이미지가 쌓이는 소액 비용 가능성).
+- **미검증**: 실기기 전체 흐름(서명 → PDF 한 장 → 링크 → 공유 → 열람 기록 → QR 확인). 폰이 adb에 연결되어 있지 않아 최신 DEV APK(`build/app/outputs/flutter-apk/app-dev-debug.apk`) 설치는 아직 못 함.
+
+## 2026-10-22 계약서 미리보기를 실제 PDF로 (앱만, 서버·배포 0)
+
+- **사용자 지적**: 강사 서명 화면의 `계약서 미리보기`가 예전 표 형태 화면이라 회원이 실제로 받는 PDF와 다름 → 실제 보이는 계약서를 보여 줘야 함.
+- **변경**: `LessonContractPreviewPage`가 서명 뒤 전달되는 PDF와 같은 문서(`buildLessonContractPdf`)를 만들고 `printing`의 `Printing.raster`(기존 의존성, dpi 200)로 쪽 이미지로 바꿔 보여 줌(두 손가락 확대 `InteractiveViewer` 1~5배, 만드는 동안 `계약서를 만드는 중이에요`). 서명 전(입력 화면·서명 흐름)은 QR·문서확인번호 자리를 안내로 두는 미리보기 모드(`verifyUrl` 비어 있을 때), 서명이 모두 끝난 계약은 문서확인번호·QR·완료 시각이 들어간 실제와 같은 모양. PDF 만들기·그리기가 실패하면 기존 종이 문서 화면으로 대신함.
+- **테스트 영향**: 기존 문서·입력·서명 흐름 테스트 3개 파일은 `LessonContractPreviewPage.realPdfEnabled = false`로 종이 화면 확인을 유지, 신규 `test/lesson_contract_preview_pdf_test.dart` 3개(로딩→PDF 쪽 이미지, 여러 쪽, 실패 시 대체) + PDF 테스트에 미리보기 모드 한 장 확인 1개.
+- **검증**: `flutter test` 1325개 통과, `flutter analyze` error 0(1195건 = 기준과 동일), DEV 디버그 빌드 성공.
+- **미검증**: 실기기에서 미리보기 렌더링·확대 동작·로딩 시간(첫 PDF는 폰트를 인터넷에서 받아 최대 20초). 폰이 adb에서 끊겨 이번 APK는 설치 못 함.
+
+## 2026-10-22 계약서 PDF 글꼴을 앱에 포함 (앱만, 서버·배포 0, 사용자 승인)
+
+- **승인된 다운로드**: `NotoSansKR-Regular.ttf`(6,192,764B)·`NotoSansKR-Bold.ttf`(6,190,824B) — 출처 `fonts.gstatic.com`(앱이 그동안 `printing`의 `PdfGoogleFonts`로 인터넷에서 받던 것과 같은 v36 정적 파일, Noto Sans KR은 SIL OFL), 격리 폴더에 받아 TTF 헤더 확인 후 `assets/fonts/`에 추가, `pubspec.yaml` assets에 등록. 새 의존성 없음.
+- **변경**: `loadContractPdfFonts`가 번들 글꼴(보통·굵게)을 `rootBundle`에서 읽음 → 인터넷·20초 대기 불필요, 오프라인에서도 굵은 제목이 굵게 나옴. 읽기 예외 시에만 가변 글꼴로 대체. `PdfGoogleFonts` 사용 제거. 앱을 켜 둔 동안 1회만 읽어 캐시.
+- **검증**: 번들 글꼴만으로 가장 긴 샘플이 한 장·약 50KB PDF(글꼴은 쓰인 글자만 포함), pdf.js로 굵은 제목/보통 본문 확인. 글꼴 테스트 3개 교체(번들 읽기·인터넷 없이 한 장·읽기 실패 시 대체), `flutter test` 1326개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드 성공(APK 약 245MB, 디버그 빌드 기준).
+- **앱 용량**: 정적 글꼴 2개로 릴리스 앱이 약 12MB 늘어남(기존 가변 글꼴은 옛 계약서·회원권 PDF가 써서 유지).
+- **남은 것**: 앱 안 오픈소스 라이선스 화면에 Noto Sans KR(OFL) 표기 추가 여부 검토.
+
+## 2026-10-22 PDF 센터 칸 비우기 + 서명 흐름 미리보기 버튼 이름 (앱만)
+
+- **센터 칸**: PDF `센터(상호)` 칸이 개인 계약에서 강사 이름(`상호(성명)`)을 보여 주던 것을, 센터 계약(`구분`=센터)이고 상호가 있을 때만 채우고 아니면 빈칸으로(`contractPdfCenterName`, 칸 값 `-` 대신 공백). 센터 연결(`kind`) 자체는 계약 당사자 설정을 그대로 따름.
+- **버튼 이름**: 서명 흐름의 `계약서 전체 보기` → `계약서 최종 미리보기`(서명 전이라 `최종본`보다 `최종 미리보기`가 정확). 완료 화면의 `계약서 보기`와 입력 화면 머리말 미리보기 아이콘 이름은 유지.
+- **검증**: 신규 테스트 1개(센터 칸 규칙), `flutter test` 전체 통과, `flutter analyze` 해당 파일 이슈 0, DEV 빌드·폰 설치.
+
+## 2026-10-22 PDF 양식 다듬기: 센터명 제목·결재란·시작일·비고, 다크 모드 안내 글씨 (앱만, 서버·배포 0, 데이터 구조 변경 없음)
+
+- **제목**: 센터 계약이면 `센터명 레슨 계약서`, 아니면 `레슨 계약서`(`contractTitle`), 왼쪽 정렬. 미리보기(PDF)와 대체 종이 화면 모두.
+- **결재란**: 제목 줄 오른쪽 끝에 빈칸 3개(머리줄+칸). 지금은 빈칸이고, 센터(비즈니스) 연결 기능과 관리자 등급(마스터·그랑프리)이 정해지면 그 기능에 연결할 자리.
+- **칸 구성**: 수업 장소 → `레슨 시작일`(사용 기간의 시작일), 3번째 칸 `결제일` 제거(정상가가 없으면 빈칸), 센터(상호) 칸은 센터 계약만 채움.
+- **비고**: 계약 내용 칸 아래 `비고` 줄을 추가하고 추가 특약 내용을 여기에 표시(PDF에서는 `제N조 특약` 조항으로는 중복 표시하지 않음). 입력 화면의 `추가 특약`과 서버 데이터·계약 내용 해시는 그대로.
+- **다크 모드**: 미리보기 아래 `※ 서명 뒤 회원에게 …` 안내가 회색(#666) 고정이라 어두운 배경에서 안 보임 → 테마 글자색(`onSurface`, 글자 12)으로.
+- **검증**: 신규 테스트(제목 규칙, 다크 모드 안내 색), 기존 종이 화면 테스트 제목 기대값 갱신, `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), 가장 긴 샘플도 한 장(pdf.js 확인), DEV 빌드·폰 설치.
+- **논의만 하고 수정하지 않은 것**: 상품명 → 레슨명/레슨 종류(필라테스·요가 대응), 분할결제 표현.
+
+## 2026-10-22 PDF 4번째 줄 재배치·정상가 한 문장·`레슨명` 표시 이름 (앱만, 서버·배포 0, 데이터 필드 불변)
+
+- **4번째 줄**: `1회 수강료` | `강습비 합계` | `결제 방법`(■/□). 정상가가 있으면 강습비 합계 칸 아래에 `정상가 2,400,000원에서 25% 할인` 한 문장(`contractDiscountLine`), 정상가가 없으면 아무것도 표시하지 않음(별도 정상가 칸 제거 → 정상가 칸이 항상 할인처럼 보이던 문제 해소).
+- **상품명 → 레슨명**: 화면·문서·PDF·오류 문구의 표시 이름만 `레슨명`으로(내부 필드 `productName`, 서버 데이터, 계약 내용 해시 불변). `내 수업 상품`(저장된 상품 모음)의 `상품` 표현은 그대로.
+- **분할결제**: 별도 필드 없이 결제 방법 `기타` + 비고 기재로 처리하기로 합의(사용자 결정).
+- **검증**: 신규 테스트(정상가 한 문장), 기존 라벨 기대값 갱신, `flutter test` 1330개 통과, `flutter analyze` error 0(1195건 유지), 가장 긴 샘플 한 장 확인.
+- **논의 중**: 특약 위치(제N조 특약 유지 vs 비고) — 비고를 `추가 특약`과 분리한 별도 입력으로 만들면 서버 계약 내용 구조·검증·배포가 바뀜(승인 필요).
+
+## 2026-10-22 비고(안내용)를 특약과 분리해 별도 입력으로 추가 (앱 + 서버 코드, **DEV 배포는 승인 대기**)
+
+- **결정(사용자 합의)**: 특약은 계약 조항(`제N조 특약`)으로 되돌리고, 비고는 분할결제 일정 같은 안내용 별도 입력 `비고 (선택)`로 둔다. 분할결제는 결제 방법 `기타` + 비고로 처리(별도 필드·환불 기준 변경 없음).
+- **서버**(`functions/src/personal_contract_rules.ts`): `product.remarks`(최대 100자, 금지 문구 검사 = 특약과 동일 규칙이라 비고로 `환불불가` 등을 우회할 수 없음) 허용. **입력했을 때만 저장**(`periodUnlimited`와 같은 방식)해 비고 없는 기존 계약·새 계약의 내용 해시는 그대로(테스트로 고정). 알 수 없는 필드는 여전히 거부.
+- **앱**: `LessonContractForm.remarks`(검증·`toContent`는 입력했을 때만 전송·`fromContract` 복원), 입력 화면 결제일 아래 `비고 (선택)` 칸(오류 이동·커서 포함), 문서 `제1조` 표에 `비고` 행(PDF 비고 줄), PDF는 특약 조항을 다시 `제N조 특약`으로 표시.
+- **호환**: 새 앱이 비고를 입력했을 때만 `remarks`를 보내므로, 서버 배포 전에는 비고를 입력한 저장만 `unknown_fields`로 거부됨(비고 없이는 기존대로 동작).
+- **검증**: 서버 에뮬레이터 24개·배송 16개 통과(비고 허용·빈값 해시 동일·금지 문구·길이·형식 신규 단언), Flutter 신규 테스트(모델 검증/전송/복원, 문서 행, 한 장 PDF, 입력 화면 저장), `flutter test` 1333개 통과, `flutter analyze` error 0(1195건 유지), tsc 무오류, DEV 빌드 성공.
+- **승인 대기**: DEV Functions 배포(`savePersonalContractDraft`가 내용 검증을 담당 — 같은 소스를 쓰는 계약 함수 전체 재배포 여부는 승인 시 확정).
+
+## 2026-10-22 비고 필드 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: Functions 7개 업데이트 성공 — `savePersonalContractDraft`·`signPersonalContract`·`managePersonalContract`·`savePersonalContractSettings`·`attachPersonalContractPdf`·`viewPersonalContract`·`verifyPersonalContract`. PROD·Storage 규칙·Firestore 규칙은 변경 없음. 마지막의 `us-central1` 이미지 정리 정책 경고는 이전과 같음(배포 자체는 성공).
+- **미검증**: 실기기에서 비고 입력 → 저장 → 서명 → PDF 비고 줄.
+
+## 2026-10-22 P5 마무리: PDF 파일로 저장·공유 (앱만, 서버·배포 0, 새 의존성 없음)
+
+- **배경**: 폰 확인 중 "PDF는 저장이 아직 안 되네" → 링크 공유·복사만 있고 PDF 파일 자체를 저장·공유하는 기능이 없었음(계획서 P5·P6 어디에도 없던 항목 → P5 마무리로 추가 결정).
+- **변경**(`lesson_contract_delivery_card.dart`): 완료 화면 `회원에게 계약서 보내기` 카드에 `PDF로 저장·공유` 버튼(링크를 만든 직후 / 이전에 링크를 만든 계약 모두). 서명 획을 불러와 PDF를 다시 만들고 임시 폴더(`path_provider`)에 `레슨계약서_<계약번호>.pdf`로 쓴 뒤 공유 시트(`share_plus`, 기존 의존성)를 열어 `파일에 저장`·카톡·메일 등으로 보낼 수 있음. 서버 등록·링크 재발급·보낸 기록과 무관(새 링크가 만들어지지 않아 이전 링크 유지). 서명을 불러오지 못하거나 PDF 생성·쓰기가 실패하면 토스트로 안내하고 다시 누를 수 있음. 만드는 동안 버튼에 진행 표시.
+- **검증**: 신규 위젯 테스트 2개(저장 성공: 파일명·서버 무관·이전 링크 계약, 실패 안내·재시도·서명 없음 거부), `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+- **미검증**: 실기기 공유 시트(파일에 저장 / 카톡 파일 전송), 임시 파일 정리(OS 임시 폴더라 시간이 지나면 정리됨).
+
+## 2026-10-22 `이용분` 문구를 쉬운 말로 (앱만, 서버·배포 0, 계약 데이터·해시 불변)
+
+- **사용자 의견**: 제3조 `이용분 계산 기준` 설명이 복잡함(입력 화면 설정 문구와 계약서 조항 모두).
+- **변경**(`lesson_contract_document.dart`, `lesson_contract_terms_section.dart`): 조항을 `중도 해지할 때 이미 받은 레슨의 값(이용분)은 1회 금액 × 받은 횟수로 계산합니다. 1회 금액은 실제 낸 금액(정상가 기준이면 할인 전 정상가)을 총 횟수로 나눈 금액입니다.`로, 환불 조항은 `이미 받은 레슨의 값(이용분)과 위약금을 공제한 금액`으로 이용분을 처음 풀어 씀, 정상가 기준 동의 문구에도 같은 풀이 추가, 입력 화면 체크박스는 `1회 금액을 정상가 기준으로 계산합니다.` + `끄면 낸 금액 ÷ 총 횟수… 켜면 할인 전 정상가 ÷ 총 횟수라 중도 해지 때 더 많이 차감돼요` 설명.
+- **불변**: 환불 계산 규칙·금액·계약 내용 해시·서버 데이터는 그대로(문구만 변경, 서버는 문구를 갖지 않음). 이미 올라간 PDF는 그대로이고 PDF를 새로 만들면 새 문구로 나옴(문구 버전 필드 없음 — 알려진 한계).
+- **검증**: 문구 테스트 갱신(`1회 금액 × 받은 횟수`, 정상가 기준, 환불 조항 풀이), `flutter test` 1335개 통과, `flutter analyze` error 0(1195건 유지), 가장 긴 샘플도 한 장 유지, DEV 빌드·폰 설치.
+- **참고**: 계약서 문구는 법률 검토 전 초안 — 정식 출시 전 검토 권장.
+
+## 2026-10-22 이용분 계산 기준을 두 개의 선택 줄로 (앱만, 서버·배포 0, 데이터 불변)
+
+- **사용자 요청**: 입력 화면 제3조의 `끄면/켜면` 긴 설명이 이해하기 어려움 → 체크박스 두 개로(기본 할인가).
+- **변경**(`lesson_contract_terms_section.dart`): 제목 `제3조 계약해지 환불 시 이용분 계산 기준`. 할인(정상가 입력)이 있을 때 두 줄 — `1회 금액을 할인가 기준으로 이용분 계산합니다`(작은 글씨 `할인가 ÷ 총 레슨 진행 횟수`, 기본 선택) / `1회 금액을 정상가 기준으로 이용분 계산합니다`(`할인 전 정상가 ÷ 총 레슨 진행 횟수`). 체크박스 모양이지만 둘 중 하나만 선택(이미 고른 줄을 다시 눌러도 해제되지 않음), 아래에 `※ 이용분과 위약금의 합계는 낸 금액을 넘지 않습니다.` 정상가가 없으면 기존처럼 한 문장만 표시.
+- **불변**: 저장 값(`refundBasis`: `contract_unit` / `list_price`)·계약 내용 해시·서버·환불 계산 규칙 그대로, 정상가 기준 선택 시 회원 고지 확인 요구도 그대로. 계약서 조항 제목(`이용분 계산 기준`)은 유지.
+- **사용자 이해와 실제 차이(안내함)**: 사용자는 "체크하면 할인금액, 체크 안 하면 정상가"로 이해했으나 실제로는 체크하면 정상가였음 → 새 UI에서 오해 해소. 노트 문구는 `차감금액이 위약금을 넘지 못함`이 아니라 실제 규칙인 `이용분+위약금 합계가 낸 금액을 넘지 않음`으로 표기.
+- **검증**: 신규 위젯 테스트(기본 할인가·상호 배타·재탭 시 유지), 기존 제목 기대값 갱신, `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+
+## 2026-10-22 PDF 업로드 403 원인 조사 (실기기 로그, 코드·배포 변경 없음)
+
+- **증상**: 서명 완료 화면 `회원에게 계약서 보내기`에서 `저장하지 못했어요 … [DEV FirebaseException]` + `다시 시도`.
+- **로그(adb logcat, 읽기 전용)**: `StorageException … 403 Permission denied` / `User does not have permission to access this object` — Storage 업로드가 규칙에서 거부됨(서버 함수 호출 전 단계).
+- **원인(높은 확신, 콘솔 확인 전)**: PDF 업로드 규칙이 `firestore.get()`(교차 서비스 규칙)으로 계약 문서를 확인하는데, 교차 서비스 규칙은 Storage 서비스 에이전트 `service-<프로젝트번호>@gcp-sa-firebasestorage.iam.gserviceaccount.com`에 역할 `roles/firebaserules.firestoreServiceAgent`가 있어야 동작함. firebase-tools(14.22)는 이 역할 확인·부여를 **`--non-interactive`이면 건너뜀**(`rulesDeploy.js`의 `checkStorageRulesIamPermissions`) — 내가 `--non-interactive`로 배포해 역할이 부여되지 않았을 가능성. 규칙 내용이 같으면 재배포해도 이 확인이 실행되지 않음(`up to date, skipping`).
+- **에뮬레이터 테스트가 못 잡은 이유**: 에뮬레이터는 IAM을 검사하지 않음 → 실제 프로젝트에서만 드러나는 문제.
+- **해결안**: ① (권장) 콘솔 IAM에서 위 서비스 에이전트에 `Firebase Rules Firestore Service Agent` 역할 부여(규칙·코드 변경 없음, 즉시 적용), ② 대안: 업로드 규칙에서 `firestore.get` 조건을 빼고 서버 `attachPersonalContractPdf`의 검증(완료·소유자·경로·PDF·해시)에만 의존(규칙 배포 승인 필요, `completed` 게이트가 사라짐).
+- **PROD 영향**: PROD(`more-than-fitness-f6adb`)도 같은 서비스 에이전트 역할 확인이 P7 전에 필요(기존 `isLegacyAdmin` 규칙도 교차 서비스 규칙).
+
+## 2026-10-23 P6-1: 회원카드 계약서 아이콘 → 이 회원의 계약서 목록 (앱만, 서버·배포 0)
+
+- **배경(사용자 결정)**: 전체 계약서 관리는 드로어 `레슨계약서`가 맡고, 회원카드 위쪽 계약서 아이콘은 **그 회원의 계약서만** 보여 주는 화면으로. 완료된 계약서는 삭제 불가·해지는 P6 마지막에 다시 논의·작성 중 계약 취소/숨기기는 후속, 알림톡은 하지 않음.
+- **조사(읽기)**: 새 계약은 `personal_contracts`(본인 읽기·목록 허용)에 있고 앱에는 목록 화면·`new_version`·`cancel` 호출이 없었음. 서명 흐름 화면(`LessonContractSignFlowPage(contractId)`)은 상태별로 이어 열고 완료 상태면 PDF 저장·공유·링크 카드를 보여 줌. 초안은 `LessonContractFormPage(contractId)`로 이어 씀.
+- **구현**(`lib/pages/lesson_contract/member_contracts_page.dart` 신규, `client_card_page.dart` 연결 1곳): 회원의 계약서를 실시간 조회(`trainerId`+`memberId` 같음 조건 2개만 써서 **색인 배포 없이** 동작, 정렬은 앱에서 최근 날짜순), 한 줄에 상품명·계약번호(새 버전은 `-vN`)·횟수·금액·날짜와 상태 칩(작성 중/회원 서명 대기/강사 서명 대기/완료/이전 버전/취소됨), 작성 중은 초안 화면으로·그 밖은 서명·완료 화면으로 열기(완료 화면에서 `PDF로 저장·공유`·링크 보내기), 상단 `새 레슨계약서 작성`, 계약서가 하나도 없으면 바로 새 작성 화면으로 이동. 회원카드 아이콘의 `레슨계약서` 선택(개인 워크스페이스)이 이 화면을 연다.
+- **검증**: 신규 테스트 9개(항목 읽기·상태 이름·정렬, 로딩/목록/열기/새 계약/빈 목록 자동 시작/오류), `flutter test` 1345개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·폰 설치.
+- **미검증**: 실기기 화면 동작. 이전 버전·취소된 계약을 열면 서명 흐름의 `locked` 안내가 나옴(이전 버전 PDF 보기는 후속).
+- **P6 남은 순서(제안)**: ② 드로어 `레슨계약서` 목록을 새 컬렉션으로(전체 회원) ③ 등록 회차 연동(완료 시 총·잔여 횟수·레슨 종류 자동 등록 — 서버 트랜잭션, 재계약 합산 규칙 결정 필요, DEV 배포 승인) ④ 홈 서명요청·빠른서명·레슨 확정 회귀 확인 ⑤ 작성 중 계약 취소·숨기기, 새 버전(재계약) 진입 ⑥ 해지 방식 논의.
+
+## 2026-10-23 P6-1 보완: 회원카드 아이콘이 선택 화면 없이 계약서 관리로 바로 (앱만)
+
+- **사용자 지적**: 아이콘을 누르면 아직 `레슨계약서 / 회원권계약서` 선택 화면이 먼저 뜸(내가 레슨계약서를 고른 뒤에만 목록으로 가게 해 둠).
+- **변경**: 개인 워크스페이스에서는 `_openContractChooser`가 선택 시트를 건너뛰고 이 회원의 계약서 관리(`MemberContractsPage`)를 바로 연다. 계약서가 없어도 자동 작성으로 가지 않고 빈 목록 + `새 레슨계약서 작성` / `회원권계약서 작성` 버튼(회원권 동작을 줄 때만 표시)을 보여 줌. 그 밖의 워크스페이스는 기존 선택 시트 유지.
+- **검증**: 신규 테스트 2개(회원권 버튼 표시·동작/미표시), `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+
+## 2026-10-23 P6-1 추가: 작성 중 계약서 길게 눌러 삭제(= 취소 처리·숨김) (앱만, 서버·배포 0)
+
+- **사용자 결정**: 작성 중·서명 전 계약서는 길게 눌러 삭제(취소 처리로 구현), 취소된 계약서는 기본 숨김 + `취소된 계약서 보기`.
+- **구현**: `PersonalContractGateway.cancelContract(id, reason)`(서버 `managePersonalContract` `cancel` 재사용, 서버 변경 없음 — 이미 사유 기록·`cancelled` 이벤트·완료 계약 `contract_locked` 거부·중복 호출 안전). `MemberContractsPage`: 작성 중/회원 서명 대기/강사 서명 대기 줄을 길게 누르면 확인창(`이 계약서를 삭제할까요?`, 회원 서명이 들어간 계약은 `회원이 이미 서명한 내용도 함께 정리돼요` 추가, `삭제된 계약서는 목록에서 숨겨지고 취소 기록으로 남아요`) 후 사유 `강사가 삭제함`으로 취소, 완료·이전 버전은 `완료된 계약서는 삭제할 수 없어요.` 안내만, 서버 오류는 안내 토스트. 목록은 취소된 계약을 기본으로 숨기고 아래 `취소된 계약서 보기 (N)`/`숨기기` 토글, 열린 계약이 있으면 `길게 눌러 삭제할 수 있어요` 안내.
+- **한계**: 서버에는 취소 기록이 남음(서명 ①이 들어간 계약의 증빙 보존 목적). 서명이 전혀 없는 초안의 완전 삭제는 서버 기능 추가(배포)가 필요해 보류.
+- **검증**: 신규 테스트 7개(삭제 확인/취소 처리·서명 계약 문구·완료/이전 버전 안내·서버 거부·취소 숨김/토글·전부 취소), `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치 시도.
+
+## 2026-10-23 홈 레슨 시트: 서명요청 버튼 통합·간격 축소 (앱만, 서버·배포 0)
+
+- **사용자 요청**: AIFC 추천업무의 `빠른 서명`과 `서명 요청`을 `서명요청` 버튼 하나로 합치고 누르면 바텀시트에서 고르게(한 줄 줄이기), 추천 회원과 아래 취소·삭제·저장 버튼 사이 간격 축소.
+- **변경**: 계약이 있는 저장된 레슨의 `빠른 서명`·`서명 요청` 두 버튼 → `서명요청` 하나(키 `aifc_sign_action`), 누르면 `home_sign_action_sheet.dart` 시트(`빠른 서명` 이 폰에서 회원이 바로 서명 / `서명 요청하기` 회원 폰으로 QR) → 기존 동작(`onOpenLessonConfirm` / `onOpenSignRequest`)에 위임, 닫으면 아무 동작 없음. 계약이 없으면 `레슨확정`, 확정된 레슨은 `확정완료`(+확정취소) 그대로. 버튼 순서 계약서관리 → 회원카드 → 레슨일지 → 서명요청(한 줄). 추천 회원 ↔ 하단 버튼 간격 18 → 6(`home_page.dart`).
+- **검증**: 신규 테스트 3개(버튼 통합·시트 선택/닫기·계약 없음/확정 상태), `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치 시도. 실기기 간격·한 줄 배치는 미확인.
+- **확인 필요**: 하단 네비게이션에는 `레슨일지` 항목이 없음(인사이트 / 레슨계약 / 빠른 등록 / 상담 / 회원리스트) — 자리 바꿀 대상 확인. 네비 `레슨계약`은 이미 신규 레슨계약서 작성(`LessonContractFormPage`)으로 연결됨(등급 게이트 후).
+
+## 2026-10-23 회원카드 하단 바: 레슨계약서 ↔ 레슨일지 자리 바꿈 + 신규 작성 연결 (앱만)
+
+- **사용자 의도 정정**: 말한 "네비게이션"은 홈 하단 바가 아니라 **고객카드 페이지 하단 바**(홈 하단 바는 변경 없음). `30/1(+30)`은 회원카드 `레슨 등록` 영역의 `총 N / 잔여 M` 칩에 관한 이야기.
+- **변경**(`client_card_page.dart`): 하단 바 순서 `레슨일지 · 레슨계약서 · 회원 저장` → `레슨계약서 · 레슨일지 · 회원 저장`(자주 쓰는 레슨일지를 저장 버튼 옆, 오른손 엄지 쪽으로). 하단 `레슨계약서`는 개인 워크스페이스에서 **이 회원으로 새 레슨계약서 작성**(`LessonContractFormPage(initialMemberId)`)을 바로 시작(등급 확인 후), 이미 쓴 계약서는 상단 계약서 아이콘의 계약서 관리에서 봄. 그 밖의 워크스페이스는 기존 `_openContract`.
+- **검증**: 소스 테스트 1개 추가(순서·핸들러), `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치 시도.
+- **다음(P6-3)**: 재등록 합산 확정 — 회원카드 `레슨 등록` 칩을 `총 N / 잔여 M (+추가)` 형태와 잔여 색상(적음 주황·소진 빨강)으로, 서버 트랜잭션에서 총·잔여 합산. 잔여횟수 적음 알림이 재등록 직후 남지 않는지 코드 확인 후 테스트.
+
+## 2026-10-23 P6-3: 레슨계약서 완료 시 등록 회차 합산 (서버+앱, **DEV 배포는 승인 대기**)
+
+- **사용자 결정**: 재계약은 잔여 횟수에 **합산**, 회원카드 `레슨 등록` 칩은 `총 N / 잔여 M (+추가)` 형태 + 잔여 적음(주황)·소진(빨강) 색, 재등록하면 잔여가 늘어 `잔여 횟수 적음` 알림에서 자연히 빠짐.
+- **조사(읽기)**: 새 계약 완료(`signPersonalContract` 강사 서명)는 회원 문서에 계약 연결 표시만 기록하고 **총·잔여 횟수·레슨 종류를 설정하지 않았음**(예전 계약서는 `totalSessions`·`remainSessions`·`remainingSessions`·`sessions.*`·`lessonType`·`lessonsNotRegistered`를 직접 덮어썼음). 홈·빠른 서명·레슨 확정은 이 필드를 읽고 `레슨 미등록`이면 막음. 잔여 적음 알림은 저장된 플래그가 아니라 잔여 1~5를 그때그때 계산(`client_list_page`·`binder_card`·`client_card_page`)하므로 합산 후 자동으로 사라짐.
+- **서버**(`functions/src/personal_contract_registration.ts` 신규, `personal_contracts.ts` 완료 트랜잭션에 연결): 완료 시 회원의 현재 총·잔여를 홈이 읽는 순서대로 읽어 계약 횟수를 **더해** 같은 필드 이름으로 기록(`totalSessions`·`remainSessions`·`remainingSessions`·`sessions.total/remain/done/notRegistered`·`lessonsNotRegistered`), 소진 횟수(`done`)와 다른 `sessions` 필드는 유지, 레슨 종류는 이미 있으면 유지·없으면 상품명에서(`PT`·`필라테스`·`요가`·`골프`·`댄스`·`발레핏`, 모르면 `레슨`), 회원에 `lastRegistration{contractId, contractNo, added, totalAfter, remainAfter, at}`, 계약 문서에 `registration{registered, added, totalAfter, remainAfter, registeredAt}`. **새 버전(정정)** 은 이전 완료 계약이 등록한 횟수(`registration.registered`)와의 **차이만** 반영해 이중으로 더하지 않음(10→8회 정정 = -2, 다시 12회 = +4), 음수로 내려가지 않음. 회원 문서가 없거나 소유자가 아니면 기존처럼 거부. 한 트랜잭션 안에서 처리되므로 중복 완료 호출은 `alreadySigned`로 끝나 중복 합산 없음.
+- **앱**(`client_card_page.dart`, `lib/utils/registration_chip.dart` 신규): 칩 `총 N / 잔여 M`에 최근 30일 안의 합산이면 `(+X)`, 잔여 1~5 주황, 소진은 `총 N / 잔여 0 · 소진` 빨강, 레슨 미등록은 강조 없음. 카드가 계약서 화면(계약서 관리·새 계약 작성)에서 돌아오면 서버(`Source.server`)의 `lastRegistration`이 카드가 아는 것과 다를 때만 총·잔여·레슨 종류를 갱신(안 하면 카드가 예전 횟수를 들고 있다가 `회원 저장` 때 덮어쓰는 위험).
+- **미반영(의도적)**: 회원권 기간(`passStart`·`passEnd`·`expireAt`·`membership.*`)은 예전 계약서가 쓰던 필드지만 이번에는 건드리지 않음(회차만). 회원 목록의 소진 색 표시는 후속.
+- **검증**: 서버 에뮬레이터 29/29(신규 5: 합산·소진 유지·미등록 등록·상품명 종류·새 버전 차이·음수 방지 등), 배송 16·접근 11·레거시 28 통과, tsc·lint 무오류. Flutter 신규 9(칩 규칙 5·카드 연결 소스 4), `flutter test` 1366개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+- **승인 대기**: DEV Functions 배포(`signPersonalContract`). 그 전에는 새 계약을 완료해도 회차가 합산되지 않음(앱은 기존대로 동작).
+
+## 2026-10-23 P6-3 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: Functions `signPersonalContract` 업데이트 성공. 다른 함수·Rules·Storage·PROD 변경 없음. 마지막 `us-central1` 이미지 정리 정책 경고는 이전과 같음(배포 자체는 성공).
+- **미검증**: 실기기에서 재계약 합산·칩 `(+X)`·소진/적음 색, 홈 서명요청/빠른 서명/레슨 확정 차감.
+
+## 2026-10-23 홈 레슨 시트·회원카드 횟수 표시 정리 (앱만, 서버·배포 0)
+
+- **사용자 요청**: 홈 시트에도 `총 N / 잔여 M (+횟수)`, 회원카드 레슨 등록 칸 아래는 `총 20회 잔여 20회 추가재등록 10회` 식(칸이 넓음), 연결 없는 직접 입력도 예시(`30/12`) 대신 기본값 `미등록`으로 통일.
+- **확인(읽기)**: 홈 시트의 횟수 칸(`30/12`)은 연결된 회원의 문서(회원카드·계약서가 쓰는 같은 필드)에서 `총/잔여`를 가져옴 — 계약 합산이 자동 반영. `30/12`는 칸이 비었을 때만 보이는 회색 예시. 연결된 회원은 칸이 읽기 전용이고 입력해도 저장 때 무시됨. 회원카드의 `레슨 등록 · 완료 N회`의 `완료`는 **받은 레슨 횟수**(총 − 잔여)이지 등록 횟수가 아님. 카드 뒷면 헤더의 `재등록`은 멤버십 등록 칸에 **직접 입력하는 값**(`membership.reregisterCount`·`lastReregisterAt`)이며 새 계약서와는 연동되지 않음.
+- **변경**: ① 횟수 칸 기본 글자 `30/12` → `미등록`(연결 여부 무관). ② 홈 시트 이름·횟수 칸 아래에 `HomeMemberSessionCaption`(연결된 회원 문서를 읽어 `총 N / 잔여 M (+X)`, 잔여 1~5 주황·소진 빨강·미등록은 `미등록`). ③ 회원카드 칩 글자 `총 20회 · 잔여 20회 · 추가재등록 10회`(소진이면 `· 소진`), 칩 줄을 `Wrap`으로 바꿔 길면 줄바꿈, 미등록이면 두 번째 칩 숨김. 공통 규칙·읽기는 `lib/utils/registration_chip.dart`(`MemberRegistrationInfo`·`registrationChipStyle`).
+- **검증**: 신규·갱신 테스트(칩 규칙 8, 홈 캡션 5), `flutter test` 1374개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+- **보류(사용자 결정 필요)**: ① 연결됐지만 레슨 미등록인 회원에게 시트에서 횟수를 입력해 저장할 때 어디에 쓸지((가) 회원카드 `레슨 등록`에도 저장, (나) 그 일정에만) — (가)는 회원 데이터 쓰기라 경로 확인 후 승인 필요. ② 카드 뒷면 `재등록` 횟수를 새 계약과 연동할지(재계약 완료 시 +1·최근 재등록일 갱신, 서버 변경·배포 필요).
+
+## 2026-10-23 재등록 연동·카드 횟수 잠금·칩 문구 (앱 + 서버 코드, **DEV 배포는 승인 대기**)
+
+- **사용자 결정**: ① 칩 `레슨 등록 · 완료 N회` → `재등록 · 총소진레슨 N회` ② 카드 뒷면 `재등록` 연동 ③ **레슨계약서가 가장 우선** — 계약서로 등록된 횟수는 회원카드 레슨 등록에서 임의로 못 바꾸고(소진 확인용), 계약서를 못 쓰는 등급은 홈 레슨 확정으로 소진(잔여 −1씩). (가)/(나)는 위 원칙에 맞춰 후속 결정.
+- **질문에 대한 답(현재 코드)**: 회원카드 `회원 저장`은 총·잔여를 카드 칸의 값으로 그대로 저장함 → 이번 변경 전에는 카드 입력이 계약 값을 덮어쓸 수 있었음(우세 규칙 없음). 이번에 v2 계약으로 등록된 회원은 카드에서 잠금.
+- **서버**(`personal_contract_registration.ts`): 이미 횟수가 있던 회원(`총>0`)이 **새 계약**을 완료하면(정정인 새 버전·첫 등록 제외) `membership.reregisterCount` +1, `membership.lastReregisterAt` 서버 시각(`FieldValue.increment`/`serverTimestamp`, 다른 membership 필드 유지), 계약 `registration.reregistration`에 기록. 에뮬레이터 29/29(재등록 +1 `2→3`·첫 등록은 증가 없음·정정 3번 동안 `1` 유지), tsc·lint 무오류.
+- **앱**(`client_card_page.dart`): 칩 문구 변경, 계약서(v2)로 등록된 회원(`lastRegistration.contractId` 있음, 개인 워크스페이스)은 `레슨 등록` 스위치와 총·잔여 칸이 잠기고 `레슨계약서로 등록된 횟수예요. 횟수를 바꾸려면 새 레슨계약서(재계약)를 써 주세요.` 안내, 계약서 화면에서 돌아오면 `재등록` 횟수·최근 재등록일도 서버 값으로 갱신(안 하면 저장 때 덮어씀). 예전(레거시) 계약서로 등록된 회원과 계약서 없는 회원은 지금처럼 직접 입력.
+- **한계**: 잠금은 화면(앱) 수준이며 서버(`updateManagedMember`)는 카드 저장 때 횟수 변경을 막지 않음(다른 기기·옛 앱 버전 대비 서버 방어는 후속).
+- **검증**: `flutter test` 1377개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+- **승인 대기**: DEV Functions 배포(`signPersonalContract`) — 재등록 +1 반영.
+
+## 2026-10-23 홈 시트 표기 확정·100번째 레슨 기준 정정 (앱만)
+
+- **사용자 결정**: 홈 레슨 시트는 `총 N / 잔여 M (+재등록)`, 횟수 칸 기본 글자는 `미등록` 대신 `총/잔여횟수`.
+- **변경**: 횟수 칸 안내 글자 `총/잔여횟수`(예시 숫자 없음), 캡션은 미등록이면 그리지 않음(칸 안내가 대신함), 연결된 회원이 등록돼 있으면 `총 N / 잔여 M (+X)`. 카드 머리 문구 `100번째 레슨`을 **총 횟수** 기준에서 **받은 레슨(총 − 잔여)** 기준으로 정정(재등록 합산으로 총 횟수가 누적돼 받지 않은 레슨도 100번째로 보이는 것 방지).
+- **확인(읽기)**: 메달 자동 지급(`_syncAutoAchievementBadges`: 받은 레슨 100회·재등록 10회)은 **개인 워크스페이스에서 원래 꺼져 있음**(`if (_isPersonalWorkspace) return`) — 지금은 개인 계정에 지급되지 않음. 서버(`finalizePersonalTrainingLog`)는 레슨 확정 때 회원 서명을 요구하지 않음(계약 회원은 홈에서 `레슨확정` 버튼 대신 `서명요청`만 보이는 UI 흐름).
+- **검증**: `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+
+## 2026-10-23 재등록 연동 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: Functions `signPersonalContract` 업데이트 성공(재계약 완료 시 카드 뒷면 `재등록` +1·최근 재등록일 갱신 포함). 다른 함수·Rules·Storage·PROD 변경 없음. `us-central1` 이미지 정리 정책 경고는 이전과 같음.
+- **미검증**: 실기기 재계약 완료 후 카드 뒷면 `재등록`·칩 `추가재등록` 표시.
+
+## 2026-10-23 레슨 진행 알림 루트(발송 전) — **서버 코드·테스트 완료, DEV 배포는 승인 대기**
+
+- **사용자 요청**: 레슨을 확정(회원 서명)할 때마다 `000님 PT 레슨 30회 중 10회를 진행 중입니다.` 알림이 갈 예정 — 우선 그 **루트만** 만들어 달라(실제 발송은 후속).
+- **구현**(서버 `lesson_progress_notice.ts` 신규, `personal_training_logs.ts` 연결): 개인 워크스페이스의 레슨 확정(`finalizePersonalTrainingLog`)과 **같은 트랜잭션**에서 `lesson_progress_notices/{레슨일지ID}`에 보낼 알림 한 건을 남김 — `kind`, `trainerId`, `memberId`, `memberName`, `lessonType`, `status`, `progressChanged`(소진 확정이면 true), `total`, `done`, `remain`, `message`, `state: pending`, `channel: null`, `createdAt`. 문장: `홍길동님 PT 레슨 30회 중 10회를 진행 중입니다.`(레슨 종류 없으면 생략, 모두 진행하면 `레슨 30회를 모두 진행했습니다.`). 레슨 미등록(총 0)이거나 회원 이름이 없으면 만들지 않음. 확정 취소(`cancelPersonalTrainingLog`) 시 아직 보내지 않은(`pending`) 알림은 `cancelled`로, 이미 보낸 것은 그대로. 같은 확정을 다시 눌러도 한 건(문서 ID=레슨일지 ID). 앱은 읽기·쓰기 모두 불가(규칙 미정의 → 기본 거부, 에뮬레이터로 확인).
+- **발송은 아직 없음**: 채널(알림톡·문자·푸시)·수신 번호·회원 동의·비용은 정해지지 않아 `pending` 문서만 쌓임. 나중에 이 문서를 읽어 보내는 함수(Firestore 트리거 또는 예약 실행)를 붙이면 됨.
+- **범위 한계**: 서버 확정 경로(개인 워크스페이스)만 해당. 레거시 워크스페이스의 앱 내 확정(`LessonConfirmationService`)은 아직 알림 루트 없음.
+- **검증**: 에뮬레이터 `personal-training-log` 69/69(신규: 확정 시 알림 생성·앱 접근 거부·중복 확정 한 건·취소 시 취소 처리·소진 없는 확정 표시·문장/생성 규칙), tsc·lint 무오류.
+- **승인 대기**: DEV Functions 배포 `finalizePersonalTrainingLog`·`cancelPersonalTrainingLog`.
+
+## 2026-10-23 레슨 진행 알림 루트 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: Functions `finalizePersonalTrainingLog`·`cancelPersonalTrainingLog` 업데이트 성공. 다른 함수·Rules·Storage·PROD 변경 없음. `us-central1` 이미지 정리 정책 경고는 이전과 같음.
+- **미검증**: 실기기에서 레슨 확정 후 `lesson_progress_notices`에 알림 문서가 생기는지(콘솔에서 확인), 확정 취소 시 `cancelled`.
+
+## 2026-10-23 홈 시트 `총 N / 잔여 M (+X)`를 이름 옆 칸으로 (앱만)
+
+- **사용자 지적**: `총 N / 잔여 M (+10)`은 이름 **옆**(기존 `30/12` 칸 자리)에 들어가야 하는데 이름 아래 줄에 있었음.
+- **변경**: 이름 아래 캡션을 없애고, 이름 옆 횟수 칸을 고정 84 폭 → 이름 칸(4):횟수 칸(3) 비율로 넓힘. 연결된 회원의 레슨이 등록돼 있으면 그 칸에 읽기 전용 `총 N / 잔여 M (+X)`(잔여 적음 주황·소진 빨강, 칸보다 길면 글자를 줄여 맞춤)를 보여 주고, 미연결·미등록·불러오는 중이면 기존 입력 칸(안내 `총/잔여횟수`)을 그대로 보여 줌. `HomeLessonMemberInputSection.sessionCountBuilder`(기본 입력 칸을 넘겨 받아 바꿔 그림) + `HomeMemberSessionCaption(fallback)`.
+- **검증**: 360폭에서 이름 칸과 같은 줄·오른쪽에 놓이고 넘침 없음 테스트 포함 5개, `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치. 실기기 줄 맞춤·글자 크기는 미확인.
+
+## 2026-10-23 P6-2: 새 레슨계약서 전체 목록 (앱만, 서버·배포 0)
+
+- **조사(읽기) 정정**: 예전 계약서 목록(`ContractListPage`)을 여는 곳은 **MY 페이지 더보기 `계약서 관리`**(`_openContractListPage`) 하나뿐. 드로어 `레슨계약서`·홈 하단 `레슨계약`은 이미 **새 레슨계약서 작성**으로 연결돼 있음(내가 앞서 드로어가 목록을 연다고 잘못 말했음).
+- **사용자 결정**: 새 계약서만 보여 준다(예전 계약서는 회원카드 `지난 레슨계약서`).
+- **구현**(`member_contracts_page.dart` 일반화, `my_page.dart` 연결 1곳): `MemberContractsPage(memberId: null)`이면 내 **모든 회원**의 새 레슨계약서(`trainerId` 같음 조건 하나만 써서 색인 배포 없이 조회, 정렬은 앱). 회원 이름(문서 `member.name`)이 카드 제목, 아래에 상품·계약번호·횟수·금액·날짜, 상태 칩, **검색**(회원 이름·계약번호·상품명)과 **상태 필터**(전체/진행 중/완료)(`filterContracts`), 맞는 게 없으면 `조건에 맞는 계약서가 없어요.`, 계약서가 없어도 자동으로 새 작성으로 가지 않음, 제목 `레슨계약서 관리`. 길게 눌러 삭제·취소된 계약 숨김/보기·계약 열기·새 계약 작성(회원은 작성 화면에서 고름)은 회원별 목록과 같음. 개인 워크스페이스의 MY `계약서 관리`가 이 화면을 열고, 그 밖의 워크스페이스는 기존 목록 그대로.
+- **검증**: 신규 테스트 10개(필터·검색·조합, 전체 조회 요청·제목·이름 표시, 자동 이동 없음, 검색/필터/빈 결과, 열기, 새 작성, MY 연결), 기존 회원별 목록 테스트 유지, `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+- **미검증**: 실기기 MY 페이지 → 계약서 관리 화면.
+
+## 2026-10-23 P6: 완료된 계약서의 새 버전(정정) 진입 (앱만, 서버·배포 0)
+
+- **구현**: 완료 화면(`LessonContractSignFlowPage` done 단계)에 `내용 수정 (새 버전)` 버튼 — 누르면 확인창(`새 버전으로 수정할까요?`, 완료된 계약서는 바로 고칠 수 없고 새 버전을 고친 뒤 회원 서명을 다시 받아야 하며 새 버전이 완료되기 전까지 지금 계약서가 유효) → `PersonalContractGateway.createNewVersion`(서버 `managePersonalContract` `new_version` 재사용, 요청마다 새 멱등 키 `nv_…`) → 만들어진 새 버전 초안을 이어 쓰는 입력 화면(`LessonContractFormPage(contractId)`)으로 이동(`pushReplacement`라 뒤로 가면 목록). 서버 거부 안내 추가: 이미 열린 새 버전이 있음(`new_version_already_open` → `계약서 목록에서 이어서 작성`), 완료된 계약만 가능(`new_version_requires_completed`). 작성 중 새 버전은 회원별·전체 목록에 `작성 중`으로 보여 이어 쓸 수 있고, 새 버전이 완료되면 원본은 `이전 버전`, 회차는 이전 계약과의 **차이만** 반영(P6-3 규칙).
+- **검증**: 신규 테스트 4개(버튼, 확인→생성→초안 화면 이동·멱등 키, 취소 시 미생성, 이미 열린 새 버전 안내), `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+- **미검증**: 실기기에서 완료 계약 → 내용 수정(새 버전) → 수정·서명 → 이전 버전 처리·횟수 차이 반영.
+
+## 2026-10-23 P6: 완료된 계약서 파기(3일·회원 서명·레슨 받기 전) — 서버+앱 코드·테스트 완료, **DEV 배포는 승인 대기**
+
+- **사용자 결정**: 잘못 써서 완료한 계약서는 정정이 아니라 **파기**. ① 완료 후 **3일** 이내 ② **회원 서명만**(강사 서명 불필요) ③ 계약 뒤 레슨을 받았으면 파기 불가(환불·해지로 따로 진행) ④ 회원에게 갈 알림은 **기록만**(발송은 후속). 앞서 만든 `내용 수정 (새 버전)` 버튼은 파기로 대체해 화면에서 제거(서버 `new_version` 기능은 유지).
+- **서버**: 새 callable `voidPersonalContract`(`personal_contract_void.ts`, 상수 `VOID_WINDOW_DAYS = 3`) — 완료 계약만(이미 파기면 안전하게 `alreadyVoided`), 완료 시각 3일 이내(`void_window_passed`), 레슨을 받았으면 거부(`void_lessons_taken`: 등록 직후 받은 레슨 횟수 `doneAtRegistration`과 비교, 없으면 잔여 감소로 판단), 이 계약이 가장 최근 등록이 아니면 거부(`void_not_latest_registration`), 회원 서명 획·사유 필수. 한 트랜잭션에서 계약 `voided`(+`voidedAt`·`voidReason`·`signatures.void`, 이벤트 `void_signed`(회원 서명)·`voided`), 이 계약이 더한 총·잔여 횟수 되돌림(받은 횟수 유지)·재등록 횟수 -1·`lastRegistration` 삭제, 회원의 계약 연결 표시를 **가장 최근의 다른 완료 계약**으로 되돌리거나(없으면) 지움(`contractSigned:false`), 회원 알림 기록 `contract_notices/{계약ID}_void`(`pending`, 문장 `홍회원님, PT-2610-0001 레슨계약서가 파기되었습니다.`, 서버 전용). 옛 계약(횟수 등록 전 완료)은 횟수를 건드리지 않고 파기. 파기된 계약은 새 버전·취소·링크 발급 불가. `registration`에 `doneAtRegistration` 추가. 열람 링크는 파기되면 410 `파기된 계약서예요`(토큰이 맞을 때만 상태 노출), 진위 확인 화면은 `파기된 계약서입니다(효력 없음)`.
+- **앱**: 완료 화면에 완료 3일 안에만 `계약 파기 (3일 이내)` 버튼 → 사유 시트(`잘못 작성함`/`회원 요청`/`기타`, 등록 횟수가 되돌려진다는 안내) → 회원 서명 창(`○○님 파기 확인 서명`) → 서버 호출 → `파기된 계약서예요` 화면. 서버 거부 안내(3일 경과·레슨을 받음·뒤에 다른 계약 등록). 목록은 `파기됨` 칩, 취소와 함께 기본 숨김(`취소·파기된 계약서 보기/숨기기`).
+- **검증**: 서버 에뮬레이터 계약 38/38(신규 9: 파기 전 과정·중복·레슨 받음 거부·3일 경과·권한/입력·이전 계약 연결 복귀·옛 계약·차단·앱 접근 불가), 배송 17/17(파기 링크 410·확인 화면), 훈련일지 69·접근 11·레거시 28 통과, tsc·lint 무오류. Flutter 신규 6(파기 버튼 기간·흐름·취소·서버 거부·목록), `flutter test` 1394개 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+- **한계/후속**: 회원에게 알림을 실제로 보내는 부분, 파기 후 PDF/확인서, 7일 이후 해지(환불 계산)는 별도 작업. 앱 서명은 강사 폰에서 회원이 서명하는 방식.
+- **승인 대기**: DEV Functions 배포 — 신규 `voidPersonalContract`, 업데이트 `signPersonalContract`(`doneAtRegistration`)·`viewPersonalContract`·`verifyPersonalContract`.
+
+## 2026-10-23 계약서 파기 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: Functions `voidPersonalContract` 신규 생성, `signPersonalContract`·`viewPersonalContract`·`verifyPersonalContract` 업데이트 성공. Rules·Storage·PROD 변경 없음. `us-central1` 이미지 정리 정책 경고는 이전과 같음.
+- **미검증**: 실기기에서 파기 전 과정(사유 → 회원 서명 → 파기됨), 횟수·재등록 되돌림, `contract_notices` 알림 기록, 파기 후 링크 410·확인 화면.
+
+## 2026-10-26 계약 파기 버튼을 머리말 더보기(⋮) 메뉴로 (앱만, 서버·배포 0)
+
+- **사용자 요청**: 완료 화면 아래에 `계약 파기` 버튼이 나와 있으면 안 됨 → 머리말 더보기 메뉴(또는 길게 누르기)로.
+- **변경**: 완료 화면 아래 파기 버튼 제거, 머리말 오른쪽에 `⋮` 메뉴(`done_more_menu`) — 항목 `계약 파기 (3일 이내)`(`done_void`, 빨강). 완료 후 3일 안에만 메뉴가 나타나고 3일이 지나면 메뉴 자체가 없음. 흐름(사유 → 회원 서명 → 서버 기록)은 그대로.
+- **확인한 사실(읽기)**: ① 재등록 +1은 사용자가 실기기에서 정상 확인. ② **만료 회원이 만료 그룹으로 자동 이동하는 기능은 코드에 없음** — `_isExpiredMember`는 "선생님이 직접 상태를 '만료'로 바꾼 경우만 만료회원으로 본다"고 명시, 서버 예약 작업은 정지 회원 자동 재개(`autoResumePausedMemberships`) 하나뿐, 회원권 종료일 지남은 `만료 임박` 알림 판단에만 쓰임. ③ 계약서 입력 화면 하단 `초안 저장`은 저장만 하고 화면에 머물고, `저장하고 회원 서명 받기`는 (변경이 있으면) 조용히 저장한 뒤 서명 화면으로 이동.
+- **검증**: `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+
+## 2026-10-26 계약서 입력 화면 저장 버튼 합치기 (앱만, 서버·배포 0)
+
+- **사용자 결정**: 아래의 `초안 저장`과 `저장하고 회원 서명 받기`를 하나로 합친다(제안 수락).
+- **변경**(`lesson_contract_form_page.dart`): 머리말 오른쪽에 `저장`(키 `contract_form_save` 유지, 스크롤 없이 항상 보임, 저장 중 진행 표시)과 미리보기 아이콘, 화면 맨 아래 큰 버튼은 `저장하고 회원 서명 받기` 하나(FilledButton, 이미 서명 중이면 `회원 서명 이어서 진행`). 나가기 확인창에 `저장하고 나가기` 추가(계속 작성 / 저장하고 나가기 / 나가기) — 저장에 성공했을 때만 나가고 검증·서버 오류면 화면에 남음. 쓰지 않게 된 `_contractVersion` 필드 제거.
+- **검증**: 신규 테스트 2개(머리말 저장·아래 버튼 하나, 저장하고 나가기 성공/실패), `flutter test` 전체 통과, `flutter analyze` error 0(1195건 유지), DEV 빌드·설치.
+
+## 2026-10-26 `lesson_progress_notices`가 콘솔에 안 보이는 원인 조사 (읽기 전용)
+
+- 사용자가 보낸 Firestore 콘솔 화면에는 컬렉션 4개(`members`·`schedules`·`trainer_profiles`·`training_logs`)만 있고 `personal_contracts`도 안 보임 → 화면이 오래된 상태(새로고침 필요)일 가능성. 사용자는 왼쪽 위 **제품 검색창**(메뉴 검색)에 컬렉션 이름을 넣어 `결과 없음`이 나옴 — 그 검색은 컬렉션을 찾지 않음.
+- `firebase functions:log --only finalizePersonalTrainingLog`에는 10/23 배포(UpdateFunction) 기록만 있고 그 뒤 확정 호출 기록이 없음 → 배포 후 서버를 거치는 레슨 확정이 아직 없어 컬렉션이 만들어지지 않았을 가능성이 큼(컬렉션은 첫 문서가 생겨야 나타남). 개인 워크스페이스의 홈 `레슨확정`(`repository.finalize`)이 이 서버 경로를 쓰는 것은 코드로 확인함.
+
+## 2026-10-26 만료 회원 자동 분류 + 계약 기간 연동 — 서버+앱 코드·테스트 완료, **DEV 배포는 승인 대기**
+
+- **사용자 결정**: ① 회원권 종료일이 지난 회원은 자동으로 만료 그룹으로. 잔여 횟수 0은 자동 이동 없이 `소진` 표시만(선생님이 직접 이동). ② 재계약하면 회원권 기간이 계약 기준으로 갱신되고, 만료 회원은 다시 활동 중으로 새로 시작.
+- **서버**(`functions/src/membership_expiry.ts` 신규): `autoExpireMemberships`(예약 함수 `every day 00:40` KST, `index.ts`에 `autoExpireMemberships`로 등록) — 활동 중 개인 회원의 실제 종료일(= 최근 완료 계약 `periodEnd`와 카드 `membership.endAt/expireAt` 중 늦은 날)이 오늘(KST)보다 이전이면 `managementState: expired`, `countsTowardLimit: false`, 이력(`source: auto_expire`, `changedBy: system`), `autoExpire{endDate,at}`, 트레이너 `managedMemberCount −1`. 종료일 없음 계약·정지/휴면·종료일 없음·타 워크스페이스·파기/취소 계약은 제외. 같은 종료일로 이미 자동 만료한 뒤 선생님이 활동 중으로 돌린 회원은 다시 만료하지 않음.
+- **계약 완료 연동**(`personal_contracts.ts` `writeMemberPointer`): 회원 `passStart/passEnd/expireAt`, `membership.startAt/endAt/contractDate/unlimitedEndDate/lastRegisteredAt/notRegistered`를 계약 사용 기간으로 갱신(종료일 없음이면 종료일 삭제). 만료였으면 `active` 복귀(이력 `contract_complete`) + `managedMemberCount +1`. 이전 값을 `registration.membershipBefore`, 복귀 여부를 `registration.reactivated`에 저장.
+- **파기 복원**(`personal_contract_void.ts`): `membershipBefore`로 기간 복원, 이 계약으로 활동 복귀했던 회원은 `expired`로 되돌리고(이력 `contract_void`) `managedMemberCount −1`.
+- **앱**: 회원카드가 계약 뒤 새로고침에서 회원권 기간·상태도 읽음(저장 때 예전 값으로 덮어쓰지 않도록), 회원 목록 잔여 0은 `잔여 0회` 대신 `소진` 칩.
+- **검증**: functions `tsc`·`eslint` 통과, 계약 에뮬레이터 45개 시나리오 통과(신규 7: 만료→재계약 복귀·파기 복원·활동 회원 기간 갱신·종료일 없음·자동 만료 3종), 배송 에뮬레이터 17개 통과, `flutter test` 1398개 통과, `flutter analyze` error 0(1195건 유지), DEV 디버그 APK 빌드 성공. **기기 연결이 없어 설치·실기기 확인은 못 함. 예약 함수는 에뮬레이터에서 함수 본문(`autoExpireMemberships`)만 검증했고 실제 스케줄 실행은 DEV 배포 후 확인 필요.**
+- **알려진 한계**: 종료일 없음 계약 후 회원카드는 종료일/기간 정보가 없어 `회원권 미등록`으로 표시될 수 있음(카드에 무제한 개념 없음). 계약 완료로 만료 회원이 복귀할 때 등급별 관리 회원 수 한도는 검사하지 않음. 레슨계약서가 없고 카드 종료일만 있는 회원도 같은 종료일 기준으로 자동 만료됨.
+
+## 2026-10-26 고객카드 헤더 카드 질감 개선 + 기본 등급 BRONZE (앱만, 서버·배포 0)
+
+- **사용자 결정**: 평가에서 권장한 항목을 적용(기기 기울기 센서는 의존성이 필요해 보류, 더 생각하기로 함).
+- **변경**(`client_card_page.dart`): ① 새 회원카드 기본 등급 `GOLD` → `BRONZE`(초기값·리셋·드롭다운 null·알 수 없는 값 대체). 기존 저장 값은 건드리지 않음(마이그레이션 없음). ② 카드 바탕을 금속 그라데이션(대각선 중앙에 밝은 띠)으로, VIP는 인디고 → 그래파이트(흑색 금속)로 변경(헤더·칩·등급 테마). ③ 광택 레이어(`_MembershipSheenLayer`, 글자 아래): 윗면 빛, 가장자리 하이라이트(왼쪽 위 밝게·오른쪽 아래 어둡게), 등급이 높을수록 또렷한 반사 띠. ④ 가로로 끌면 카드가 살짝 기울고(±약 7°) 반사 띠가 따라 움직이며 손을 떼면 제자리로 복귀 — 세로 스크롤은 그대로, 화면 왼쪽 가장자리(24px)에서 시작한 끌기는 뒤로 가기에 양보. ⑤ 처음 보일 때 반사광이 1.1초 동안 한 번 지나가고 끝나면 프레임 요청 없음(계속 도는 효과 없음). ⑥ 이중 그림자, 이름·횟수 글자 엠보스 그림자. 기기 "애니메이션 줄이기" 설정이면 ④⑤ 모두 꺼짐.
+- **적용하지 않은 것**: 입자 반짝이·상시 쉬머(비권장), 기기 기울기 센서(보류), 실물 카드 비율 변경(헤더가 상단 전체 폭이라 레이아웃 재설계가 필요해 이번엔 제외), 카드번호 스타일 회원번호(표시할 번호 데이터 연결 필요), 등급 상승 연출(자동 등급 상승 기능과 함께).
+- **검증**: 신규 테스트 4개(`membership_card_finish_test.dart`: 광택 레이어·진입 반사광 종료, 가로 끌기 기울기·복귀, 애니메이션 줄이기, 기본 등급·팔레트), `flutter test` 1402개 통과, `flutter analyze` error 0(1195건 유지), DEV 디버그 APK 빌드·설치(R3CX40M6EEM). 실기기에서의 시각 확인은 사용자 몫.
+
+## 2026-10-26 만료 자동 분류 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--non-interactive`, `--force` 미사용)**: Functions `autoExpireMemberships`(예약 `every day 00:40` KST, asia-northeast3) 신규 생성, `signPersonalContract`·`voidPersonalContract` 업데이트 성공. Rules·Storage·Indexes·PROD 변경 없음. `us-central1` 이미지 정리 정책 경고는 이전과 같음(기능 영향 없음).
+- **미검증**: 실제 새벽 00:40 스케줄 실행(첫 실행은 다음 00:40), 종료일 지난 DEV 회원의 만료 이동, 재계약 시 복귀·기간 갱신, 파기 복원. 스케줄을 수동으로 실행하면 DEV 회원 데이터가 실제로 바뀌므로 하지 않음.
+
+## 2026-10-27 회원카드 레슨 등록 현황 한 줄 + 계약 파기 서명 유사도 확인 (앱만, 서버·배포 0)
+
+- **사용자 요청**: ① 회원카드 레슨/멤버십 항목의 `재등록 · 총소진레슨 N회`와 `총 30회 · 잔여 30회 · 추가재등록 10회` 두 줄(칩 두 개)을 한 줄로, 블록도 그만큼 줄이기. ② 계약 파기 때 회원 서명을 이전 계약서의 서명과 비슷한지 인식. ③ 마그네틱 줄(그룹 표시) 구성에 대한 객관적 의견.
+- **변경**: ① `client_card_page.dart` — 칩 `Wrap`을 한 줄 `Text.rich`(`FittedBox` scaleDown, `softWrap:false`)로 교체: `재등록 · 총소진레슨 0회  /  총 30회 · 잔여 30회 · 추가재등록 10회`(강조 색은 뒷부분에만). 열었을 때 두 줄 높이 → 한 줄. 쓰지 않게 된 `_SoftInfoChip`의 `key`·`color` 매개변수 제거. ② `lesson_contract_sign_flow_page.dart` — `_confirmSimilarSignature`를 기준 서명 여러 개를 받도록 일반화(가장 비슷한 것과의 유사도로 판정, 기본 동작은 서명 ② ↔ 서명 ① 그대로)하고, 파기 서명이 계약서의 회원 서명 ①·②와 비교되게 함 — 비슷하면 통과, 애매하면 확인창(그대로 사용/다시 서명), 많이 다르면 다시 서명(3회째부터 강사가 본인 서명임을 확인하고 진행 가능). 기준 서명을 읽지 못하면 묻지 않고 진행.
+- **참고**: 파기 후 횟수가 0회로 돌아가는 것은 이 계약이 더한 횟수를 빼는 정상 동작(이 회원은 계약 전 0회였음).
+- **검증**: 신규 테스트 3개(파기 서명 비슷함→통과, 많이 다름→다시 서명 요구·파기 안 됨, 한 줄 표시 구조), `flutter test` 1405개 통과, `flutter analyze` error 0(1195건 유지), DEV 디버그 APK 빌드·설치. 서버 변경 없음.
+
+## 2026-10-27 고객카드 헤더를 떠 있는 카드로 재구성 (A안, 앱만, 서버·배포 0)
+
+- **사용자 결정**: 마그네틱 줄을 없애고 그룹 이름을 카드 제목 자리로(A안), 헤더 전체 폭 대신 네 모서리가 둥글고 여백을 둔 떠 있는 카드로. 카드 뒤집기를 알리는 방법 질문.
+- **변경**(`client_card_page.dart`): ① 카드 위(페이지 바탕)에 윗줄 — 뒤로가기(`MtfBackButton`, 페이지 글자색)·계약서·더보기. 상태 표시줄 높이는 `MediaQuery.padding.top`. ② 카드 높이 240, 좌우 여백 16, 네 모서리 반경 24(`_kMembershipCardRadius`), 광택 테두리·그림자도 네 모서리. ③ 앞면: 왼쪽 위 그룹 이름(크게, 영문은 대문자, 길면 줄여 맞춤, 그룹 없음이면 `MORE THAN GYM`)+작은 `MEMBERSHIP CARD`, 오른쪽 위 뒤집기 버튼(`membership_card_flip_button`), 가운데 사진·이름·전화·레슨 종류·IC 칩, 카드번호 자리에 `REMAINING` 남은 횟수(34pt) `/ 총 N회`, 오른쪽 아래 등급·기간·D-day. 마그네틱 줄 위젯과 아래 4px 띠 삭제. ④ 뒷면: 뒤로가기 제거(카드 밖으로 이동), 간격을 줄여 높이 240에 맞춤. ⑤ 뒤집기 안내: 앞면 뒤집기 버튼 + 처음 3번 열 때 입장 반사광이 끝난 뒤 카드가 한 번 살짝 흔들림(SharedPreferences `membership_card_flip_hint_count`) + 카드의 빈 곳을 누르면 흔들림 한 번. 애니메이션 줄이기 설정이면 모두 꺼짐. ⑥ 불러오는 동안 같은 높이를 비움(`MembershipCardFlip.headerHeight`). 헤더 전체 높이는 이전 280(+상태 표시줄)보다 윗줄 44+여백만큼 커짐.
+- **검증**: 카드 테스트 13개(떠 있는 카드 구조·그룹 제목·뒤로가기/계약서 카드 밖, 폭 320/360/412 앞뒤 오버플로 없음, 뒤집기 버튼, 빈 곳 탭 흔들림, 처음 3번만 안내 흔들림, 애니메이션 줄이기), `flutter test` 1414개 통과, `flutter analyze` error 0(1179건, 기준 1195에서 감소), DEV 디버그 APK 빌드 성공. **기기 연결이 없어 설치·실화면 확인은 못 함.**
+- **미검증/위험**: 실기기에서의 시각(카드 비율·여백·텍스트 크기), 시스템 글자 크기를 크게 한 경우의 넘침(카드 높이 고정 240), 윗줄 아이콘 색(라이트·다크 모두 페이지 글자색 사용).
+
+## 2026-10-27 미커밋 변경 상태 점검 (코드 변경 없음)
+
+- 브랜치 `codex/prod-canary-checkpoint-2026-07-22`, 기준 커밋 `7744027`(1.0.6+26) 이후 미커밋 변경: 수정 48개 파일(+3803/-1545), 신규 파일 다수(레슨계약서 v2 P1~P6, 만료 자동 분류, 고객카드 헤더 등). 마지막 기록 작업(고객카드 떠 있는 카드)까지 코드·테스트·로그가 일치하며 미완성 코드는 발견하지 못했다.
+- 검증: `flutter analyze` error 0(1179건), `flutter test` 1414개 전부 통과. 빌드(APK)는 이번에 다시 실행하지 않음.
+- 남은 일: 실기기 확인 항목 다수, 만료 자동 분류·계약서 이후 DEV/PROD 배포 승인, 커밋 정리(임시 파일 `README_FIRST.md`·`VALIDATION_SUMMARY.md`·`_ProChip`·`callable-body.json`·`mtf_codex_loop_starter.zip`·`prompts/`·`src/` 제외 필요).
+
+## 2026-10-27 고객카드 헤더 띠·홀로그램 씰·던져서 뒤집기 (앱만, 서버·배포 0)
+
+- **요청**: 폰 확인 후 ① 카드만 덩그러니 있어 헤더 연결성이 없음, ② 앞면의 평범한 뒤집기 버튼이 별로 → 뒷면 홀로그램 씰처럼, 모션(밀어서)으로도 뒤집기, ③ 뒷면 메달 칸 뒤에 마그네틱 줄, ④ 애니메이션 줄이기 조항 질문, ⑤ 뒤로가기 `<`가 안 보임.
+- **원인/판단**: ① 떠 있는 카드가 페이지 바탕 위에 그냥 놓여 다른 페이지(그라데이션 헤더 띠)와 이어지지 않았다. ⑤ 윗줄 아이콘을 페이지 글자색으로 칠해 바탕 위에 둔 것이 원인 후보이나 실기기 화면을 보지 못해 확정하지 못했다(위젯 테스트에서는 탭 동작 확인). ④ `disableAnimations` 처리는 기존 `MtfHeaderNeonOverlay`에 이미 있던 기준(OS의 애니메이션 제거)을 따른 것이며 앱 자체 설정이 아니다.
+- **변경** (`lib/pages/client_card_page.dart`, `test/membership_card_finish_test.dart`): ① 다른 페이지와 같은 헤더 띠(`context.mtfHeaderGradient`, 아래 모서리 28, 그림자, `MtfHeaderNeonOverlay`) 안에 윗줄+카드를 넣음. 불러오는 동안도 같은 띠. 윗줄 아이콘은 흰색(`MtfBackButton` 기본). ② 앞면 둥근 버튼 삭제 → 뒷면과 같은 홀로그램 씰(`_MembershipHologramButton`, `TAP TO BACK`/`TAP TO FRONT`, 카드 기울기에 따라 빛 띠 이동, 누르면 바로 뒤집힘+반짝임). 오른쪽→왼쪽으로 던지면(56px 또는 420px/s) 앞→뒤, 뒷면은 어느 쪽으로 던져도 앞면으로. 화면 양쪽 가장자리 24px에서 시작한 끌기는 시스템 뒤로 가기에 양보. 애니메이션 줄이기 설정에서도 던져 뒤집기는 동작(기울기·반짝임만 꺼짐). 안내 동작은 왼쪽으로 한 번 기울었다 돌아오는 것으로 변경(처음 3번+빈 곳 탭). ③ 뒷면 메달 칸 뒤로 전체 폭 마그네틱 줄(`membership_card_back_stripe`). 앞면 메달 이동은 하지 않음.
+- **검증**: 카드 테스트 28개 통과(던져 뒤집기·반대 방향·가장자리·애니메이션 줄이기·마그네틱 줄·헤더 띠·흰 뒤로가기 포함), `flutter test` 1419개 통과, `flutter analyze` error 0(1177건, 기준 1179에서 감소), DEV 디버그 APK 빌드 성공. **빌드 직후 기기 연결이 끊겨 설치·실화면 확인은 못 함.**
+- **미검증/위험**: 실기기 시각(헤더 띠와 카드 색 대비, 특히 VIP 흑색 카드), 던지기 감도, 시스템 글자 크기 크게 했을 때 카드 넘침, 뒤로가기가 실제로 보이는지.
+
+## 2026-10-27 고객카드 = 헤더(전폭 카드), 씰·마그네틱 재배치 (앱만, 서버·배포 0)
+
+- **요청**: 확정한 시안대로 ① 카드 자체를 헤더로(화면 폭 가득, 아래 모서리 28, 같은 그림자·네온), ② 윗줄에 `<` + 그룹 이름(앞면) / `<` + MORE 데이(뒷면), `MEMBERSHIP CARD` 제거, 상태바 영역 비움, ③ 앞면: 이름 오른쪽 등급, 사진 70, 이름 아래 `PT · 잔여 12/30회`(0/0이면 횟수 숨김, 아무것도 없으면 `미등록`)·기간·D-day, REMAINING 큰 숫자 삭제, 메달 5칸을 앞면 아래로(빈 칸은 희미한 선만), ④ 뒷면: 점 세 개 더보기 삭제, 맨 아래 끝에서 끝까지 마그네틱 줄(장식), 씰은 통계 줄 오른쪽 끝(줄 위, 겹치지 않음), ⑤ 씰은 모서리 둥근 네모(44)·펄 무지갯빛·은색 테두리·`M` 고정 마크·작은 회전 화살표(작은 글자 삭제). 앞면 씰/버튼은 없음(던져서 뒤집기).
+- **변경** (`lib/pages/client_card_page.dart`, `test/membership_card_finish_test.dart`): 카드 높이는 `상태바 + 234`(앞뒤 동일). 카드 뒤에 헤더 그라데이션을 깔아 뒤집히는 동안 헤더가 사라지지 않게 함. 기울기는 전폭 카드라 가장자리가 비지 않도록 줄임(0.12→0.06, 원근 0.0012→0.0008). 광택의 가장자리 선은 아래 모서리만 둥글게. 뒷면 통계는 좁은 폭에서 글자가 줄어 맞춰짐. 빈 메달 칸의 `+` 아이콘 제거. 뒷면 `_backAnniversaryLabel`은 원래부터 미사용(그대로 둠).
+- **검증**: 카드 테스트 22개(전폭·흰 `<`·앞면 씰 없음·`잔여` 문구·0/0 숨김·미등록·마그네틱 줄과 씰 비겹침·뒷면 `<` 동작·점 세 개 없음·320/360/412 폭·글자 1.15/1.3배 넘침 없음 포함) 통과, `flutter test` 1423개 통과, `flutter analyze` error 0(1168건, 기준 1177 이하), DEV 디버그 APK 빌드 성공.
+- **미검증/위험**: 실기기 시각(VIP 흑색 카드와 네이비 띠 대비, 씰 색감·가독성, 뒤집는 동안 가장자리), 던지기 감도, 뒷면 세로 여유(약 6px, 글자 크게 시 줄어듦), 상태바 높이가 큰 기기. 뒤집은 상태에서는 더보기 메뉴(입력 리셋·회원 삭제)를 쓸 수 없음(앞면에서만).
+
+## 2026-10-28 고객카드 헤더 보정 + P6-4 홈 회귀 점검 (앱만, 서버·배포 0)
+
+- **요청(실기기 확인 후)**: ① 마그네틱 줄이 더 진하게, ② 헤더 아래를 따라가는 선 제거, ③ 상태 표시줄(시간·배터리) 영역까지 헤더가 넘어감 → 비워 두기. 카드가 밋밋한지·IC 칩(대표 훈장) 처리는 의견 요청(구현 안 함).
+- **변경** (`lib/pages/client_card_page.dart`, `test/membership_card_finish_test.dart`): `MtfHeaderNeonOverlay` 제거(하단 선 없음, import 삭제). 상태바 영역은 카드 밖 페이지 바탕으로 비우고 카드(높이 234)는 그 아래에서 시작. 상태바 글자색은 테마(밝음/어두움)에 맞춰 `MembershipCardFlip.statusBarStyle`로 지정. 불러오는 동안 헤더도 같은 구조. 마그네틱 줄은 거의 검정(`0xF22A2A2D`→`0xFA0C0C0E`→`0xF2191A1C`) + 옅은 위·아래 선.
+- **P6-4 점검(읽기 전용)**: 서버 `signPersonalContract`가 회원 문서에 쓰는 값(`contractSigned`, `lessonSync.contractId/No`, `totalSessions`·`remainSessions`·`remainingSessions`, `sessions.total/remain/done/notRegistered`, `lessonsNotRegistered`, `lessonType`)이 홈 빠른서명(`_openQuickSignFromSchedule`, `_resolveQuickSignMemberState`)·레슨 확정(`LessonConfirmationService`)이 읽고 쓰는 필드명과 같음을 코드로 확인. 서버는 `lessonSync.source`를 쓰지 않아 `source=='contract'` 판정에 영향 없음. 파기(`personal_contract_void`)는 마지막 계약이면 `contractSigned=false`와 `contractId`를 지워 홈이 수동 등록 기준(`manual`)으로 돌아가고, 이전 계약이 있으면 그 계약으로 되돌림. 서버 `finalizePersonalTrainingLog`에는 계약 참조가 없음.
+- **검증**: 홈·계약서 관련 테스트 126개 통과, 카드 테스트 23개 통과, `flutter test` 1424개 통과, `flutter analyze` error 0(1168건), DEV 디버그 APK 빌드 성공. **설치는 폰 연결이 끊겨 못 함.** 에뮬레이터 테스트(`personal_training_logs`·`personal_contracts`)는 이번에 다시 돌리지 않음.
+- **미검증/위험**: 실기기에서 계약 완료→홈 빠른서명→레슨 확정 차감, 파기 후 홈 상태, 서명요청 시트. 밝은 테마에서 상태바 글자색. 헤더 시각(마그네틱 진하기).
+
+## 2026-10-29 고객카드 윗모서리 둥글게 + IC 칩 모양 (앱만, 서버·배포 0)
+
+- **요청**: 상태바 줄을 비웠으니 카드 윗모서리도 아래와 같이 둥글게, IC 칩은 대표 훈장 기능을 유지하고 진짜 칩 모양으로. (카드 헤더를 접고 펼치는 방식은 의견만, 구현 안 함)
+- **변경** (`lib/pages/client_card_page.dart`, `test/membership_card_finish_test.dart`): 카드 면·뒤에 깔리는 헤더 그라데이션·불러오는 헤더·광택 가장자리 선 모두 네 모서리 28. 대표 훈장이 없을 때의 칩은 52×40, 금속 그라데이션·어두운 테두리·접점 판과 홈 무늬·윗면 광택(키 `membership_card_ic_chip`). 대표 훈장이 있으면 기존대로 그 훈장 칩.
+- **검증**: 카드 테스트 23개, `flutter test` 1424개 통과, `flutter analyze` error 0(1164건), DEV 디버그 APK 빌드·폰 설치 성공.
+- **미검증/위험**: 실기기 칩 모양·크기(앞면 이름 줄 높이 +4), 윗모서리 둥글게 시각.
+
+## 2026-10-30 휴면·만료를 그룹처럼 옮기기 + 고객카드 헤더 접기 (앱만, 서버·배포 0)
+
+- **요청**: ① 회원 목록에서 `휴면`·`만료` 칩을 눌렀을 때 그룹·태그와 겹쳐 선택돼 표시가 제각각이니 한 분류처럼 보이게, ② 회원 블럭의 그룹 이름을 탭하면 다른 그룹과 `휴면`·`만료`로 옮길 수 있게, ③ 고객카드 회원 현황의 `소속 그룹`에서도 같게, ④ 폼을 스크롤하면 카드 헤더가 한 줄(뒤로·사진·이름 + 전화번호·레슨 현황·펼침)로 접히고 맨 위에서 펼쳐지게(등급 대신 전화번호).
+- **원인(읽기)**: 개인 워크스페이스는 그룹(`personalGroupId`)과 활동상태(`managementState`)를 따로 저장하고, 칩 줄에서 상태 칩이 그룹·태그와 AND로 겹쳐 선택됐다. 회원 블럭 그룹 메뉴는 개인 워크스페이스에서 `휴면`·`만료` 항목을 일부러 뺐고, 고객카드 소속 그룹 선택에는 상태 항목이 없었다(길게 눌러야만 전환 가능). 서버 `transitionManagedMemberState`는 `personalGroupId`를 건드리지 않아 원래 그룹이 남는다.
+- **변경**: `lib/pages/client_list_page.dart` — `휴면`·`만료` 칩은 그룹·태그 선택을 풀고(`_selectPersonalStatusExclusively`), 그룹·태그 칩은 상태를 `전체`로 풀기. 회원 블럭 그룹 메뉴 끝에 `휴면회원`·`만료회원`을 개인 워크스페이스에도 표시하고, 고르면 기존 `_updateMemberStatus`(= `transitionStateAndVerify`)로 전환. 휴면·만료 회원을 일반 그룹으로 옮기면 활성으로 되돌림. 블럭 라벨·색은 휴면·만료 회원에게 `휴면회원`/`만료회원`으로 표시. 마지막 선택 복원에서 상태 칩이 저장돼 있으면 그룹 복원을 건너뜀. `lib/widgets/personal_member_status_filter.dart` — 그룹·태그를 고른 목록은 활성 회원만(휴면·만료 회원은 해당 칩이나 `전체`에서). `lib/widgets/personal_member_taxonomy_picker.dart` — 선택적 `showStatusOptions`·`currentState`(기본 꺼짐)와 결과 `nextState`. `lib/pages/client_card_page.dart` — 편집 중인 회원 카드의 소속 그룹 선택에 `휴면회원`·`만료회원` 추가(고르면 저장 버튼과 별개로 바로 상태 전환, 토스트), 일반 그룹을 고르면 활성으로 복귀. 폼 `ListView`에 스크롤 컨트롤러를 달고 `AnimatedCrossFade`로 카드 ↔ `MembershipCardCollapsedBar`(높이 64) 전환: 36px 넘게 스크롤하면 접고(접은 뒤에도 스크롤 여유가 남을 때만), 맨 위(2px 이하)에서 펼침, 접힌 줄을 누르면 맨 위로 올라가며 펼침. 접히는 동안 320ms는 다시 바꾸지 않음. 카드의 뒤집기·던지기는 펼친 상태에서만 닿음.
+- **검증**: 관련 테스트(상태 필터 11개, 그룹 선택기 7개, 카드 30개) 통과. 전체 결과는 아래 줄.
+- **미검증/위험**: 실기기에서 접힘·펼침 부드러움과 키보드가 올라올 때 동작, 짧은 폼에서 접힘이 안 되는 경우(스크롤 여유 부족), 휴면·만료 회원을 일반 그룹으로 옮길 때 활성 전환 실패 처리, 이전에 AND 조합으로 보던 방식(그룹 안의 휴면 회원)이 사라진 점. 서버·Rules·마이그레이션 변경 없음.
+
+## 2026-10-30 접힌 고객카드를 '카드 윗부분' 모양으로 (앱만, 서버·배포 0)
+
+- **요청**: 접힌 헤더가 배너처럼 보임 → 삼성월렛처럼 카드가 줄어든 느낌으로(시안의 가운데 모양으로 진행).
+- **변경** (`lib/pages/client_card_page.dart`, `test/membership_card_finish_test.dart`): `MembershipCardCollapsedBar`를 카드 얼굴로 다시 만듦 — 카드와 같은 금속 그라데이션·질감·둥근 모서리(28)·그림자, 높이 84(이전 64), 작게 줄인 IC 칩(대표 훈장이 있으면 그 훈장 칩), 아래에 카드 두 장이 겹친 가장자리(12px, 점점 어둡고 좁게). 이름 옆 전화번호·`PT · 잔여 12/30회`·뒤로가기·사진은 그대로, 펼침 화살표는 뺌(접힌 카드를 누르면 펼침). 접힘 계산의 줄어드는 높이는 `totalHeight`(96) 기준. 카드 뒷면·뒤집기는 펼친 상태에서만.
+- **검증**: 카드 테스트 31개 통과(겹친 가장자리·IC 칩·320/360/412 폭 포함). 전체 결과는 아래 줄.
+- **미검증/위험**: 실기기 모양·질감, 상태별 그라데이션(만료·VIP 등)에서 겹친 가장자리 색, 광택 반응은 접힌 카드에는 없음. 회원 리스트를 월렛식 겹친 카드로 바꾸는 일은 별도 작업(시안만, 구현 안 함).
+
+## 2026-10-29 회원앱 백엔드 연동 전달물 (팀원 요청, 문서·묶음만, 코드·서버·배포 0)
+
+- **요청**: 팀원이 회원앱 백엔드 연동용으로 A) 소스·의존성 ZIP, B) INTEGRATION.md, C) 가상값 요청·응답 예시를 요청.
+- **만든 것**: `handoff/member-app/INTEGRATION.md`, `handoff/member-app/examples/`(가상값), `handoff/member-app-integration.zip`(서버 소스 13개, Rules·인덱스, functions 설정, 관련 문서 9개, 에뮬레이터 테스트 예시 2개, 앱 의존성 발췌). 앱 코드·Rules·Functions는 변경하지 않음.
+- **핵심 사실(코드 확인)**: 회원 Auth UID를 담는 필드·Rules 경로가 없어 회원앱은 현재 읽을 수 있는 데이터가 0. 회원 쪽 입구는 비로그인 HTTPS 2개(`viewPersonalContract`, `verifyPersonalContract`)뿐, callable은 전부 강사용. 회원 로그인 방식·회원-강사 연결은 미결정이라 문서 §6에 "제안"으로만 표시.
+- **검증**: ZIP에서 비밀값 패턴(API 키, private_key, keystore 비밀번호) 검색 0건. 예시의 계약 ID/토큰/확인번호/서명 형식은 소스의 정규식·검증 함수와 맞춰 수정. 문서 내용 전체의 사실 여부는 사람이 한 번 더 확인 필요.
+- **미검증/위험**: ZIP의 소스는 커밋되지 않은 작업본(일부 파일은 untracked). `handoff/`는 커밋하지 않음(docs/는 웹 배포 폴더라 피함). callable 표의 입력은 요약.
+
+## 2026-10-30 접힌 고객카드에서 겹친 가장자리 제거 (앱만, 서버·배포 0)
+
+- **요청**: 고객카드는 한 명만 보는 화면이라 겹침이 필요 없음(겹침은 회원 리스트용).
+- **변경** (`lib/pages/client_card_page.dart`, `test/membership_card_finish_test.dart`): `MembershipCardCollapsedBar`의 겹친 가장자리 두 장과 `stackPeek`을 제거. 카드 한 장(높이 84), `totalHeight = barHeight`. 카드 얼굴·IC 칩·번호 위치는 그대로.
+- **검증**: 카드 테스트 31개, `flutter test` 1437개 통과, DEV 디버그 빌드 성공, 폰 R3CX40M6EEM 설치. `flutter analyze`는 변경 파일만 실행(오류 없음).
+- **미검증**: 실기기 모양(배너처럼 보이는지). 겹침 모양은 회원 리스트 작업에서 재사용 예정.
+
+## 2026-10-30 회원 리스트를 월렛식 겹친 카드로 (앱만, 서버·배포 0)
+
+- **요청**: 회원 리스트를 고객카드 접힌 헤더처럼 겹쳐 꽂힌 카드로. 접힘(윗줄: 그룹·+N·핀 / 아랫줄: 이름님·잔여 N회·회원권) → 윗줄 탭 펼침 → 아랫부분 탭 고객카드. 고객카드와 같은 색, `<`·IC 칩 없음, 회차 미등록은 숨김.
+- **변경** (`lib/pages/client_list_page.dart`, `lib/pages/client_card_page.dart`, `test/member_wallet_card_test.dart`): 새 `MemberWalletCard`(접힘 62·겹침 22, 펼침 애니메이션 240ms), 회원 목록을 `SliverList`(화면 근처만 생성)로 교체, 한 번에 한 장만 펼침(`_expandedMemberIdNotifier`). 이슈 칩 계산을 top-level 함수로 분리(기존 `MemberListRow`는 그대로 위임, 기존 테스트 유지). 고객카드 쪽에 `memberWalletCardGradient`·`MembershipCardTexture` 공개. 경고(잔여 5회 미만·회원권 10일 이내·만료)는 해당 항목만 밝은 알약+빨간 글씨, 휴면·만료 회원은 상태만 표시. 화면 밖 회원으로 이동(`scrollToMember`)은 추정 위치로 먼저 이동해 만든 뒤 기존 로직 사용.
+- **검증**: 새 카드 테스트 6개 + 기존 목록 라벨 테스트 통과, `flutter test` 1443개 통과, DEV 디버그 빌드 성공. `flutter analyze`는 변경 파일만 실행(오류 0, 새 경고 없음, 기존 경고만).
+- **실수·수정**: 편집 스크립트가 원래 LF인 두 파일을 CRLF로 저장해 소스 문자열 검사 테스트 4개가 실패 → LF로 되돌려 해결(변경 전 파일로는 통과함을 확인).
+- **미검증**: 폰(R3CX40M6EEM)이 연결되지 않아 설치·실기기 확인 못 함. 겹침 모양, 펼침 감, 알림 탭 이동, 큰 목록 스크롤은 실기기 확인 필요. 세로 스와이프 시 살짝 흔들리는 효과는 넣지 않음. 펼친 카드 높이 추정(스크롤 이동용)은 칩 유무를 반영하지 않은 근사값.
+
+## 2026-10-30 월렛 카드 보정: 눌림 효과 통일·탭 안 먹힘·맨 밑 카드 (앱만, 서버·배포 0)
+
+- **증상(실기기)**: 윗줄/아랫부분 눌림 효과가 선으로 갈라져 보임, 카드를 눌러도 열리지 않고 닫히지도 않음, 맨 밑 카드가 카드처럼 안 보임.
+- **원인·재현**: 눌림 효과는 윗줄·아랫부분에 `InkWell`이 따로 있어서 갈라짐. 탭은 목록을 `SliverMainAxisGroup`(머리 줄 + 목록)으로 묶은 구조에서 눌린 위치가 어긋나 동작이 실행되지 않음 — 같은 구조의 테스트에서 첫 탭부터 실패하는 것을 재현했고, 그룹 없이 `SliverList` 하나로 하면 통과.
+- **변경** (`lib/pages/client_list_page.dart`, `test/member_wallet_card_test.dart`): 카드 전체에 `InkWell` 하나(눌린 위치로 윗줄=펼침/접힘, 펼친 아랫부분=고객카드, 접힌 카드는 어디든 펼침). `SliverMainAxisGroup` 제거, '필터 · 총 N명' 줄을 목록의 첫 항목으로. 화면 밖 회원 이동의 목록 시작 위치는 헤더 높이 + 고정 검색 헤더(148/136)로 계산. 구간 맨 밑 카드는 접혔을 때 아래 띠에 '다음·최근 레슨' 한 줄을 보여 온전한 카드로, 펼치면 아래 여백 없음. 안쪽 장식 키를 `member_wallet_card_face_*`로 변경(바깥 키와 중복 방지).
+- **검증**: 목록 테스트 14개, `flutter test` 1447개 통과, DEV 디버그 빌드 성공, 폰 R3CX40M6EEM 설치. `flutter analyze`는 변경 파일만 실행(오류 0).
+- **미검증**: 실기기에서 열기/닫기·눌림 효과·맨 밑 카드 모양, 화면 밖 회원 이동(헤더 높이 기반 계산).
+
+## 2026-10-30 월렛 목록: 황금색 등록 카드·카드 크기 확대 (앱만, 서버·배포 0)
+
+- **요청**: 목록 끝(빈 화면 포함)에 '새로운 회원 등록하기' 카드, 가려지지 않은 카드는 카드다운 크기, 네이비 대신 황금색(의도: VIP를 모은다·좋은 고객을 등록한다). 직전 확인: 카드 열기/닫기 실기기에서 정상.
+- **변경** (`lib/pages/client_list_page.dart`, `test/member_wallet_card_test.dart`): 새 `MemberAddCard`(황금색 금속 그라데이션·갈색 글씨·사람+ 아이콘·"나만의 VIP 카드를 모아보세요", 높이 154), 목록 맨 끝과 빈 화면에 배치, 누르면 헤더의 회원 추가와 같은 `_openCreate`. `MemberWalletCard`의 `overlap` 22→92, `expandedExtraHeight` 80→92(보이는 윗줄 62는 그대로, 덮이지 않은 카드 154). 구간 맨 밑 접힌 카드의 아래 띠에 `총 N회 / M회 남음 · 회원권`과 다음·최근 레슨 날짜(펼친 본문 윗부분과 같은 위치·글씨라 이어짐). 마지막 회원 카드 바로 다음이 등록 카드이면 일반 카드처럼 겹침.
+- **검증**: 목록 테스트 15개, `flutter test` 1448개 통과, DEV 디버그 빌드 성공, 폰 R3CX40M6EEM 설치. `flutter analyze`는 변경 파일만 실행(오류 0).
+- **참고**: 전체 테스트가 도는 동안 소스 파일 쓰기가 한 번 잠겨 실패 → 테스트 종료 후 재적용(파일 손상 없음).
+- **미검증**: 실기기에서 154px 크기 느낌, 황금색이 GOLD 등급 카드와 헷갈리지 않는지, 빈 화면의 등록 카드, 문구.
+
+## 2026-10-30 월렛 목록: 카드 비율 200px·내비게이션 바 여백·등록 카드 문구 순환 (앱만, 서버·배포 0)
+
+- **요청(실기기 확인 후)**: 덮이지 않은 카드가 짧으니 카드 비율로, 모바일 내비게이션 바와 겹치지 않게, 황금색 등록 카드 문구를 4개 돌아가며. 황금색은 GOLD 등급과 헷갈리지 않아 유지.
+- **변경** (`lib/pages/client_list_page.dart`, `test/member_wallet_card_test.dart`): `MemberWalletCard.overlap` 92→138(덮이지 않은 카드 62+138=200, 폭 약 330 기준 1.65:1; 펼친 본문 기본 높이는 92 유지, 맨 밑 카드는 펼칠 때 200→154로 줄어듦). 맨 밑 접힌 카드 아래쪽에 등급 이름(예: BRONZE) 표시. 목록 아래 여백에 `MediaQuery.viewPaddingOf(context).bottom` 추가. `MemberAddCard`를 StatefulWidget으로 바꿔 안내 문구 4개(`MemberAddCard.messages`)가 4초마다 페이드로 순환, 카드 높이 200.
+- **검증**: 목록 테스트 15개(문구 순환 포함), `flutter test` 1448개 통과, DEV 디버그 빌드 성공, 폰 R3CX40M6EEM 설치. `flutter analyze`는 변경 파일만 실행(오류 0). 중간에 `const` 패딩에 런타임 값을 넣어 analyze 오류가 났고 `const`를 빼서 해결.
+- **미검증**: 실기기에서 200px 비율, 내비게이션 바 위에서 끝나는지, 문구 순환 모습. 눌렀을 때 효과는 참고 영상을 볼 수 없어 사용자의 설명 대기(후보: 금빛 광택 쓸기·반짝이·눌림 튕김).
+
+## 2026-10-30 등록 카드 눌림·금빛 번짐·카드 확장 전환 (앱만, 서버·배포 0)
+
+- **요청 흐름**: 황금색 등록 카드에 눌림 효과 + 카드가 화면을 덮으며 이동하는 전환(참고 영상은 볼 수 없어 사용자의 캡처로 이해) → 3D 회전은 싸 보여 '떠오르는' 확장 방식으로 교체, 금빛 번짐 추가 → 사용자의 폰 녹화 영상(내장 브라우저에 임시 로컬 서버로 띄워 프레임 확인, 확인 후 서버·탭 정리)으로 열릴 때 부자연스러운 원인 확인.
+- **원인(영상 프레임)**: ① 누른 뒤 약 0.3초 광택만 보임(제가 넣은 0.2초 대기 + 등록 권한 확인 시간) ② 전환이 시작될 때 원래 카드의 글자가 사라지고 글자 없는 금색 판으로 갑자기 바뀜 ③ 금색 판이 투명해지는 동안 뒤의 목록이 등록 화면 위로 비침 ④ 느리게 시작해 중간에 몰려 움직임.
+- **변경** (`lib/widgets/card_expand_route.dart` 신규, `lib/pages/client_list_page.dart`, 테스트): `CardExpandRoute`(열기 760ms `Cubic(0.05,0.7,0.1,1)`, 닫기 520ms `easeInOutCubicEmphasized`; 금색 판은 불투명 유지, 그 위로 새 화면이 나타남; 새 화면은 전체 크기로 만들어 틀로 잘라 보여 상태 유지; 누른 순간의 카드 얼굴을 같은 크기로 그려 서서히 지움). `MemberAddCard`: 눌림(0.975)→누르는 즉시 1.02로 떠오름, 금빛 번짐(평소 은은, 누르면 크게), 광택 띠, 문구 4개 4초 순환, 대기 없이 `MemberAddCardTap(rect, face)` 호출(등록이 끝날 때까지 기다리는 Future 반환). `_openCreate({fromRect, face})`: 카드에서만 확장 전환(애니메이션 줄이기 설정이면 기본 전환), 헤더의 회원 추가는 기존 그대로. 이전 3D 전환 파일(`card_flip_expand_route.dart`)과 테스트는 삭제(이번 세션 생성분).
+- **검증**: 관련 테스트 51개, `flutter test` 1449개 통과, DEV 디버그 빌드 성공, 폰 R3CX40M6EEM 설치. `flutter analyze`는 변경 파일만 실행(오류 0). 회귀 테스트 `personal_customer_card_regression_test.dart`는 `_openCreate` 시그니처에 선택 인자가 생겨 정규식만 넓힘(`personalOwnerUid` 전달 검사는 그대로).
+- **미검증**: 실기기에서 열기·닫기 전환의 자연스러움(디버그 빌드 끊김 여부 포함), 760ms 길이, 금빛 번짐 세기. 3D 회전·글로우 테두리 등 영상 속 다른 효과는 구현하지 않음.
+
+## 2026-10-30 오늘 레슨 위젯 세로 목록으로 교체 (앱만, 서버·배포 0)
+
+- **요청**: 오늘 레슨 위젯을 더 작고, 오늘 레슨 전부를 한눈에. 시안 논의(세로 2×4 목록 추천, 남은 회차 표시 제외, 롤업은 '지금·다음' 위젯에서 마지막 단계로 시험 후 결정) 끝에 세로형으로 확정.
+- **확인한 사실**: Dart 쪽 `selectTodayPayload`는 오늘 레슨을 끝난 것까지 모두 위젯에 넘기고(제외 상태·잘못된 시간만 거름), 끝난 레슨을 숨기는 것은 위젯이 그릴 때 거르는 것뿐 → Dart 변경 없음. 위젯은 `MtfWidgetWeekRolloverReceiver`의 알람으로 매시 00/30분에 다시 그려짐(진행 중·끝남 표시는 최대 약 30분 늦을 수 있음). Dart `buildView`/`buildLayout`은 테스트에서만 쓰임.
+- **변경** (`android/app/src/main/kotlin/com/morethanfitness/app/MtfTodayLessonRollupWidget.kt`, `android/app/src/main/res/xml/mtf_today_lesson_rollup_widget_info.xml`, `test/home_widget_navigation_service_test.dart`): 큰 카드 2장·'오늘 남은 일정'을 없애고, 날짜 + `완료 N · 남음 M` 머리글 아래 세로 목록(점·시간·이름, 폭 200dp 이상이면 종목까지). 끝난 레슨은 회색 취소선, 진행 중은 빨강, 끝난 레슨과 남은 레슨 사이에 '지금' 선(모두 끝나면 '오늘 레슨 끝'). 위젯 높이로 줄 수를 정하고 현재 위치 주변 창을 보여 주며 넘치면 '+N개 더'. 남은 회차는 표시하지 않음. 기본 크기 2×4(`targetCellWidth/Height`, 최소 110×250dp, 이전 250×250). 이미 놓인 위젯은 기존 크기를 유지하며 어떤 크기에서도 동작.
+- **Glance 제한**: 한 컨테이너 자식 10개 제한 때문에 줄을 8개씩 묶음 Column(`MAX_CHILDREN_PER_COLUMN`)으로 나눔. 처음에는 최상위 Column에 직접 넣어 이 제한을 놓쳤고, 기존 테스트가 잡아 줘서 수정. 이 테스트는 옛 화면 구조(`remaining.take` 등)에 묶여 있어 같은 규칙(묶음 크기 9 이하·`chunked` 사용)을 확인하도록 교체.
+- **검증**: `flutter build apk --debug --flavor dev` 성공(Kotlin 컴파일 포함), 위젯 관련 Dart 테스트 29개(`home_widget_today_rollup_mapper`·`home_widget_owner_storage`·`home_widget_navigation_service`) 통과, 폰 R3CX40M6EEM 설치. 전체 `flutter test`는 Dart 제품 코드를 바꾸지 않아 이번에는 다시 돌리지 않음.
+- **미검증**: 실기기 화면(줄 수·'지금' 선·취소선·2×4 크기감·점 모양 `cornerRadius`는 Android 12 이상에서만 둥글게), 이미 놓인 4×4 위젯의 모양. Kotlin 단위 테스트는 테스트 환경이 없고 JUnit 추가는 의존성 승인이 필요해 만들지 않음(줄 선택 로직 `pickWindow`/`buildEntries`가 검증 후보). 개발용 앱의 위젯 이름은 기존과 동일.
+
+## 2026-10-30 오늘 레슨 위젯: 첫 화면 확인·앱 위젯 테마 적용 (앱만, 서버·배포 0)
+
+- **실기기 확인(사용자 캡처)**: 2×4로 추가됨, 날짜(금)·DEV 배너 정상, 본문은 '오늘 레슨이 없어요'. 폰 logcat(`MTF_DAILY_WIDGET_PARSE/RENDER`)로 확인: `ownerMatched=true localDateMatched=true payloadPresent=true rawItemCount=0` → 위젯 문제가 아니라 앱이 보낸 오늘 일정이 0개(DEV 계정에 오늘 레슨 없음). `capacity=16`(2×4 칸이 약 327dp라 한 번에 16줄까지 들어가며 8줄씩 묶음 Column 2개로 그려짐).
+- **질문**: 오늘 위젯도 다크·라이트 같은 색 설정이 되는지. 조사: 앱에 위젯 테마(`WidgetThemeType` 6종, `kMtfWidgetThemes`)가 있고 앱 테마와 연동되어(`widgetThemeForAppTheme`) 저장값 `mtf_widget_*`을 주간 위젯만 읽고 있었음. 오늘·다음 레슨 위젯은 색이 고정.
+- **변경** (`MtfTodayLessonRollupWidget.kt`만, Dart 변경 없음): 같은 저장값에서 `RollupPalette`를 읽음 — 배경=`body_bg`, 날짜=`day_text`, 본문=`time_text`, 흐린 색(끝난 레슨·개수·'+N개 더')=`time_text` 55%, 진행 중·'지금' 선=`today_border`, 빈 상태 상자=`row_even`. 값이 없으면 라이트 기본색. DEV 위젯의 연보라 배경은 제거(DEV 배너로 구분).
+- **검증**: 위젯 관련 Dart 테스트 29개 통과, DEV 디버그 빌드 성공, 폰 설치.
+- **미검증**: 실기기에서 테마별 모양(특히 브랜드 라이트·또박또박은 '진행 중' 강조색이 본문색과 비슷해 굵기·점으로만 구분), 목록 자체(오늘 레슨 데이터가 있어야 확인 가능).
+
+## 2026-10-30 오늘 레슨 위젯: 진행 중 레슨을 선으로 감싸기 (앱만, 서버·배포 0)
+
+- **실기기 확인(사용자 캡처)**: 다크 테마가 적용됨, 끝난 레슨 취소선·'완료 2 · 남음 3'·'지금' 선 정상. 문제: '지금' 선이 첫 남은 레슨 위에만 있어서 진행 중인 레슨과 아직 시작 전인 다음 레슨이 구별되지 않음.
+- **변경** (`MtfTodayLessonRollupWidget.kt`만): 진행 중인 레슨(연속이면 묶음)은 '지금' 선과 '다음' 선으로 감싸고(마지막 레슨이면 이름표 없는 선), 진행 중 줄에는 강조색 16% 배경. 진행 중인 레슨이 없을 때(사이 시간)는 다음 레슨 위에 '다음' 선 하나. 시각은 표시하지 않음(위젯이 매시 00·30분에만 다시 그려져 어긋날 수 있음). 선이 2개 들어가므로 줄 수 계산에서 선 높이를 2개 몫으로 잡음, 줄 앞 여백 4dp 추가에 맞춰 '+N개 더' 들여쓰기 18dp.
+- **검증**: 위젯 관련 Dart 테스트 29개 통과, DEV 디버그 빌드 성공, 폰 설치. 폰이 다른 앱을 보고 있어 위젯 모양은 확인 못 함.
+- **미검증**: 실기기에서 감싼 모양(진행 중·사이 시간·마지막 레슨이 진행 중인 경우·겹친 진행 중 레슨), 강조 배경 농도, 라이트·다른 테마.
+
+## 2026-10-30 롤업(슬롯머신) 효과 시험 위젯 — DEV 전용 (앱만, 서버·배포 0)
+
+- **배경**: 오늘 레슨 위젯(세로 목록, 진행 중 레슨 선으로 감싸기)은 사용자 확인 완료('의도대로'). 이어서 '지금·다음' 위젯을 슬롯머신처럼 바꾸기 전에 효과가 삼성 런처에서 부드럽게 도는지만 시험(계획 1단계). 전체 `flutter test` 1449개 통과(위젯 변경 후 재확인).
+- **변경(전부 `android/app/src/dev/`, PROD 빌드에는 미포함)**: `AndroidManifest.xml`(시험 위젯 receiver), `kotlin/.../MtfRollupSpikeWidget.kt`(AppWidgetProvider, 탭 → `RemoteViews.showNext` 부분 갱신), `res/layout/widget_rollup_spike.xml`(4×1, '지금'·'다음' ViewFlipper 2개, 줄 4개씩), `res/anim/rollup_in·out.xml`(560ms, 아래에서 올라와 위로 밀려남), `res/drawable/rollup_spike_bg.xml`, `res/xml/mtf_rollup_spike_widget_info.xml`, `values/strings.xml`(이름 '모어댄 DEV 롤업 시험'). 새 의존성 없음, 기존 Glance 위젯·Dart 변경 없음.
+- **검증**: DEV 디버그 빌드 성공, 병합된 DEV 매니페스트에만 등록 확인(main·prod 매니페스트에는 없음), 폰 R3CX40M6EEM 설치.
+- **미검증(시험 대상)**: 위젯을 4×1로 추가한 뒤 탭했을 때 굴러가는 부드러움·끊김, 두 칸 동시 동작, 화면을 껐다 켰을 때 상태 유지, 런처가 다시 그릴 때 첫 줄로 돌아가는지(전체 갱신 시 초기화되는 것은 알려진 동작). 결과에 따라 3단계(실제 '지금·다음' 위젯에 적용) 진행 여부 결정.
+
+## 2026-10-30 롤업 시험 위젯 수정: 일반 View 사용 불가 (앱만, DEV 전용)
+
+- **증상(사용자 캡처)**: 시험 위젯을 추가하니 '위젯을 추가할 수 없습니다'.
+- **원인(폰 logcat)**: `AppWidgetHostView: InflateException ... Class not allowed to be inflated android.view.View` (레이아웃 81번째 줄). 위젯(RemoteViews)은 허용된 클래스만 쓸 수 있는데 '지금'·'다음' 사이 구분선에 일반 `<View>`를 썼음.
+- **수정**: `android/app/src/dev/res/layout/widget_rollup_spike.xml`의 구분선을 `FrameLayout`으로 교체. DEV 빌드 성공·폰 재설치.
+- **미검증**: 수정 후 위젯이 정상 표시되는지와 롤업 효과(폰이 다른 앱을 보고 있어 확인 못 함). 시험 전에 로그를 먼저 확인하지 않고 설치한 것은 놓친 점 — 위젯 레이아웃을 새로 만들 때는 허용 클래스를 먼저 확인할 것.
+
+## 2026-10-30 롤업 시험 2차: 부분 갱신이 삼성 런처에서 안 먹힘 → 세로 타임워치형·전체 갱신으로 교체 (DEV 전용)
+
+- **사용자 확인(실기기)**: 시험 위젯이 이제 표시되지만 탭해도 굴러가지 않음. 또한 의도는 가로 4×1이 아니라 **세로 타임워치형**(진한 지금 줄 아래에 흐린 다음 줄이 밑에서 올라옴)이었음. 가로형은 앞서 내가 제안한 '지금·다음 + 하루 막대' 모양을 확인 없이 그대로 시험한 것 — 놓친 점.
+- **원인 조사**: logcat로 탭 신호는 정상 도착(`onReceive:...ROLLUP_SPIKE_ROLL`), 런처(HoneySpace)도 다시 그리기는 수행. adb로 같은 신호를 보내 전후 화면을 캡처하니 **바이트 단위로 동일** → `partiallyUpdateAppWidget` + `RemoteViews.showNext`는 이 런처(One UI)에서 화면을 바꾸지 못함(중간 단계가 보이지 않는 것이 아니라 상태 자체가 안 바뀜).
+- **변경(`android/app/src/dev/`만)**: 레이아웃을 세로 타임워치형으로 교체 — `ViewFlipper` 한 칸이 세 줄 묶음(지금 진하게·다음 60%·그다음 30% 흐리게), 칸 전환 시 한 줄 높이(33.3%)만 밀려 굴러가는 애니메이션. 동작은 부분 갱신 대신 매번 '지금 보여 줄 칸 번호'를 `setDisplayedChild`로 담은 전체 갱신(`updateAppWidget`) + SharedPreferences에 칸 번호 저장. 위젯 기본 크기 3×2. **시험 빌드에서만 애니메이션 1.8초(확인용, 실제 적용 시 약 0.6초로 단축)**.
+- **검증**: DEV 디버그 빌드·폰 설치 성공, 폰 로그에 InflateException 없음. 화면 녹화는 비어 있었고(길이 0) 연속 캡처는 사용자가 폰을 쓰는 중이라 중단 — **수정 후 굴러가는지는 아직 확인 못 함**(사용자 시험 대기). 확인에 쓴 캡처·녹화 파일은 모두 삭제, 임시 서버·탭 정리.
+- **실제 위젯에 쓸 때의 숙제**: 칸 내용이 날마다 달라 정적 XML이 아니라 자식 뷰를 동적으로 넣어야 함. 전체 갱신이 저장본을 대체하므로 매 갱신마다 전체 상태(칸 내용 + 보이는 칸)를 함께 보내야 하고, 굴러가는 도중에 나가는 칸의 글자를 바꾸면 보이므로 '굴리는 갱신'과 '다음 칸 미리 채우기' 갱신을 나눠야 함(이 방식은 시험 결과 확인 후 설계).
+
+## 2026-10-30 '지금·다음' 위젯(DEV 전용) 1차 구현: 전/지금/다음 세 줄 타임워치 (앱만, 서버·배포 0)
+
+- **사용자 결정**: 롤업 시험은 탭하면 굴러감을 확인. 계속 굴리는 것은 도움이 안 되므로 **전/지금/다음 세 줄만** 보이고 시간이 지나면 저절로 굴러가게. 탭으로 앞뒤를 훑어보되 **6초 뒤 지금으로 복귀**. 미정이던 4가지는 제안한 기본값으로 진행(굴러가는 시점=레슨 종료 때, 오늘이 끝나면 '오늘 끝', 정시 갱신=권한 없는 일반 알람, 기존 '다음 레슨' 위젯은 그대로 두고 새 위젯으로 추가).
+- **계획**: ① 공용 읽기 코드 분리 ② 세 줄 계산 로직(순수 Kotlin)+JVM 점검 ③ 새 위젯(DEV 전용) ④ 앱 동기화 시 새 위젯 갱신 ⑤ 빌드·설치·폰 시험.
+- **변경**:
+  - `main/.../MtfTodayRollupSource.kt` 신규: 오늘 레슨 데이터 읽기·검증(소유자·환경·프로젝트·시간대·날짜)을 오늘 레슨 위젯과 공용으로 분리(코드 동일, 끝남/진행 중 판단용 종료 시각 추가). `MtfTodayLessonRollupWidget.kt`는 이를 호출. 이를 읽던 `home_widget_navigation_service_test.dart`는 새 파일을 읽도록 수정.
+  - `main/.../MtfTodayLessonRollupWidgetReceiver.kt`: 앱이 일정을 동기화해 갱신 신호를 받으면 `NOW_NEXT_REFRESH` 브로드캐스트를 같은 앱에 전달(받는 곳이 없는 PROD에서는 아무 일도 없음, Dart 변경 없음).
+  - `dev/.../NowNextDrum.kt`(세 줄 계산·다음 갱신 시각, 안드로이드 의존 없음), `NowNextDrumSelfCheck.kt`(DEV 점검용 main), `MtfNowNextWidget.kt`(AppWidgetProvider), `res/layout/widget_now_next.xml`(칸 A/B × 세 줄, `gen_now_next_layout.cjs`로 생성), 애니메이션 0.6초, `now_next_bg`, 위젯 정보(3×2, 최소 2×2), 매니페스트·이름('모어댄 DEV 지금·다음'). 시험용 `MtfRollupSpikeWidget` 관련 파일은 삭제.
+  - 동작: 들어오는 칸의 글자만 바꿔 그 칸으로 전환(나가는 칸 불변), 줄 내용이 바뀔 때만 굴러가고 이름표만 바뀌면 제자리 갱신. 위 줄 탭=이전 쪽, 아래 줄 탭=이후 쪽, 가운데 줄 탭=앱 오늘 일정. 훑어보면 6초 알람(`setAndAllowWhileIdle`)으로 복귀(탭마다 다시 셈, 토큰으로 오래된 알람 무시). 갱신 신호(시간 경과·동기화·재부팅 등)는 훑어보던 위치를 유지하지 않고 지금으로 복귀. 다음 레슨 시작·종료 시각(없으면 자정 직후, 늦어도 30분 안)에 알람으로 다시 그림.
+- **검증**: DEV 디버그 빌드 성공, 병합된 DEV 매니페스트에만 새 위젯 등록(main·시험 위젯 흔적 없음), 폰 설치. 세 줄 계산은 PC JVM에서 직접 실행해 31개 항목 모두 통과·실패 0(순서 섞인 입력, 사이 시간, 모두 끝남, 훑어보기 범위, 빈 날, 겹치는 레슨, 다음 갱신 시각 포함). 위젯 관련 Dart 테스트 29개 통과. 전체 `flutter test`는 아래 별도 확인.
+- **미검증(폰 시험 필요)**: 실제 화면·굴러가기, 위/아래 줄 탭과 방향(훑어보기는 위로 훑어도 같은 위쪽 방향으로 굴러감 — 앱에서 애니메이션 방향을 바꿀 수 없음), 6초 복귀의 실제 지연(일반 알람이라 몇 초 늦을 수 있음), 앱 동기화 후 자동 갱신, 레슨 종료 시각에 맞춘 굴러가기, 오래된 시험 위젯(홈에 남은 것)은 삭제 필요.
+- **알려진 한계/후속**: 색은 고정 어두운 테마(앱 위젯 테마 연동은 후속), 내일 첫 레슨 미표시, 훑어보기 방향 애니메이션, 정확한 알람 권한 없음, Kotlin 단위 테스트 환경 없음(순수 로직은 DEV 점검 main으로 대체).
+
+## 2026-10-30 '지금·다음' 위젯: 손 계수기(탤리 카운터) 모양·2×2 (앱만, DEV 전용)
+
+- **사용자 확인**: 1차 위젯은 잘 굴러감. 요청: 글씨를 키우고, 손 계수기처럼 숫자를 칸칸이 나눠 보이게, 전/지금/다음이 보이게, 크기 2×2.
+- **변경(`android/app/src/dev/`만)**: 레이아웃을 계수기 모양으로 교체 — 건메탈 몸체(그라데이션·테두리)·위쪽 은색 레버(장식)·움푹한 어두운 창 안에 세 줄. 시각 'HH:mm'을 숫자 칸 네 칸(칸마다 어두운 배경·흰 모노스페이스 숫자)과 가운데 ':'로 나눠 표시, 가운데 줄은 큰 칸(25×40dp, 27sp)+이름 17sp 굵게(숫자 아래), 위·아래 줄은 작은 칸(17×24dp)+이름 옆. 시각이 없는 줄('오늘 끝' 등)은 숫자 칸 숨김. 위젯 기본 크기 2×2(최소 110×200dp). 레이아웃과 아이디 목록(`NowNextIds.kt`)은 `gen_tally_layout.cjs`로 함께 생성. 굴러가기·훑어보기·알람 동작은 그대로(들어오는 칸의 글자만 바꿔 전환).
+- **검증**: DEV 디버그 빌드 성공, 폰 설치, 로그에 InflateException 없음, 위젯이 실제 데이터로 갱신됨(전 17:00 김혜림 / 지금 18:00 ALINKFINAL / 다음 19:00 권 — 계산 맞음). 이전 빌드 기준 전체 `flutter test` 1449개 통과(이번 변경은 DEV 안드로이드 리소스·코틀린만).
+- **미검증**: 실제 모양(칸·글자 크기가 2×2에 맞는지, 다른 기기 크기에서 잘림), 굴러갈 때 숫자 칸이 어색하지 않은지, 숫자 칸마다 따로 돌아가는 효과는 없음(줄 전체가 굴러감).
+- **후속 후보**: 숫자 칸마다 따로 굴러가는 계수기 효과, 앱 위젯 테마 색 연동, 기기별 크기 대응(작은 칸 수에서 글자 줄이기).
+
+## 2026-10-30 '지금·다음' 위젯: 한 줄·이름 줄임·카운터 질감 (앱만, DEV 전용)
+
+- **사용자 확인(캡처)**: 계수기 모양 '훨씬 괜찮음'. 가운데 줄 이름이 아래로 잘려 보임(`ALINKFINAL` 아래쪽이 잘림). 요청: ① 전/다음 글자 불필요(시간이 보이므로) ② 시간과 이름을 한 줄에, 이름은 5자 넘으면 '…' ③ 더 카운터기 느낌(네모 느낌 탈피) ④ 카카오맵처럼 그림을 쓰려면 SVG가 필요한지 질문.
+- **변경(`android/app/src/dev/`만)**: 이름표 글자를 모두 제거 — 대신 가운데 줄이 지금 진행 중이면 숫자·이름을 금색(`setTextColor`), 아니면 흰색. 모든 줄에서 숫자 칸 + 이름을 한 줄에 배치(가운데: 16×32dp 칸 22sp·이름 13sp 굵게, 위·아래: 12×20dp 칸 13sp·이름 12sp). 이름은 5자(코드포인트 기준)를 넘으면 5자 + '…', 시각이 없는 줄('오늘 끝' 등)은 줄이지 않음. 카운터 질감: 몸체 레이어(그라데이션+위쪽 광택 띠+테두리), 위쪽 레버, 몸체 나사 2개, 오른쪽 옆면의 홈이 파인 손잡이(직접 쓴 VectorDrawable), 안쪽이 움푹한 창(바깥 테두리+위쪽 안쪽 그림자). 레이아웃 루트를 FrameLayout으로 바꿔 장식을 가장자리에 배치. `gen_tally_layout.cjs`가 레이아웃과 `NowNextIds.kt`를 함께 생성.
+- **실제 크기(폰 `dumpsys appwidget`)**: 3×2 = 294×217dp이므로 2×2 ≈ 196dp 폭. 이 폭에서 한 줄에 맞도록 칸 크기를 조정.
+- **검증**: DEV 디버그 빌드 성공, 폰 설치, 로그에 InflateException 없음, 위젯이 실제 데이터로 갱신(전 17:00 김혜림 / 지금 18:00 ALINKFINAL / 다음 19:00 권). 세 줄 계산 로직은 변경 없음.
+- **미검증**: 실제 모양(2×2에서 가운데 줄 이름이 5자까지 들어가는지, 칸·글자 크기, 손잡이·레버·나사 크기와 위치), 굴러갈 때 장식이 어색하지 않은지.
+- **SVG 질문 답**: SVG 필수 아님. 단순한 그림(레버·손잡이·나사)은 VectorDrawable을 직접 작성, 정교한 일러스트는 디자이너의 SVG(단순 도형·색·그라데이션만 변환 가능, 필터·그림자·글자는 불가) 또는 밀도별 PNG를 받아 사용. 위젯 선택 목록의 미리보기 이미지는 `android:previewImage`로 따로 지정 가능(현재는 위젯 레이아웃 자체가 미리보기).
+
+## 2026-10-30 '지금·다음' 위젯: 2×2 표시, 레버 가운데·나사 4개, 한 줄 칸·글자 빛 (앱만, DEV 전용)
+
+- **사용자 확인**: 위젯 선택 목록에 2×3으로 나오고 2×2는 없음(원인: 위젯 정보의 최소 높이를 200dp로 잡아 목록이 높이 3칸으로 계산). 요청: 글자(이름)도 숫자처럼 칸 안에, 레버는 가운데, 나사는 네 모서리 4개, 배경이 전자판 느낌이어야 하는지 의견. 시안(한 줄/두 줄, 기계식/전자판)으로 비교 후 **한 줄 구성 + 은은한 빛**으로 결정.
+- **변경(`android/app/src/dev/`만)**: `mtf_now_next_widget_info.xml` 최소 크기를 110×110dp(2칸 기준)로 수정해 목록에 2×2가 나오게 함. 레버를 위쪽 가운데로, 나사를 네 모서리 4개로(창 위아래 여백 18dp 확보). 한 줄 구성: 숫자 4칸 + 이름 글자 칸 6개(5자 + '…', 안 쓰는 칸은 숨김) — 가운데 줄 12.5dp 칸(숫자 15sp·이름 11.5sp), 위·아래 줄 11.5dp 칸. 시각이 없는 줄('오늘 끝' 등)은 칸 없이 글자만(`label`). 숫자·이름 칸에 은은한 빛(`shadowColor/shadowRadius`: 가운데는 금빛 반경 5, 위·아래는 흰빛 반경 3). 창 좌우 여백 8/17dp·안쪽 여백 6dp로 줄여 폭 확보. `gen_tally_layout.cjs`가 레이아웃과 `NowNextIds.kt`(이름 칸 아이디 포함)를 함께 생성, `MtfNowNextWidget.kt`의 `bind`는 이름을 코드포인트 단위로 칸에 나눠 넣음.
+- **검증**: DEV 디버그 빌드 성공(리소스 컴파일 통과), 폰 설치. **홈에 위젯 인스턴스가 없어(사용자가 삭제) 화면·로그 확인은 못 함** — 위젯을 새로 추가하면 확인 가능. 세 줄 계산 로직·알람·탭 동작은 변경 없음.
+- **미검증**: 2×2 실제 모양(칸 크기·글자가 칸에 들어가는지, 숫자 4칸 + 이름 6칸이 한 줄에 맞는지), 빛 세기, 굴러갈 때. 이름 5자 + '…'가 가운데 줄에서 폭이 빠듯함(계산상 156dp/가용 약 159dp).
+- **의견 전달**: 전자판 배경은 몸체가 기계식이라 숫자에 은은한 빛만 더하는 중간안을 권고(사용자 동의).
+
+## 2026-10-30 '지금·다음' 위젯: 2×2 실제 화면 확인·칸 여백·세로로 긴 칸 (앱만, DEV 전용)
+
+- **실기기 확인(사용자 캡처)**: 2×2로 홈에 놓임. 18:32 기준 세 줄(17:00 김혜림 흐림 / 18:00 ALINKFINAL 금색 / 19:00 권)이 맞게 계산됨, 레버 가운데·나사 4개·손잡이·빛 의도대로. 문제: ① 가운데 줄 `ALINK…`의 마지막 '…' 칸이 창 오른쪽 끝에 닿아 잘려 보임(폭 156/158dp로 거의 꽉 참, 칸 사이 여백 양쪽 1dp가 큼) ② 줄 사이가 비어 보임(칸 높이 25/21dp, 줄당 약 57dp).
+- **변경(`android/app/src/dev/`, 생성기 `gen_tally_layout.cjs` 상수만)**: 칸 사이 여백 1dp→0.5dp(숫자 바퀴처럼 붙임), 가운데 칸 13×36dp(숫자 19sp·이름 12sp, 폭 151dp), 위·아래 칸 12×28dp(숫자 15sp·이름 11sp, 폭 140dp). 로직·알람·탭은 변경 없음.
+- **검증**: DEV 디버그 빌드 성공, 폰 설치, 위젯이 새 크기로 갱신됨(로그 `result=ready`, InflateException 없음, 세 줄 계산 동일). 폰이 다른 앱을 보고 있어 새 화면은 직접 못 봄.
+- **미검증**: 새 칸 크기에서 마지막 '…' 칸이 잘리지 않는지, 세로로 길어진 칸의 모양, **굴러가기(레슨 종료 18:50 전후)·위/아래 줄 탭 훑어보기·6초 복귀·가운데 줄 탭으로 앱 열기·앱 동기화 후 갱신**은 사용자 확인 대기(캡처에는 정지 화면만 있었음).
+
+## 2026-11-01 '지금·다음' 위젯: 칸마다 굴러가기·크기 자동 조정·테마·PROD 포함 (앱)
+
+- **사용자 확인(실기기)**: 자동 굴러가기(레슨 종료 18:50), 이름이 짧을 때 칸이 커지는 모양·줄 사이 빈 공간 개선, 앱 위젯 테마 변경 시 색 변화 모두 잘 됨. 위젯 선택 목록 미리보기는 잘 뜸 — 단, 예시 이름이 실제 회원 이름과 같아 가상 이름으로 교체 요청.
+- **변경**: ① 숫자·이름 칸마다 따로 굴러감(칸마다 작은 ViewFlipper, 바뀐 칸만 전환; Samsung에서 부분 갱신이 동작하지 않아 전체 갱신 + `setDisplayedChild`). ② 실제 위젯 크기에서 칸·글자 크기를 계산해, 이름이 짧으면 칸을 키우고 줄 사이 빈 공간을 줄임. ③ 앱 위젯 테마 6종(light·dark·pinkperfume·brownHistory·ttobak·brandLight)에 맞춰 몸체·창·칸 색 변경. ④ 위젯 선택 목록 미리보기(`previewLayout`)의 예시 이름을 홍길동·이순신·신사임당으로 교체(실제 회원 이름 제거; 사용자가 '심사임당'으로 적었으나 인물 이름인 '신사임당'으로 표기). ⑤ **PROD 포함**: `src/dev`의 위젯 소스(`MtfNowNextWidget.kt`·`NowNextDrum.kt`·`NowNextIds.kt`·`NowNextThemes.kt`)·리소스(layout·anim·drawable·xml)를 `src/main`으로 이동, 수신기 선언을 `main/AndroidManifest.xml`로 옮기고 `dev/AndroidManifest.xml` 삭제, `main/res/values/strings.xml`에 `now_next_widget_name`(모어댄 지금·다음) 추가(DEV는 기존 '모어댄 DEV 지금·다음'으로 덮어씀). DEV 전용 자기검사(`NowNextDrumSelfCheck.kt`)만 `src/dev`에 남김. 레이아웃·아이디·테마는 `gen_tally_layout.cjs`가 생성(기본 출력 위치를 main으로 변경).
+- **검증**: DEV 디버그 빌드 성공, PROD 디버그 빌드(`--flavor prod -t lib/main.dart`) 성공, PROD APK 매니페스트에 `MtfNowNextWidget` 수신기 포함 확인, DEV APK 폰 설치 성공, 전체 `flutter test` 1449개 통과.
+- **미검증**: PROD 앱을 폰에 설치해 위젯 목록에 '모어댄 지금·다음'이 뜨는지(빌드·매니페스트까지만 확인), 새 예시 이름이 들어간 미리보기 화면. 릴리스 빌드·배포는 하지 않았음(버전 올리기·스토어 배포는 별도 결정).
+- **남은 위험**: PROD 포함으로 다음 릴리스부터 모든 사용자 홈에서 위젯을 고를 수 있게 됨 — 릴리스 전 PROD 실기기 확인 권장. `AlarmManager.setAndAllowWhileIdle`(부정확 알람) 사용이라 절전 모드에서 굴러가는 시각이 수 분 늦을 수 있음.
+
+## 2026-11-01 P6-6: 레슨계약서 해지 (서버+앱 코드·테스트 완료, **DEV 배포는 승인 대기**)
+
+- **사용자 결정**: 해지는 환불 처리가 아니라 계약이 끝났다는 기록. 환불은 강사·회원이 알아서 하므로 앱은 환불 계산·송금을 하지 않는다. 회원 서명은 받기 어려운 경우가 많아 **필수가 아닌 선택**, 서명이 없어도 해지할 수 있고 대신 증빙 항목을 자동으로 남긴다. 안은 '서명 선택 + 증빙 자동 기록 + 환불 미처리'로 확정, 기본값 두 가지(그 회원의 가장 최근 완료 계약만 해지 / 해지 사실 통지 링크는 후속)도 승인.
+- **서버(`functions/src`)**: 새 callable `terminatePersonalContract`(`personal_contract_terminate.ts`). 완료 계약만(기간 제한 없음), 더 나중에 완료된 계약이 있으면 `terminate_not_latest`. 입력은 사유 코드(회원 요청/강사 사정/기타, 기타는 메모 필수)·회원 의사표시 방법(구두/문자/카톡/방문/기타)·의사표시 날짜(계약 완료일~오늘, 한국 날짜)·`zeroRemain`·`markExpired`·선택 `strokes`. 서버가 해지 시각과 총/소진/잔여 스냅샷, 증빙 등급(`member_signed`/`trainer_only`)을 기록하고, 이벤트는 추가만(`terminated`, 서명이 있으면 `terminate_signed`). 계약은 `terminated`(삭제하지 않음), 회원 문서는 `contractSigned=false`·`contractStatus=terminated`·`contractTerminatedAt` + 선택에 따라 잔여 0 정리/활동 중 회원만 만료 이동(관리 회원 수 -1). 이미 해지된 계약 재호출은 안전(`alreadyTerminated`). `contract_notices/{계약ID}_terminate` 알림은 기록만(발송 후속). `personal_contract_rules.ts`에 `terminated` 상태 추가, 이미 보낸 PDF 열람 링크·진위 확인이 해지 뒤에도 동작(진위 화면 '체결 후 해지된 계약서').
+- **앱**: `terminateContract` 게이트웨이(+`ContractTerminateResult`), 완료 계약 더보기(⋮)에 '계약 해지'(항상)와 '계약 파기(3일 이내)'(3일 안), 해지 시트(`lesson_contract_terminate_sheet.dart`: 사유·의사표시 방법/날짜·잔여 0 정리·만료 이동·회원 서명 받기(기본 켬, 끄면 '강사 단독 기록')·환불 미처리/되돌릴 수 없음 안내) → (선택) 회원 서명(파기와 같은 서명 유사도 확인) → 확인 창 → 서버 기록. 해지된 계약은 읽기 전용 완료 화면(해지 기록 카드: 해지 처리·사유·의사표시·증빙 등급·해지 시점 횟수, 전달 카드·메뉴 없음), 목록은 '해지됨' 칩(숨기지 않음). 파기 거부 안내문을 '더보기의 "계약 해지"로 진행'으로 변경.
+- **검증**: `tsc`·전체 eslint 무오류, 계약 에뮬레이터 52/52(신규 7: 서명 없이 해지·서명+잔여0+만료 이동+관리 회원 수·활동 중 아닌 회원 상태 유지·중복 해지·거부 사례 13종·최신 계약만+해지 후 재계약·해지 후 파기 불가), 배송 에뮬레이터 18/18(신규 1: 해지 후 링크·진위 확인), Flutter 신규 `lesson_contract_terminate_test.dart` 9개 + 기존 파기 테스트 갱신 통과, 전체 `flutter test` 1458개 통과, `flutter analyze` error 0(1170건, 기준 1195건보다 감소), DEV 디버그 빌드 성공. 에뮬레이터 실행에는 Android Studio 번들 JDK를 PATH에 임시로 지정(시스템 설정은 바꾸지 않음).
+- **미검증/남은 일**: DEV 서버 배포 전이라 폰에서 실제 호출은 불가. 실기기에서 해지 전 과정(시트 → 서명/무서명 → 확인 → 해지 기록 화면), 해지 후 홈의 '계약 미완료' 표시와 레슨 확정 동작, 잔여 0 정리·만료 이동 반영 확인 필요. 회원 문서의 `lessonSync.contractId`는 해지 후에도 남겨 둠(홈은 `contractSigned=false`로 판단) — 실기기에서 확인. 해지 알림 실제 발송·'통지됨' 증빙 등급(회원 열람 링크로 해지 알림)·해지 후 PDF/확인서는 후속.
+- **승인 대기**: DEV Functions 배포 — 신규 `terminatePersonalContract`, 업데이트 `viewPersonalContract`·`verifyPersonalContract`(해지된 계약 열람 허용). Rules·Storage·인덱스 변경 없음(기존 조건 조회만 사용), PROD 변경 없음.
+
+## 2026-11-01 P6-6 해지 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: `firebase deploy --only functions:terminatePersonalContract,functions:viewPersonalContract,functions:verifyPersonalContract --project more-than-fitness-dev-mft --non-interactive`. 결과: `terminatePersonalContract(asia-northeast3)` 신규 생성, `viewPersonalContract`·`verifyPersonalContract` 업데이트 성공. Rules·Storage·인덱스·PROD 변경 없음. `us-central1` 이미지 정리 정책 경고(이전과 같음, `--force` 안 씀)로 명령은 종료 코드가 오류로 나왔으나 함수 3개는 배포됨.
+- **폰**: DEV 디버그 앱 설치.
+- **미검증**: 실기기에서 해지 전 과정(시트 → 서명/무서명 → 확인 → 해지 기록 화면), 해지 후 홈 '계약 미완료' 표시·레슨 확정, 잔여 0 정리·만료 이동, 해지 뒤 기존 PDF 링크 열람, `contract_notices` 해지 알림 기록.
+
+## 2026-11-01 P6-6 해지 실기기 확인
+
+- **사용자 확인(DEV 앱·실기기)**: 폰에서 계약서 해지를 해 봤고 잘 동작함. 세부 항목(홈 '계약 미완료' 표시, 잔여 0 정리·만료 이동, 기존 PDF 링크)은 사용자가 따로 보고하지 않았으므로 개별 확인으로 기록하지 않음.
+
+## 2026-11-01 만료 자동 분류 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: `firebase deploy --only functions:autoExpireMemberships,functions:signPersonalContract,functions:voidPersonalContract --project more-than-fitness-dev-mft --non-interactive`. 세 함수 모두 `asia-northeast3` **업데이트** 성공(예약 함수 `autoExpireMemberships`는 '신규'가 아니라 이미 DEV에 있어 업데이트로 표시됨 — 이전에 만들어져 있었던 것으로 보이며 배포 이력은 따로 확인하지 않음). Rules·Storage·인덱스·PROD 변경 없음. `us-central1` 이미지 정리 정책 경고는 이전과 같음(`--force` 안 씀).
+- **미검증**: 매일 00:40(KST) 예약 실행이 실제로 도는지(Cloud Scheduler 작업·`auto_expire_done` 로그), 종료일 지난 회원이 만료로 이동하는지, 재계약 시 복귀·기간 갱신, 파기 시 복원은 실기기/DEV 데이터로 확인 전.
+
+## 2026-11-01 P7 1~2단계: PROD 반영 대상 정리 + 서버 전체 회귀 (읽기·테스트만, 서버·PROD 변경 0)
+
+- **PROD 반영 대상(읽기 전용 조회로 확인, PROD에는 어떤 쓰기도 하지 않음)**: ① 함수 — `firebase functions:list`로 DEV 39개 / PROD 29개, 차이는 정확히 신규 계약서 함수 10개(`savePersonalContractDraft`·`savePersonalContractSettings`·`signPersonalContract`·`managePersonalContract`·`voidPersonalContract`·`terminatePersonalContract`·`attachPersonalContractPdf`·`viewPersonalContract`·`verifyPersonalContract`·`autoExpireMemberships`), PROD에만 있는 함수는 없음. ② 기존 함수 수정 — `finalizePersonalTrainingLog`·`cancelPersonalTrainingLog`에 레슨 진행 알림 기록 추가(PROD에는 옛 버전). ③ Firestore 인덱스 — `personal_contracts` 2개(trainerId+updatedAt, trainerId+memberId+updatedAt)가 DEV에는 있고 PROD에는 없음. ④ Firestore 규칙 — `personal_contracts`(+`events`)·`personal_contract_counters` 추가(앱은 소유자 읽기만, 쓰기 불가). ⑤ Storage 규칙 — `contract_logos/{uid}/…`, `personal_contracts/{uid}/{계약}/contract_v{n}.pdf` 추가. 이전 릴리스 커밋(7744027) 이후 변경분을 기준으로 정리했으며, PROD에 실제 배포된 소스가 그 커밋과 같다는 것은 확인하지 못함(가정).
+- **서버 전체 회귀(Android Studio 번들 JDK 임시 PATH)**: 프로필 30 / 익명 26 / 회원·등급 94 / 개인 분류 25 / 일정 규칙 30 / 레슨일지 69 / 레거시 관리자 28 / 닉네임 22 / 회원권 정지·재개 9 / 자동 재개 5 / **계약 52** / **계약 배송 18** / 계약 접근 프로브 11 / Storage 회원 프로필 규칙 9 — 전부 통과(종료 코드 0). 배송 로그에는 예상된 오류 문구 1줄이 찍혔으나 시나리오는 18개 모두 통과. 앞서 `flutter test` 1458개 통과, `flutter analyze` error 0.
+- **계획서와 현재 코드의 차이**: 계획서 §9는 '앱 진입점 숨김(플래그)으로 즉시 롤백'이라 적었지만 앱에는 그런 플래그가 없음. 현재 안전장치는 PROD 순서(규칙·인덱스 → 함수 → 앱)뿐이며, 앱이 나간 뒤에는 앱 버전을 되돌려야 함. 4단계에서 플래그 추가 여부 결정.
+- **산출물**: `docs/product/lesson-contract-p7-checklist.md`(DEV 폰 점검표 31개 시나리오).
+- **미검증**: Storage 계약 로고·완료본 PDF 규칙이 전용 에뮬레이터 시험으로 PROD 규칙과 동일하게 확인됐는지(배송·접근 시험 범위 밖일 수 있음), 폰 점검(3단계), 서비스 에이전트 역할(4단계).
+
+## 2026-11-01 P7-4 준비: 계약 Storage 규칙 에뮬레이터 테스트 추가 (테스트만, 규칙·서버·PROD 변경 0)
+
+- **배경**: 계약 로고(`contract_logos`)·완료본 PDF(`personal_contracts/{uid}/{계약}/contract_v{n}.pdf`) Storage 규칙은 코드에 있었지만 전용 에뮬레이터 테스트가 없었음. PROD 배포 전 확인.
+- **추가**: `firebase-emulator-tests/storage_contract_rules.test.cjs`(14 시나리오) + `package.json` 스크립트 `test:storage-contract-rules`·`test:storage-contract-emulators`(auth·firestore·storage 에뮬레이터, 계약 문서를 교차 조회하는 PDF 규칙 포함). 로고: 본인 PNG 2MB 이하·`logo_숫자.png`만 생성, 본인만 읽기/삭제, 남의 경로·비로그인·익명·이름/형식/크기 위반 거부. PDF: 완료된 자기 계약에 현재 버전 이름으로 한 번만 생성, 본인만 읽기, 덮어쓰기/삭제 불가, 버전 불일치·미완료·해지·파기 뒤·없는 계약·타인 계약·남의 경로·비로그인·익명·비PDF·빈 파일·10MB 초과·잘못된 계약 ID 거부, 규칙에 없는 경로 거부.
+- **검증**: 14/14 통과. 테스트가 규칙을 실제로 잡는지 확인하려고 `storage.rules`에서 '덮어쓰기 금지'와 '완료 상태' 조건을 임시로 약화했더니 PDF 덮어쓰기 시나리오(7번)에서 실패했고, 규칙 파일은 백업과 바이트 단위로 같게 복원했다(규칙 변경분 diff +40줄 그대로). 규칙·서버 코드는 바꾸지 않음. 전체 서버 회귀(이전 14개 모음)와 합쳐 이상 없음.
+- **참고(규칙 동작)**: 로고 읽기/삭제 규칙은 비익명 조건이 없고(생성만 비익명 요구), 완료되지 않은 계약(해지·파기 포함)에는 PDF를 새로 올릴 수 없다 — 서버의 `attachPersonalContractPdf` 완료 조건과 같은 방향.
+
+## 2026-11-01 P7-4: Storage 서비스 에이전트 역할 확인 (읽기 전용, IAM·PROD 변경 0)
+
+- **방법**: firebase-tools(14.22)의 자체 모듈(`lib/gcp/resourceManager.getIamPolicy`)을 CLI 로그인 계정으로 호출해 프로젝트 IAM 정책에서 Storage 서비스 에이전트(`service-<프로젝트번호>@gcp-sa-firebasestorage.iam.gserviceaccount.com`)가 가진 역할만 출력(토큰·키는 읽거나 출력하지 않음). gcloud는 설치돼 있지 않음.
+- **DEV(`more-than-fitness-dev-mft`)**: 서비스 에이전트에 `roles/firebaserules.firestoreServiceAgent` + `roles/firebasestorage.serviceAgent` **있음** → 교차 서비스 Storage 규칙(`firestore.get`) 동작 조건 충족. (2026-10-22 PDF 업로드 403 차단 항목은 이 역할로 해소된 상태로 보이나 부여 시점은 기록에 없음.)
+- **PROD(`more-than-fitness-f6adb`)**: 서비스 에이전트에 `roles/firebasestorage.serviceAgent`만 있고 **`roles/firebaserules.firestoreServiceAgent`가 없음** → 이대로 Storage 규칙을 올리면 `firestore.get/exists`를 쓰는 규칙(계약 PDF 업로드, 기존 `isLegacyAdmin` 규칙 포함)이 403으로 막힐 수 있음.
+- **PROD 영향 해석(미확인)**: 기존 레거시 관리자용 Storage 규칙(`member_profiles` 등)도 같은 교차 서비스 규칙이라 PROD에서 이미 막혀 있을 가능성이 있으나 PROD 동작은 확인하지 않음. 역할을 부여하면 그 규칙들도 동작하게 되므로, 부여 전후로 레거시 관리자 Storage 동작을 확인해야 함.
+- **조치(사용자 몫, IAM 변경은 제가 하지 않음)**: PROD 콘솔 IAM에서 해당 서비스 에이전트에 `Firebase Rules Firestore Service Agent` 역할 부여, 또는 PROD Storage 규칙 배포를 `--non-interactive` 없이 실행해 CLI의 역할 확인 프롬프트에서 부여. 부여 후 이 읽기 전용 확인을 다시 실행해 반영 확인.
+
+## 2026-11-01 P7-4 결정 + P7-5 PROD 배포 계획서 (문서만, PROD 변경 0)
+
+- **결정(사용자)**: 진입점 플래그는 만들지 않고 **배포 순서(규칙·인덱스 → 함수 → 앱)** 로 진행. 앱이 나간 뒤 문제가 생기면 롤아웃 중단·앱 버전 복귀.
+- **PROD 인덱스 비교(읽기 전용)**: PROD 5개와 로컬 7개를 `__name__` 보정 후 비교 → 로컬에만 있는 것은 `personal_contracts` 2개뿐(삭제 대상 없음).
+- **산출물**: `docs/product/lesson-contract-prod-deploy-plan.md` — 시작 조건 6개, 변경 목록, 단계별 명령(인덱스 → 규칙 → Storage(`--non-interactive` 없이) → 함수 12개 이름 명시 → 앱), 단계별 롤백, 모니터링, 제외 범위, 위험.
+- **계획서가 짚은 위험**: ① 앱 릴리스 범위 — 직전 릴리스(1.0.6+26, `7744027`) 이후 미커밋 변경이 약 170개 파일이고 대부분 계약서와 무관(월렛 목록·고객카드·아나토미·위젯·테마 등)이라 앱을 릴리스하면 전부 함께 나감 → 범위 결정 필요. ② `autoExpireMemberships`는 PROD 회원 데이터를 실제로 바꿈(종료일이 지난 활동 회원을 매일 새벽 만료로 이동, 계약 없는 회원은 카드 종료일만 봄) → 첫 실행에서 대량 만료 가능, 이 함수만 빼고 먼저 올린 뒤 종료일 분포를 읽기 전용으로 점검하는 방안 권장. ③ Storage 규칙은 서비스 에이전트 역할 부여 전 배포 금지. ④ 법률 문구는 §18 전문가 확인 전 최종본 아님.
+- **미검증/남은 일**: 계획서 작성 시 PROD의 Blaze·Cloud Scheduler 상태는 확인하지 않음(시작 조건 0-6). 폰 점검(0-1), 역할 부여(0-2), 규칙 백업(0-3), 법률 확인(0-4), 앱 릴리스 범위(0-5)는 사용자 몫.
+
+## 2026-11-01 P7-5 결정 반영: 1.0.7 전체 묶음 + autoExpire 나중에 (문서만, PROD 변경 0)
+
+- **결정(사용자)**: ① 앱 릴리스는 현재 작업 전체를 `1.0.7`로 묶는다. ② `autoExpireMemberships`는 이번 배포에서 빼고 나중에 따로 배포한다.
+- **`docs/product/lesson-contract-prod-deploy-plan.md` 수정**: 4단계를 4-1(함수 11개 = 신규 9 + 수정 2, `autoExpireMemberships` 제외)과 4-2(`autoExpireMemberships` 별도: Blaze·Scheduler 확인 → PROD 회원 종료일 분포 읽기 전용 점검 → 대상 수 확인 → 별도 승인 후 배포)로 분리, 시작 조건 0-5를 '전체 1.0.7 + DEV 앱 전체 회귀 점검'으로, 0-6은 4-2 전으로 연기, 6단계에 `pubspec.yaml` `1.0.7+27` 상향(해당 단계 시작 시)과 계약서 외 변경 동반 점검을 반영, 위험 1·2를 결정 상태로 갱신. `autoExpireMemberships`를 빼도 계약 완료·파기·해지 때의 회원 기간·상태 연동은 동작하고 빠지는 것은 '종료일이 지나면 자동 만료' 매일 작업뿐임을 명시.
+- **버전**: `pubspec.yaml`은 아직 `1.0.6+26` 그대로(릴리스 단계에서 올림).
+- **미검증/남은 일**: 시작 조건 0-1(폰 점검 31개)·0-2(PROD 역할 부여)·0-3(규칙 백업)·0-4(법률 확인)·0-5(DEV 앱 전체 폰 점검)는 사용자 몫으로 대기.
+
+## 2026-11-01 해지된 계약서 미리보기에 '해지 완료' 워터마크 (앱만, 서버·배포 0)
+
+- **사용자 확인(폰 해지 점검 중)**: 해지된 계약서의 '계약서 보기'가 정상 계약서와 똑같이 보여 대각선 '해지 완료' 표시가 필요하다고 제안. 스크린샷 차단도 문의 → 의견: 차단하지 않음(카메라 촬영은 못 막고, 강사가 해지 기록을 캡처해 증빙으로 남기는 정상 사용을 막으며, 네이티브 변경/패키지 추가 필요). 문구는 '해지 완료'로 결정.
+- **변경**: `LessonContractPreviewPage`에 `watermark` 옵션 추가 — 쪽마다 대각선(-0.5rad) 반투명 빨강 글씨를 겹쳐 그림(쪽이 길면 세로로 반복, `IgnorePointer`라 확대·이동 방해 없음), 실제 PDF 쪽 이미지와 PDF를 못 그릴 때의 종이 문서 화면 모두 적용. 해지된 계약(`status == terminated`)의 '계약서 보기'에서만 '해지 완료'를 넘김. **PDF 파일·문서 해시는 바꾸지 않음**(이미 회원에게 간 파일과 같게 둠; 진위 확인 화면은 이미 '체결 후 해지된 계약서'로 표시).
+- **검증**: 신규 테스트 3개(문구가 있으면 두 쪽 모두 표시·없으면 없음·IgnorePointer 안, PDF 실패 시 문서 화면에도 표시, 해지/완료 계약의 계약서 보기 비교) + 영향받는 기존 테스트 통과, 변경 파일 `flutter analyze` 무오류, 전체 `flutter test` 1461개 통과, DEV 디버그 빌드·폰 설치.
+- **미검증**: 실제 PDF 쪽(래스터) 위에서의 글씨 크기·진하기(테스트는 1×1 이미지·종이 화면 기준), 폰에서의 모양.
+- **한계**: 회원에게 이미 보낸 PDF 파일/링크에는 워터마크가 없음(파일을 바꾸면 해시가 달라져 증빙이 약해짐). 필요하면 열람 링크 페이지에 '해지됨' 안내를 붙이는 방안은 후속.
+
+## 2026-11-01 계약서 메뉴 정리: 햄버거 '계약서 관리' 통합 + 추천 칩 '신규계약서' + 지난 레슨계약서 대화창 제거 (앱만, 서버·배포 0)
+
+- **사용자 확인**: 해지된 계약서 미리보기 '해지 완료' 워터마크는 폰에서 잘 나옴. 계약서 메뉴 정리 요청 3건 — ① 햄버거의 '레슨계약서'/'회원권계약서'를 관리 페이지로 통합(검색으로 찾기, 갱신 주기 3개월~1년), ② 홈 레슨 시트 AIFC 추천 칩 '계약서관리'는 하는 일이 신규 작성이라 '신규계약서'로, ③ 고객카드 '지난 레슨계약서'의 AIFC 대화창 제거.
+- **의견·결정(사용자 승인)**: 회원권계약서 목록을 한 화면에 합치는 것은 이번엔 하지 않음(회원권계약서는 아직 회원별 하위 컬렉션의 예전 구조라 전체 목록에 새 조회·인덱스·규칙 변경이 필요 → P7 일정에 영향; 회원권계약서 v2 때 합침). 이번엔 햄버거 '계약서 관리' 하나 → 레슨계약서 목록(검색·필터)에서 '새 레슨계약서 작성'과 기존 '회원권계약서 작성' 버튼으로 작성. 회원권 관리(정지 이력·회원권계약서)는 고객카드에 그대로.
+- **변경**: `MtfAnimatedDrawer`에 `onContractManage` 추가(있으면 두 항목 대신 '계약서 관리 / 계약서 검색 · 작성 · 이력' 하나, 아래 항목 순서 번호 조정, 없으면 기존 두 항목 — 레거시 관리자 흐름 유지). `HomePage`는 일반 워크스페이스에서만 `_openContractManageFromHome`을 넘기고, 이는 기존 등급 확인·최초 1회 축하 시트(`_openContractStartChatSheet(opener:)`)를 거친 뒤 `MemberContractsPage(memberId: null, autoStartWhenEmpty: false, onOpenMembership: _openMembershipContractFromHome)`를 연다. 추천 칩 라벨 '신규계약서'(키 `aifc_contract_manage_action`은 그대로). 고객카드 `_openContractHistorySheet`는 일반 워크스페이스에서 등급 확인 뒤 대화창 없이 `_openContract()`(이 회원의 계약서 목록)을 연다(그 밖의 워크스페이스는 기존 대화창).
+- **검증**: 신규 테스트 5개(드로어 단일 항목·콜백, 레거시 두 항목 유지, 홈 연결, 고객카드 분기) + 칩 이름 갱신한 기존 테스트 통과, 전체 `flutter test` 1465개 통과, `flutter analyze` error 0(1170건, 증가 없음), DEV 디버그 빌드·폰 설치.
+- **미검증(폰)**: 햄버거 '계약서 관리' → 목록/작성 버튼 동작, 등급이 낮은 계정의 안내 시트, 추천 칩 이름·폭, 고객카드 '지난 레슨계약서'(버튼·⋮ 메뉴)가 목록으로 바로 가는지. 햄버거에서 첫 진입 시 축하 시트가 이전처럼 뜨는지.
+- **알아둘 점**: 계약서 관리 화면 제목은 '레슨계약서 관리' 그대로(회원권계약서는 아직 이 목록에 없음). 햄버거에서 회원권계약서 작성은 이 화면의 '회원권계약서 작성' 버튼으로 이동.
+
+## 2026-11-01 회원권계약서 회원 선택 시트 다크모드 (앱만)
+
+- **사용자 확인(폰)**: 계약서 메뉴 정리(햄버거 '계약서 관리', 등급 낮은 계정 안내 시트, '신규계약서' 칩, 지난 레슨계약서 → 목록)는 모두 잘 동작. 단 '회원권계약서 작성'을 누르면 뜨는 회원 선택 시트가 다크 모드에 적용되지 않음.
+- **원인**: `HomePage._showMembershipContractMemberPicker`의 시트가 `Colors.white`, `0xFFF8FAFC`, `0xFF111827` 등 라이트 전용 색을 하드코딩.
+- **변경**: 같은 함수의 색을 `Theme.of(sheetContext).colorScheme`(surface·onSurface·onSurfaceVariant·outlineVariant·primary)로 교체. 레이아웃·동작은 그대로.
+- **검증**: 소스 검사 테스트 1개 추가(하드코딩 색 7종·`Colors.white` 없음, 테마 색 사용), 전체 `flutter test` 통과, `flutter analyze` error 0, DEV 빌드·폰 설치.
+- **미검증**: 폰에서 다크 모드 모양. 시트 다음 화면(회원권계약서 작성 페이지 `MembershipContractPage`)의 다크 모드는 이번 범위가 아니어서 확인·수정하지 않음.
+
+## 2026-11-01 회원권계약서 회원 선택 시트 다크모드 폰 확인
+
+- **사용자 확인(폰)**: 다크 모드에서 회원 선택 시트가 정상 표시됨. `MembershipContractPage`는 따로 언급이 없어 확인 대상으로 남김.
+
+## 2026-11-01 해지하면 레슨 등록을 항상 0으로 (서버+앱 코드·테스트 완료, **DEV 배포는 승인 대기**)
+
+- **사용자 확인(폰)**: 점검표 A 완료, B도 되는 것으로 확인. 홈 레슨 시트의 빨간 `총 10 / 잔여 0 · 소진 (+10)` 칩이 환불·해지 표시인지 문의 → 칩은 잔여 0 = 소진 표시일 뿐 해지 여부를 보지 않음(해지 후 '잔여 0 정리'를 켜면 다 쓴 회원과 구분 불가, 안 켜면 남은 횟수가 그대로 보임).
+- **사용자 결정**: 해지한 회원은 재등록할 수 있으므로 이전 횟수를 남기지 않고 **그냥 0이 되게** 한다(칩의 `해지` 라벨 제안은 폐기).
+- **서버(`personal_contract_terminate.ts`)**: 해지하면 항상 `totalSessions`·`remainSessions`·`remainingSessions`·`doneSessions`·`sessions.total/remain/done`을 0, `sessions.notRegistered`·`lessonsNotRegistered`를 true, `lastRegistration`을 삭제(칩 `미등록`, `(+N)` 사라짐). 해지 시점 값은 계약서 `termination.snapshot`에 그대로 남음. `zeroRemain` 입력은 옛 앱 호환을 위해 형식만 확인하고 무시, 응답 `zeroedRemain`은 항상 true. `markExpired`(만료 이동)는 그대로 선택.
+- **앱**: 해지 시트에서 `남은 횟수를 0으로 정리` 스위치 제거, 안내 문구와 확인 창에 '총·잔여 횟수는 0(미등록)으로 정리되고 되돌릴 수 없다' 추가, 게이트웨이는 `zeroRemain`을 보내지 않음.
+- **검증**: 서버 `tsc`·전체 eslint 무오류, 계약 에뮬레이터 52/52(해지 시나리오 기대값 갱신: 해지 후 총·잔여·소진 0·미등록·`lastRegistration` 삭제, 다른 필드 유지, 중복 해지 무변화, 해지 후 재계약은 0에서 시작해 총 10·잔여 10·소진 0), Flutter 전체 1466개 통과, `flutter analyze` error 0(1170건 유지), DEV 빌드·폰 설치(단, 서버 배포 전이라 폰에서 새 동작은 아직 안 보임).
+- **알아둘 점**: 이미 해지해 본 테스트 회원은 예전 방식 상태 그대로. 해지 직전의 이전 계약이 3일 이내였어도 `lastRegistration`이 지워져 그 파기는 `void_not_latest_registration`으로 안전하게 거부됨.
+- **승인 대기**: DEV Functions 배포 — `terminatePersonalContract`만. Rules·Storage·인덱스·PROD 변경 없음.
+
+## 2026-11-01 해지 레슨 등록 0 정리 DEV 배포 (사용자 승인)
+
+- **배포(DEV `more-than-fitness-dev-mft`, `--project` 명시, `--force` 미사용)**: `firebase deploy --only functions:terminatePersonalContract --project more-than-fitness-dev-mft --non-interactive` → `terminatePersonalContract(asia-northeast3)` 업데이트 성공. Rules·Storage·인덱스·PROD 변경 없음. `us-central1` 이미지 정리 정책 경고는 이전과 같음(명령 종료 코드는 오류로 나오나 함수는 배포됨).
+- **미검증(폰)**: 새 테스트 회원으로 해지 → 회원카드 `미등록`·총/잔여/소진 0, 홈 칩 `(+N)` 사라짐, 이어서 재계약하면 0에서 시작.
+
+## 2026-11-01 결정: 레슨계약서 먼저 PROD, 회원권계약서는 별도 프로젝트 (문서만)
+
+- **배경**: 사용자가 P7에 회원권계약서도 포함되는지 문의. 확인 결과 구현 계획서 §범위·명세서 서두 모두 '레슨계약서만, 회원권계약서는 별도'로 정해져 있고 P0~P7은 레슨계약서 단계임을 설명.
+- **결정(사용자)**: 레슨계약서(앱 1.0.7 전체 묶음)를 먼저 PROD에 올리고, 회원권계약서는 따로 진행한다(새 구조·서버 함수·규칙·인덱스가 필요해 P0 명세부터 같은 단계로).
+- **영향**: P7 PROD 배포 계획(`lesson-contract-prod-deploy-plan.md`)은 변경 없음. 회원권계약서는 이번 PROD 범위가 아니며, 계약서 관리 목록에 합치기·휴회·정지 조항 정의도 그 프로젝트에서 한다. 현재 회원권계약서(예전 구조)는 PROD에서 지금처럼 동작.
+
+## 2026-11-01 앱 1.0.7 전체 점검표 작성 (문서만, 코드·서버·PROD 변경 0)
+
+- **산출물**: `docs/product/release-1.0.7-checklist.md` — 직전 릴리스(1.0.6+26) 이후 `RUN_LOG.md`에 기록된 변경(116개 항목)을 근거로 9개 구역(회원 리스트 월렛, 고객카드, 홈 레슨 시트, 홈 화면 위젯 4종, 마이페이지·설정, 레슨일지, 계약서 스모크, 계정·환경, 릴리스 후 PROD 확인)으로 묶은 폰 점검표. 레슨계약서 흐름 자체는 `lesson-contract-p7-checklist.md`(A·B 확인됨)에 두고 이쪽은 계약서 외 기능과 맞닿는 화면 위주.
+- **특히 넣은 항목**: 레슨 확정·취소(PROD에 수정된 서버 함수 `finalize`/`cancel`가 나가므로), PROD 변형 위젯 이름 `모어댄 지금·다음`(PROD 빌드에서 처음 확인), 레거시 관리자 계정 회귀, 릴리스 후 PROD 확인 6개(DEV 배지 없음·PDF 링크·함수 로그·레거시 Storage 등).
+- **한계**: 점검표는 문서 기록을 근거로 한 것이며 코드 전체 비교로 만든 것이 아님. 미커밋 변경이 약 170개 파일이라 기록에 없는 변경이 있을 수 있음. 실제 점검은 사용자가 폰에서 수행(미검증).
+
+## 2026-11-01 P7 시작 조건 0-3: PROD 게시 규칙 원문 백업 (읽기 전용, PROD 변경 0)
+
+- **방법**: firebase-tools(14.22) 자체 모듈(`lib/gcp/rules.getLatestRulesetName/getRulesetContent`)을 CLI 로그인 계정으로 호출해 PROD(`more-than-fitness-f6adb`)에 현재 게시된 Firestore(`cloud.firestore`)·Storage(`firebase.storage`) 규칙 원문을 가져옴. 토큰·키는 읽거나 출력하지 않음. 쓰기·배포 없음.
+- **저장**: `docs/agent/backups/prod-rules-2026-11-01/firestore.rules`(26,222자)·`storage.rules`(2,897자). 규칙에는 비밀 값이 없음. 롤백 시 이 파일을 재게시(승인 후).
+- **비교 결과**: 두 파일 모두 직전 릴리스 커밋 `7744027`의 `firestore.rules`·`storage.rules`와 줄 끝 공백·줄바꿈을 제외하고 **완전히 같음** → 'PROD에 배포된 규칙 = 1.0.6 커밋' 가정이 규칙에 대해서는 확인됨(함수 소스는 별도 가정).
+- **남은 일**: 배포 직전에 PROD 규칙이 그 사이 바뀌지 않았는지 같은 방법으로 한 번 더 비교.
+
+## 2026-11-01 법률 확인 8개 설명 + 사용자 진행 결정 (문서만)
+
+- 명세서 §18의 법률 확인 8개를 쉬운 말로 설명(질문·앱의 현재 동작·틀렸을 때 위험·우선순위·문의처). 제가 법률 자문은 하지 않음. 전문가 질의서 작성은 제안했으나 사용자가 '이건 이제 됐고 다음으로 넘어가자'고 하여 진행하지 않음.
+- **기록**: 사용자가 법률 확인 단계는 더 진행하지 않고 다음으로 넘어가기로 함. 전문가 검토를 받았다는 뜻으로 기록하지 않음 — 계약서 문구는 명세서에 적힌 대로 '법률 검토 전 초안' 상태.
+- **PROD 상태 확인(사용자 질문)**: PROD에는 아무것도 올리지 않았음. PROD에 한 일은 읽기 전용 조회뿐(함수 목록, 인덱스, 게시 규칙 원문, IAM 정책).
+
+## 2026-11-01 P7 시작 조건 0-2: PROD 서비스 에이전트 역할 부여 확인 (사용자 부여, 제가 읽기 전용 확인)
+
+- **사용자 작업**: Google Cloud 콘솔(IAM, 프로젝트 번호 993248877411 = PROD)에서 Storage 서비스 에이전트 `service-993248877411@gcp-sa-firebasestorage.iam.gserviceaccount.com`에 `Firebase 규칙 Firestore 서비스 에이전트`(`roles/firebaserules.firestoreServiceAgent`)를 추가. 기존 `Firebase용 Cloud Storage 서비스 에이전트` 역할은 그대로.
+- **확인**: 사용자 캡처에서 두 역할이 보임 + 제가 읽기 전용 IAM 조회(`resourceManager.getIamPolicy`)로 PROD에 두 역할(`firestoreServiceAgent`, `firebasestorage.serviceAgent`)이 있음을 확인. DEV와 같은 상태. 다른 주체의 권한 변경은 없음(해당 서비스 에이전트의 바인딩만 조회).
+- **영향**: 교차 서비스 Storage 규칙(`firestore.get`)이 PROD에서도 동작할 조건 충족. 기존 레거시 관리자용 Storage 규칙도 같은 조건을 쓰므로 부여 전후로 레거시 관리자 Storage 동작(회원 사진 업로드 등)이 달라질 수 있음 — 점검표 9-6에서 확인.
+- **남은 일**: Storage 규칙은 여전히 PROD에 배포하지 않았음(P7-6에서 승인 후).
+
+## 2026-11-01 P7-6 1~2단계: PROD Firestore 인덱스·규칙 배포 (사용자 승인)
+
+- **사용자 승인**: '인덱스랑 규칙 먼저 올리자'. Storage 규칙·함수·앱은 포함하지 않음.
+- **사전 확인(읽기 전용)**: PROD 게시 규칙을 다시 조회해 백업(`docs/agent/backups/prod-rules-2026-11-01/`)과 같음을 확인(그 사이 변경 없음). 로컬 `firestore.rules`와 PROD의 차이는 `personal_contracts`(+`events`)·`personal_contract_counters` 18줄 추가뿐. PROD 인덱스 5개 = 로컬 중 기존 5개, 로컬에만 있는 것은 `personal_contracts` 2개뿐(삭제 대상 없음).
+- **배포(PROD `more-than-fitness-f6adb`, `--project` 명시, `--force` 미사용)**: ① `firebase deploy --only firestore:indexes --project more-than-fitness-f6adb --non-interactive` 성공 → PROD 인덱스 7개(로컬과 차이 0, `personal_contracts` 2개 포함). ② `firebase deploy --only firestore:rules --project more-than-fitness-f6adb --non-interactive` 성공(컴파일 통과, 릴리스 `63acbb9d…`).
+- **사후 확인(읽기 전용)**: PROD에 게시된 `firestore.rules`가 로컬 파일과 같음, PROD `storage.rules`는 백업과 같음(변경 없음), PROD 함수 목록에 `PersonalContract` 함수 0개(함수 배포 안 함).
+- **롤백 방법**: 백업 `firestore.rules`를 같은 방법으로 재게시(승인 후). 인덱스는 추가만이라 되돌릴 필요 없음.
+- **영향**: 새 컬렉션 규칙이 추가됐을 뿐 기존 컬렉션 규칙은 변경 없음 → 현재 앱 동작에 영향 없어야 함. 인덱스 상태(READY)는 CLI 목록으로 확인 못 했으나 `personal_contracts` 컬렉션이 PROD에 아직 없어 즉시 준비됨이 정상.
+- **미검증**: 규칙 배포 직후 기존 PROD 앱 동작(로그인·회원·일정)을 실기기로 확인하지 않음 — 1.0.7 점검표 9장 또는 현재 PROD 앱으로 한 번 확인 권장.
+- **남은 PROD 단계**: Storage 규칙(`--non-interactive` 없이, 승인) → 함수 11개(승인) → 앱 1.0.7. 함수·앱은 폰 점검(0-1, 0-5) 후.
+
+## 2026-11-01 P7-6 3단계: PROD Storage 규칙 배포 (사용자 승인)
+
+- **사전 확인**: PROD Storage 규칙이 백업과 같음(앞선 조회), 로컬과의 차이는 **추가 40줄·삭제 0줄**(`contract_logos`, `personal_contracts/{uid}/{계약}/contract_v{n}.pdf`). 서비스 에이전트 역할(`firebaserules.firestoreServiceAgent`)은 이미 부여·확인됨.
+- **배포(PROD, `--project` 명시, `--force` 미사용)**: `firebase deploy --only storage --project more-than-fitness-f6adb --non-interactive` 성공(컴파일 통과, 릴리스됨). 계획서는 `--non-interactive` 없이 CLI의 역할 확인 프롬프트를 거치도록 했으나, 이 실행 환경은 대화형 입력이 없어 `--non-interactive`로 실행하고 대신 IAM을 읽기 전용으로 직접 확인(역할 있음)했음 — 계획과 다른 점.
+- **사후 확인(읽기 전용)**: PROD에 게시된 `storage.rules`·`firestore.rules`가 모두 로컬 파일과 같음, PROD 서비스 에이전트 역할 유지.
+- **롤백**: 백업 `storage.rules`(`docs/agent/backups/prod-rules-2026-11-01/`)를 같은 방법으로 재게시(승인 후).
+- **영향/미검증**: 기존 경로 규칙은 변경 없음. 규칙이 교차 서비스 조회를 쓰므로 기존 레거시 관리자 Storage 동작(회원 사진 업로드 등)이 역할 부여로 달라졌을 수 있어 점검표 9-6에서 확인 필요. 계약 PDF·로고 업로드는 함수·앱이 나간 뒤에야 실제로 쓰이므로 아직 PROD에서 확인 불가.
+- **남은 PROD 단계**: 4-1 함수 11개(승인, 폰 점검 후) → 앱 1.0.7.
+
+## 2026-11-01 P7-6 4-1단계: PROD 함수 11개 배포 (사용자 승인)
+
+- **사용자 확인·승인**: '폰 점검 끝냈어 함수 배포 승인할게'. 점검 결과의 항목별 ○/× 목록은 받지 않았으므로 항목별 확인은 기록하지 않음(사용자 보고 '끝냈다'만 기록).
+- **사전 확인**: `functions/src` 변경은 `index.ts`(+53줄, 신규 export)·`personal_training_logs.ts`(+36줄, 레슨 진행 알림 기록)와 신규 파일뿐, 그 밖의 기존 함수 소스는 직전 릴리스와 같음. PROD에 `finalizePersonalTrainingLog`·`cancelPersonalTrainingLog` 존재(v1·callable·asia-northeast3·256MB·nodejs22), 서버 lint·build 통과, 에뮬레이터 전체 회귀 통과(앞선 기록).
+- **배포(PROD `more-than-fitness-f6adb`, `--project` 명시, `--force` 미사용, 함수 이름 11개 명시)**: `firebase deploy --only functions:savePersonalContractDraft,…,functions:cancelPersonalTrainingLog --project more-than-fitness-f6adb --non-interactive` → **신규 생성 9개**(`savePersonalContractDraft`·`savePersonalContractSettings`·`signPersonalContract`·`managePersonalContract`·`voidPersonalContract`·`terminatePersonalContract`·`attachPersonalContractPdf`·`viewPersonalContract`(https)·`verifyPersonalContract`(https)) + **업데이트 2개**(`finalizePersonalTrainingLog`·`cancelPersonalTrainingLog`) 모두 성공, 오류·정리 정책 경고 없음. `autoExpireMemberships`는 계획대로 배포하지 않음.
+- **사후 확인(읽기 전용)**: PROD 함수 목록 37개, DEV 38개이고 차이는 `autoExpireMemberships` 하나뿐(PROD에만 있는 함수 없음). HTTPS 스모크: 잘못된 값으로 `viewPersonalContract`·`verifyPersonalContract` 호출 → 둘 다 404(정상, 정보 노출 없음).
+- **롤백**: 신규 9개는 앱이 호출하기 전까지 사용되지 않으므로 문제 시 `firebase functions:delete 이름 --project …`(승인 후). 수정 2개는 직전 릴리스 커밋(`7744027`)의 `functions/`로 재배포(승인 후).
+- **영향/미검증**: 현재 PROD 앱(1.0.6)이 호출하는 `finalizePersonalTrainingLog`·`cancelPersonalTrainingLog`가 수정됐으므로 실제 PROD 앱으로 레슨 확정·취소가 정상인지(차감·복원, `lesson_progress_notices` 기록) 확인이 필요함 — 아직 하지 않음. 신규 계약서 함수는 앱 1.0.7이 나가야 호출됨.
+- **남은 PROD 단계**: 앱 1.0.7 릴리스(버전 `1.0.7+27` 상향·서명 빌드·스토어는 사용자) → 릴리스 후 PROD 확인(점검표 9장) → (나중에) `autoExpireMemberships` 4-2.
+
+## 2026-11-01 앱 버전 1.0.7+27로 상향 (앱만, 서버·배포 0)
+
+- **변경**: `pubspec.yaml` `version: 1.0.6+26` → `1.0.7+27` (한 줄). 다른 곳에 하드코딩된 버전 문자열은 없었음(`lib`·`android/app/build.gradle*`·테스트 검색).
+- **검증**: `flutter analyze` error 0(1170건 유지), 전체 `flutter test` 1466개 통과, PROD 디버그 빌드(`--flavor prod -t lib/main.dart`) 성공.
+- **하지 않은 것**: 서명된 릴리스 빌드(appbundle/apk release)·스토어 업로드·커밋·푸시·태그. 서명 키 파일(`key.properties`, keystore)은 읽지 않음. 사용자 영역.
+- **남은 PROD 단계**: 앱 1.0.7 서명 빌드·스토어 단계 출시(사용자) → 릴리스 후 PROD 확인(점검표 9장).
+
+## 2026-11-02 — 폰 PROD 앱 1.0.7+27 덮어쓰기 설치
+
+- 설치된 PROD 앱(1.0.6+26, 설치 경로 adb)의 서명 인증서와 새 빌드의 서명 인증서(SHA-256 c18b5444…)가 같음을 apksigner로 확인.
+- `flutter build apk --release --flavor prod -t lib/main.dart --no-pub` 성공(122.7MB), aapt: com.morethanfitness.app / versionName 1.0.7 / versionCode 27.
+- `adb install -r` 성공(데이터 유지), 폰 dumpsys에서 versionName 1.0.7, versionCode 27 확인.
+- 키 저장소·`key.properties`는 읽지 않았다(gradle이 자동 사용). 스토어 업로드·커밋·푸시 없음. 앱 동작은 사용자가 폰에서 확인 필요(미검증).
+
+## 2026-11-02 — 폰 점검 피드백 5건 반영 (UI만, 서버·규칙·의존성 변경 없음)
+
+- 요청(폰 확인 결과): ① 저장된 수업 상품이 없을 때 시트가 너무 길다 ② 할인 상품의 정상가 칸을 `정상가`/`회당 정상가` 두 칸으로 나누고 한쪽을 쓰면 다른 쪽 자동 계산 ③ 파기된 계약서 안내 문구를 전문적으로 ④ 회원리스트 그룹 변경 목록 배경을 카드 등급색으로 ⑤ 열린 회원 카드의 윗줄을 눌러도 고객카드로 이동(닫기 기능 제거).
+- 변경: `lesson_contract_form_page.dart`(`_ProductPickerSheet`가 비었을 때 내용 높이만큼만 열림, `_listPerSession`/`_lastListEdit`/`_onListEdited`/`_recalcListFields`/`_fillListPerSession`, 횟수·상품 불러오기·체크 해제와 연동), `lesson_contract_sign_flow_page.dart`(파기 문구: "파기된 계약서입니다.\n작성하신 계약서의 효력 및 등록한 레슨은\n무효로 처리되었습니다."), `client_list_page.dart`(`MemberWalletCard` 탭: 접힘=펼침/펼침=고객카드, 그룹 선택 목록 배경=카드 등급 그라데이션 중간색을 12% 어둡게+흰 글자).
+- 테스트: `member_wallet_card_test.dart` 3개를 새 동작에 맞게 수정, `lesson_contract_form_test.dart`에 2개 추가(빈 상품 시트 높이<화면 절반, 정상가↔회당 정상가 양방향·횟수 변경), `lesson_contract_void_test.dart` 문구 수정.
+- 검증: `flutter analyze` error 0(1170건, 이전과 동일), `flutter test` 1468 통과(+2), 변경한 Dart만 `dart format`.
+- 미반영: 서버가 보내는 회원용 파기 안내 페이지(`personal_contract_delivery.ts`의 "파기된 계약서예요")는 Functions 배포가 필요해 이번엔 손대지 않았다(승인 후 별도).
+- 미해결: 앱 전체 버벅임 원인 분석(측정 필요), 계약서 관리 검색창 요청의 뜻 확인 필요.
+
+## 2026-11-02 — 레슨 시트 하단 여백 축소
+
+- 요청: 홈 레슨 시트에서 `AI 레슨 추천 회원` 아래~내비게이션 사이 빈 공간이 너무 크다.
+- 원인: `home_page.dart` 레슨 시트 본문 `Padding`의 아래 20 + 추천 회원과 하단 버튼 사이 `SizedBox` 6 + 하단 버튼 윗여백 4 + SafeArea(내비게이션 높이)가 겹침.
+- 변경: 본문 아래 여백 20→8, 추천 회원↔하단 버튼 간격 6→2 (`lib/pages/home_page.dart`). 다른 화면·로직 변경 없음.
+- 검증: `flutter analyze`(home_page.dart 새 오류 없음), 관련 홈 위젯 테스트 통과. 여백 크기는 실기기에서 확인 필요.
+
+## 2026-11-02 — 폰 PROD 앱 재설치 (피드백 6건 + 여백 반영 빌드)
+
+- `flutter build apk --release --flavor prod -t lib/main.dart --no-pub` 성공(122.8MB), 서명 SHA-256 c18b5444…(폰 설치본과 동일), versionName 1.0.7 / versionCode 27.
+- `adb install -r` 성공(데이터 유지), 폰 dumpsys 1.0.7 확인(설치 09:34). 앱 동작은 사용자가 폰에서 확인 필요(미검증).
+
+## 2026-11-02 — 레슨 시트 하단 여백 추가 축소
+
+- 사용자 폰 확인: 8/2로 줄여도 아직 넓음 → 본문 아래 여백 8→0, 추천 회원↔하단 버튼 간격 2→0(SizedBox 제거). 하단 버튼 자체 윗여백 4와 SafeArea(내비게이션 높이)는 유지. `lib/pages/home_page.dart`만 변경, 실기기 확인 필요.
+
+## 2026-11-02 — 홈 스크롤 프레임 측정 (진단만, 코드 변경 없음)
+
+- `gfxinfo`·`SurfaceFlinger --latency`는 Flutter(SurfaceView)에서 프레임이 0으로 나와 `SurfaceFlinger --timestats`로 측정(측정 후 `-disable`로 되돌림). 기기 SM-S926N, 120Hz, 릴리스 APK 1.0.7(27), 홈 화면 스크롤.
+- 결과(앱 레이어 7085프레임): 평균 118.8fps, 8ms(120Hz 정상) 94.6%, 16ms(한 프레임 놓침) 4.5%, 25ms 0.3%(21프레임), 33ms 2프레임, 그 이상 0. SF 기준 janky 분류 0.
+- 해석: 홈 스크롤 자체는 대체로 매끄러움. 체감 버벅임은 화면 전환·시트 열기·계약서 입력처럼 다른 순간일 가능성 → 체감 순간을 특정해 같은 방식으로 재측정 필요(미측정).
+
+## 2026-11-02 — 햄버거 메뉴(드로어) 열릴 때 버벅임 완화
+
+- 증상: 홈에서 햄버거 메뉴를 열 때 끊김. 홈 스크롤·계약서 작성은 문제 없음.
+- 원인(코드 분석, 측정 전 가설): 메뉴는 열릴 때마다 새로 만들어지고 `_LNeonPainter`(경로 길이 계산+번지는 선 3겹)가 열리는 슬라이드와 동시에 매 프레임 그려지며, 패널 본체(번짐 34·28 그림자 2겹)와 같은 층이라 본체가 매 프레임 다시 그려짐. LIVE 카드 파형 막대 5개는 열려 있는 내내 `repeat`로 패널을 다시 그림.
+- 변경(`lib/widgets/mtf_animated_drawer.dart`, 모양은 동일): 네온선 시작을 열림 슬라이드 뒤(280ms)로 미룸, 파형 막대 시작도 그만큼 미룸(`Timer`로 바꿔 dispose 때 취소), 패널 본체·네온선·파형 막대를 각각 `RepaintBoundary`로 분리.
+- 검증: `flutter analyze` 1170건(변화 없음, error 0), `mtf_animated_drawer_test.dart` 9개 통과. 열릴 때 프레임 수치는 변경 전 기준값을 못 잡아 폰 체감과 변경 후 측정으로 확인 예정(미검증).
+
+## 2026-11-02 — 햄버거 네온선 윗부분 진하게, 홈 화면 맨 아래 여백 축소
+
+- 폰 확인: 메뉴 열림은 전보다 훨씬 부드러움. 네온선 윗부분이 얇아 보임 → 선 굵기·번짐은 그대로이고 윗부분은 원래 "흐릿하게" 설계(시작색 투명도 0x55, 번짐 6~8%)였음. 시작색 투명도 0x55→0xA0, 위쪽 번짐 0.06→0.16·중간 번짐 0.08→0.18로 올림(`mtf_animated_drawer.dart`).
+- 홈 화면을 맨 아래까지 내렸을 때 하단 바와 내용 사이 공백: 스크롤 영역 아래 여백이 고정 120(바 눈에 보이는 높이 74보다 46 큼) → `88 + 기기 내비게이션 높이`로 변경(`home_page.dart`). 바 높이가 기기 내비게이션에 따라 달라지는 것을 반영.
+- 검증: `flutter analyze` 1170건(변화 없음, error 0), 드로어·하단 버튼 테스트 통과. 실기기 확인 필요(마지막 내용이 하단 바에 가리지 않는지 포함).
+
+## 2026-11-02 — 홈 화면 맨 아래 여백 추가 축소 (원인: GridView 자동 여백)
+
+- 폰 확인: 햄버거 메뉴는 적당. 홈 화면 맨 아래(최근 회원 ~ 하단 바)·최근 회원 머리말~아바타 사이가 여전히 멀다.
+- 원인: `home_recent_clients_section.dart`의 `GridView.count(shrinkWrap)`에 padding을 안 줘서 Flutter가 `MediaQuery.padding`(상태 표시줄·기기 내비게이션 높이)을 위아래 여백으로 자동 추가. 그 아래 `SizedBox(32)`(`home_page.dart`)도 있었음.
+- 변경: `GridView.count(padding: EdgeInsets.zero)`, 최근 회원 아래 `SizedBox` 32→12. 스크롤 아래 여백은 `88 + 기기 내비게이션 높이` 유지.
+- 검증: `flutter analyze` 새 오류 없음, 최근 회원 칩 테스트 통과. 실기기 확인 필요. 같은 자동 여백 문제가 다른 `shrinkWrap` 목록에도 있을 수 있어 확인 필요(미조사).
+
+## 2026-11-02 — 소멸 위험 칩 + 계약서 관리 화면 리뉴얼 (앱 화면만, 서버·규칙·의존성 변경 없음)
+
+### 1) 소멸 위험 칩 (`client_list_page.dart`)
+- 활성 회원이 레슨(`remainingSessions > 0`)을 남기고 사용 기간(`expireAt`, 레슨계약서 완료 시 서버가 계약 사용기간 끝날짜로 기록)이 14일 이내(`_kExpiryRiskDays`)에 끝나면 `잔여 N회 · D-3 소멸`(당일은 `오늘 소멸`) 한 알약으로 알림. 기존의 `잔여 N회`·`회원권-N` 두 알약/칩은 이 경우 합쳐 하나로 대체(접힌 월렛 카드 요약 `_summaryParts`, 이슈 칩 `_memberMembershipIssueChips`). 그 밖의 기준(잔여 3/5회, 만료 30/10일)은 이번에 바꾸지 않았다(미통일 상태 그대로).
+- 목록 행(`MemberListRow`)은 칩 묶음이 길어지면 이름 칸이 사라지고 320dp에서 85px overflow가 나서 칩 묶음을 너비의 62%까지만 쓰고 `FittedBox(scaleDown)`으로 줄이도록 수정.
+- 테스트: `member_wallet_card_test.dart`(소멸 위험 경계 14/15일·0일·잔여 0·휴면·펼친 카드 칩, 기존 알약 개수 기대 수정), `client_list_membership_label_test.dart`(기대 문구 변경, 320~411dp overflow 없음).
+
+### 2) 계약서 관리(전체 모드) 리뉴얼 (`member_contracts_page.dart`, `lesson_contract_widgets.dart`)
+- `LessonContractHeader`에 `bottom` 영역 추가(머리말이 늘어나 요약 카드를 담음).
+- 제목 `계약서 관리`, 머리말 오른쪽 `+`(레슨·회원권 선택 시트 `showContractChooserSheet`), 머리말 안 요약 카드 2개: `계약 미완료 회원`(활동 회원 중 완료 계약·계약 표시가 없는 회원 수, 해지로 `contractStatus=terminated`면 미완료, 누르면 회원 목록 시트 → 고르면 그 회원으로 새 레슨계약서 작성), `체결된 계약`(`레슨 N · 회원권 -`, 회원권 합산은 준비 중, 누르면 완료만 보기).
+- 서명 대기·작성 중 계약이 있을 때만 목록 위 띠(`서명 대기·작성 중 N건`, 누르면 진행 중 필터).
+- 목록 카드를 문서 모양(왼쪽 상태 띠·문서 아이콘)으로 바꾸고, 목록 맨 끝에 점선 `+ 새 계약서 작성` 카드. 회원별 목록 모드(회원카드 아이콘)는 기존 버튼 레이아웃 그대로.
+- 회원 목록은 `members`(trainerId·workspaceType=personal) 실시간 조회, 못 받으면 미완료 수는 `-`이고 계약서 목록은 그대로(테스트 포함). 새 쿼리·인덱스·규칙 변경 없음.
+- 테스트: `all_contracts_list_test.dart` 수정·추가(요약 수 계산, 회원 시트, 서명 대기 띠, 추가 카드·선택 시트, 회원 목록 오류 시 동작, `membersWithoutContract`).
+- 검증: `flutter analyze` 1170건(변화 없음, error 0), `flutter test` 1475개 통과. 실기기 확인 필요(미검증).
+- 미해결: 회원권계약서 합산·일반 계정 저장 가능 여부(미확인), 소멸 위험 외 임박 기준 통일.
+
+## 2026-11-02 — 계약서 관리 화면 수정(사용자 폰 피드백 반영)
+
+- 피드백: 기본 틀이 회원리스트여야 하는데 머리말에 형광선이 없고, 머리말 블록은 3개(진행 중 계약·미작성 회원·체결된 계약)로 하기로 했고 안내 문구는 빼고 아이콘·이름·숫자만. 목록 끝은 회원리스트처럼 문서 모양 틀의 `+ 새 계약서 작성` 카드, 취소·파기된 계약서는 열고 닫는 토글 대신 더보기로.
+- 변경: `LessonContractHeader`에 `neon` 옵션(회원리스트 머리말과 같은 `MtfHeaderNeonOverlay`, 계약서 관리·취소·파기 화면에만 켬). 머리말 카드 3개(회원리스트 카드와 같은 아이콘·이름·숫자 모양, 진행 중/체결은 누르면 목록 필터 토글·선택 표시, 미작성 회원은 시트). 서명 대기 띠 제거(카드로 대체). 목록 카드와 맨 끝 카드를 오른쪽 위가 접힌 문서 모양(`_DocPaper`)으로, 맨 끝 카드는 회원 등록 카드와 같은 황금색(`kMemberAddCardGradient`). 머리말 `+` 옆 더보기(⋮) → `취소·파기된 계약서 보기 (N)` 별도 화면, 전체 목록에서는 토글 제거(회원별 목록 모드는 기존 토글 유지).
+- 라벨: `진행 중 계약`·`미작성 회원`·`체결된 계약`(좁은 카드 폭 때문에 `계약 미작성 회원`을 `미작성 회원`으로 줄임). `체결된 계약`은 현재 레슨계약서만 센다(회원권 합산 없음).
+- 테스트: `all_contracts_list_test.dart` 갱신·추가(카드 3개·필터 토글·안내 문구 없음·더보기 화면·320/360dp 넘침 없음). `flutter analyze` 1170건(변화 없음, error 0), `flutter test` 1478개 통과(첫 실행에서 1건 실패했으나 원인 파악 전 재실행 두 번 모두 통과 — 간헐 실패 가능성, 어떤 테스트인지는 확인 못 함). 실기기 확인 필요.
+
+## 2026-11-02 — 계약서 관리 2차 피드백(0건 토스트·서류 카드 1탭 요약) (앱 화면만, 서버·규칙·의존성 변경 없음)
+
+- 피드백: ① 머리말 형광선 색이 회원리스트와 달라 보임 ② 0건 카드를 누르면 안내 토스트 ③ 계약서 카드가 "네모에 모서리만 조금 접힌" 느낌이라 더 종이 서류답게, 회원리스트처럼 한 번 누르면 요약이 펼쳐지고 두 번 누르면 계약서 화면.
+- ①: 원인 조사 결과 형광선 색·굵기·세기(`lineColor` 기본값, `intensity 0.52`, `strokeWidth 1.6`)와 머리말 그라데이션은 회원리스트와 동일 값. 차이는 회원리스트 머리말에만 있던 아래쪽 그림자(`BoxShadow 0.08, blur 12, offset 0,5`)뿐이라 `LessonContractHeader(neon: true)`에도 같은 그림자를 추가(색 의도적 변경 아님). 폰에서 여전히 다르면 스크린샷으로 재확인 필요.
+- ②: 진행 중 계약 0건 → `진행 중인 계약이 없습니다.`, 미작성 회원 0명 → `미작성 회원이 없습니다.`, 체결된 계약 0건 → `체결된 계약이 없습니다.` 토스트(필터 토글·시트는 열지 않음). 이로써 도달 불가가 된 `member_contracts_missing_empty` 빈 시트 분기 삭제. 문구는 사용자가 말한 표현(합쇼체)을 따름(앱 다른 토스트는 해요체).
+- ③: 접힌 모서리를 20→34px로 키우고 종이 그림자(`drawShadow`), 접힌 면 음영 그라데이션과 접힌 면이 안쪽 종이에 드리우는 그림자 추가(색은 그대로). 카드를 `_ContractDocCard`(카드별 펼침 상태)로 분리: 1탭=펼침(AnimatedSize), 펼친 뒤 1탭=`_open`(초안은 작성 화면, 그 밖은 서명·완료 화면). 롱프레스 삭제 동작 유지. 펼친 요약: 가운데 `OOO님 레슨계약서`, 이름·전화번호, 상품·총/소진·남은 기간.
+- 데이터: `MemberContractItem`에 `memberPhone`(계약서 `member.phone`), `periodEnd`/`periodUnlimited`(`product.periodEnd`/`periodUnlimited`) 추가. `ContractMemberItem`에 회원 문서의 `sessions.total/remain`(없으면 `totalSessions`/`remainSessions`/`remainingSessions`), 회원권 종료일(`membership.endAt`/`passEnd`/`expireAt`) 추가. 총/소진은 체결된 계약만 회원 문서 값(회원 목록과 같은 기준), 그 밖은 계약서 횟수만(`총 N회`). 남은 기간은 `D-N`/`D-day`/`만료`/`기간 제한 없음`/`-`. 재등록 회원은 총/소진이 현재 회원 전체 기준이라 과거 계약 카드에서도 현재 값이 보임(알려진 한계). 새 쿼리·인덱스·규칙 없음.
+- 테스트: `all_contracts_list_test.dart`(0건 토스트 3종, 1탭 펼침·2탭 열림, 요약 계산, 남은 기간 라벨, 320dp 넘침 없음 추가·기존 탭 테스트 2탭으로 수정), `member_contracts_page_test.dart`(2탭으로 수정).
+- 검증: `flutter analyze lib/pages/lesson_contract` 이슈 없음, `flutter test` 1484개 전부 통과. 실기기 확인 필요(미검증): 형광선 색 체감, 접힌 모서리 크기·종이 느낌, 펼침 요약 배치.
+
+## 2026-11-02 — 계약서 관리 더보기 메뉴를 공용 메뉴로 통일 (앱 화면만)
+
+- 피드백: 더보기 안의 아이콘·글씨 크기를 다른 페이지와 맞춰 달라.
+- 원인: 계약서 관리 ⋮가 기본 `PopupMenuButton`(아이콘·부제목 없는 텍스트 한 줄)이었고, 회원카드·회원리스트·MY는 공용 `MtfFloatingMoreMenuButton`/`MtfMoreMenuItem`(아이콘 칸 + 라벨 12.7 + 부제목, 네온 카드)을 사용.
+- 변경: `member_contracts_page.dart`의 ⋮를 `MtfFloatingMoreMenuButton`(아이콘 24, 카드 폭 212 = 회원카드와 동일)으로 교체. 항목: 아이콘 `inventory_2_outlined`, 라벨 `취소·파기된 계약서`, 부제목 `N건 · 지난 기록 보기`. 공용 항목은 위젯 key를 받지 않아 `member_contracts_more_inactive` key는 없어지고 테스트는 문구로 찾도록 수정(`all_contracts_list_test.dart`).
+- 범위 밖(미변경): 서명·완료 화면(`lesson_contract_sign_flow_page.dart`)의 ⋮(계약 파기/해지)도 기본 `PopupMenuButton`을 쓰는 같은 불일치가 있음.
+- 검증: `flutter analyze` 이슈 없음(변경 파일), 계약서 관련 테스트 42개 통과. 실기기 확인 필요.
+
+## 2026-11-02 — 서명·완료 화면 더보기(⋮)도 공용 메뉴로 통일 (앱 화면만)
+
+- 요청: 계약서 관리와 같이 서명·완료 화면의 더보기도 다른 페이지와 맞춤.
+- 변경: `lesson_contract_sign_flow_page.dart`의 `_buildHeaderMenu`를 `PopupMenuButton`에서 `MtfFloatingMoreMenuButton`(아이콘 24, 카드 폭 212)으로 교체. 항목: `계약 파기`(부제목 `완료 후 3일 이내`, 완료 후 3일 안에만 표시), `계약 해지`(부제목 `언제든 가능`), 둘 다 `isDanger`(빨간색). 파기·해지 진행 중에는 항목을 눌러도 무시(기존 `enabled: false` 대체). 동작 로직(`_startVoid`/`_startTerminate`, 해지된 계약서는 메뉴 없음)은 그대로.
+- 테스트: 공용 메뉴 항목은 key가 없어 `lesson_contract_void_test.dart`·`lesson_contract_terminate_test.dart`가 `done_void`/`done_terminate` key 대신 항목 문구(`계약 파기`·`계약 해지`)로 찾도록 수정, 기존 문구 `계약 파기 (3일 이내)` 확인은 부제목 `완료 후 3일 이내` 확인으로 변경.
+- 검증: `flutter analyze` 변경 파일 이슈 없음, 서명 흐름·파기·해지 테스트 49개 통과. 실기기 확인 필요(메뉴 모양, 파기·해지 시트가 열리는지).
+
+## 2026-11-03 — 폰 피드백 3건: 계약서 관리 배경색, 상품 불러오기 시트 삭제 제거, 레슨 삭제 깜박임 조사 (앱 화면만, 서버·규칙·의존성 변경 없음)
+
+### 1) 계약서 관리 배경색 (형광선이 안 보임)
+- 원인: `member_contracts_page.dart`의 두 Scaffold(목록·취소/파기 화면)가 `colorScheme.surfaceContainerHighest`(테마 시드에서 자동 생성되는 청록 계열 톤)를 배경으로 써서 회원리스트(`MtfThemeTokens.memberListBackground` = 아이보리)와 달랐고, 형광선이 같은 톤 위에서 묻혔다.
+- 변경: 두 Scaffold 배경을 `context.mtfThemeTokens.memberListBackground`로. 서류 카드도 회원리스트 카드 토큰(`memberListCard`, `memberListCardBorder`)과 접힌 면 색 `memberListBackground`로 맞춤. 미사용이 된 `scheme` 지역 변수 2개 삭제. 다른 레슨계약서 화면(미리보기 등)의 배경은 이번 범위 밖이라 그대로.
+
+### 2) 상품 불러오기 시트의 삭제 (`lesson_contract_form_page.dart`)
+- 문제: 시트의 휴지통 버튼이 확인 없이 바로 삭제·저장했다.
+- 판단: 상품 수정·삭제 화면은 이미 MY의 `내 수업 상품`(`my_contract_products_section.dart`, 삭제 확인창 있음)에 있어 이 시트는 고르기만 하는 곳이 맞다.
+- 변경: `_ProductPickerSheet`를 StatelessWidget으로 단순화하고 `onDelete`·휴지통 제거, 목록 아래에 `수정·삭제는 MY의 '내 수업 상품'에서 할 수 있어요.` 안내 한 줄(key `contract_preset_hint`). 기존 삭제 테스트를 `삭제 버튼 없음 + 안내 표시 + 저장 호출 없음` 테스트로 교체.
+
+### 3) 레슨 등록 중 삭제한 레슨이 지워졌다 나타났다를 반복 — 원인 미확정
+- 읽은 것: `_deleteScheduleFromFirestore`(`Source.server` 사전 확인 → 삭제 → local patch), tombstone(`_markScheduleDocAsRecentlyDeleted`·`resolveHomeScheduleTombstone`, 서버 snapshot에서 부재가 확인될 때까지 유지), 같은 시간 중복 문서 묶음 삭제/충돌 차단. `functions/src`에는 일정(schedules) 문서에 반응하는 Firestore 트리거가 없어(`onDocument*`·`onSchedule` 없음) 서버가 일정을 다시 만들 가능성은 배제. 홈에서 계약서 연동(`lessonSync`, `contractSigned`)은 회원 문서 파싱에만 쓰이고 일정 표시·삭제 경로에는 없다 → 계약서를 쓴 회원이라서 생기는 차이는 코드상 근거 없음.
+- 미확정 사유: 폰 설치본은 release라 tombstone·삭제 타이밍 로그(`kDebugMode` 한정)가 안 찍힌다. 재현 조건(어느 화면의 어떤 레슨인지, 반복 레슨/같은 시간 중복 여부, 몇 번 깜박였는지)을 모른다. 이전 수정(RUN_LOG 1221행대: 캐시 snapshot에서 tombstone 조기 해제, 같은 시간 문서 덮어쓰기, 삭제 후 서버 확인 누락)은 이미 반영돼 있다.
+- 다음 단계(사용자 재현 필요): 재현 상황을 알려 주면 그 경로만 조사. 필요하면 폰을 USB로 연결한 채 재현하는 동안 `adb logcat`로 flutter 로그를 수집(release에서는 `kDebugMode` 한정 로그 제외).
+- 검증: `flutter analyze` 변경 파일 이슈 없음, `flutter test` 1484개 전부 통과. 실기기 확인 필요(미검증): 배경색·형광선 가시성, 시트 안내 문구.
+
+## 2026-11-03 — 레슨 깜박임·앱 전체 버벅임 원인 확정 및 수정: 삭제 회원 스케줄 정리 재시도 루프 (앱 코드만, 규칙·서버 변경 없음)
+
+- 재현·측정: 폰이 깜박이는 동안 `adb logcat`을 수집. `schedules/<uid>--20261007-1100-수` 문서에 대한 쓰기가 `PERMISSION_DENIED`로 실패하고 `삭제 회원 스케줄 연결 정리 실패`가 약 0.4초마다 반복(56초 동안 135회, 수집 시점에도 진행 중). `[MTF_SCHEDULE_STREAM] stale snapshot ignored` 번호가 1.5초에 6씩 증가. 같은 시각 `top`에서 앱 CPU 176%, `gfxinfo` 끊긴 프레임 29.7%(90퍼센타일 34ms, 99퍼센타일 85ms).
+- 원인: `home_page.dart` 스케줄 스냅샷 처리에서 연결된 회원이 개인 회원 목록에 없으면(삭제 회원) `HomeDeletedMemberScheduleService.cleanupDeletedMemberScheduleLinks`가 스케줄 문서에 `linkedMemberDeleted`·`deletedMemberId`·`sessionSnapshot*` 삭제 등을 `set(merge)` 한다. 그런데 `firestore.rules`의 `schedules` update는 바뀔 수 있는 키를 `startAt … attended, updatedAt`로 제한하고 `linkedMemberDeleted`·`deletedMemberId`는 없다 → 서버가 항상 거부. 로컬 낙관적 쓰기가 롤백될 때마다 서버 스냅샷이 다시 와서 (캐시/대기 쓰기가 아니라 `shouldCleanupDeletedMemberScheduleLinks`가 true) 같은 정리를 또 시도 → 레슨이 지워졌다/나타났다 하는 깜박임 + CPU 소모. 계약서 연동과는 무관(삭제된 회원에 연결된 스케줄이 하나라도 있으면 발생).
+- 변경: `home_deleted_member_schedule_service.dart`에 순수 함수 `deletedMemberCleanupTargetDocIds`(삭제 회원 문서만, 거부된 문서 제외) 추가. `home_page.dart`에 `_deletedMemberCleanupBlockedDocIds`·`_deletedMemberCleanupRunning` 추가: 정리가 실패하면 그 문서들을 이번 실행 동안 다시 시도하지 않고, 진행 중이면 중복 실행하지 않음. 정리를 성공시키는 방향(규칙 변경)은 건드리지 않음.
+- 테스트: `test/home_deleted_member_schedule_service_test.dart`에 대상 선택·거부 후 재시도 차단·home 소스 가드 3건 추가, 파일 전체 11개 통과. `flutter analyze` 변경 파일에서 새 이슈 없음(home_page.dart의 기존 info만 남음).
+- 남은 위험/결정 필요: (1) 정리 쓰기가 규칙 때문에 한 번도 성공하지 못함 — 삭제 회원 스케줄에 대한 `memberId` 제거 등을 허용하려면 `firestore.rules` 변경+배포(승인 필요)가 필요하고, 회원 삭제 시 `unlinkSchedulesByMemberId`(home_page 6804행 근처)도 같은 이유로 실패하는지 확인 필요. (2) 대상 문서의 회원이 정말 삭제된 회원인지, 아니면 개인 회원 목록 조회(`trainerId`+`workspaceType=='personal'`)에서 빠진 회원인지는 PROD 데이터를 읽지 않아 미확인. (3) 앱 재시작 시 차단 목록이 초기화돼 한 번은 다시 시도(1~2회 실패 후 멈춤).
+- 미확인: 상품 저장(`내 수업 상품으로 저장`) 직후 버벅임과의 관계 — `_persistProducts`는 callable 한 번과 setState뿐이라 코드상 근거 없음. 위 루프가 앱 전체 버벅임을 설명하는지는 수정본 설치 후 같은 방식(CPU·gfxinfo)으로 재측정해서 확인 예정.
+- 요청 중 미착수: 레슨등록 바텀시트 헤더·버튼 색이 라이트인데 다크처럼 보인다는 제보 — 헤더와 저장 버튼은 모두 테마 `secondary`(warmYellow, 라이트/다크 동일)를 쓰므로 코드만으로는 어떤 요소가 어색한지 불명. 화면 확인 필요.
+
+## 2026-11-03 — 폰 피드백 4건: 레슨등록 시트 헤더 색, 내 수업 상품 저장 확인, 서명 완료 안내 토스트, 레슨 저장 지연 측정 (앱 코드만, 규칙·서버·의존성 변경 없음)
+
+### 1) 레슨등록 시트 헤더 색 (`home_lesson_editor_header.dart`)
+- 제보: 라이트인데 다크처럼 보임. 원래 라이트 헤더는 레슨 유형 칩·AIFC 아이콘과 같은 파랑 계열이었고, 노란색은 다크 헤더였다.
+- 원인: 이전 작업에서 헤더를 테마 `secondary`(warmYellow, 라이트·다크 동일)로 바꿔 두 모드 모두 노랗게 됐고, `test/home_lesson_editor_header_color_test.dart`가 그 상태를 못 박고 있었다.
+- 변경: 라이트 = HEAD의 원래 그라데이션(`4F46E5→7C3AED→9333EA`)+흰 글씨, 다크 = 기존 `secondary` 그라데이션+`onSecondary` 글씨. 테스트를 모드별로 분리. 저장 버튼 등 시트의 다른 버튼은 건드리지 않음(테마 `ElevatedButton`, HEAD와 동일) — "버튼색"이 저장 버튼을 가리키는지 확인 필요.
+
+### 2) 내 수업 상품으로 저장 (`lesson_contract_form_page.dart`, `ContractProductPreset.hasSameContentAs`)
+- 같은 이름 상품이 이미 있고 내용도 같으면 저장하지 않고 `이미 저장된 상품입니다.` 토스트.
+- 같은 이름인데 내용이 다르면 `새 내용으로 저장할까요?` 확인창(취소/저장). 저장을 골라야 덮어씀.
+- 새 이름은 이전처럼 바로 저장. 20개 제한·검증 동작은 그대로.
+- 테스트: `lesson_contract_form_test.dart`의 기존 "같은 이름은 바꾼다" 테스트를 (동일 → 안내, 변경 → 취소, 변경 → 저장) 흐름으로 확장.
+
+### 3) 서명 완료 후 닫기 안내 (`lesson_contract_sign_flow_page.dart`)
+- 이 화면에서 강사 서명까지 마쳐 완료된 경우(`_completedHere`)에만 `닫기` 때 토스트: `계약서 저장이 완료되었습니다.` / `확인 및 전송은 계약서관리 페이지에서 가능합니다.`(3.2초). 이미 완료된 계약서를 열어 닫을 때는 띄우지 않음. 토스트는 내비게이터 오버레이라 화면이 닫혀도 남는다(테스트에서 pop 직후 표시 확인).
+- 테스트: `lesson_contract_sign_flow_test.dart`의 전체 서명 흐름에 토스트 확인 추가, 이미 완료된 계약 닫기 시 토스트 없음 테스트 추가.
+
+### 4) 레슨 저장 후 블록이 1~3초 늦게 뜸(계약서 회원은 더 느림) — 원인 미확정, 측정 추가
+- 읽은 것: 시트는 `_handleLessonSave`가 끝나야 닫힌다. 그 안에서 회원 문서 `get()`(`resolveSelectedMemberLink`), 횟수 문구가 비면 한 번 더 `get()`(`_loadMemberSessionCountText`), 충돌 검사, 그리고 `schedules` 문서 `set()`을 서버 확인까지 `await`한다. 기본 `get()`은 서버를 먼저 기다리고, `set()`의 Future도 서버 확인 뒤에 끝나므로 네트워크가 느리면 그만큼 시트가 늦게 닫힌다. 연결된 회원은 `get()`이 1~2번 더 붙는 것이 코드상 차이.
+- 추측으로 고치지 않고 `[MTF_SAVE_TIMING] linked=… edit=… days=… resolveMember=ms reloadCount=ms countReady=ms conflictCheck=ms firestoreWrite=ms` 한 줄을 release에서도 찍히는 `debugPrint`로 추가(개인정보 없음, 임시 측정). 설치 후 연결된 회원/미등록 회원으로 각각 저장해 logcat으로 수집 → 느린 단계에 맞춰 수정 예정(측정 후 로그는 제거).
+- 검증: 변경 파일 `flutter analyze` 이슈 없음(home_page.dart의 기존 경고만 남음), 관련 테스트 통과, 전체 `flutter test` 1488개 통과. 실기기 확인 필요(미검증).
+
+## 2026-11-05 — 삭제한 레슨이 화면에 되살아남 수정, 레슨 저장 지연 개선, 파랑 버튼, 계약 파기 안내, 주간 표 색 구분, 서명창 버튼 순서 (앱 코드만, 규칙·서버·의존성 변경 없음)
+
+### 1) 삭제한 레슨이 다시 보임(계약서 연결 회원) — 원인 확정·수정
+- 재현·관측: 서버 삭제는 매번 확인됨(`server_delete_verified`)인데 화면에만 블록이 남고, 다른 레슨을 하나 더 지우면 잔상이 한꺼번에 사라짐. 스냅샷 변경 로그에 "추가" 없음, Functions는 `schedules`를 새로 만들지 않음(읽기/갱신만).
+- 원인: `_refreshScheduleCountsFromMembers`가 `scheduleData` 복사본을 들고 일정마다 회원 조회를 `await`하는 동안 사용자가 삭제하면, 끝에서 `_patchScheduleData(upsert)`가 옛 복사본을 되돌려 넣음. 서버 데이터가 안 바뀌어 스냅샷이 다시 오지 않으므로 다음 스냅샷(다른 삭제)까지 잔상 유지. 회원이 연결된 레슨에서만 실행되므로 계약서 회원에서만 보임.
+- 변경: 반영 직전 `upsert.removeWhere`로 "그 칸에 같은 docId가 아직 있고 삭제 표시가 아닌 항목"만 남김. 추가로 `_clearRecentlyDeletedScheduleDocId`가 uid 접두사가 붙은 실제 문서 ID도 함께 지우도록 수정(방금 지운 자리에 다시 저장하면 ~2초 숨겨지던 문제).
+- 테스트: `home_deleted_member_schedule_service_test.dart`에 소스 가드 2건. 폰(빌드 21)에서 6개 연속 삭제 후 사용자가 다시 생기지 않음을 확인(폰 로그 파일은 수집 실패 → 사용자 관찰만 근거).
+
+### 2) 레슨 저장 지연
+- 회원 문서·후보 조회를 캐시 우선(`_getMemberDocCacheFirst`, `findExactMemberCandidates` 캐시 우선)으로 변경. 연결 회원 저장 단계 0.8~2초 → 0.01~0.04초, 미등록 회원 `resolveMember` ~80ms. 임시 측정 로그 `[MTF_SAVE_TIMING]` 제거.
+
+### 3) UI
+- 라이트 모드에서 레슨등록 시트 저장 버튼·시간 선택창 강조색을 파랑(0xFF4F46E5)으로(다크는 기존 노랑 유지).
+- 서명창 버튼 순서: `취소 / 지우기 서명 완료`(`contract_signature_pad.dart`).
+- 계약 파기 안내: 뒤에 등록된 계약이 있으면 사유 입력 전에 "YYYY.MM.DD 계약한 [상품명]이 뒤에 등록돼 있어 파기할 수 없어요" 표시(`findLaterRegisteredContract`).
+- 주간 표: 이번 주 외 주를 구분하도록 배경에 덧입히는 색(`homeWeekTintColor`: 지난 주는 멀수록 어둡게, 다음 주는 푸른빛/밝게, 4주에서 멈춤)과 2주 이상 떨어진 주의 꼬리표(`2주 전`/`2주 후`). 테스트 `home_week_tint_test.dart`.
+
+### 4) 정리
+- 임시 진단 로그 `[MTF_DELETE_DIAG]`(스냅샷 변경·tombstone·삭제 단계)와 `[MTF_SAVE_TIMING]` 모두 제거.
+- 검증: 전체 `flutter test` 1499개 통과. `flutter analyze home_page.dart` 62건(기존 unused import 등 경고 포함, 이번 변경으로 늘지 않음). 
+
+### 남은 위험/결정 필요
+- 삭제 회원 스케줄 정리 쓰기(`linkedMemberDeleted` 등)는 여전히 `firestore.rules`가 막음 → 규칙 변경+PROD 배포 승인 필요(미작업).
+- 주간 표 색 강도는 실기기 눈으로 확인 전(라이트/다크 모두). 오프라인 저장 지원은 1.0.7 이후로 보류.
+- 서버 파기 안내 페이지 문구 변경은 Functions 배포 승인 필요.
+
+## 2026-11-05 (추가) — 주간 표 구분 방식 변경, 저장 속도, 회원 추천 시간대 (앱 코드만, 규칙·서버·의존성 변경 없음)
+- 주간 표: 2주 이상 꼬리표 제거. 표 전체 배경 덧색(지난 주=검정, 다음 주=웜 옐로)과 요일 줄 색(라이트=파랑, 다크=노랑)을 함께 적용. 변화 폭은 `_kWeekDistanceCurve`(0, 1.0, 1.25, 1.4, 1.5)로 ±1주에서 가장 크고 이후 조금씩, 4주에서 멈춤. 글씨색은 흰/남색 중 대비가 큰 쪽. 날짜 범위 제목은 한 줄(`FittedBox` 축소). 테스트 `home_week_header_color_test.dart`.
+- 저장 속도: `saveSchedule`이 서버 확인을 최대 800ms만 기다리고(`ackWait`), 이후 거부는 `onLateFailure`로 토스트. `_refreshScheduleCountsFromMembers`를 겹쳐 돌지 않게(`_scheduleCountsRefreshInFlight/Dirty`) 하고 회원별 조회를 한 번만(`putIfAbsent`). 수정 모드(저장된 레슨)에서는 `HomeRecentMembersSection` 숨김. 편집 경로(`commitScheduleWrites`)는 서버 검증을 유지(미변경).
+- 회원 추천: `HomeAiRecommendationReason.sameSlot`('이 시간대') 추가. 같은 요일·앞뒤 60분·최근 56일(앞으로 잡힌 레슨 포함)에 2회 이상 레슨한 회원 최대 2명을 맨 앞에 두고 나머지 기존 로직(전체 4명). 섹션을 Stateful로 바꿔 일정 조회를 시트당 1회로 줄임(기존엔 다시 그릴 때마다 조회). 테스트 `home_recent_member_chip_test.dart`, `home_save_latency_test.dart`.
+- 검증: 전체 `flutter test` 1510개 통과, 빌드 23 서명 확인 후 폰 설치(실기기 확인은 사용자 몫). 레슨등록 시트 헤더·저장 버튼 색을 네이비로 바꿀지는 사용자 결정 대기.
+- (같은 날 후속) 레슨등록 시트 라이트 모드: 헤더=네이비 그라데이션(`lightGradientStart→End`)+흰 글씨, 저장 버튼·시간 선택창 강조=`AppColors.deepNavy`(다크는 노랑 유지). 주간 표 요일 줄 색 변경은 취소(이번 주 색 고정), 표 전체 배경 덧색만 사용: 지난 주=검정(라이트 12%→24%, 다크 22%→44%), 다음 주=파랑(라이트 `2563EB` 11%→22%, 다크 `60A5FA` 13%→26%), 곡선 [0, 1.0, 1.4, 1.75, 2.0]. 전체 `flutter test` 1506개 통과, 빌드 24 폰 설치. 4주 전 쪽 글씨 가독성은 실기기 확인 필요.
+
+## 2026-11-06 빌드 25~26 후속 (다음 주 파랑 강화, 이름 정정, 하단 여백)
+- **다음 주 배경 파랑 진하기**: `home_weekly_schedule_table.dart`의 `homeWeekTintColor` 파랑 알파를 라이트 0.11→0.19, 다크 0.13→0.20으로 올림(곡선 `_kWeekDistanceCurve` 그대로). 블록은 별도 위젯이라 글씨 가독성 영향 없음. 사용자 기기 확인: "색 차이 잘 보여".
+- **이름 정정**: `MORE WELLNESS 회원관리` → `MORE THAN wellness 회원관리` (`mtf_animated_drawer.dart`, `home_page.dart`, `test/mtf_animated_drawer_test.dart`).
+- **하단 시스템 바 겹침**: `contract_page.dart` `_buildEditView` 스크롤 하단 24 + `MediaQuery.padding.bottom`, `stats_page.dart` 28 + `MediaQuery.padding.bottom`. 다른 화면은 미점검. 신규 `test/bottom_system_inset_padding_test.dart`(소스 가드).
+- 검증: 변경 파일 analyze 오류 0(기존 info/warning만), `flutter test` 1508 통과, PROD release 빌드 EXIT 0·서명 c18b5444…256e·1.0.7(27). **폰 설치는 빌드 시점에 폰이 연결되어 있지 않아 못 함.** 실기기에서 여백 확인 필요.
+
+## 2026-11-06 디자인 통일 1차 (인사이트 카드·헤더 빛/곡선)
+- **인사이트 요약 카드**: `stats_page.dart` `_KpiCard`를 그라데이션 대신 `tokens.cardSurface`/`cardBorder` 평평한 카드로 변경. 포인트 색은 `scheme.primary`(라이트 네이비·다크 골드)를 숫자(22pt)·아이콘에만 사용. `colors` 인자 제거.
+- **헤더 네온 빛**: `mtf_header_neon_overlay.dart` 기본 lineColor `AppColors.goldLight`, glowColor `AppColors.warmYellow`(기존 보라). `home_header_section.dart`의 보라 개별 지정 제거. 공통 곡선 상수 `kMtfHeaderBottomRadius = 32` 추가.
+- **헤더 곡선 통일**: 통계·설정·위젯설정·알림설정·레슨종류·회원분류·MORE CARE·회원리스트(접힘)·`lesson_contract_widgets`의 28/30을 32로. 회원리스트 펼침 22는 유지. MORE CARE 관리 헤더의 보라 그라데이션은 `mtfHeaderGradient`로.
+- **미처리(결정 필요)**: 보라(`4F46E5`/`9333EA`)는 lib 전체 200여 곳(계약서·회원카드·레슨일지·시트·AIFC). FC 아바타·상담 시트는 AI 코치 고유색일 수 있어 브랜드 색으로 바꿀지 사용자 결정 대기. 곡선 없는 기본 AppBar 화면(회원권계약서, 수업일지 동의)은 그대로.
+- 검증: `flutter analyze` 오류 0, `flutter test` 1514 통과(신규 `stats_kpi_card_flat_test`, `header_shared_style_test`, 기존 `personal_member_status_filter_test` 반지름 단언 갱신), PROD release 빌드 EXIT 0·서명 c18b5444…256e·1.0.7(27). 폰 설치는 연결 끊김으로 못 함. 실기기 시각 확인 필요.
+
+## 2026-11-06 디자인 통일 2차 (사용자 피드백 반영, 빌드 28)
+- 사용자 의견: 1차(평평한 카드·골드 빛·곡선)가 별로. 요약 카드는 "브랜드 계열로 줄인 그라데이션" 중간안, 헤더 빛은 골드가 낫다면 골드, 곡선 통일은 유지.
+- **인사이트 요약 카드**: `_KpiCard`가 4개 모두 `context.mtfHeaderGradient`(네이비) 그라데이션 + 흰 제목 + `AppColors.warmYellow` 숫자·아이콘. 다크에서 경계가 흐려지지 않게 흰색 10% 테두리.
+- **헤더 빛 통일**: 홈만 굵기 2.3/세기 1.0이던 것을 `MtfHeaderNeonOverlay` 기본값 strokeWidth 1.6 / intensity 0.52로 맞추고 홈의 개별 지정 제거. 색은 골드 유지.
+- 검증: analyze 오류 0, `flutter test` 1515 통과(`stats_kpi_card_flat_test`·`header_shared_style_test` 갱신), PROD release 빌드 EXIT 0·서명 c18b5444…256e·1.0.7(27). 폰 설치는 adb unauthorized로 보류.
+
+## 2026-11-06 디자인 통일 3차 (헤더 빛: 열리는 헤더 강/고정 헤더 한 단계 약, 빌드 29)
+- 사용자 제안: 열리는 헤더는 홈 헤더와 같게, 안 열리는 헤더는 한 단계만 올린 값.
+- `mtf_header_neon_overlay.dart`: 상수 `kMtfHeaderGlowStrokeExpandable=2.3`, `kMtfHeaderGlowIntensityExpandable=1.0` 추가. 기본값(열리지 않는 헤더)은 strokeWidth 1.9 / intensity 0.75.
+- 열리는 헤더(홈 `home_header_section`, `my_page`, `client_list_page`, `personal_training_log_page`)는 강한 상수 사용. 통계·`contract_page`·`lesson_contract_widgets`는 개별 값 제거 후 기본값 사용.
+- 검증: analyze 오류 0, `flutter test` 1517 통과(`header_shared_style_test` 확장), PROD release 빌드 EXIT 0·서명 c18b5444…256e·1.0.7(27), 폰 R3CX40M6EEM 설치 Success.
+
+## 2026-11-06 디자인 통일 4차 (빛 없는 헤더에도 약한 빛, 빌드 30)
+- 사용자 선택: 범위 3(전부). 빛 없던 아래-둥근 헤더 11곳을 `MtfHeaderNeonOverlay(isExpanded: false)`로 감쌈(기본값 굵기 1.9/세기 0.75): 계약서 관리 목록, 수업 유형 관리, 그룹 관리(`personal_member_taxonomy_management_page`), 설정, 알림 설정, 위젯 설정, MORE CARE, 레슨일지 텍스트·음성/카테고리/빠른 서명/아나토미 헤더.
+- `LessonContractHeader.neon` 기본값 false→true, `member_contracts_page`의 `neon: _allMembers` 제거(항상 빛).
+- 제외: 기본 AppBar(회원권계약서, 수업일지 동의), 회원카드, 회원용 공개 웹 서명 화면, 레슨일지 시트 상단 헤더.
+- 작업 중 문제: 감싸기 스크립트가 CRLF 파일 3개(계약서 관리 목록, 빠른 서명, 텍스트·음성)에서 삽입 위치를 잘못 잡아 컴파일 오류 → 수정 후 analyze 오류 0.
+- 검증: `flutter test` 1519 통과(`header_shared_style_test` 확장), PROD release 빌드 EXIT 0·서명 c18b5444…256e·1.0.7(27). 폰(R3CX40M6EEM) 재연결 후 설치 Success, 1.0.7(27). 사용자 실기기 확인: "괜찮다"(버벅임·어색함 보고 없음). 오래된 기기에서의 입장 시 번짐 효과 비용은 저사양 기기 기준으로는 미확인.
+
+## 2026-11-08 릴리스 점검 8번 후속 (빌드 31)
+- 사용자 PROD 실기기 점검 결과: 8-1 계약서 관리 화면 개선 요청, 8-2 용어 확인 요청, 8-3 오버플로 2건, 8-4 안내 문구, 8-5 정상.
+- 8-1 `member_contracts_page.dart`: 계약서 카드는 누르면 요약이 펼쳐지고 다시 누르면 접힌다(예전: 두 번째 탭이 계약서 열기). 계약서는 펼친 요약 안의 `계약서 열기` 버튼으로 연다. 요약 배치는 1줄 `이름·전화번호·상품`, 2줄 `총 결제금액·총/소진·남은 기간`(`ContractCardSummary.paid` 추가). `새 계약서 작성` 카드는 금색을 유지하고 위쪽에 서류 글줄 3줄(`_DocRuledLinesPainter`)을 깔았다.
+- 진행 중 계약의 정의(코드 기준): 서명이 끝나지 않은 계약 = `draft`·`disclosed`·`member_signed`. 레슨 시작 여부와 무관하다.
+- 8-2: 앱에는 `베이직` 등급이 없다(`AppTier`: beginner·amateur·semiPro·pro·master·grandPrix, 신규·익명 모두 beginner 시작). 점검표 문구를 `시작 등급 비기너`로 정정. 코드 변경 없음.
+- 8-3: 홈 `최근 회원` 격자(`home_recent_clients_section.dart`)는 글자 크기에 맞춰 칸 높이를 늘리고(기본 크기에서는 기존 정사각형 유지), 명함(`my_header_business_card.dart`)은 글자 배율을 1로 고정. 명함은 고치기 전 실패/후 통과하는 테스트 추가. 홈 격자는 Firestore 의존이라 단위 테스트 없음(실기기 확인 필요).
+- 8-4: `personal_training_log_entry_guard.dart` — 서버 조회가 `unavailable`·`deadline-exceeded`·`network-request-failed`이면 `네트워크가 불안정해요. 연결을 확인하고 다시 시도해 주세요.`를 보인다(그 밖의 실패는 기존 문구). 레슨일지는 오프라인 진입 불가가 기존 설계이며 오프라인 지원은 릴리스 이후.
+- 미해결: DEV와 PROD의 차이(사용자: PROD가 더 세부적으로 설정됨)는 코드가 아니라 데이터/배포 상태로 보임. 어떤 항목인지 사용자 확인 필요. 데이터 복사·배포는 AGENTS.md상 승인 전 중단.
+- 검증: `flutter analyze` 오류 0, `flutter test` 1520 통과(`all_contracts_list_test`·`member_contracts_page_test`를 새 동작에 맞게 수정).
+- 빌드 31: PROD release EXIT 0, 서명 c18b5444…256e, 1.0.7(27), 폰(R3CX40M6EEM) 설치 Success.
+
+## 2026-11-08 계약서 관리 2차 (빌드 32)
+- 사용자 실기기 확인: 계약서 관리 정상. 추가 요청 4건.
+- 알림: 레슨일지 진입 실패 안내(네트워크 불안정·사용 상태 확인 실패)를 SnackBar에서 `AifcToast`(AIFC 알림)로 교체(`personal_training_log_entry_guard.dart`).
+- `새 계약서 작성` 카드(`member_contracts_page.dart` `_NewContractCard`): 금색 가로 바인더 + 인덱스 탭(`CONTRACT`) 뒷판, 흰 종이 앞판(글줄 3줄, 금색 `+`, 펜으로 서명하는 그림). 가로형을 택한 이유: 카드가 가로로 긴 띠라 세로 바인더는 너무 작아짐. 모양은 임시 테스트로 이미지를 그려 확인(글꼴은 테스트용 블록).
+- 최근 검색어: 계약서 관리 검색창에 포커스가 있고 비어 있을 때 칩으로 표시(누르면 검색, x로 하나 삭제, 전체 삭제). 검색 키를 누르거나 검색 후 계약서를 열 때 저장, 최대 8개, `shared_preferences` 키 `member_contracts_recent_<uid>`(새 의존성 없음).
+- 보류(사용자 판단 필요): `레슨계약서/회원권계약서` 종류 칩. 이 목록은 `personal_contracts`(레슨계약서)만 읽는다. 회원권계약서는 `members/{id}/membership_contracts/current` 한 문서이고 `firestore.rules`에서 레거시 관리자(`isLegacyMember`)만 읽을 수 있다. 일반(개인) 강사는 목록에 넣을 수 없어 Rules 변경이 필요 → AGENTS.md상 승인 전 중단.
+- 검증: `flutter analyze` 오류 0, `flutter test` 1524 통과.
+- 빌드: PROD 릴리스 APK 서명 SHA-256 `c18b5444…256e`, `com.morethanfitness.app` versionCode 27 / 1.0.7 확인. 폰 R3CX40M6EEM 설치 성공(`adb install -r`, 설치 후 versionCode=27, versionName=1.0.7 확인). 실기기 동작 확인은 사용자 몫.
+
+## 2026-11-09 계약서 관리 3차 (빌드 33)
+- 사용자 요청: 종류 칩, 최근 검색어 칩, 종이 접힌 모서리 제거, 바인더 파일 목록(종류별 탭 위치·레슨 종류별 색·종료 회색), 탭하면 종이가 올라오는 애니메이션.
+- 칩 줄(`member_contracts_chip_row`): 상태 칩 + 종류 칩(레슨/회원권/양도권) + 최근 검색어 칩을 한 줄로 두고 가로로 밀어서 본다(두 줄 줄바꿈 없음). 최근 검색어는 최대 5개(넘으면 오래된 것부터 사라짐), 칩을 누르면 검색, x로 삭제. 이전의 포커스 시 최근 검색어 블록과 `전체 삭제` 버튼은 제거.
+- 종류 칩: 회원권·양도권은 틀만 있다. 목록이 `personal_contracts`(레슨계약서)만 읽고, 회원권계약서는 `firestore.rules`상 레거시 관리자만 읽을 수 있어 Rules 변경 전에는 비어 있다(선택하면 `…계약서는 준비 중이에요.` 안내). Rules/데이터 구조 변경은 승인 전 보류.
+- 바인더 카드(`_ContractDocCard`): 인덱스 탭에 `이름 + 종류`(레슨은 PT/PL/요가/레슨, 그 밖은 회원권/양도권). 탭 위치는 종류로 정해진다(레슨 왼쪽, 회원권 가운데, 양도권 오른쪽). 바인더 색은 레슨 종류(PT 파랑·필라테스 분홍·요가 초록·기타 보라)·회원권(청록)·양도권(구리색)별로 다르고, 끝난 계약은 어두운 회색. 계약서에 레슨 종류 필드가 없어 상품 이름의 `필라/pilates`·`요가/yoga`·`pt/피티`로 구분한다.
+- 끝난 계약 기준(`isEnded`): 해지·이전 버전·취소·파기, 또는 체결된 계약 중 기간 종료일이 지났거나 회원 문서의 잔여 횟수가 0인 것.
+- 동작: 종이를 누르면 종이가 위로 올라오며 요약이 펼쳐지고(`AnimatedPadding`+`AnimatedSize`), 펼친 종이를 한 번 더 누르면 계약서가 열린다. 인덱스 탭을 누르면 접고 펼친다. 이전의 `계약서 열기` 버튼은 제거. 바인더는 아래를 12px 겹쳐 겹겹이 쌓인 모양(`_TrailingOverlap`).
+- 접힌 모서리 제거: `_DocPaper`/`_DocPaperPainter`/`_docPath`에서 접힘·상태 띠 제거(새 계약서 카드 포함).
+- 테스트: `all_contracts_list_test.dart`, `member_contracts_page_test.dart` 갱신 + 칩 줄·최근 검색어 5개·종류 칩·종류/색/종료 규칙 테스트 추가.
+- 검증: `flutter analyze` 오류 0(기존 경고 유지), `flutter test` 1529 통과. 실기기 확인 전.
+- 빌드: PROD 릴리스 APK 빌드 성공(509초), 서명 SHA-256 `c18b5444…256e`, `com.morethanfitness.app` versionCode 27 / 1.0.7 확인. 폰 R3CX40M6EEM이 adb에서 보이지 않아 설치는 보류(재연결 후 `adb install -r`).
+- 설치: 폰 R3CX40M6EEM에 `adb install -r` 성공, 설치 후 versionCode=27 / versionName=1.0.7, lastUpdateTime 2026-11-09 09:00 확인. 실기기 동작 확인은 사용자 몫.
+
+## 2026-11-09 계약서 관리 4차 (빌드 34)
+- 사용자 실기기 확인(빌드 33): 칩·바인더 구조 확인. 요청: ① 각각 떨어진 카드가 아니라 위 카드를 다음 카드가 덮는 깊은 겹침, ② 인덱스 탭 `고객명PT`(좋음), ③ 발레핏·바레·댄스·재활 등 여러 레슨 종류 이름과 색 설정(더보기 메뉴), ④ 홈 최근회원·마이페이지 명함 오버플로 수정 확인 완료.
+- 겹침: 접힌 카드는 아래 28px을 다음 바인더가 덮고(종이 아래 약 23px은 다음 인덱스 탭이 올라앉는 자리), 펼치면 8px만 겹친다(`TweenAnimationBuilder`로 부드럽게). 종이는 접히면 상품·상태·계약번호/회수/금액 두 줄만 보이고, 펼치면 위로 올라오며 요약이 열린다. 상품 정보 줄은 한 줄 고정(말줄임).
+- 레슨 종류 이름(`contractLessonTypeNameOf`): 계약서에 레슨 종류 필드가 없고(서버 스키마 `allowOnly`라 필드 추가는 Functions 배포 필요 → 보류), 내 레슨 종류(기본 PT·필라테스·요가·그룹·줌바·재활 + 직접 추가한 종류, `PersonalMemberPreferencesService.customLessonTypes`)의 이름을 상품 이름 → 서비스 내용 순으로 찾고(긴 이름 먼저), 없으면 PT. 계약번호 접두어는 항상 `PT-`라 구분에 못 쓴다. 인덱스 탭 글씨는 `고객명 + 레슨 종류 이름`.
+- 바인더 색 설정: 계약서 관리 더보기 → `바인더 색 설정`. 레슨 종류별·회원권·양도권별 10색 팔레트, `기본 색` 되돌리기. 저장은 이 기기(`shared_preferences` 키 `contract_binder_colors_<uid>`, 새 의존성 없음). 서버(프로필) 저장은 `updatePersonalTrainerProfile` 허용 필드 변경 = Functions 배포가 필요해 보류. 기본 색: PT 파랑·필라테스 분홍·요가 초록·회원권 청록·양도권 주황, 나머지 종류 이름은 이름마다 일정한 팔레트 색. 끝난 계약은 항상 회색.
+- 테스트: 레슨 종류 이름 분류, 기본 색, 색 설정 시트(저장·되돌리기·불러오기), 인덱스 탭에 추가 종류 이름 표시 추가.
+- 검증: `flutter analyze` 오류 0(기존 경고 1171건 유지), `flutter test` 1533 통과. 실기기 확인 전.
+- 빌드/설치: PROD 릴리스 APK 빌드 성공(439초), 서명 SHA-256 `c18b5444…256e`, versionCode 27 / 1.0.7 확인. 폰 R3CX40M6EEM에 `adb install -r` 성공(lastUpdateTime 2026-11-09 10:00). 실기기 동작 확인은 사용자 몫.
+
+## 2026-11-09 계약서 관리 5차 (빌드 35) + DEV/PROD 서버 상태 조사
+- 사용자 피드백(빌드 34): 겹친 바인더를 조금 더 길게, 맨 아래 `새 계약서 작성` 카드와의 겹침이 어색함.
+- 접힌 종이 높이 72→86(카드 간격 약 14px 증가, 인덱스 탭과 글줄이 붙어 보이던 것 해소). 새 계약서 카드의 바인더 기하(몸통 윗변 30→22, 탭 3, 종이 윗변 28)를 계약서 카드와 같게 맞춰 위 카드의 아랫부분을 같은 규칙으로 덮는다. 미리보기 이미지(접힘/펼침)로 확인.
+- DEV/PROD 조사(읽기 전용, 배포·쓰기 0): `firebase functions:list` 두 프로젝트 함수 구성 동일(DEV에만 `autoExpireMemberships` 추가 — PROD에는 의도적으로 미배포). `firebase firestore:indexes`: PROD·DEV·로컬 7개 동일(서버 표기의 `__name__` 자동 항목만 차이). PROD 백엔드는 2026-11-01 P7-6(Rules·인덱스·Storage·함수 11개)에 배포했고, 이후 RUN_LOG의 모든 작업은 앱 코드만(서버·규칙 변경 없음)이라 현재 로컬 Rules·Functions가 PROD 배포본과 같다고 본다. `1.0.7+27`은 앱 버전이며 백엔드는 앱 버전과 별개로 작업 폴더에서 배포했다(마지막 커밋은 1.0.6+26, 2026-10-14). Rules·Functions 코드의 바이트 단위 일치는 확인하지 못함.
+- 결론: DEV는 이미 같은 백엔드라 배포가 필요 없어 보임. 사용자가 본 차이는 PROD 계정 데이터(계약서 설정·상품·회원 등)일 가능성이 높다 → 어떤 화면이 다른지 확인 필요. PROD 데이터 복사는 실제 회원 개인정보라 승인 없이 하지 않음.
+- 검증: `flutter analyze` 오류 0, `flutter test` 1533 통과.
+- 빌드/설치: PROD 릴리스 APK 빌드 성공(468초), 서명 SHA-256 `c18b5444…256e`, versionCode 27 / 1.0.7 확인. 폰 R3CX40M6EEM에 `adb install -r` 성공. 실기기 동작 확인은 사용자 몫.
+
+## 2026-11-09 계약서 관리 6차 (빌드 36) + DEV 앱 빌드
+- 사용자 피드백(빌드 35): 레슨계약서 블록의 머리를 누르면 닫히던 기능이 사라짐, 새 계약서 카드는 그대로 두고 각 계약서 겹침을 더 깊게(바인더가 아래로 더 길게).
+- 머리(제목 줄, 키 `member_contract_head_<id>`)를 누르면 접고 펼친다(펼친 상태에서 머리를 누르면 닫힘). 펼친 내용(요약 영역)을 누르면 계약서가 열린다. 안내 문구: `내용을 누르면 계약서가 열리고, 머리를 누르면 닫혀요`. 인덱스 탭도 접고 펼친다.
+- 겹침: 접힌 종이 높이 86→106(바인더가 더 길게), 다음 바인더가 올라타는 높이 28→56(카드 간격 약 92→84). 새 계약서 카드는 변경 없음. 미리보기 이미지로 확인.
+- DEV와 다른 점(헤더 네온·다음주/지난주 배경색·홈 하단 간격·인사이트)은 모두 앱 화면 변경이다(서버 아님). PROD 플레이버 빌드만 폰에 설치해 왔기 때문에 DEV 앱이 예전 빌드라 다르게 보이는 것으로 판단. 같은 코드로 DEV 플레이버(`flutter build apk --debug --flavor dev -t lib/main_dev.dart --no-pub`)를 빌드해 설치한다. 서버 배포 없음.
+- 검증: `flutter analyze` 오류 0, `flutter test` 1533 통과.
+- 빌드: PROD 릴리스 APK 성공(424초, 서명 SHA-256 `c18b5444…256e`, com.morethanfitness.app versionCode 27 / 1.0.7), DEV 디버그 APK 성공(`com.morethanfitness.app.dev` versionCode 27 / 1.0.7-dev, `build/app/outputs/flutter-apk/app-dev-debug.apk`). 폰 재연결 후 R3CX40M6EEM에 두 앱 `adb install -r` 성공, dumpsys로 PROD 27/1.0.7, DEV 27/1.0.7-dev 확인. 실기기 동작 확인은 사용자 몫.
+
+## 2026-11-09 빌드 37 (바인더 색 직접 고르기 · 칩 순서)
+- 요청: 바인더 색을 사용자 지정으로 고르기, 최근 검색어 칩을 전체 칩 바로 뒤로.
+- 변경: `lib/pages/lesson_contract/member_contracts_page.dart` — 칩 순서 `전체 → 최근 검색어 → 진행 중 → 완료 → 종류`. 색 설정 줄 맨 앞에 `+`(무지개 원) → `_CustomBinderColorDialog`(색상·선명도·밝기 슬라이더 + `#RRGGBB` 입력). 직접 고른 색은 선택된 원으로 표시, 저장은 기존 기기 로컬 저장소. 새 의존성 없음.
+- 테스트: `test/all_contracts_list_test.dart`에 칩 순서·색 직접 고르기·잘못된 색 코드 테스트 추가.
+- 검증: `flutter analyze` 에러 0(기존 경고 1171 그대로), `flutter test` 1536개 통과. PROD 릴리스 APK 빌드 성공(534초), 서명 SHA-256 `c18b5444…256e`, 1.0.7(27). 폰 R3CX40M6EEM에 설치(`adb install -r`) 성공. DEV 앱은 이번 변경 미빌드. 실기기 동작 확인은 사용자 몫.
+- DEV 디버그 APK 빌드 성공(`com.morethanfitness.app.dev`, 1.0.7-dev, versionCode 27), 폰 R3CX40M6EEM에 `adb install -r` 성공(빌드 37과 같은 코드).
+
+## 2026-11-09 빌드 38 (바인더 색 = 홈 레슨 종류 색 · 공용 팔레트 · 직접 고르기)
+- 요청: 홈 레슨 종류의 색을 계약서 바인더 색으로 통일, 팔레트 공용화, 홈 레슨 종류 편집에도 색 직접 고르기.
+- 변경: `lib/widgets/lesson_type_color_picker.dart`(신규: 공용 팔레트 `kLessonTypePalette` 10색, `LessonTypeColorDialog`, 색 변환), `lib/models/lesson_type_item.dart`(`kHomeLessonTypesPrefsKey`, `parseHomeLessonTypes`), `lib/pages/home_page.dart`(공용 팔레트·키 사용, `+` 직접 고르기 연결), `home_lesson_type_editor_panel.dart`(`+` 버튼·직접 고른 색 표시), `member_contracts_page.dart`(바인더 색을 홈 레슨 종류에서 해석 `resolveContractBinderColor`, 탭 글씨 색은 대비 큰 쪽 `contractBinderInkColor`, 더보기의 바인더 색 설정·`ContractBinderColorStore` 제거). 서버·Rules 변경 없음, 새 의존성 없음. 예전에 기기에 저장한 바인더 색(`contract_binder_colors_<uid>`)은 더 이상 쓰이지 않는다.
+- 테스트: `test/all_contracts_list_test.dart` 갱신, `test/lesson_type_color_picker_test.dart` 신규. `flutter analyze` 에러 0(경고 1171 그대로), `flutter test` 1543개 통과.
+- 빌드/설치: PROD 릴리스(404초, 서명 SHA-256 `c18b5444…256e`, 1.0.7(27))와 DEV 디버그(1.0.7-dev(27)) 빌드 성공, 폰 R3CX40M6EEM에 둘 다 `adb install -r` 성공, dumpsys로 버전 확인. 실기기 동작 확인은 사용자 몫.
+
+## 2026-11-10 빌드 39 (밝은 레슨 종류 색의 글씨 색 · 위젯 포함)
+- 증상: 레슨 종류 색이 흰색이면 홈 시간표 블록의 흰 글씨가 묻힘(목요일 14시).
+- 변경: `lessonTypeInkColor`(공용, `lesson_type_color_picker.dart`)로 흰 글씨/짙은 글씨(#1F2937) 중 대비가 큰 쪽을 고름. 홈 주간 표 블록(확정 전 블록만, 확정·노쇼·서비스 블록 모양은 그대로) + 매우 밝은 색은 옅은 회색 테두리, 레슨 종류 선택 칩 글씨, 계약서 바인더 탭에 적용. Android 위젯(`MtfScheduleWidget.kt`)도 같은 기준(`blockInkColor`, 흰 글씨일 때만 그림자, 밝은 색 테두리).
+- 테스트: `test/home_schedule_block_ink_test.dart` 신규, `test/all_contracts_list_test.dart` 이름 변경 반영. 위젯(Kotlin)은 자동 테스트 없음, 컴파일 성공만 확인.
+- 검증: `flutter analyze` 에러 0(경고 1171 그대로), `flutter test` 1545개 통과. PROD 릴리스 빌드 성공(534초, 서명 SHA-256 `c18b5444…256e`, 1.0.7(27))·DEV 디버그 빌드 성공(1.0.7-dev(27)), 폰 R3CX40M6EEM에 둘 다 `adb install -r` 성공, dumpsys로 버전 확인. 실기기(앱·위젯) 확인은 사용자 몫.
+
+## 2026-11-10 빌드 40 (인바디 추이 큰 차트 화면 — 줌·이동·기간 칩)
+- 요청: 삼성헬스처럼 두 손가락으로 타임라인을 조절하는 차트. 합의한 1단계로 인바디 추이를 누르면 큰 차트 화면.
+- 변경: `lib/widgets/inbody_trend_chart.dart`(신규: `InbodyChartViewport` 줌·이동·범위 제한, 실제 날짜 축 차트 `InbodyTrendChart`), `lib/pages/inbody_trend_page.dart`(신규: 지표 칩·`1개월/3개월/1년/전체` 칩·점 눌러 값 보기·세로 스크롤 없는 고정 레이아웃), `lib/widgets/inbody_trend_card.dart`(`크게 보기` 버튼·작은 차트 탭으로 열기). 서버·Rules 변경 없음, 새 의존성 없음.
+- 테스트: `test/inbody_trend_page_test.dart` 신규(뷰포트 계산, 칩, 두 손가락 줌, 지표 전환, 카드에서 열기).
+- 검증: `flutter analyze` 에러 0(경고 1171 그대로), `flutter test` 1558개 통과. PROD 릴리스·DEV 디버그 빌드 성공(서명 SHA-256 `c18b5444…256e`, 1.0.7(27) / 1.0.7-dev(27)), 폰 R3CX40M6EEM에 둘 다 `adb install -r` 성공, dumpsys로 버전 확인. 실기기 손동작(줌·이동) 확인은 사용자 몫.
+- 다음(미착수): 인사이트 일별·주별·월별 레슨 추이 차트.
+
+## 2026-11-10 빌드 41 (인사이트 레슨 추이 차트 — 일별·주별·월별 핀치 전환)
+- 요청: 인사이트에서 두 손가락으로 일별→주별→월별로 줌 전환되는 시간 흐름 차트.
+- 판단: 기존 `요일별 등록 레슨`은 요일 패턴(시간 순서 없음)이라 줌 대상이 아님. 요일별 막대·종류 도넛은 그대로 두고 `레슨 추이` 카드를 새로 추가.
+- 변경: `lib/utils/lesson_trend_series.dart`(신규: 묶음 단위·지표·묶음 계산·기준일 이동/제한), `lib/widgets/lesson_trend_card.dart`(신규: 막대 차트·일/주/월 칩·지표 칩·핀치(Listener, 스크롤 경쟁 없음)·가로 밀기·막대 탭), `lib/pages/stats_page.dart`(추이용 데이터 로드 `_loadTrend`: 처음 약 90일, 월별로 내려갈 때 12개월 1회 추가 조회, 두 손가락 닿는 동안 페이지 세로 스크롤 잠금, 새로고침 시 함께 갱신, 회원 등록일 수집). 서버·Rules·인덱스 변경 없음(기존 `schedules` 범위 조회와 같은 모양), 새 의존성 없음. 읽기 비용: 인사이트 진입마다 최근 약 90일 레슨 1회 + 월별 진입 시 12개월 1회.
+- 테스트: `test/lesson_trend_series_test.dart`, `test/lesson_trend_card_test.dart` 신규.
+- 검증: `flutter analyze` 에러 0(경고 1171 그대로), `flutter test` 1579개 통과. PROD 릴리스·DEV 디버그 빌드 성공(서명 SHA-256 `c18b5444…256e`, 1.0.7(27) / 1.0.7-dev(27)). 폰 설치는 처음에 adb가 멈추고 기기가 offline이 되어 보류했다가, 재연결 후 PROD·DEV 모두 `adb install -r` 성공, dumpsys로 1.0.7(27) / 1.0.7-dev(27) 확인. 실기기 손동작 확인은 사용자 몫.
+
+## 2026-11-10 디자인 기준·플랫폼 방향 문서 초안 (코드 변경 없음)
+- 요청: 회원앱·강사 앱 UI/UX 점검, 공통 디자인 기준과 최종 목표(트레이너-회원 매칭) 정리.
+- 한 일: 폰(R3CX40M6EEM)에서 회원앱 4탭, 강사 앱 DEV 1.0.7-dev 홈·인사이트·계약서 작성·상담 시트·회원 관리·사이드 메뉴·설정·수업 유형 관리·레슨 종류 추가 시트를 adb 캡처로 확인. 실제 회원 이름이 보인 캡처 1장은 즉시 삭제하고 기록하지 않음.
+- DEV 확인: 흰색 레슨 종류 → 어두운 글씨, 남색 계열 → 흰 글씨(칩·시간표 블록). 계약서 바인더 탭 글자 대비 양호. 사이드 메뉴 이름은 이미 "MORE THAN wellness 회원관리".
+- DEV 테스트 데이터(사용자 승인, 남겨 두기로 함): 월 08:00 레슨 TESTM, 수 09:00 레슨 TESTP(DEV 서버), 레슨 종류 TESTA(폰 로컬 SharedPreferences).
+- 산출물: `docs/product/design-system-and-platform-direction.md` (신규, 초안). 코드·Rules·Functions·의존성 변경 없음.
+- 검증하지 못함: 안드로이드 위젯 화면, 레슨일지·바디맵, 강사 앱 라이트 모드 전체, 회원앱 색 코드 값(화면 추정).
+
+## 2026-11-10 아나토미 "현재 저장 권한이 없어" 오류 수정 (빌드 42)
+- 재현·원인: 서버에 부모 `training_logs/{id}` 초안이 없는 상태(레슨 전 체크리스트를 끄거나 완료하지 않고 닫은 새 레슨일지)에서 아나토미를 열면, Rules가 `resource.data.trainerId`를 평가하지 못해 "없는 문서 읽기"가 `permission-denied`로 거절된다. 앱은 이를 "저장 권한 없음"으로 번역해 보여 줬고 의도한 안내(먼저 일반 레슨일지를 저장…)는 나오지 않았다. 로컬 Firestore 에뮬레이터로 재현(부모 있음 → 성공, 부모 없음 → 부모·하위 목록 모두 permission-denied). Rules·서버 문제가 아니며 배포 없음.
+- 변경: `lib/pages/personal_training_log_page.dart`(`_openAnatomyLogPage`: 개인 워크스페이스에서 서버 문서 ID가 없으면 열기 전에 `_persistPersonalLogDraft`로 초안을 먼저 만들고, 실패하면 화면을 열지 않음), `lib/services/anatomy_log_service.dart`(`_readParent`: 부모 읽기의 permission-denied를 `parentNotFound`로 변환 — 불러오기·저장 트랜잭션 모두), `test/anatomy_log_test.dart`(부모 없음 permission-denied 시나리오 3개 추가).
+- 검증: `flutter analyze` 에러 0(경고 1171 그대로), `flutter test` 1582개 통과. 서버·Rules·인덱스·의존성 변경 없음.
+- 검증하지 못함: 레슨일지 화면에서 초안을 먼저 만드는 경로(`_openAnatomyLogPage`)는 위젯 테스트가 없어 실기기 확인이 필요하다.
+- 빌드·설치: PROD 릴리스(서명 SHA-256 `c18b5444…256e`, 1.0.7(27))·DEV 디버그(1.0.7-dev(27)) 빌드 성공, R3CX40M6EEM에 `adb install -r` 둘 다 성공, dumpsys로 버전 확인.
+
+## 2026-11-10 라이트 모드 연한 골드 글씨 대비·하단 시스템 바 여백 (빌드 43)
+- 원인: 라이트 테마에서 `colorScheme.secondary`(연한 골드 EFCB62)를 글자·아이콘·테두리선 색으로 써서 흰 배경 위 대비가 약 1.5:1이었다. 하단 여백은 `ListView/SingleChildScrollView`의 고정 `padding: 28`이 시스템 내비게이션 바 높이를 더하지 않아 스크롤 끝에서 바 밑에 가렸다.
+- 변경: `lib/theme/app_colors.dart`(`mtfReadableAccent(accent, background, minContrast: 4.5)` — 같은 hue를 어둡게 맞춤, `ColorScheme.accentText` 확장: 다크는 그대로·라이트는 진한 골드), `lib/widgets/home/sections/home_bottom_nav_bar.dart`(빠른 등록 라벨), `lib/pages/notification_settings_page.dart`(선택됨/현재 기준/상태 글씨·라디오 아이콘 6곳), `lib/pages/personal_training_log_page.dart`(회원 서명 요청 버튼 글씨·테두리), `lib/pages/personal_training_log_quick_sign_page.dart`(서명 아이콘), 하단 여백 `28 + MediaQuery.paddingOf(context).bottom`: `lib/pages/settings_page.dart`, `lib/pages/contract_list_page.dart`, `lib/pages/lesson_contract/member_contracts_page.dart`(2곳). 배경으로 칠하는 `secondary`는 그대로. 서버·Rules·의존성 변경 없음.
+- 테스트: `test/readable_accent_test.dart` 신규(대비 ≥4.5, 다크 불변, 라이트 홈 하단 바 라벨).
+- 검증: `flutter analyze` 에러 0(경고 1171 그대로), `flutter test` 1587개 통과(전체 실행 중 1회 일시 실패가 있었으나 같은 파일 단독·전체 재실행에서 모두 통과, 원인 미확정). PROD 릴리스 서명 SHA-256 `c18b5444…256e` 확인, DEV 디버그 빌드 성공.
+- 설치: 빌드 직후 폰이 adb에서 보이지 않아 보류했다가, 재연결 후 PROD·DEV 모두 `adb install -r` 성공, dumpsys로 1.0.7(27) / 1.0.7-dev(27) 확인.
+- 남은 골드 글씨 후보(미수정): `scheme.secondary`를 글자색으로 쓰는 곳이 아나토미 기록 시트 9곳 등 약 40곳 더 있다. 화면별로 확인하며 `accentText`로 바꾸거나, 공통 앱 테마 작업(우선순위 8)에서 일괄 정리한다.
+
+## 2026-11-10 홈 "빠른 등록" 라벨 키우기·내리기 (빌드 44)
+- 요청(폰 확인 후): 빠른 등록 라벨이 읽히긴 하지만 위치가 높고 글씨가 작음, 핵심 기능이니 더 크고 굵게, 약간의 효과.
+- 변경: `lib/widgets/home/sections/home_bottom_nav_bar.dart` — 라벨 11px w800 → 14px w900(글자 간격 0.3, 옅은 골드 그림자; 다크는 어두운 그림자), 원형 버튼과의 간격 6 → 16으로 다른 탭 라벨과 같은 높이로 내림, 라벨 글자도 탭하면 `onCenterTap`. `test/readable_accent_test.dart`에 라벨 크기·굵기·탭 테스트 추가. 새 폰트·의존성 없음(귀여운 글씨체는 폰트 파일 추가가 필요해 승인 대기).
+- 검증: `flutter analyze` 에러 0(경고 1171 그대로), `flutter test` 1588개 통과. 임시 미리보기 테스트로 라이트·다크 배치 확인 후 삭제. PROD 릴리스·DEV 디버그 빌드·설치 결과는 아래 줄 참고.
+- 빌드 44 설치: PROD(서명 SHA-256 `c18b5444…256e`, 1.0.7(27))·DEV(1.0.7-dev(27)) `adb install -r` 모두 성공, dumpsys로 버전 확인.
+
+## 2026-11-11 디자인 문서에 강사 앱 추가 변경 공유 반영 (코드 변경 없음)
+- 입력: 강사 앱 1.0.7 추가 변경 공유문(레슨일지 초안 조기 생성, 골드 글자 대비 규칙, 하단 여백·빠른 등록 라벨 보정). 서버·Rules·인덱스·데이터 구조 변경 없음.
+- 반영: `docs/product/design-system-and-platform-direction.md` 상단에 "업데이트 2026-11-11" 추가(방향 정리, 글자색 대비 규칙, 이미 처리된 항목, 아나토미 저장 권한 오류의 원인 후보, 회원앱 training_logs draft 제외, 변하지 않은 것).
+- 확인: 폰의 DEV 앱은 1.0.7-dev(27), lastUpdateTime 2026-11-11 07:40로 새 빌드가 설치된 상태. 새 빌드에서 아나토미 레슨일지·골드 글자 대비·하단 여백은 아직 폰에서 재확인하지 않음.
+
+## 2026-11-11 DEV 새 빌드 재확인 (코드 변경 없음)
+- 대상: DEV 1.0.7-dev(27), lastUpdateTime 2026-11-11 07:40. 라이트 모드로 전환해 확인한 뒤 다크로 복구(설정 화면에서 확인).
+- 결과: 아나토미 레슨일지 정상 열림(바디맵 확인). 라이트 "빠른 등록" 라벨 대비 약 4.7:1, 설정 하단 여백 해결. 알림 설정 꺼짐 상태 글씨는 약 1.9:1로 개선됐으나 4.5:1 미달(비활성 표시일 수 있음). 못 본 것: 회원 서명 요청 버튼, 인사이트·계약서 하단 여백, 위젯 실물.
+- DEV 서버에 남긴 것: 테스트 회원의 5회차(2026.10.13) 레슨일지가 아나토미 방식으로 설정됨(이전: 작성방식 미선택). 이전 확인 때 생긴 TESTM·TESTP 레슨과 로컬 종류 TESTA는 그대로.
+- 부수 사항: 확인 중 다른 앱 알림 배너와 PIP 영상이 캡처에 잡혀 해당 캡처는 삭제하고 기록하지 않음.
+
+## 2026-11-11 회원앱 디자인 통일 작업지시서 초안 (코드 변경 없음)
+- 산출물: `docs/product/member-app-work-order.md` (신규). 강사 앱 `AppColors` 값과 폰 화면 관찰을 기준으로 회원앱 지시서 작성(색 토큰, 골드 글자 대비 규칙, 레슨 색 규칙, 컴포넌트·화면별 지시, 수용 기준, 결정 대기, 범위 밖).
+- 한계: 회원앱 코드는 이 저장소에 없어 회원앱 현재 값(주황 등)은 화면에서 추정. 강사 앱 정확한 반경·패딩 px은 문서에 적지 않고 코드 확인으로 남김. 사장님 검토 전 초안.
+
+## 2026-11-11 회원앱 작업지시서 결정 반영
+- 변경: `docs/product/member-app-work-order.md`만 수정(코드·서버 변경 없음).
+- 반영: 골드 `#EFCB62` 확정, 라이트 모드 지원 + 1.5 컬러 전개도(토큰·대비 실측), 바디맵 골드, 홈 타일 편집+규칙 기반 추천, 게시 공개 범위 초안(3.3).
+- 실측 발견: 글자용 골드 `#8B7027`은 아이보리 위 4.3:1로 미달 → 회원앱은 `#856A22`(흰 5.1/아이보리 4.7). 성공 글자 `#059669`는 흰 위 3.8:1 → `#047857`(5.5). 강사 앱 값은 변경하지 않음(참고만).
+- 미검증: 회원앱 실제 화면 적용 결과, 라이트 `surface2`(`#F1EEE5`) 구분감.
+
+## 2026-11-11 지시서 결정 추가
+- 레슨일지는 트레이너 전용, 회원에게는 트레이너가 보낸 요약 카드만 노출(카드 저장 위치는 미확인). 곡선 헤더 안에 영문 라벨+굵은 제목 유지. 문서만 수정.
+
+## 2026-11-11 관심사 5개·사진 정책 틀
+- 관심사 1단계 전체 합계 최대 5개 확정(지시서 3.7·7장). 인증 사진 정책 기본틀 `docs/product/community-photo-policy-draft.md` 신규(결정 전, 문서만).
+
+## 2026-11-11 팀 전달문
+- "기타" 입력은 사장님 검토로 확정(지시서 7장). 팀 전달문 `docs/product/member-app-team-message.md` 신규(문서만).
+
+## 2026-11-11 회원앱 기능 방향 문서
+- `docs/product/member-app-feature-direction.md` 신규(채팅·GPS 러닝·SVG 개인 운동일지·강사 영상 방향, 문서만). 현재 코드 사실 확인: 영상 단계 "준비 중", 영상/위치 패키지·권한 없음, SVG ID 매핑표 필요.
+
+## 2026-11-11 연결 방식·패키지 범주 승인 반영
+- 사장님 답변: 가입+초대 링크 연결(일정·알림·사인·채팅), 새 패키지 범주(SVG·위치·영상) 승인, 사진 결정은 사진 정책과 동일. 공유 기본값은 제안 등급 작성(확정 전). 법적 확인 묶음 `docs/product/legal-check-bundle.md` 신규. 문서만 수정.
+
+## 2026-11-11 공유 구조 정정
+- 사장님 정정: 운동 기록은 코치에게 개별 전송·확인이 아니라 커뮤니티(전체/소속 헬스장/소속 트레이너 게시판)에 올리는 것. 기능 방향 문서 6장 재작성, 지시서 3.3 표 라벨 수정. 1:1 연결은 일정·알림·사인·채팅 전용. 문서만 수정.
+
+## 2026-11-11 소속·그룹 모델
+- 사장님 답변: 소속 직접 선택 기능 없음, 일반 가입자는 마이페이지 자유 기재, 트레이너 매칭은 차후, 강사 앱 소속센터 기반 + 센터 미연동 시 강사 생성 그룹(초대 시 선택). 기능 방향 문서 6장에 그룹 모델(센터/강사/자기기재, 인증·미인증) 추가. 강사 앱 프로필 필드(affiliationType·centerLocation·centerLogoPath) 코드 확인, 센터 이름 필드는 미확인. 문서만 수정.
+
+## 2026-11-11 강사 앱 기능 작업지시서·팀 전달문 v2
+- 사장님 확인: 자기기재 그룹 의도 맞음. 신규 `docs/product/trainer-app-feature-work-order.md`(단계 A~G, 승인 게이트, 문서만). `member-app-team-message.md`를 v2로 갱신(제품 구조·그룹·기능 순서·승인).
+- 코드 확인: 강사 앱에 `personal_groups`(회원 분류 그룹, Functions 전용 쓰기, 회원당 1개)가 이미 있어 커뮤니티 그룹은 **별도 개념·컬렉션**으로 제안. `trainer_profiles` update 허용 키 목록 때문에 프로필 새 필드는 Rules 변경 필요. 초대·`member_links` 구현은 저장소에 없음.
