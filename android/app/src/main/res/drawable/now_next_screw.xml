@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 몸체의 나사(장식). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:angle="315"
+                android:endColor="#5C6675"
+                android:startColor="#D5DBE5" />
+        </shape>
+    </item>
+    <item
+        android:bottom="3dp"
+        android:left="1.5dp"
+        android:right="1.5dp"
+        android:top="3dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#7A222B36" />
+        </shape>
+    </item>
+</layer-list>

@@ -1,6 +1,7 @@
 package com.morethanfitness.app
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.AppWidgetId
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
@@ -27,11 +29,13 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.state.GlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
+import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import es.antonborri.home_widget.HomeWidgetGlanceState
 import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
@@ -39,7 +43,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import org.json.JSONObject
 
 class MtfTodayLessonRollupWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
@@ -58,45 +61,21 @@ class MtfTodayLessonRollupWidget : GlanceAppWidget() {
         appWidgetId: Int,
     ) {
         val prefs = state.preferences
-        val ownerUid = prefs.getString(KEY_OWNER_UID, "") ?: ""
-        val encoded = prefs.getString(KEY_ROLLUP, "{}") ?: "{}"
-        val environment = prefs.getString(KEY_ENVIRONMENT, "") ?: ""
-        val projectId = prefs.getString(KEY_PROJECT_ID, "") ?: ""
-        val workspaceType = prefs.getString(KEY_WORKSPACE_TYPE, "") ?: ""
-        val localDate = prefs.getString(KEY_LOCAL_DATE, "") ?: ""
-        val expectedEnvironment = if (context.packageName.endsWith(".dev")) "dev" else "prod"
-        val projectResourceId = context.resources.getIdentifier(
-            "project_id",
-            "string",
-            context.packageName,
-        )
-        val expectedProjectId = if (projectResourceId == 0) "" else
-            context.getString(projectResourceId)
-        val renderResult = parseVisibleLessons(
-            encoded = encoded,
-            currentOwnerUid = ownerUid,
-            environment = environment,
-            expectedEnvironment = expectedEnvironment,
-            projectId = projectId,
-            expectedProjectId = expectedProjectId,
-            workspaceType = workspaceType,
-            localDate = localDate,
-        )
+        val renderResult = MtfTodayRollupSource.load(context, prefs)
         val lessons = renderResult.lessons
-        val sizeRemainingCapacity = when {
-            LocalSize.current.height.value >= 310f -> 4
-            LocalSize.current.height.value >= 270f -> 3
-            else -> 2
-        }
-        val remainingCapacity = if (lessons.size in 3..6) {
-            minOf(sizeRemainingCapacity, 3)
-        } else {
-            sizeRemainingCapacity
-        }
-        val topCardCount = minOf(lessons.size, TOP_CARD_LIMIT)
-        val remaining = lessons.drop(topCardCount)
-        val visibleRemainingCount = minOf(remaining.size, remainingCapacity)
-        val hiddenCount = maxOf(0, remaining.size - visibleRemainingCount)
+        val palette = readPalette(prefs)
+        val size = LocalSize.current
+        val isDevWidget = MtfWidgetIntentFactory.isDevWidget(context)
+        val showType = size.width.value >= WIDE_WIDTH_DP
+        val reservedHeight = HEADER_RESERVED_DP + CONTENT_PADDING_DP * 2 +
+            NOW_LINE_HEIGHT_DP * 2 + (if (isDevWidget) DEV_BANNER_RESERVED_DP else 0f)
+        val capacity = maxOf(
+            MIN_ROWS,
+            ((size.height.value - reservedHeight) / ROW_HEIGHT_DP).toInt(),
+        )
+        val window = pickWindow(lessons, capacity)
+        val doneCount = lessons.count { it.done }
+        val openCount = lessons.size - doneCount
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             Log.d(
                 TAG_PARSE,
@@ -104,7 +83,7 @@ class MtfTodayLessonRollupWidget : GlanceAppWidget() {
                     "schemaVersion=${renderResult.schemaVersion} rawItemCount=${renderResult.payloadCount} " +
                     "validDateCount=${renderResult.validDateCount} " +
                     "validTimeCount=${renderResult.validTimeCount} " +
-                    "upcomingCount=${renderResult.parsedItemCount} " +
+                    "todayCount=${renderResult.parsedItemCount} " +
                     "invalidDateCount=${renderResult.invalidDateCount} " +
                     "invalidTimeCount=${renderResult.invalidTimeCount} " +
                     "localDateMatched=${renderResult.localDateMatched} " +
@@ -119,67 +98,60 @@ class MtfTodayLessonRollupWidget : GlanceAppWidget() {
             Log.d(
                 TAG_RENDER,
                 "appWidgetId=$appWidgetId payloadRevision=${renderResult.payloadRevision} " +
-                    "ownerPresent=${ownerUid.isNotBlank()} ownerMatched=${renderResult.ownerMatched} " +
-                    "payloadPresent=${encoded.isNotBlank() && encoded != "{}"} " +
-                    "payloadCount=${renderResult.payloadCount} upcomingCount=${lessons.size} " +
-                    "topCardCount=$topCardCount " +
-                    "visibleRemainingCount=$visibleRemainingCount hiddenCount=$hiddenCount " +
-                    "hiddenLabelVisible=${hiddenCount > 0} " +
+                    "ownerPresent=${renderResult.ownerPresent} ownerMatched=${renderResult.ownerMatched} " +
+                    "payloadPresent=${renderResult.payloadPresent} " +
+                    "payloadCount=${renderResult.payloadCount} todayCount=${lessons.size} " +
+                    "done=$doneCount open=$openCount capacity=$capacity " +
+                    "windowStart=${window.start} windowEnd=${window.end} " +
+                    "hiddenAfter=${window.hiddenAfter} " +
                     "renderState=${if (lessons.isEmpty()) "empty" else "ready"}",
             )
         }
         val openAppIntent = MtfWidgetIntentFactory.openToday(context, appWidgetId)
 
-        val isDevWidget = MtfWidgetIntentFactory.isDevWidget(context)
         Column(
             modifier = GlanceModifier.fillMaxSize()
-                .background(color(if (isDevWidget) 0xFFFAF5FF else 0xFFFFFFFF))
+                .background(color(palette.background))
                 .clickable(actionStartActivity(openAppIntent))
-                .padding(12.dp),
+                .padding(CONTENT_PADDING_DP.dp),
         ) {
             if (isDevWidget) {
                 DevBanner(context)
                 Box(GlanceModifier.height(6.dp)) {}
             }
-            Header(context, lessons.size)
-            Box(GlanceModifier.height(8.dp)) {}
+            Header(
+                palette = palette,
+                showCounts = lessons.isNotEmpty(),
+                doneCount = doneCount,
+                openCount = openCount,
+            )
+            Box(GlanceModifier.height(6.dp)) {}
             if (lessons.isEmpty()) {
-                EmptyState()
+                EmptyState(palette)
                 return@Column
             }
-            FeaturedLesson("다음 레슨", lessons[0])
-            if (lessons.size >= 2) {
-                Box(GlanceModifier.height(6.dp)) {}
-                FeaturedLesson("다다음 레슨", lessons[1])
-            }
-            if (remaining.isNotEmpty()) {
-                Box(GlanceModifier.height(8.dp)) {}
-                Row(modifier = GlanceModifier.fillMaxWidth()) {
-                    Text(
-                        "오늘 남은 일정",
-                        modifier = GlanceModifier.defaultWeight(),
-                        style = TextStyle(
-                            color = color(0xFF6B7280),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                    )
-                    if (hiddenCount > 0) {
-                        Text(
-                            "외 ${hiddenCount}개",
-                            style = TextStyle(
-                                color = color(0xFF6B7280),
-                                fontSize = 11.sp,
-                                textAlign = TextAlign.End,
-                            ),
-                        )
-                    }
-                }
+            // Glance는 한 컨테이너에 자식을 10개까지만 허용하므로 줄을 묶음(Column)으로 나눠 담는다.
+            buildEntries(lessons, window).chunked(MAX_CHILDREN_PER_COLUMN).forEach { chunk ->
                 Column(modifier = GlanceModifier.fillMaxWidth()) {
-                    remaining.take(visibleRemainingCount).forEach { CompactLesson(it) }
+                    chunk.forEach { entry ->
+                        when (entry) {
+                            is ListEntry.Lesson -> LessonRow(palette, entry.lesson, showType)
+                            is ListEntry.NowLine -> NowLine(palette, entry.label)
+                            is ListEntry.More -> MoreLabel(palette, entry.count)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    @Composable
+    private fun MoreLabel(palette: RollupPalette, count: Int) {
+        Text(
+            "+${count}개 더",
+            modifier = GlanceModifier.fillMaxWidth().padding(start = 18.dp),
+            style = TextStyle(color = color(palette.muted), fontSize = 11.sp),
+        )
     }
 
     @Composable
@@ -199,115 +171,128 @@ class MtfTodayLessonRollupWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun Header(context: Context, count: Int) {
-        Row(
-            modifier = GlanceModifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = GlanceModifier.defaultWeight()) {
-                Text(
-                    MtfWidgetIntentFactory.displayTitle(context, todayLabel()),
-                    style = TextStyle(
-                        color = color(0xFF312E81),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                )
-                Text(
-                    "오늘 레슨",
-                    style = TextStyle(color = color(0xFF6B7280), fontSize = 11.sp),
-                )
-            }
+    private fun Header(
+        palette: RollupPalette,
+        showCounts: Boolean,
+        doneCount: Int,
+        openCount: Int,
+    ) {
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
             Text(
-                "남은 레슨 ${count}개",
+                todayLabel(),
+                maxLines = 1,
                 style = TextStyle(
-                    color = color(0xFF4F46E5),
-                    fontSize = 13.sp,
+                    color = color(palette.title),
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 ),
             )
-        }
-    }
-
-    @Composable
-    private fun FeaturedLesson(label: String, lesson: RollupLesson) {
-        Column(
-            modifier = GlanceModifier.fillMaxWidth()
-                .background(color(0xFFF5F3FF))
-                .padding(horizontal = 9.dp, vertical = 7.dp),
-        ) {
-            Text(
-                if (lesson.ongoing) "진행 중" else label,
-                style = TextStyle(
-                    color = color(if (lesson.ongoing) 0xFFDC2626 else 0xFF6D28D9),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            if (showCounts) {
                 Text(
-                    lesson.time,
-                    modifier = GlanceModifier.width(50.dp),
-                    style = TextStyle(
-                        color = color(0xFF111827),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                )
-                Text(
-                    lesson.title,
-                    modifier = GlanceModifier.defaultWeight(),
+                    "완료 $doneCount · 남음 $openCount",
                     maxLines = 1,
-                    style = TextStyle(color = color(0xFF312E81), fontSize = 13.sp),
+                    style = TextStyle(color = color(palette.muted), fontSize = 11.sp),
                 )
-                if (lesson.remainingSessions != null) {
-                    Text(
-                        "${lesson.remainingSessions}회 남음",
-                        style = TextStyle(color = color(0xFF6B7280), fontSize = 10.sp),
-                    )
-                }
             }
         }
     }
 
     @Composable
-    private fun CompactLesson(lesson: RollupLesson) {
+    private fun LessonRow(palette: RollupPalette, lesson: RollupLesson, showType: Boolean) {
+        // 끝남=흐리게, 진행 중=강조색, 예정=본문색. 색은 앱의 위젯 테마(라이트·다크 등)를 따른다.
+        val dotColor = when {
+            lesson.done -> palette.muted
+            lesson.ongoing -> palette.accent
+            else -> palette.text
+        }
+        val timeColor = when {
+            lesson.done -> palette.muted
+            lesson.ongoing -> palette.accent
+            else -> palette.text
+        }
+        val nameColor = timeColor
+        val label = if (showType && lesson.type.isNotEmpty()) {
+            "${lesson.name} · ${lesson.type}"
+        } else {
+            lesson.name
+        }
+        val rowModifier = GlanceModifier.fillMaxWidth().height(ROW_HEIGHT_DP.dp).let {
+            if (lesson.ongoing) {
+                it.background(color(withAlpha(palette.accent, 0.16f))).cornerRadius(6.dp)
+            } else {
+                it
+            }
+        }
         Row(
-            modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp),
+            modifier = rowModifier,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(GlanceModifier.width(4.dp)) {}
+            Box(
+                modifier = GlanceModifier.size(8.dp)
+                    .background(color(dotColor))
+                    .cornerRadius(4.dp),
+            ) {}
+            Box(GlanceModifier.width(6.dp)) {}
             Text(
                 lesson.time,
-                modifier = GlanceModifier.width(48.dp),
+                modifier = GlanceModifier.width(40.dp),
+                maxLines = 1,
                 style = TextStyle(
-                    color = color(0xFF374151),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    color = color(timeColor),
+                    fontSize = 12.sp,
+                    fontWeight = if (lesson.done) FontWeight.Normal else FontWeight.Bold,
+                    textDecoration = if (lesson.done) TextDecoration.LineThrough else null,
                 ),
             )
             Text(
-                lesson.title,
+                label,
                 modifier = GlanceModifier.defaultWeight(),
                 maxLines = 1,
-                style = TextStyle(color = color(0xFF4B5563), fontSize = 11.sp),
+                style = TextStyle(
+                    color = color(nameColor),
+                    fontSize = 12.sp,
+                    fontWeight = if (lesson.ongoing) FontWeight.Bold else FontWeight.Normal,
+                ),
             )
         }
     }
 
     @Composable
-    private fun EmptyState() {
+    private fun NowLine(palette: RollupPalette, label: String) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth().height(NOW_LINE_HEIGHT_DP.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(GlanceModifier.width(8.dp).height(1.dp).background(color(palette.accent))) {}
+            if (label.isNotEmpty()) {
+                Text(
+                    " $label ",
+                    maxLines = 1,
+                    style = TextStyle(
+                        color = color(palette.accent),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
+            }
+            Box(
+                GlanceModifier.defaultWeight().height(1.dp).background(color(palette.accent)),
+            ) {}
+        }
+    }
+
+    @Composable
+    private fun EmptyState(palette: RollupPalette) {
         Box(
             modifier = GlanceModifier.fillMaxWidth().height(78.dp)
-                .background(color(0xFFF9FAFB)).padding(10.dp),
+                .background(color(palette.panel)).padding(10.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "오늘 남은 레슨이 없어요.",
+                "오늘 레슨이 없어요.",
                 style = TextStyle(
-                    color = color(0xFF6B7280),
+                    color = color(palette.muted),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
@@ -316,188 +301,112 @@ class MtfTodayLessonRollupWidget : GlanceAppWidget() {
         }
     }
 
-    private fun parseVisibleLessons(
-        encoded: String,
-        currentOwnerUid: String,
-        environment: String,
-        expectedEnvironment: String,
-        projectId: String,
-        expectedProjectId: String,
-        workspaceType: String,
-        localDate: String,
-    ): RollupRenderResult {
-        if (currentOwnerUid.isBlank()) {
-            return RollupRenderResult(result = "missing_owner")
-        }
-        val now = System.currentTimeMillis()
-        val today = dateKey(now)
-        val formatter = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
-        return try {
-            val root = JSONObject(encoded)
-            val schemaVersion = root.optInt("schemaVersion", 1)
-            val payloadRevision = root.optLong("payloadRevision", 0L)
-            if (schemaVersion !in 1..2) {
-                return RollupRenderResult(
-                    payloadRevision = payloadRevision,
-                    schemaVersion = schemaVersion,
-                    result = "invalid_schema",
-                )
-            }
-            val ownerMatched = root.optString("ownerUid") == currentOwnerUid
-            val array = root.optJSONArray("items")
-            val payloadCount = array?.length() ?: 0
-            if (!ownerMatched) {
-                return RollupRenderResult(
-                    payloadCount = payloadCount,
-                    payloadRevision = payloadRevision,
-                    schemaVersion = schemaVersion,
-                    result = "owner_mismatch",
-                )
-            }
-            val payloadLocalDate = if (schemaVersion >= 2) {
-                root.optString("localDate")
-            } else {
-                root.optString("generatedDate")
-            }
-            val identityMatches = root.optString("workspaceType") == "personal" &&
-                workspaceType == "personal" &&
-                root.optString("environment") == environment &&
-                environment == expectedEnvironment &&
-                root.optString("projectId") == projectId &&
-                projectId.isNotBlank() &&
-                projectId == expectedProjectId &&
-                (schemaVersion < 2 || root.optString("timezone") == TIMEZONE_SEOUL) &&
-                payloadLocalDate == today &&
-                localDate == today
-            if (!identityMatches) {
-                return RollupRenderResult(
-                    ownerMatched = true,
-                    payloadCount = payloadCount,
-                    payloadRevision = payloadRevision,
-                    schemaVersion = schemaVersion,
-                    localDateMatched = payloadLocalDate == today && localDate == today,
-                    result = "stale",
-                )
-            }
-            if (array == null) {
-                return RollupRenderResult(
-                    ownerMatched = true,
-                    payloadRevision = payloadRevision,
-                    schemaVersion = schemaVersion,
-                    localDateMatched = true,
-                    result = "invalid_payload",
-                )
-            }
-            var validDateCount = 0
-            var validTimeCount = 0
-            var invalidDateCount = 0
-            var invalidTimeCount = 0
-            val lessons = buildList {
-                for (index in 0 until array.length()) {
-                    val item = array.optJSONObject(index) ?: continue
-                    val startKey = if (schemaVersion >= 2) "startAtEpochMs" else "startAtMillis"
-                    val endKey = if (schemaVersion >= 2) "endAtEpochMs" else "endAtMillis"
-                    val nameKey = if (schemaVersion >= 2) "displayName" else "memberName"
-                    val start = item.optLong(startKey, -1L)
-                    val end = item.optLong(endKey, -1L)
-                    val status = normalizedStatus(item.optString("status"))
-                    if (start < 0L || end <= start) {
-                        invalidTimeCount++
-                        continue
-                    }
-                    if (dateKey(start) != today) {
-                        invalidDateCount++
-                        continue
-                    }
-                    validDateCount++
-                    validTimeCount++
-                    if (end <= now || status in EXCLUDED_STATUSES) continue
-                    val name = item.optString(nameKey).trim()
-                    val type = item.optString("lessonType").trim()
-                    val title = listOf(name, type).filter { it.isNotEmpty() }
-                        .joinToString(" · ").ifEmpty { "미등록 일정" }
-                    add(
-                        RollupLesson(
-                            startAtMillis = start,
-                            time = formatter.format(Instant.ofEpochMilli(start).atZone(SEOUL_ZONE)),
-                            title = title,
-                            remainingSessions = if (item.has("remainingSessions"))
-                                item.optInt("remainingSessions") else null,
-                            ongoing = start <= now && now < end,
-                        ),
-                    )
+    /** 화면에 그릴 줄(레슨·'지금' 선·'+N개 더')을 순서대로 만든다. */
+    private fun buildEntries(lessons: List<RollupLesson>, window: LessonWindow): List<ListEntry> {
+        val firstOpenIndex = lessons.indexOfFirst { !it.done }
+        val anyOngoing = lessons.any { it.ongoing }
+        return buildList {
+            for (index in window.start until window.end) {
+                val lesson = lessons[index]
+                val startsOngoingRun =
+                    lesson.ongoing && (index == window.start || !lessons[index - 1].ongoing)
+                when {
+                    // 진행 중인 레슨(들)은 '지금' 선으로 열고
+                    startsOngoingRun -> add(ListEntry.NowLine("지금"))
+                    // 진행 중인 레슨이 없을 때는 다음 레슨 위에 '다음' 선 하나만 긋는다.
+                    !anyOngoing && index == firstOpenIndex -> add(ListEntry.NowLine("다음"))
                 }
-            }.sortedWith(
-                compareByDescending<RollupLesson> { it.ongoing }
-                    .thenBy { it.startAtMillis },
-            )
-            RollupRenderResult(
-                lessons = lessons,
-                ownerMatched = true,
-                payloadCount = payloadCount,
-                parsedItemCount = lessons.size,
-                validDateCount = validDateCount,
-                validTimeCount = validTimeCount,
-                invalidDateCount = invalidDateCount,
-                invalidTimeCount = invalidTimeCount,
-                payloadRevision = payloadRevision,
-                schemaVersion = schemaVersion,
-                localDateMatched = true,
-                result = if (lessons.isEmpty()) "empty" else "ready",
-            )
-        } catch (_: Exception) {
-            RollupRenderResult(result = "invalid_payload")
+                add(ListEntry.Lesson(lesson))
+                val endsOngoingRun =
+                    lesson.ongoing && (index + 1 >= lessons.size || !lessons[index + 1].ongoing)
+                if (endsOngoingRun) {
+                    // 닫는 선은 이어지는 레슨이 있으면 '다음' 이름표, 마지막 레슨이면 이름표 없는 선.
+                    add(ListEntry.NowLine(if (index + 1 < lessons.size) "다음" else ""))
+                }
+            }
+            if (firstOpenIndex < 0 && window.end == lessons.size) {
+                add(ListEntry.NowLine("오늘 레슨 끝"))
+            }
+            if (window.hiddenAfter > 0) add(ListEntry.More(window.hiddenAfter))
         }
     }
 
-    private fun todayLabel() = DateTimeFormatter.ofPattern("M월 d일 EEEE", Locale.KOREAN)
+    /**
+     * 화면에 들어가는 줄 수([capacity])만큼 레슨 구간을 고른다. 끝난 레슨 하나 뒤부터 보이도록
+     * 현재(진행 중·다음) 레슨 주변을 잡고, 아래가 잘리면 마지막 줄을 '+N개 더'에 비워 둔다.
+     */
+    private fun pickWindow(lessons: List<RollupLesson>, capacity: Int): LessonWindow {
+        if (lessons.isEmpty()) return LessonWindow(0, 0, 0)
+        val firstOpen = lessons.indexOfFirst { !it.done }.let { if (it < 0) lessons.size else it }
+        val start = maxOf(0, minOf(firstOpen - 1, lessons.size - capacity))
+        var end = minOf(lessons.size, start + capacity)
+        if (end < lessons.size) end -= 1
+        return LessonWindow(start, end, lessons.size - end)
+    }
+
+    /** 앱의 위젯 테마(주간 위젯과 같은 저장값)에서 색을 읽는다. 값이 없으면 라이트 기본색. */
+    private fun readPalette(prefs: SharedPreferences): RollupPalette {
+        fun themed(key: String, fallback: Long): Long {
+            val raw = prefs.getString(key, null)?.trim()?.removePrefix("#")?.removePrefix("0x")
+                ?: return fallback
+            val parsed = raw.toLongOrNull(16) ?: return fallback
+            return when (raw.length) {
+                6 -> 0xFF000000L or parsed
+                8 -> parsed
+                else -> fallback
+            }
+        }
+        val text = themed("mtf_widget_time_text", 0xFF334155L)
+        return RollupPalette(
+            background = themed("mtf_widget_body_bg", 0xFFFFFFFFL),
+            panel = themed("mtf_widget_row_even", 0xFFEFF6FFL),
+            title = themed("mtf_widget_day_text", 0xFF111827L),
+            text = text,
+            muted = withAlpha(text, 0.55f),
+            accent = themed("mtf_widget_today_border", 0xFFE11D48L),
+        )
+    }
+
+    private fun withAlpha(argb: Long, factor: Float): Long {
+        val alpha = (((argb ushr 24) and 0xFF) * factor).toInt().coerceIn(0, 255)
+        return (alpha.toLong() shl 24) or (argb and 0x00FFFFFFL)
+    }
+
+    private fun todayLabel() = DateTimeFormatter.ofPattern("M월 d일 E", Locale.KOREAN)
         .format(Instant.now().atZone(SEOUL_ZONE))
-    private fun dateKey(millis: Long) = DATE_KEY_FORMATTER
-        .format(Instant.ofEpochMilli(millis).atZone(SEOUL_ZONE))
-    private fun normalizedStatus(value: String) = value.trim().lowercase(Locale.ROOT)
-        .replace('_', '-').replace(' ', '-')
     private fun color(hex: Long) = ColorProvider(Color(hex), Color(hex))
 
     companion object {
-        private const val TOP_CARD_LIMIT = 2
-        private const val KEY_ROLLUP = "mtf_widget_today_rollup_items_v1"
-        private const val KEY_OWNER_UID = "mtf_widget_personal_owner_uid"
-        private const val KEY_ENVIRONMENT = "mtf_widget_personal_environment"
-        private const val KEY_PROJECT_ID = "mtf_widget_personal_project_id"
-        private const val KEY_WORKSPACE_TYPE = "mtf_widget_personal_workspace_type"
-        private const val KEY_LOCAL_DATE = "mtf_widget_today_rollup_local_date"
+        private const val ROW_HEIGHT_DP = 22f
+        private const val NOW_LINE_HEIGHT_DP = 14f
+        private const val HEADER_RESERVED_DP = 40f
+        private const val CONTENT_PADDING_DP = 10f
+        private const val DEV_BANNER_RESERVED_DP = 31f
+        private const val MIN_ROWS = 2
+
+        /** Glance 컨테이너 하나가 가질 수 있는 자식 수(10) 아래로 묶는다. */
+        private const val MAX_CHILDREN_PER_COLUMN = 8
+        private const val WIDE_WIDTH_DP = 200f
         private const val TAG_RENDER = "MTF_DAILY_WIDGET_RENDER"
         private const val TAG_PARSE = "MTF_DAILY_WIDGET_PARSE"
         private const val TAG_TAP = "MTF_DAILY_WIDGET_TAP"
-        private const val TIMEZONE_SEOUL = "Asia/Seoul"
-        private val SEOUL_ZONE = ZoneId.of(TIMEZONE_SEOUL)
-        private val DATE_KEY_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT)
-        private val EXCLUDED_STATUSES = setOf(
-            "deleted", "archived", "voided", "tombstone", "pending-delete",
-            "pendingdelete", "rollback", "failed", "temp", "example",
-        )
+        private val SEOUL_ZONE = ZoneId.of("Asia/Seoul")
     }
 }
 
-private data class RollupRenderResult(
-    val lessons: List<RollupLesson> = emptyList(),
-    val ownerMatched: Boolean = false,
-    val payloadCount: Int = 0,
-    val parsedItemCount: Int = 0,
-    val validDateCount: Int = 0,
-    val validTimeCount: Int = 0,
-    val invalidDateCount: Int = 0,
-    val invalidTimeCount: Int = 0,
-    val payloadRevision: Long = 0L,
-    val schemaVersion: Int = 1,
-    val localDateMatched: Boolean = false,
-    val result: String,
+private data class RollupPalette(
+    val background: Long,
+    val panel: Long,
+    val title: Long,
+    val text: Long,
+    val muted: Long,
+    val accent: Long,
 )
 
-private data class RollupLesson(
-    val startAtMillis: Long,
-    val time: String,
-    val title: String,
-    val remainingSessions: Int?,
-    val ongoing: Boolean,
-)
+private data class LessonWindow(val start: Int, val end: Int, val hiddenAfter: Int)
+
+private sealed interface ListEntry {
+    data class Lesson(val lesson: RollupLesson) : ListEntry
+    data class NowLine(val label: String) : ListEntry
+    data class More(val count: Int) : ListEntry
+}

@@ -65,6 +65,28 @@
                 android:resource="@xml/mtf_today_lesson_rollup_widget_info" />
         </receiver>
 
+        <!-- 지금·다음 위젯: 전/지금/다음 세 줄이 칸마다 굴러가는 손 계수기 모양. -->
+        <receiver
+            android:name=".MtfNowNextWidget"
+            android:exported="true"
+            android:label="@string/now_next_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <intent-filter>
+                <!-- 앱이 일정을 동기화했을 때(오늘 레슨 위젯 수신기가 전달)와 시각·날짜가 바뀌었을 때 다시 그린다. -->
+                <action android:name="com.morethanfitness.app.action.NOW_NEXT_REFRESH" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mtf_now_next_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".MtfWidgetWeekRolloverReceiver"
             android:exported="false">

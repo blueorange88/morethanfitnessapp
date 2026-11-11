@@ -1,0 +1,1574 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  지금·다음 위젯: 손 계수기(탤리 카운터) 모양. 전 / 지금 / 다음 세 줄이 한 줄씩(시각 숫자 4칸 + 이름 글자 칸).
+  칸마다 작은 ViewFlipper(글자 A/B)가 있어 바뀐 칸만 그 칸 안에서 굴러간다.
+  몸체·레버·나사·홈이 파인 손잡이는 드로어블로 그린다(그림 파일 없음).
+  위젯(RemoteViews)에서는 허용된 클래스만 쓸 수 있다.
+  gen_tally_layout.cjs로 만든다(아이디 목록 NowNextIds.kt, 테마 NowNextThemes.kt와 함께). 손으로 고치지 않는다.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/now_next_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/now_next_bg_dark">
+
+    <!-- 위쪽 가운데 은색 레버 -->
+    <FrameLayout
+        android:layout_width="46dp"
+        android:layout_height="11dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="3dp"
+        android:background="@drawable/now_next_lever" />
+
+    <!-- 몸체 네 모서리의 나사 -->
+
+    <FrameLayout
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="9dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/now_next_screw" />
+
+    <FrameLayout
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="9dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/now_next_screw" />
+
+    <FrameLayout
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="9dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/now_next_screw" />
+
+    <FrameLayout
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="9dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/now_next_screw" />
+
+    <!-- 오른쪽 옆면의 홈이 파인 손잡이 -->
+    <ImageView
+        android:layout_width="13dp"
+        android:layout_height="64dp"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="1dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/now_next_knob" />
+
+    <!-- 숫자가 보이는 움푹한 창 -->
+    <LinearLayout
+        android:id="@+id/now_next_window"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="17dp"
+        android:layout_marginBottom="18dp"
+        android:background="@drawable/now_next_window_dark"
+        android:orientation="vertical"
+        android:paddingStart="6dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="4dp">
+
+        <LinearLayout
+            android:id="@+id/r_top"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/r_top_digits"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+            <ViewFlipper
+                android:id="@+id/r_top_d1"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_top_d1_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="1"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_d1_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_top_d2"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_top_d2_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="5"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_d2_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <TextView
+                android:id="@+id/r_top_colon"
+                android:layout_width="5dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:shadowColor="#33FFFFFF"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="3"
+                android:text=":"
+                android:textColor="#B3FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+            <ViewFlipper
+                android:id="@+id/r_top_d3"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_top_d3_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="0"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_d3_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_top_d4"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_top_d4_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="0"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_d4_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/r_top_names"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+            <ViewFlipper
+                android:id="@+id/r_top_n1"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_top_n1_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="홍"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_n1_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_top_n2"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_top_n2_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="길"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_n2_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_top_n3"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_top_n3_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="동"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_n3_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_top_n4"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_top_n4_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_n4_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_top_n5"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_top_n5_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_n5_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_top_n6"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_top_n6_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_top_n6_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            </LinearLayout>
+
+            <!-- 시각이 없는 줄('오늘 끝' 등)은 칸 없이 글자만 -->
+            <TextView
+                android:id="@+id/r_top_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#B3FFFFFF"
+                android:textSize="12sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/r_center"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/r_center_digits"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+            <ViewFlipper
+                android:id="@+id/r_center_d1"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_center_d1_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text="1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_d1_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_center_d2"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_center_d2_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text="7"
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_d2_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <TextView
+                android:id="@+id/r_center_colon"
+                android:layout_width="6dp"
+                android:layout_height="36dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:shadowColor="#99E8C97A"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="5"
+                android:text=":"
+                android:textColor="#FFFFFF"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+            <ViewFlipper
+                android:id="@+id/r_center_d3"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_center_d3_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text="0"
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_d3_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_center_d4"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_center_d4_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text="0"
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_d4_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/r_center_names"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+            <ViewFlipper
+                android:id="@+id/r_center_n1"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_center_n1_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text="이"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_n1_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_center_n2"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_center_n2_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text="순"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_n2_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_center_n3"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_center_n3_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text="신"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_n3_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_center_n4"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_center_n4_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_n4_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_center_n5"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_center_n5_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_n5_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_center_n6"
+                android:layout_width="13dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_center_n6_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_center_n6_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99E8C97A"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="5"
+                    android:text=""
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            </LinearLayout>
+
+            <!-- 시각이 없는 줄('오늘 끝' 등)은 칸 없이 글자만 -->
+            <TextView
+                android:id="@+id/r_center_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/r_bottom"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/r_bottom_digits"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+            <ViewFlipper
+                android:id="@+id/r_bottom_d1"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_d1_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="1"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_d1_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_bottom_d2"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_d2_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="8"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_d2_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <TextView
+                android:id="@+id/r_bottom_colon"
+                android:layout_width="5dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:shadowColor="#33FFFFFF"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="3"
+                android:text=":"
+                android:textColor="#99FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+            <ViewFlipper
+                android:id="@+id/r_bottom_d3"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_d3_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="0"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_d3_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_bottom_d4"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_d4_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="0"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_d4_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/r_bottom_names"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+            <ViewFlipper
+                android:id="@+id/r_bottom_n1"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_n1_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="신"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_n1_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_bottom_n2"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_n2_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="사"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_n2_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_bottom_n3"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_n3_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="임"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_n3_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_bottom_n4"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out">
+
+                <TextView
+                    android:id="@+id/r_bottom_n4_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text="당"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_n4_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_bottom_n5"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_bottom_n5_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_n5_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/r_bottom_n6"
+                android:layout_width="12dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="0.5dp"
+                android:layout_marginEnd="0.5dp"
+                android:background="@drawable/now_next_cell_dark"
+                android:inAnimation="@anim/cell_roll_in"
+                android:outAnimation="@anim/cell_roll_out"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/r_bottom_n6_a"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/r_bottom_n6_b"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#33FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="3"
+                    android:text=""
+                    android:textColor="#99FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </ViewFlipper>
+            </LinearLayout>
+
+            <!-- 시각이 없는 줄('오늘 끝' 등)은 칸 없이 글자만 -->
+            <TextView
+                android:id="@+id/r_bottom_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#99FFFFFF"
+                android:textSize="12sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

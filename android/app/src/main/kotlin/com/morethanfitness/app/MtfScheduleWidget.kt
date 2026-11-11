@@ -746,6 +746,16 @@ class MtfScheduleWidget : GlanceAppWidget() {
                 blockPaint,
             )
 
+            // 흰색처럼 아주 밝은 색은 위젯 배경에서 경계가 안 보이므로 옅은 회색 테두리를 둔다.
+            if (relativeLuminance(rawColor) > 0.8) {
+                val lightBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    this.color = 0xFFD1D5DB.toInt()
+                    style = Paint.Style.STROKE
+                    strokeWidth = 2f
+                }
+                canvas.drawRoundRect(blockRect, 10f, 10f, lightBorderPaint)
+            }
+
             val shinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 this.color = 0x26FFFFFF
                 style = Paint.Style.FILL
@@ -771,22 +781,31 @@ class MtfScheduleWidget : GlanceAppWidget() {
                 val metrics = blockTextPaint.fontMetrics
                 val textY = centerY - ((metrics.ascent + metrics.descent) / 2f)
 
-                val shadowPaint = Paint(blockTextPaint).apply {
-                    this.color = 0x66000000
+                // 바탕색에 따라 흰 글씨와 짙은 글씨 중 대비가 큰 쪽을 쓴다.
+                val inkColor = blockInkColor(rawColor)
+                val inkPaint = Paint(blockTextPaint).apply {
+                    this.color = inkColor
                 }
 
-                canvas.drawText(
-                    label,
-                    (left + right) / 2f + 1.2f,
-                    textY + 1.2f,
-                    shadowPaint,
-                )
+                // 글씨 그림자는 흰 글씨일 때만 둔다(짙은 글씨에는 번져 보인다).
+                if (inkColor == 0xFFFFFFFF.toInt()) {
+                    val shadowPaint = Paint(blockTextPaint).apply {
+                        this.color = 0x66000000
+                    }
+
+                    canvas.drawText(
+                        label,
+                        (left + right) / 2f + 1.2f,
+                        textY + 1.2f,
+                        shadowPaint,
+                    )
+                }
 
                 canvas.drawText(
                     label,
                     (left + right) / 2f,
                     textY,
-                    blockTextPaint,
+                    inkPaint,
                 )
             }
         }
@@ -1094,6 +1113,28 @@ class MtfScheduleWidget : GlanceAppWidget() {
         }
 
         return value.toLongOrNull(16)?.toInt()
+    }
+
+    /** WCAG 상대 휘도(0~1). */
+    private fun relativeLuminance(color: Int): Double {
+        fun channel(value: Int): Double {
+            val c = value / 255.0
+            return if (c <= 0.03928) c / 12.92 else Math.pow((c + 0.055) / 1.055, 2.4)
+        }
+
+        val r = channel((color shr 16) and 0xFF)
+        val g = channel((color shr 8) and 0xFF)
+        val b = channel(color and 0xFF)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+
+    /** 블록 색 위에 올리는 글씨 색: 흰색과 짙은 색(#1F2937) 중 대비가 큰 쪽. */
+    private fun blockInkColor(base: Int): Int {
+        val dark = 0xFF1F2937.toInt()
+        val l = relativeLuminance(base)
+        val whiteContrast = 1.05 / (l + 0.05)
+        val darkContrast = (l + 0.05) / (relativeLuminance(dark) + 0.05)
+        return if (whiteContrast >= darkContrast) 0xFFFFFFFF.toInt() else dark
     }
 
     private fun withAlpha(color: Int, alpha: Int): Int {

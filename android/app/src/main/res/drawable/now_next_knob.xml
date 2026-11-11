@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 손 계수기 옆면의 홈이 파인 손잡이(장식). 직접 그린 벡터라 SVG 변환이 필요 없다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="13dp"
+    android:height="64dp"
+    android:viewportWidth="13"
+    android:viewportHeight="64">
+    <path
+        android:fillColor="#161C25"
+        android:pathData="M3,0 L13,0 L13,64 L3,64 Q0,64 0,61 L0,3 Q0,0 3,0 Z" />
+    <path
+        android:fillColor="#3A4658"
+        android:pathData="M2,6 L13,6 L13,9 L2,9 Z M2,12 L13,12 L13,15 L2,15 Z M2,18 L13,18 L13,21 L2,21 Z M2,24 L13,24 L13,27 L2,27 Z M2,30 L13,30 L13,33 L2,33 Z M2,36 L13,36 L13,39 L2,39 Z M2,42 L13,42 L13,45 L2,45 Z M2,48 L13,48 L13,51 L2,51 Z M2,54 L13,54 L13,57 L2,57 Z" />
+</vector>
