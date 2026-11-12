@@ -365,6 +365,14 @@ class _MyPageState extends State<MyPage> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isDirty = false;
+
+  /// 저장을 한 번 시도해 검증에 막힌 뒤에는, 고치는 즉시 오류가 사라지거나 갱신되게 한다.
+  /// 처음부터 켜 두면 첫 글자를 입력하는 중에 오류가 떠서 거슬리므로 막힌 뒤에만 켠다.
+  bool _showLiveValidation = false;
+  AutovalidateMode get _profileAutovalidateMode =>
+      _showLiveValidation
+          ? AutovalidateMode.onUserInteraction
+          : AutovalidateMode.disabled;
   bool _isExitSheetShowing = false;
   bool _isBusinessConnectionChecking = false;
   bool _isEmailVerificationBusy = false;
@@ -1520,7 +1528,7 @@ class _MyPageState extends State<MyPage> {
     }
   }
 
-  Future<bool> _saveProfile() async {
+  Future<bool> _saveProfile({bool fromExit = false}) async {
     if (_isSaving) return false;
     if (!await _prepareNamesForSave()) return false;
     final contractNameError = myPageContractNameValidationMessage(
@@ -1535,7 +1543,14 @@ class _MyPageState extends State<MyPage> {
     }
     _logPersonalProfileValidation();
     if (!_formKey.currentState!.validate()) {
+      if (mounted) setState(() => _showLiveValidation = true);
       await _scrollToFirstInvalidProfileField();
+      // 나가려고 눌렀는데 화면에 머물면 갇힌 것처럼 보이므로 이유와 나가는 방법을 알려 준다.
+      if (fromExit) {
+        _showSnack(
+          '빨간 칸을 채워야 저장할 수 있어요. 지금 나가려면 뒤로 가기에서 \'임시로 보관하고 나가기\'를 골라주세요.',
+        );
+      }
       return false;
     }
     setState(() => _isSaving = true);
@@ -1920,7 +1935,7 @@ class _MyPageState extends State<MyPage> {
     var result = true;
     switch (action) {
       case _MyPageExitAction.saveExit:
-        result = await _saveProfile();
+        result = await _saveProfile(fromExit: true);
         if (result && mounted) Navigator.of(context).pop();
         break;
       case _MyPageExitAction.draftExit:
@@ -2674,6 +2689,7 @@ class _MyPageState extends State<MyPage> {
       scrollPadding: const EdgeInsets.only(bottom: 88),
       inputFormatters: inputFormatters,
       validator: validator,
+      autovalidateMode: _profileAutovalidateMode,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -2795,6 +2811,7 @@ class _MyPageState extends State<MyPage> {
       readOnly: readOnly,
       onTap: onTap,
       suffixIcon: suffixIcon,
+      autovalidateMode: _profileAutovalidateMode,
     );
   }
 
@@ -4205,8 +4222,6 @@ class _MyPageState extends State<MyPage> {
             },
           ),
           const SizedBox(height: 12),
-
-          const SizedBox(height: 12),
           KeyedSubtree(
             key: _englishNameFieldKey,
             child: _buildField(
@@ -4217,7 +4232,9 @@ class _MyPageState extends State<MyPage> {
               validator: validateTrainerEnglishName,
             ),
           ),
-
+          // 닉네임 칸의 이름표가 칸 윗줄에 걸쳐 있어, 간격이 없으면 선택된 영문 이름 칸의
+          // 파란 테두리가 그 이름표를 덮는다.
+          const SizedBox(height: 12),
           _buildContractNameSourceField(
             controller: _displayNameController,
             focusNode: _nicknameFocusNode,
@@ -6453,8 +6470,10 @@ class _AifcSmartTextField extends StatefulWidget {
     this.readOnly = false,
     this.onTap,
     this.suffixIcon,
+    this.autovalidateMode = AutovalidateMode.disabled,
   });
 
+  final AutovalidateMode autovalidateMode;
   final TextEditingController controller;
   final String label;
   final String questionHint;
@@ -6501,6 +6520,7 @@ class _AifcSmartTextFieldState extends State<_AifcSmartTextField> {
       keyboardType: widget.keyboardType,
       inputFormatters: widget.inputFormatters,
       validator: widget.validator,
+      autovalidateMode: widget.autovalidateMode,
       readOnly: widget.readOnly,
       onTap: widget.onTap,
       decoration: InputDecoration(
