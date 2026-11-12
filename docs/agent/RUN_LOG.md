@@ -4932,3 +4932,4 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 설치·배포(같은 날): PROD 1.0.7(28→29, 서명 SHA-256 `c18b5444…256e`)·DEV 1.0.7-dev(29) 폰 설치 성공. 사장님 승인 후 `firebase deploy --only functions:finalizePersonalTrainingLog`(PROD, asia-northeast3) 한 개만 배포, 커밋 `9e34586` 기준. Rules·다른 함수 변경 없음.
 - 실기 확인: 사장님이 폰에서 계약 회원 빠른 서명 저장 정상 확인. 함수 로그 10:09Z(19:09 KST) `finalizePersonalTrainingLog` 2건 모두 200, 오류(E) 0건. 출석완료·서비스·노쇼 중 어떤 경우를 시험했는지, 같은 일정 재저장 문구는 사용자 확인 범위에서 세부 미기록.
 - 남음: appbundle versionCode 29 업로드는 사장님 몫. 점검표 9-2 해지, 9-4 레슨 확정·취소 전체 확인.
+- 9-2 결과 정리(같은 날): 사장님이 시험한 것은 해지가 아니라 **파기**. 로그 `voidPersonalContract` 200, 직후 `viewPersonalContract` 410(링크 중지)로 정상. `terminatePersonalContract`(해지)는 PROD 호출 기록 없음 → 사장님이 나중에 확인하기로 함. 오류(E) 0건.

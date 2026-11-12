@@ -2515,3 +2515,4 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [ ] 회원 웹 서명(QR, `sign_requests`) 경로가 개인 작업공간에서 동작하는지 조사(이번 범위 밖).
 - [ ] 서명 화면 `MemberSmartAlarmContextService`는 개인 작업공간에서 members 쓰기가 거부돼 조용히 실패 — 별도 정리 후보.
 - [ ] 서명 화면 `_bindQuickLogStream`에 onError 없음(개인 작업공간 문서 읽기 거부 시 비동기 오류 가능).
+- [ ] 출시 점검표 9-2/7-1/7-3 중 **해지**(`terminatePersonalContract`) PROD 확인: 테스트 회원 계약 해지 → `미등록` 전환, `해지 완료` 워터마크, 이미 보낸 링크 계속 열림. (파기는 2026-11-12 확인 완료)
