@@ -82,6 +82,164 @@ function shouldDeduct(status: FinalStatus): boolean {
   return status === "completed" || status === "no_show_deducted";
 }
 
+// 빠른 서명(손글씨) 한 건. 점 개수는 문서 크기(1MiB) 안에 두 서명이 들어가도록 제한한다.
+const MAX_SIGNATURE_POINTS = 8000;
+const MIN_SIGNATURE_POINTS = 2;
+
+type SignaturePoint = {x: number; y: number} | null;
+type SignatureInput = {
+  points: SignaturePoint[];
+  signedAt: Timestamp;
+  signedBy: string;
+};
+type QuickSignInput = {
+  trainer: SignatureInput;
+  member: SignatureInput | null;
+};
+
+function parseSignature(value: unknown, field: string): SignatureInput {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    throw new functions.https.HttpsError("invalid-argument", `${field}_invalid`);
+  }
+  const raw = value as Data;
+  const rawPoints = raw.points;
+  if (!Array.isArray(rawPoints) || rawPoints.length > MAX_SIGNATURE_POINTS) {
+    throw new functions.https.HttpsError("invalid-argument", `${field}_invalid`);
+  }
+  const points: SignaturePoint[] = [];
+  let drawn = 0;
+  for (const item of rawPoints) {
+    if (item == null) {
+      points.push(null);
+      continue;
+    }
+    const point = item as Data;
+    if (typeof item !== "object" || Array.isArray(item) ||
+        typeof point.x !== "number" || !Number.isFinite(point.x) ||
+        typeof point.y !== "number" || !Number.isFinite(point.y)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        `${field}_invalid`,
+      );
+    }
+    points.push({x: point.x, y: point.y});
+    drawn += 1;
+  }
+  if (drawn < MIN_SIGNATURE_POINTS) {
+    throw new functions.https.HttpsError("invalid-argument", `${field}_empty`);
+  }
+  const signedAtMs = raw.signedAt;
+  const signedAt = typeof signedAtMs === "number" &&
+      Number.isFinite(signedAtMs) && signedAtMs > 0 ?
+    Timestamp.fromMillis(Math.trunc(signedAtMs)) : Timestamp.now();
+  return {
+    points,
+    signedAt,
+    signedBy: raw.signedBy === "member_web" ? "member_web" : "member_app",
+  };
+}
+
+// 앱이 손글씨 서명을 같이 보낸 경우에만 값이 있다(없으면 기존 확정과 동일).
+function parseQuickSign(
+  raw: unknown,
+  status: FinalStatus,
+): QuickSignInput | null {
+  if (raw == null) return null;
+  const data = objectData(raw);
+  const trainer = parseSignature(data.trainerSignature, "trainer_signature");
+  const needsMember = status === "completed" || status === "service";
+  if (needsMember && data.memberSignature == null) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "member_signature_required",
+    );
+  }
+  const member = needsMember ?
+    parseSignature(data.memberSignature, "member_signature") : null;
+  return {trainer, member};
+}
+
+function quickSignLogFields(
+  quickSign: QuickSignInput,
+  member: Data,
+  now: Timestamp,
+): Data {
+  const lessonSync = mapData(member.lessonSync);
+  const contractId = String(lessonSync.contractId ?? "").trim();
+  const contractLinked = member.contractSigned === true ||
+    contractId.length > 0;
+  const memberSig = quickSign.member;
+  return {
+    inputMethod: "quick_sign",
+    isQuickSignLog: true,
+    quickSignedOnly: true,
+    basis: contractLinked ? "contract" : "manual",
+    contractLinked,
+    ...(contractId.length > 0 ? {contractId} : {}),
+    ...(contractLinked ? {
+      cancelLockedByContract: true,
+      cancelLockContractReason: "contract_linked_lesson_confirm",
+    } : {}),
+    trainerSignature: {
+      type: "drawing",
+      points: quickSign.trainer.points,
+      signedAt: quickSign.trainer.signedAt,
+    },
+    memberSignature: memberSig == null ? null : {
+      type: "drawing",
+      points: memberSig.points,
+      signedAt: memberSig.signedAt,
+      signedBy: memberSig.signedBy,
+    },
+    trainerSig: "[drawing]",
+    trainerSigned: true,
+    memberSigned: memberSig != null,
+    ...(memberSig == null ? {} : {
+      memberSig: "[drawing]",
+      customerSig: "[drawing]",
+      memberSignedAt: memberSig.signedAt,
+      cancelLockedByMemberSignature: true,
+      cancelLockReason: "member_signed_lesson_confirm",
+    }),
+    waitingTrainerConfirm: false,
+    confirmedByTrainer: true,
+    confirmedAt: now,
+    lockedAt: now,
+    signedAt: now,
+  };
+}
+
+function quickSignScheduleFields(
+  quickSign: QuickSignInput,
+  member: Data,
+  lessonLogId: string,
+  now: Timestamp,
+): Data {
+  const lessonSync = mapData(member.lessonSync);
+  const contractId = String(lessonSync.contractId ?? "").trim();
+  const contractLinked = member.contractSigned === true ||
+    contractId.length > 0;
+  const memberSig = quickSign.member;
+  return {
+    quickTrainingLogId: lessonLogId,
+    lastTrainingLogId: lessonLogId,
+    lastSignedAt: now,
+    basis: contractLinked ? "contract" : "manual",
+    contractLinked,
+    ...(contractId.length > 0 ? {contractId} : {}),
+    ...(contractLinked ? {
+      cancelLockedByContract: true,
+      cancelLockContractReason: "contract_linked_lesson_confirm",
+    } : {}),
+    ...(memberSig == null ? {} : {
+      memberSigned: true,
+      memberSignedAt: memberSig.signedAt,
+      cancelLockedByMemberSignature: true,
+      cancelLockReason: "member_signed_lesson_confirm",
+    }),
+  };
+}
+
 function translated(error: unknown, operation: string): never {
   if (error instanceof functions.https.HttpsError) throw error;
   console.error(`[MTF_PERSONAL_LOG] ${operation} failed`, error);
@@ -146,6 +304,7 @@ export function finalizePersonalTrainingLogHandler(
     const data = objectData(raw);
     const lessonLogId = requiredString(data, "lessonLogId");
     const requestedStatus = finalStatus(data);
+    const quickSign = parseQuickSign(data.quickSign, requestedStatus);
     const logRef = db.collection("training_logs").doc(lessonLogId);
 
     try {
@@ -288,6 +447,8 @@ export function finalizePersonalTrainingLogHandler(
           sessionSnapshotDoneBefore: doneBefore,
           sessionSnapshotDoneAfter: doneAfter,
           sessionSnapshotLessonNumber: doneAfter,
+          ...(quickSign == null ? {} :
+            quickSignLogFields(quickSign, member, Timestamp.now())),
           updatedAt: finalizedAt,
         });
 
@@ -343,6 +504,13 @@ export function finalizePersonalTrainingLogHandler(
             sessionSnapshotRemainAfter: remainingAfter,
             sessionSnapshotDoneBefore: doneBefore,
             sessionSnapshotDoneAfter: doneAfter,
+            ...(quickSign == null ? {} :
+              quickSignScheduleFields(
+                quickSign,
+                member,
+                lessonLogId,
+                Timestamp.now(),
+              )),
             updatedAt: finalizedAt,
           });
         }

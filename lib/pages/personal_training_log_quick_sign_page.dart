@@ -8,8 +8,10 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../models/personal_training_log.dart';
 import '../services/member_smart_alarm_context_service.dart';
 import '../services/more_care_slot_service.dart';
+import '../services/personal_training_log_repository.dart';
 import '../services/app_tier_access_service.dart';
 import '../services/member_sign_url_service.dart';
 import '../widgets/personal_training_log_entry_guard.dart';
@@ -931,6 +933,18 @@ class _PersonalTrainingQuickLogSignPageState
                 .collection('schedules')
                 .doc(scheduleDocId);
 
+    // 개인 작업공간은 회원·일정 문서를 앱이 직접 쓸 수 없다(Firestore Rules).
+    // 서버 함수(finalizePersonalTrainingLog)가 서명과 함께 확정한다.
+    if (_personalOwnerUid.isNotEmpty) {
+      await _savePersonalQuickSignedLog(
+        memoText: memoText,
+        trainerSignaturePoints: trainerSignaturePoints,
+        memberSignaturePoints: memberSignaturePoints,
+        scheduleDocId: scheduleDocId,
+      );
+      return;
+    }
+
     try {
       bool alreadyDeducted = false;
       bool actuallyDeducted = false;
@@ -1265,6 +1279,107 @@ class _PersonalTrainingQuickLogSignPageState
 
       if (!mounted) return;
       _showToast('빠른 서명 저장에 실패했어요.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  Map<String, dynamic> _signatureForServer(
+    List<Offset?> points,
+    DateTime? signedAt, {
+    String? signedBy,
+  }) {
+    return {
+      'points': _signaturePointsToJson(points),
+      'signedAt': (signedAt ?? DateTime.now()).millisecondsSinceEpoch,
+      if (signedBy != null) 'signedBy': signedBy,
+    };
+  }
+
+  Future<void> _savePersonalQuickSignedLog({
+    required String memoText,
+    required List<Offset?> trainerSignaturePoints,
+    required List<Offset?> memberSignaturePoints,
+    required String scheduleDocId,
+  }) async {
+    final repository = PersonalTrainingLogRepository.firebase(
+      uid: _personalOwnerUid,
+    );
+    final start = _effectiveStartAt;
+    String? draftId;
+
+    try {
+      draftId = await repository.createDraft(
+        PersonalTrainingLogDraft(
+          memberId: _cleanMemberId,
+          scheduleDocId: scheduleDocId.isEmpty ? null : scheduleDocId,
+          lessonDate: DateTime(start.year, start.month, start.day),
+          startAt: start,
+          endAt: _effectiveEndAt,
+          lessonType: widget.lessonType,
+          memo: memoText,
+          source: 'home_quick_sign',
+        ),
+      );
+
+      final result = await repository.finalize(
+        draftId,
+        _modeStatusCode,
+        quickSign: {
+          'trainerSignature': _signatureForServer(
+            trainerSignaturePoints,
+            _trainerSignedAt,
+          ),
+          if (_requiresMemberSignature)
+            'memberSignature': _signatureForServer(
+              memberSignaturePoints,
+              _memberSignedAt,
+              signedBy: _memberSignedFromWeb ? 'member_web' : 'member_app',
+            ),
+        },
+      );
+
+      if (!mounted) return;
+
+      final alreadyFinalized = result['alreadyFinalized'] == true;
+      final deducted = result['deductionApplied'] == true;
+
+      await _loadMemberSummary();
+      if (!mounted) return;
+
+      if (alreadyFinalized) {
+        _showToast('이미 확정된 서명이에요.');
+      } else if (deducted) {
+        _showToast('서명이 저장되고 레슨 1회가 진행되었어요.');
+      } else if (_shouldDeduct) {
+        _showToast('서명은 저장됐지만 잔여 레슨이 0회라 소진되지 않았어요.');
+      } else {
+        _showToast('서명이 저장되었어요.');
+      }
+
+      await _requestMoreCareSlotAfterQuickSignSaved();
+
+      await Future.delayed(const Duration(milliseconds: 450));
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      debugPrint('빠른 서명 저장 실패(개인): $e');
+      // 확정 전에 실패했으면 남은 초안을 지워 쓰레기 기록이 쌓이지 않게 한다.
+      if (draftId != null) {
+        try {
+          await repository.deleteDraft(draftId);
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      _showToast(
+        e is PersonalTrainingLogException
+            ? '빠른 서명 저장에 실패했어요.'
+            : personalTrainingLogErrorMessage(e),
+      );
     } finally {
       if (mounted) {
         setState(() {

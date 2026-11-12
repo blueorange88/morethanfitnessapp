@@ -145,6 +145,34 @@ void main() {
     expect(value.gateway.finalizeCalls, ['$quick:completed']);
   });
 
+  test('손글씨 서명은 확정 호출에 그대로 실려 서버로 전달된다', () async {
+    final value = harness();
+    final id = await value.repository.createDraft(draft());
+    final quickSign = <String, dynamic>{
+      'trainerSignature': {
+        'points': [
+          {'x': 1.0, 'y': 2.0},
+          null,
+          {'x': 3.0, 'y': 4.0},
+        ],
+        'signedAt': 1700000000000,
+      },
+    };
+    await value.repository.finalize(
+      id,
+      PersonalTrainingLogStatus.noShowDeducted,
+      quickSign: quickSign,
+    );
+    expect(value.gateway.quickSignCalls.single, same(quickSign));
+  });
+
+  test('서명 없이 확정하면 서명 값은 전달되지 않는다', () async {
+    final value = harness();
+    final id = await value.repository.createDraft(draft());
+    await value.repository.finalize(id, PersonalTrainingLogStatus.completed);
+    expect(value.gateway.quickSignCalls.single, isNull);
+  });
+
   test('확정취소도 같은 owner gateway를 사용한다', () async {
     final value = harness();
     final id = await value.repository.createDraft(draft());
@@ -367,14 +395,17 @@ class _MemoryMutationGateway implements PersonalTrainingLogMutationGateway {
 
   final _MemoryLogDataSource source;
   final finalizeCalls = <String>[];
+  final quickSignCalls = <Map<String, dynamic>?>[];
   final cancelCalls = <String>[];
 
   @override
   Future<Map<String, dynamic>> finalize({
     required String lessonLogId,
     required String status,
+    Map<String, dynamic>? quickSign,
   }) async {
     finalizeCalls.add('$lessonLogId:$status');
+    quickSignCalls.add(quickSign);
     final current = source.records[lessonLogId]!;
     source.records[lessonLogId] = _record(
       id: current.lessonLogId,

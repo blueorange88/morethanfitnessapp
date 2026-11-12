@@ -52,6 +52,7 @@ abstract interface class PersonalTrainingLogMutationGateway {
   Future<Map<String, dynamic>> finalize({
     required String lessonLogId,
     required String status,
+    Map<String, dynamic>? quickSign,
   });
 
   Future<Map<String, dynamic>> cancel(String lessonLogId);
@@ -155,10 +156,13 @@ class PersonalTrainingLogRepository {
     });
   }
 
+  /// [quickSign]은 빠른 서명 화면이 손글씨 서명을 함께 보낼 때만 넣는다.
+  /// 서명은 서버 함수가 레슨일지·일정에 저장한다(회원 문서는 앱이 직접 쓸 수 없다).
   Future<Map<String, dynamic>> finalize(
     String lessonLogId,
-    String status,
-  ) async {
+    String status, {
+    Map<String, dynamic>? quickSign,
+  }) async {
     _requireCurrentUid();
     if (!PersonalTrainingLogStatus.finalized.contains(status)) {
       throw const PersonalTrainingLogException(
@@ -169,6 +173,7 @@ class PersonalTrainingLogRepository {
     return _mutationGateway.finalize(
       lessonLogId: lessonLogId.trim(),
       status: status,
+      quickSign: quickSign,
     );
   }
 
@@ -403,11 +408,16 @@ class FirebasePersonalTrainingLogMutationGateway
   Future<Map<String, dynamic>> finalize({
     required String lessonLogId,
     required String status,
+    Map<String, dynamic>? quickSign,
   }) async {
     final data = await MtfFirebaseFunctions.call(
       'finalizePersonalTrainingLog',
       functions: _functions,
-      parameters: {'lessonLogId': lessonLogId, 'status': status},
+      parameters: {
+        'lessonLogId': lessonLogId,
+        'status': status,
+        if (quickSign != null) 'quickSign': quickSign,
+      },
     );
     return Map<String, dynamic>.from(data as Map);
   }
@@ -426,6 +436,9 @@ class FirebasePersonalTrainingLogMutationGateway
 String personalTrainingLogErrorMessage(Object error) {
   if (error is FirebaseFunctionsException) {
     final message = error.message ?? '';
+    if (message.contains('schedule_already_finalized')) {
+      return '이미 확정된 레슨이에요.';
+    }
     if (message.contains('member_') || message.contains('schedule_')) {
       return '현재 작업공간의 회원과 일정 연결을 확인해주세요.';
     }

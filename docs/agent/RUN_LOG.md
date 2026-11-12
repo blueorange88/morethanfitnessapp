@@ -4914,3 +4914,18 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 9-6: 해당 없음(관리자 계정 미생성).
 - 코드·배포 변경 없음.
 - 갱신(같은 날, 사용자 확인 후): 9-2 일부 ○(작성·서명·PDF·카카오톡 전송 정상, 해지 미확인), 9-3 ○(링크에서 PDF 다운로드·표시 정상). 계약 실행 직후 함수 로그 재확인 — 오류(E) 0건, 계약 함수 정상(200). `attachPersonalContractPdf` 첫 호출 400 → 재호출 200 패턴은 11-05 로그에도 있어 기존 동작(원인 미조사).
+
+## 2026-11-12 빠른 서명 저장 실패 수정 (개인 작업공간·계약 회원) — 1.0.7+29
+
+- 증상: 9-2 이후 계약이 있는 테스트 회원에서 `빠른 서명` 두 서명을 하고 저장하면 `빠른 서명 저장에 실패했어요.`(서비스 레슨 모드 무관).
+- 원인(코드·규칙 읽기로 확정, 실제 오류 문구는 재현 못 함): 계약 완료 회원(`contractSigned`/`lessonSync.contractId`, 1.0.7 신규 계약 서버가 채움)은 `PersonalTrainingQuickLogSignPage`로 가는데, 이 화면이 `members`·`schedules`·`training_logs`를 앱에서 직접 transaction으로 씀. `firestore.rules`는 `members` 수정을 레거시 관리자에게만 허용하고 개인 `training_logs`는 `draft` 상태·정해진 키만 허용 → 거부. 1.0.6 이전에는 개인 회원에게 `contractSigned`를 채우는 서버 코드가 없어 이 경로에 거의 닿지 않았음.
+- 방향(사장님 선택 2번): 서명을 서버 함수가 저장하도록 `finalizePersonalTrainingLog`를 확장. Rules 변경 없음.
+- 변경:
+  - `functions/src/personal_training_logs.ts`: 선택 입력 `quickSign`(`trainerSignature`, `memberSignature`) 추가. 점 2~8000개, 좌표 숫자·null(획 구분) 검증, 출석완료·서비스는 회원 서명 필수, 노쇼는 강사 서명만. 계약 연결 여부는 서버가 회원 문서에서 판단. 로그·일정에 기존 빠른 서명 화면과 같은 필드(`trainerSignature`, `memberSignature`, `memberSigned`, `cancelLockedBy…` 등) 저장. `quickSign` 없는 호출은 기존과 동일.
+  - `lib/services/personal_training_log_repository.dart`: 게이트웨이·`finalize`에 선택 인자 `quickSign`. 오류 문구에 `schedule_already_finalized` → `이미 확정된 레슨이에요.` 추가.
+  - `lib/pages/personal_training_log_quick_sign_page.dart`: 개인 작업공간(`personalOwnerUid` 있음)은 `createDraft` → `finalize(quickSign)` 경로로 저장. 실패 시 남은 초안 삭제. 기존 직접 쓰기 경로는 레거시 작업공간용으로 그대로.
+  - `test/personal_training_log_repository_test.dart`: 서명 전달·미전달 2건 추가, 가짜 게이트웨이 시그니처 갱신.
+  - `pubspec.yaml`: `1.0.7+28` → `1.0.7+29`.
+- 검증: `tsc`·`eslint` 오류 0. Firestore 에뮬레이터에서 핸들러 직접 호출 19항목 통과(서비스·출석·노쇼·계약 없음·서명 없음 회귀·검증 오류 5종·타 강사 거부·재호출 멱등). `flutter analyze` 1171건(기준선 동일), `flutter test` 1590개 통과(+2).
+- 배포 순서 주의: **Functions를 먼저 배포한 뒤** 앱 1.0.7+29를 올려야 함(옛 함수는 `quickSign`을 무시하고 서명 없이 확정만 해 버림). Functions 배포는 승인 대상이라 하지 않음.
+- 미검증: 폰에서 실제 서명 저장(Functions 배포 전이라 불가, DEV 프로젝트 배포 필요 여부는 사장님 결정). 회원 웹 서명(QR) 경로, `MemberSmartAlarmContextService`(개인 작업공간에서는 members 쓰기가 거부돼 원래부터 조용히 실패)는 이번 범위 밖.

@@ -2508,3 +2508,10 @@ legacy migration/backfill, contracts·원격서명 권한, 실제 배포와 다�
 - [x] (확인됨) 레슨일지 회원 카드는 서버 저장이 아니라 OS 공유: 레슨 요약 이미지 `lesson_share_card.dart`, 계약서 PDF·열람 링크 `lesson_contract_delivery_card.dart`. `share_plus`가 이미 있어 초대 링크 공유에 새 의존성 불필요
 - [ ] (방향 메모, 확정 아님) 회원 소식·채팅은 강사 앱 안의 받은편지함(햄버거 하단 "MORE THAN wellness 회원관리" 자리, 현재 "준비 중"), 회원 초대는 회원카드 전화번호로 문자(OS 공유) + 마이페이지 명함 QR/URL, 연결은 초대 토큰·이름 전화는 확인용, 회원 자기기재는 members와 분리, 그룹은 ID로 식별·이름은 표시용
 - 다음 백로그로 자동 이동하지 않는다.
+
+## 2026-11-12 빠른 서명 수정 후속 (1.0.7+29)
+- [ ] **배포 순서**: Functions(`finalizePersonalTrainingLog`) 먼저 배포 → 앱 1.0.7+29 업로드. 순서가 바뀌면 옛 함수가 서명을 무시하고 확정만 함. (Functions 배포는 사장님 승인 필요)
+- [ ] 폰 실기 검증: 계약 회원 `빠른 서명` 저장(출석완료·서비스·노쇼), 서비스 레슨 미차감, 취소 잠금, 같은 일정 재저장 시 `이미 확정된 레슨이에요.`
+- [ ] 회원 웹 서명(QR, `sign_requests`) 경로가 개인 작업공간에서 동작하는지 조사(이번 범위 밖).
+- [ ] 서명 화면 `MemberSmartAlarmContextService`는 개인 작업공간에서 members 쓰기가 거부돼 조용히 실패 — 별도 정리 후보.
+- [ ] 서명 화면 `_bindQuickLogStream`에 onError 없음(개인 작업공간 문서 읽기 거부 시 비동기 오류 가능).
