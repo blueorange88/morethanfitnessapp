@@ -4929,3 +4929,6 @@ Codex는 각 작업 후 아래 형식으로 맨 위에 기록한다.
 - 검증: `tsc`·`eslint` 오류 0. Firestore 에뮬레이터에서 핸들러 직접 호출 19항목 통과(서비스·출석·노쇼·계약 없음·서명 없음 회귀·검증 오류 5종·타 강사 거부·재호출 멱등). `flutter analyze` 1171건(기준선 동일), `flutter test` 1590개 통과(+2).
 - 배포 순서 주의: **Functions를 먼저 배포한 뒤** 앱 1.0.7+29를 올려야 함(옛 함수는 `quickSign`을 무시하고 서명 없이 확정만 해 버림). Functions 배포는 승인 대상이라 하지 않음.
 - 미검증: 폰에서 실제 서명 저장(Functions 배포 전이라 불가, DEV 프로젝트 배포 필요 여부는 사장님 결정). 회원 웹 서명(QR) 경로, `MemberSmartAlarmContextService`(개인 작업공간에서는 members 쓰기가 거부돼 원래부터 조용히 실패)는 이번 범위 밖.
+- 설치·배포(같은 날): PROD 1.0.7(28→29, 서명 SHA-256 `c18b5444…256e`)·DEV 1.0.7-dev(29) 폰 설치 성공. 사장님 승인 후 `firebase deploy --only functions:finalizePersonalTrainingLog`(PROD, asia-northeast3) 한 개만 배포, 커밋 `9e34586` 기준. Rules·다른 함수 변경 없음.
+- 실기 확인: 사장님이 폰에서 계약 회원 빠른 서명 저장 정상 확인. 함수 로그 10:09Z(19:09 KST) `finalizePersonalTrainingLog` 2건 모두 200, 오류(E) 0건. 출석완료·서비스·노쇼 중 어떤 경우를 시험했는지, 같은 일정 재저장 문구는 사용자 확인 범위에서 세부 미기록.
+- 남음: appbundle versionCode 29 업로드는 사장님 몫. 점검표 9-2 해지, 9-4 레슨 확정·취소 전체 확인.
