@@ -1,0 +1,114 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isLegacyAdmin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.auth.token.keys().hasAny(['platformAdmin'])
+        && request.auth.token.platformAdmin == true
+        && request.auth.token.keys().hasAny(['legacyDataAccessApproved'])
+        && request.auth.token.legacyDataAccessApproved == true
+        && firestore.exists(
+          /databases/(default)/documents/trainer_profiles/$(request.auth.uid)
+        )
+        && firestore.get(
+          /databases/(default)/documents/trainer_profiles/$(request.auth.uid)
+        ).data.mustChangePassword != true;
+    }
+
+    function isAllowedImage(maxBytes, contentType) {
+      return request.resource != null
+        && request.resource.size <= maxBytes
+        && request.resource.contentType == contentType;
+    }
+
+    match /member_profiles/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('profile_[0-9]+[.]jpg')
+        && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
+    }
+
+    // 개인워크스페이스 회원 프로필 사진: 경로에 트레이너 UID를 포함시켜
+    // Firestore 교차조회 없이 request.auth.uid와 직접 비교합니다.
+    match /member_profiles_personal/{trainerUid}/{memberId}/{fileName} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == trainerUid
+        && fileName.matches('profile_[0-9]+[.]jpg')
+        && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
+    }
+
+    // 트레이너 본인 명함 프로필 사진: 경로의 uid가 본인 auth.uid와 같을 때만 허용.
+    match /trainer_photos/{trainerUid}/{fileName} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == trainerUid
+        && fileName.matches('photo_[0-9]+[.]jpg')
+        && isAllowedImage(10 * 1024 * 1024, 'image/jpeg');
+    }
+
+    // 레슨계약서 당사자 로고: 본인(비익명)만 PNG 2MB 이하로 올리고 읽는다.
+    match /contract_logos/{trainerUid}/{fileName} {
+      allow read, delete: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == trainerUid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && fileName.matches('logo_[0-9]+[.]png')
+        && isAllowedImage(2 * 1024 * 1024, 'image/png');
+    }
+
+    // 레슨계약서 v2 완료본 PDF: 본인(비익명)이 완료된 자기 계약에 한해 한 번만 올린다(덮어쓰기·삭제 불가).
+    // 파일 이름은 계약의 현재 버전(contract_v{n}.pdf)이어야 하고, 형식은 PDF 10MB 이하다.
+    // 읽기는 본인만(회원은 서버 HTTPS 함수의 열람 링크로 본다).
+    match /personal_contracts/{trainerUid}/{contractId}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.uid == trainerUid;
+      allow create: if request.auth != null
+        && request.auth.uid == trainerUid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        // 이미 올라간 파일이 있으면(덮어쓰기) 거부한다.
+        && resource == null
+        && contractId.matches('pc_[a-f0-9]{32}')
+        && isAllowedImage(10 * 1024 * 1024, 'application/pdf')
+        && request.resource.size > 0
+        && firestore.exists(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        )
+        && firestore.get(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        ).data.trainerId == trainerUid
+        && firestore.get(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        ).data.status == 'completed'
+        && fileName == 'contract_v' + string(firestore.get(
+          /databases/(default)/documents/personal_contracts/$(contractId)
+        ).data.version) + '.pdf';
+      allow update, delete: if false;
+    }
+
+    match /member_inbody/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('inbody_[0-9]+[.]jpg')
+        && isAllowedImage(15 * 1024 * 1024, 'image/jpeg');
+    }
+
+    match /membership_contract_signatures/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('signature_[0-9]+[.]png')
+        && isAllowedImage(10 * 1024 * 1024, 'image/png');
+    }
+
+    match /membership_contract_images/{memberId}/{fileName} {
+      allow read, delete: if isLegacyAdmin();
+      allow create, update: if isLegacyAdmin()
+        && fileName.matches('contract_[0-9]+[.]png')
+        && isAllowedImage(10 * 1024 * 1024, 'image/png');
+    }
+  }
+}

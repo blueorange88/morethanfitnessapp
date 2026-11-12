@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- dark 테마 칸 하나(숫자 바퀴 한 칸). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:endColor="#05080D"
+        android:startColor="#1B2431" />
+    <stroke
+        android:width="0.5dp"
+        android:color="#3A465A" />
+    <corners android:radius="4dp" />
+</shape>

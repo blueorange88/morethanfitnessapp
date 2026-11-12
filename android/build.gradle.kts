@@ -1,3 +1,5 @@
+// android/build.gradle.kts  (루트)
+
 allprojects {
     repositories {
         google()
@@ -5,6 +7,7 @@ allprojects {
     }
 }
 
+// --- (당신이 쓰던 build 디렉토리 이동 로직: 유지) ---
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
@@ -22,9 +25,8 @@ subprojects {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
-buildscript {
-    dependencies {
-        classpath 'com.google.gms:google-services:4.4.2'
-    }
+
+// --- Firebase Google Services 플러그인: 루트에는 "버전 선언 + apply false"만 ---
+plugins {
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
-apply plugin: 'com.google.gms.google-services'

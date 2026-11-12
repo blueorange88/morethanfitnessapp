@@ -2,11 +2,11 @@
 import 'dart:convert';
 
 class Lesson {
-  final int di;        // 1~7 (월~일)
-  final String time;   // "HH:MM"
-  final String name;   // 회원 이름
-  final int enrolled;  // 소진/수강한 회차
-  final int cap;       // 총 회차
+  final int di; // 1~7 (월~일)
+  final String time; // "HH:MM"
+  final String name; // 회원 이름
+  final int enrolled; // 소진/수강한 회차
+  final int cap; // 총 회차
   final String? memberId;
 
   Lesson({

@@ -13,7 +13,10 @@ class SchedulePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('이번 주 스케줄', style: TextStyle(fontWeight: FontWeight.w800)),
+            const Text(
+              '이번 주 스케줄',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 8),
             Expanded(child: ScheduleTable(weekOffset: 0)), // ← const 제거
             const SizedBox(height: 10),

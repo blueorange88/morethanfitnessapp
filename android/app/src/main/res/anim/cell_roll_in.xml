@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 바뀐 글자가 칸 아래에서 올라와 자리를 잡는다. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_slow_in">
+    <translate
+        android:duration="480"
+        android:fromYDelta="100%"
+        android:toYDelta="0" />
+    <alpha
+        android:duration="360"
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0" />
+</set>
